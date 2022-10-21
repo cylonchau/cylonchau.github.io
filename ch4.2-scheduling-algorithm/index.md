@@ -1170,6 +1170,7 @@ spec:
 
 <p id="prefiltertesting">实现的测试代码如下</p>
 
+{% raw %}
 ```go
 {
     name: "normal case with two spreadConstraints",
@@ -1229,6 +1230,7 @@ spec:
     },
 },
 ```
+{% endraw %}
 
 <p class="update">update</p>
 
