@@ -1213,8 +1213,8 @@ spec:
             },
         },
         TpKeyToCriticalPaths: map[string]*criticalPaths{
-            "zone": {{"zone1", 3}, {"zone2", 4}},
-            "node": {{"node-x", 0}, {"node-b", 1}},
+            "zone": \{\{"zone1", 3\}, \{"zone2", 4\}\},
+            "node": \{\{"node-x", 0\}, \{"node-b", 1\}\},
         },
         for pair, num := range s.TpPairToMatchNum {
 		s.TpKeyToCriticalPaths[pair.key].update(pair.value, num)
