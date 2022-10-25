@@ -1172,6 +1172,8 @@ spec:
 <p id="prefiltertesting">实现的测试代码如下</p>
 
 ```go
+{% raw %}
+...
 {
     name: "normal case with two spreadConstraints",
     pod: st.MakePod().Name("p").Label("foo", "").
@@ -1228,7 +1230,9 @@ spec:
             {key: "node", value: "node-y"}: 4,
         },
     },
-},
+}
+...
+{% endraw %}
 ```
 
 <p class="update">update</p>
