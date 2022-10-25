@@ -1,0 +1,85 @@
+---
+title: "lua nginx api"
+author: "cylon"           
+date: 2019-10-02
+tags:              
+  - "lua"
+
+categories:   
+  - "lua"
+  - "programming"
+keywords: 
+  - "golang"
+---
+
+```lua
+location = /reqq {
+	default_type text/plain;
+	content_by_lua_block {
+		ngx.req.read_body()
+		local data = ngx.req.get_body_data()
+                local args, err = ngx.req.get_uri_args()
+		if not args then
+			ngx.say('post fail')
+			return
+		end
+		
+        for key,v in pairs(args) do
+			ngx.say(key,"::",v,"--")
+		end
+		ngx.say(data)
+	}
+}
+```
+
+### ngx.exec 内部重定向
+
+```lua
+location = /bb {
+    default_type text/plain;
+    content_by_lua_block{
+        ngx.exec('/reqq?m=DaoShengPay3&c=Pay&orderNo=PH201910111')
+    }
+}
+
+location = /reqq {
+    default_type text/plain;
+    content_by_lua_block {
+       ngx.req.read_body()
+       local data = ngx.req.get_body_data()
+       local args, err = ngx.req.get_uri_args()
+       if not args then
+               ngx.say('post fail')
+               return
+       end
+       for key,v in pairs(args) do
+               ngx.say(key,"::",v,"--")
+       end
+       ngx.say(data)
+    }
+}
+```
+
+![1570889980396](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1570889980396.png)
+
+### ngx.log
+
+```lua
+location = /testlog {
+    default_type text/plain;
+    content_by_lua_block{
+        ngx.say('hello lua log')
+        ngx.log(ngx.ERR, 'print hello lua log')
+    }
+}
+```
+
+```log
+2019/10/12 22:25:31 [error] 468#0: *248 [lua] content_by_lua(nginx.conf:44):3: print hello lua log, client: 203.90.247.72, server: test111.hou2008.com, request: "GET /testlog HTTP/1.1", host: "test111.hou2008.com:8181", referrer: "http://test111.hou2008.com/testlog"
+```
+
+# Nginx API for Lua 
+
+https://github.com/openresty/lua-nginx-module 
+
+https://www.zifangsky.cn/1024.html

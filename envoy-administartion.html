@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>envoy 管理 - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="envoy 管理" />
+<meta property="og:description" content="envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等）因此非常有必要精心编排期访问控制机制，以避免非授权访问。
+administration interface 属于 bootstrap 配置文件中的==顶级配置字段==使用。
+administration interface offical document
+1 2 3 4 5 6 7 8 admin: access_log_path: .. # 管理接口的访问日志文件路径，无须记录访问日志使用/dev/null profile_path: ... # cpu_profile的输出路径，默认为/var/log/envoy/envoy.prof; address: socket_address: # 监听的套接字 protocol: .. address: ... prot_value: ... 下面是一个简单的配置示例
+1 2 3 4 admin: access_log_path: /tmp/admin_access.log address: socket_address: { address: 127.0.0.1, port_value: 9901 } admin接口内置了多个 /path ，不同的path可能会分别接受不同的GET或POST请求
+GET /help ：打印所有可用选项； / : Admin home page /certs : GET 列出在的所有TLS相关的信息； /clusters : upstream cluster status GET，格外支持使用 /clusters?" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/envoy-administartion.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2020-09-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="envoy 管理"/>
+<meta name="twitter:description" content="envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等）因此非常有必要精心编排期访问控制机制，以避免非授权访问。
+administration interface 属于 bootstrap 配置文件中的==顶级配置字段==使用。
+administration interface offical document
+1 2 3 4 5 6 7 8 admin: access_log_path: .. # 管理接口的访问日志文件路径，无须记录访问日志使用/dev/null profile_path: ... # cpu_profile的输出路径，默认为/var/log/envoy/envoy.prof; address: socket_address: # 监听的套接字 protocol: .. address: ... prot_value: ... 下面是一个简单的配置示例
+1 2 3 4 admin: access_log_path: /tmp/admin_access.log address: socket_address: { address: 127.0.0.1, port_value: 9901 } admin接口内置了多个 /path ，不同的path可能会分别接受不同的GET或POST请求
+GET /help ：打印所有可用选项； / : Admin home page /certs : GET 列出在的所有TLS相关的信息； /clusters : upstream cluster status GET，格外支持使用 /clusters?"/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/envoy-administartion.html" /><link rel="prev" href="https://cylonchau.github.io/envoy-%E5%81%A5%E5%BA%B7%E7%8A%B6%E6%80%81%E7%9B%91%E6%B5%8B.html" /><link rel="next" href="https://cylonchau.github.io/envoy-tls.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "envoy 管理",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/envoy-administartion.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "envoy","wordcount":  393 ,
+        "url": "https:\/\/cylonchau.github.io\/envoy-administartion.html","datePublished": "2020-09-02T00:00:00+00:00","dateModified": "2020-09-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">envoy 管理</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/envoy.html"><i class="far fa-folder fa-fw"></i>envoy</a>&nbsp;<a href="/categories/traffic-management.html"><i class="far fa-folder fa-fw"></i>traffic management</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-09-02 00:00:00">2020-09-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 393 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等）因此非常有必要精心编排期访问控制机制，以避免非授权访问。</p>
+<p><code>administration interface</code> 属于 <code>bootstrap</code> 配置文件中的==顶级配置字段==使用。</p>
+<p><a href="https://www.envoyproxy.io/docs/envoy/v1.15.0/api-v3/admin/admin" target="_blank" rel="noopener noreffer">administration interface offical document</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">admin</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">access_log_path</span><span class="p">:</span><span class="w"> </span><span class="l">..</span><span class="w"> </span><span class="c"># 管理接口的访问日志文件路径，无须记录访问日志使用/dev/null</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">profile_path</span><span class="p">:</span><span class="w"> </span><span class="l">...  </span><span class="w"> </span><span class="c"># cpu_profile的输出路径，默认为/var/log/envoy/envoy.prof;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">socket_address</span><span class="p">:</span><span class="w">   </span><span class="c"># 监听的套接字</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">..</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">prot_value</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>下面是一个简单的配置示例</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">admin</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">access_log_path</span><span class="p">:</span><span class="w"> </span><span class="l">/tmp/admin_access.log</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 127.0.0.1, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">9901</span><span class="w"> </span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>admin接口内置了多个 <code>/path</code> ，不同的path可能会分别接受不同的GET或POST请求</p>
+<ul>
+<li>GET <code>/help</code> ：<font color="#f8070d;" size=2>打印所有可用选项；</font></li>
+<li><code>/</code> : Admin home page</li>
+<li><code>/certs</code> : <font color="#f8070d;" size=2>GET 列出在的所有TLS相关的信息；</font></li>
+<li><code>/clusters</code> : upstream cluster status <font color="#f8070d;" size=2>GET，格外支持使用 <code>/clusters?format=json</code> ；</font></li>
+<li><code>/config_dump</code> : dump current Envoy configs (experimental) <font color="#f8070d;" size=2>GET，打印Envoy 加载的各类配置信息；</font></li>
+<li><code>/contention</code> : dump current Envoy mutex contention stats (if enabled) <font color="#f8070d;" size=2>GET 互斥跟踪；</font></li>
+<li><code>/cpuprofiler</code> : enable/disable the CPU profiler POST <font color="#f8070d;" size=2>启用/禁用cupprofiler。</font></li>
+<li><code>/drain_listeners</code> : drain listeners</li>
+<li><code>/healthcheck/fail</code> : cause the server to fail health checks <font color="#f8070d;" size=2>POST 强制设定HTTP健康状态检查为失败；</font></li>
+<li><code>/healthcheck/ok</code> : cause the server to pass health checks <font color="#f8070d;" size=2>POST 强制设定HTTP健康状态检查为成功；</font></li>
+<li><code>/heapprofiler</code> : enable/disable the heap profiler <font color="#f8070d;" size=2>POST 启用或禁用heapprofiler；</font></li>
+<li><code>/help</code> : print out list of admin commands</li>
+<li><code>/hot_restart_version</code> : print the hot restart compatibility version <font color="#f8070d;" size=2>GET 热重启相关信息；</font></li>
+<li><code>/listeners</code> : print listener info <font color="#f8070d;" size=2>GET 列出所有侦听器，支持使用 <code>GET /listeners?format=json</code> </font></li>
+<li><code>/logging</code> : query/change logging levels <font color="#f8070d;" size=2>POST，弃用或禁用不同子组件上的不同日志记录级别；</font></li>
+<li><code>/memory</code> : print current allocation/heap usage <font color="#f8070d;" size=2>POST，打印当前内在分配信息，以字节为单位；；</font></li>
+<li><code>/quitquitquit</code> : exit the server <font color="#f8070d;" size=2>POST，干净退出服务器；</font></li>
+<li><code>/ready</code> : print server state, return 200 if LIVE, otherwise return 503</li>
+<li><code>/reopen_logs</code> : reopen access logs</li>
+<li><code>/reset_counters</code> : reset all counters to zero <font color="#f8070d;" size=2>POST，重置所有计数器；</font></li>
+<li><code>/runtime</code> : print runtime values <font color="#f8070d;" size=2>GET，以json格式输出所有运行时相关值；</font></li>
+<li><code>/runtime_modify</code> : modify runtime values <font color="#f8070d;" size=2>POST <code>/runtime_modify?k1=v1&amp;k2=v2</code> 添加或修改在查询参数中传递的运行时值；</font></li>
+<li><code>/server_info</code> : print server version/status information  <font color="#f8070d;" size=2>GET，打印当前Envoy Server相关信息；</font></li>
+<li><code>/stats</code> : print server stats <font color="#f8070d;" size=2>按需输出统计数据，如：<code>GET /stats?filter=reger</code>，另外还支持json和promotheus两种格式输出；</font></li>
+<li><code>/stats/prometheus</code> : print server stats in prometheus format</li>
+<li><code>/stats/recentlookups</code> : Show recent stat-name lookups</li>
+<li><code>/stats/recentlookups/clear</code> : clear list of stat-name lookups and counter</li>
+<li><code>/stats/recentlookups/enable</code> : enable recording of reset stat-name lookup names</li>
+</ul>
+<p><strong>集群统计信息中主机状态的说明</strong></p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>cx_total</td>
+<td>Counter</td>
+<td style="text-align:left">Total connecions</td>
+</tr>
+<tr>
+<td>cx_active</td>
+<td>Gauge</td>
+<td style="text-align:left">Total active coinnections</td>
+</tr>
+<tr>
+<td>cx_connect_fail</td>
+<td>Counter</td>
+<td style="text-align:left">Total connection failures</td>
+</tr>
+<tr>
+<td>rq_total</td>
+<td>Counter</td>
+<td style="text-align:left">Total requests</td>
+</tr>
+<tr>
+<td>rq_timeout</td>
+<td>Counter</td>
+<td style="text-align:left">Total timed out requests</td>
+</tr>
+<tr>
+<td>rq_success</td>
+<td>Counter</td>
+<td style="text-align:left">Total requests with non-5xx responses</td>
+</tr>
+<tr>
+<td>rq_error</td>
+<td>Counter</td>
+<td style="text-align:left">Total requests with 5xx responses</td>
+</tr>
+<tr>
+<td>rq_active</td>
+<td>Gauge</td>
+<td style="text-align:left">Total active requests</td>
+</tr>
+<tr>
+<td>healthy</td>
+<td>String</td>
+<td style="text-align:left">The health status of the host. See below</td>
+</tr>
+<tr>
+<td>weight</td>
+<td>Integer</td>
+<td style="text-align:left">Load balancing weight(1-100)</td>
+</tr>
+<tr>
+<td>zone</td>
+<td>String</td>
+<td style="text-align:left">Service zone</td>
+</tr>
+<tr>
+<td>canary</td>
+<td>Boolean</td>
+<td style="text-align:left">Whether the host is a canary</td>
+</tr>
+<tr>
+<td>success_rate</td>
+<td>Double</td>
+<td style="text-align:left">Request success rate (0-100). -1 if there was not enough request volume in the interval to calculate it</td>
+</tr>
+</tbody>
+</table>
+<p>示例总结</p>
+<ul>
+<li>GET <code>/clusters</code> ：列出所有已配置的集群，包括每个集群中发现的所有上游主机以及每个主机的统计信息；支持输出为json格式；
+<ul>
+<li>集群管理器信息：<code>version_info</code> string，无CDS时，则显示为 <code>version_info::static</code></li>
+<li>集群相关的信息：断路器、异常点检测和用于表示是否通过CDS添加的标识 <code>add_via_api</code></li>
+<li>每个主机的统计信息：包括总连接数、活动连接数、总请求数和主机的健康状态等；不健康的原因通常有以下三种：
+<ul>
+<li>√ filed_activehc：未通过主动健康状态检测；</li>
+<li>√ failed_edshelth：被EDS标记为不健康；</li>
+<li>√ failed_outlier_check：未通过异常检测机制的检查；</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>GET <code>/listeners</code> ：列出所有已配置的侦听器，包括侦听器的名称以及监听的地址；支持输出为json格式；</li>
+<li>POST <code>/reset_counters</code> ：将所有计数器重围为0；不过，它只会影响Server本地的输出，对于已经发送到外部存储系统的统计数据无效；</li>
+<li>GET <code>/config_dump</code> ：以json格式打印当前从Envoy的各种组件加载的配置信息；</li>
+<li>GET <code>/ready</code> ：获取Server就绪与否的状态，LIVE状态为200，否则为503；</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-09-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/envoy-administartion.html" data-title="envoy 管理" data-hashtags="envoy"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/envoy-administartion.html" data-hashtag="envoy"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/envoy-administartion.html" data-title="envoy 管理" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/envoy-administartion.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/envoy-administartion.html" data-title="envoy 管理"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/envoy-administartion.html" data-title="envoy 管理"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/envoy-administartion.html" data-title="envoy 管理"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/envoy.html">envoy</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/envoy-%E5%81%A5%E5%BA%B7%E7%8A%B6%E6%80%81%E7%9B%91%E6%B5%8B.html" class="prev" rel="prev" title="Envoy 健康状态监测"><i class="fas fa-angle-left fa-fw"></i>Envoy 健康状态监测</a>
+            <a href="/envoy-tls.html" class="next" rel="next" title="Envoy TLS 配置">Envoy TLS 配置<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

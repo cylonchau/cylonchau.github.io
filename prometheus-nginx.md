@@ -1,0 +1,11 @@
+# 
+
+https://github.com/arquivei/nginx-vts/blob/master/nginx.conf
+
+https://www.helplib.com/GitHub/article_120470
+
+https://github.com/vozlt/nginx-module-vts/issues/162
+
+https://medium.com/@karljohnson/geoip-discontinuation-upgrade-to-geoip2-with-nginxon-centos-c2a3dbcf8fd
+
+

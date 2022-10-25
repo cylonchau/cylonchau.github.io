@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>prometheus golang_client开发Exporter - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="prometheus golang_client开发Exporter" />
+<meta property="og:description" content="exporter是一个独立运行的采集程序，其中的功能需要有这三部分
+自身是HTTP服务器，可以相应从外部发过来的HTTP GET请求。 自身需要运行在后台，并可以定期触发抓取本地的监控数据。 返回给prometheus_server的内容是要符合prometheus规定的metrics类型的key-Value promethes监控中对于采集过来的数据统一称为metrice数据
+Metrics，为某个系统某个服务做监控、做统计，就需要用到Metrics.
+metrics是一种对采样数掘的总称（metrics并不代表某一种具体的数据格式是一种对于度星计算单位的抽象）
+metrics的几种主要的类型
+METRIC TYPES prometheus客户端库提供4中metric类型
+counter 计数器，累加指标 gauge 测量指标 summary 概略 histogram 直方图 counter Counter计数器，累加的指标数据，随时间逐步增加，如程序运行次数、运行错误发生总数。如网卡流量，代表持续增加的数据包或者传输字节的累加值
+比如对用户访问量的采样数据
+我们的产品被用户访问一次就是1过了10分钟后积累到100
+过一天后累积到20000
+一周后积累到100000-150000
+1 2 3 4 5 6 7 8 test = prometheus.NewSummaryVec( prometheus.SummaryOpts{ Name: &#34;zhangsan&#34;, Help: &#34;username&#34;, Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}, }, []string{&#34;service&#34;}, ) 1 2 3 4 5 6 7 # HELP zhangsan username # TYPE zhangsan summary zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085 zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-11-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-11-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="prometheus golang_client开发Exporter"/>
+<meta name="twitter:description" content="exporter是一个独立运行的采集程序，其中的功能需要有这三部分
+自身是HTTP服务器，可以相应从外部发过来的HTTP GET请求。 自身需要运行在后台，并可以定期触发抓取本地的监控数据。 返回给prometheus_server的内容是要符合prometheus规定的metrics类型的key-Value promethes监控中对于采集过来的数据统一称为metrice数据
+Metrics，为某个系统某个服务做监控、做统计，就需要用到Metrics.
+metrics是一种对采样数掘的总称（metrics并不代表某一种具体的数据格式是一种对于度星计算单位的抽象）
+metrics的几种主要的类型
+METRIC TYPES prometheus客户端库提供4中metric类型
+counter 计数器，累加指标 gauge 测量指标 summary 概略 histogram 直方图 counter Counter计数器，累加的指标数据，随时间逐步增加，如程序运行次数、运行错误发生总数。如网卡流量，代表持续增加的数据包或者传输字节的累加值
+比如对用户访问量的采样数据
+我们的产品被用户访问一次就是1过了10分钟后积累到100
+过一天后累积到20000
+一周后积累到100000-150000
+1 2 3 4 5 6 7 8 test = prometheus.NewSummaryVec( prometheus.SummaryOpts{ Name: &#34;zhangsan&#34;, Help: &#34;username&#34;, Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}, }, []string{&#34;service&#34;}, ) 1 2 3 4 5 6 7 # HELP zhangsan username # TYPE zhangsan summary zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085 zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0."/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" /><link rel="prev" href="https://cylonchau.github.io/centos%E5%AE%89%E8%A3%85powershell%E5%92%8Cpowercli.html" /><link rel="next" href="https://cylonchau.github.io/openvpn-introduction.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "prometheus golang_client开发Exporter",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "prometheus, kubernetes","wordcount":  193 ,
+        "url": "https:\/\/cylonchau.github.io\/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html","datePublished": "2019-11-02T00:00:00+00:00","dateModified": "2019-11-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">prometheus golang_client开发Exporter</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ops.html"><i class="far fa-folder fa-fw"></i>ops</a>&nbsp;<a href="/categories/prometheus.html"><i class="far fa-folder fa-fw"></i>prometheus</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-11-02 00:00:00">2019-11-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 193 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>exporter是一个独立运行的采集程序，其中的功能需要有这三部分</p>
+<ul>
+<li>自身是HTTP服务器，可以相应从外部发过来的HTTP GET请求。</li>
+<li>自身需要运行在后台，并可以定期触发抓取本地的监控数据。</li>
+<li>返回给prometheus_server的内容是要符合prometheus规定的metrics类型的key-Value</li>
+</ul>
+<p>promethes监控中对于采集过来的数据统一称为metrice数据</p>
+<p><strong>Metrics</strong>，为某个系统某个服务做监控、做统计，就需要用到Metrics.</p>
+<p>metrics是一种对采样数掘的总称（metrics并不代表某一种具体的数据格式是一种对于度星计算单位的抽象）</p>
+<p>metrics的几种主要的类型</p>
+<h2 id="metric-types">METRIC TYPES</h2>
+<p>prometheus客户端库提供4中metric类型</p>
+<ul>
+<li>counter 计数器，累加指标</li>
+<li>gauge 测量指标</li>
+<li>summary 概略</li>
+<li>histogram 直方图</li>
+</ul>
+<h3 id="counter">counter</h3>
+<p>Counter计数器，累加的指标数据，随时间逐步增加，如程序运行次数、运行错误发生总数。如网卡流量，代表持续增加的数据包或者传输字节的累加值</p>
+<p>比如对用户访问量的采样数据</p>
+<p>我们的产品被用户访问一次就是1过了10分钟后积累到100</p>
+<p>过一天后累积到20000</p>
+<p>一周后积累到100000-150000</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">test</span> <span class="p">=</span> <span class="nx">prometheus</span><span class="p">.</span><span class="nf">NewSummaryVec</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">prometheus</span><span class="p">.</span><span class="nx">SummaryOpts</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Name</span><span class="p">:</span>       <span class="s">&#34;zhangsan&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Help</span><span class="p">:</span>       <span class="s">&#34;username&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Objectives</span><span class="p">:</span> <span class="kd">map</span><span class="p">[</span><span class="kt">float64</span><span class="p">]</span><span class="kt">float64</span><span class="p">{</span><span class="mf">0.5</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">		<span class="p">},</span>
+</span></span><span class="line"><span class="cl">		<span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;service&#34;</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">	<span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># HELP zhangsan username
+</span></span><span class="line"><span class="cl"># TYPE zhangsan summary
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0.884503005897664
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.99&#34;} 0.9939536606026
+</span></span><span class="line"><span class="cl">zhangsan_sum{service=&#34;aaa&#34;} 3145.830341777395
+</span></span><span class="line"><span class="cl">zhangsan_count{service=&#34;aaa&#34;} 6308
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在每次执行后值会累加</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># HELP zhangsan username
+</span></span><span class="line"><span class="cl"># TYPE zhangsan summary
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0.884503005897664
+</span></span><span class="line"><span class="cl">zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.99&#34;} 0.9945251964629818
+</span></span><span class="line"><span class="cl">zhangsan_sum{service=&#34;aaa&#34;} 3165.232975252529
+</span></span><span class="line"><span class="cl">zhangsan_count{service=&#34;aaa&#34;} 6347
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="gauge">gauge</h3>
+<p>最简单的度量指标，只有一个简单的返回值，或者叫瞬时状态，例如，我们想衡量一个特处理队列中任务的个数。</p>
+<p>用更简单的方式举个例子</p>
+<p>例如：如果我要监控覆盘容量或者内存的使用量，那么就应该使用Gauges的metrics格式来度量，因为硬盘的容量或者内存的使用量是随着时间的推移不断的瞬时，没有规则的变化。这种变化没有规律，当前是多少，采集回来的就是多少，既不能肯定是一直持续增长，也不能肯定是一直降低，是多少就是多少这种就是Gauges使用类型的代表。</p>
+<p>如图所示CPU的上下厚动就是采集使用Gauge形式的metrics数据，没有规律是多少就得到多少，然后显示出来。</p>
+<p>gauge代表采集的是一个单一的数据，此数据可增可减，如内存使用情况，cpu使用情况等。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">gaugetest</span> <span class="p">=</span> <span class="nx">prometheus</span><span class="p">.</span><span class="nf">NewGauge</span><span class="p">(</span><span class="nx">prometheus</span><span class="p">.</span><span class="nx">GaugeOpts</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;lisi&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">Help</span><span class="p">:</span> <span class="s">&#34;password&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># HELP lisi password
+</span></span><span class="line"><span class="cl"># TYPE lisi gauge
+</span></span><span class="line"><span class="cl">lisi 0.4578056215001356
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># HELP lisi password
+</span></span><span class="line"><span class="cl"># TYPE lisi gauge
+</span></span><span class="line"><span class="cl">lisi 0.44668242347036363
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://github.com/lwhile/workDoc" target="_blank" rel="noopener noreffer">https://github.com/lwhile/workDoc</a></p>
+<h3 id="summary-概略">summary 概略</h3>
+<h3 id="histogram-比例型的估算数值">histogram 比例型的估算数值</h3>
+<p>Histogram 统计数据的分布情况。比如最小值，最大值，中间值，还有中位数，75百分位，90百分位，95百分位，98百分位，99百分位，和99.9百分位的值（percentiles）。</p>
+<p><strong>这是一种特殊的metrics数据类型，代表的是一种</strong>近似的百分比估算数值</p>
+<p>比如我们在企业工作中经常接触这种数据</p>
+<p>Http.response_time HTTP响应时间</p>
+<p>代表的是一次用户HTTP请求在系统传输和执行过程中总共花费的时间</p>
+<p>nginx中的也会记录这一项数值在日志中</p>
+<p>那么问题来了</p>
+<p>我们做一个假设</p>
+<p>如果我们想通过监控的方式抓取当天的nginx accoss.log，并且想监控用户的访问时间我们应该怎么做呢？同学们肯定很容易想到
+简单制把日志每行的<code>http_response_time</code> 数值统统采集下来期然后计算一下总的平均值即可。那么假如我们采集到今天一天的访问量是100万次然后把这100万次的<code>http_response_time</code> 全都加一超然后除以100万最后得出来一个值</p>
+<p>0.05秒=50毫秒</p>
+<p>这个数据的意文大么？</p>
+<p>假如今天中午1：00的时候发生了一次线上故障系统整体的访问变得非常缓慢大部分的用户请求时间都达到了0.5~1秒作用但是这一段时间只持续了5分钟，总的一天的平均值并不能表现得出来我们如何在 1:00 ~ 1:05 的时候实现报警呢？</p>
+<p>在举个例子：</p>
+<p>就算我们一天下来线上没有发生故障大部分用户的响应时间都在0.05秒（通过总时间/总次数得出）但是我们不要忘了任何系统中都一定存在慢请求就是有一少部分的用户请求时间会比总的平均值大很多甚至接近5秒10秒的也有（这种情况很普遍因为各种因素可能是软件本身的bug也可能是系统的原因更有可能是少部分用户的使用途径中出现了问题）</p>
+<p>那么我们的监控需要发现和报警这种少部分的特殊状况，用总平均能获得吗？</p>
+<p>如果采用总平均的方式，那不管发生什么特殊情况，因为大部分的用户响应都是正常的你永远也发现不了少部分的问题所以Histogram的metrics类型在这种时候就派上用场了通过histogram类型（prometheus中其实提供了一个基于histogram算法的函数可以直接使用）可以分别统计出全部用户的单应时间中
+~=0.05秒的量有多少0 ~ 0.05秒的有多少，&gt;2秒的有多少&gt;10秒的有多少</p>
+<p>我们就可以很清晰的看到当前我们的系统中必于基本正常状态的有多少百分比的用户（或者是请求）多少处于速度极快的用户，多少处于慢请求或者有问题的请求</p>
+<p>metrics的类型其实还有另外的类型</p>
+<p>但是在我们大米运维的课程中我们最主要使用的就是counter ganga 和 histogram</p>
+<h4 id="kv的数据形式">kv的数据形式</h4>
+<p>对于采集回来的数据类型再往细了说必须要以一种具体的数据格式供我们查看和使用那么我们来看一下一个exporter 给我们果集来的服务器上的k/v形式metrics数据当一个exporter被安装和运行在被监控的服务器上后，使用简单的curl命令就可以看到exporer帮我们采集到metrics数据的样子，以k/v的形式展现和保存</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl localhost:9100/metrics
+</span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2019-11-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-title="prometheus golang_client开发Exporter" data-hashtags="prometheus,kubernetes"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-hashtag="prometheus"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-title="prometheus golang_client开发Exporter" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-title="prometheus golang_client开发Exporter"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-title="prometheus golang_client开发Exporter"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html" data-title="prometheus golang_client开发Exporter"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/prometheus.html">prometheus</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/centos%E5%AE%89%E8%A3%85powershell%E5%92%8Cpowercli.html" class="prev" rel="prev" title="centos安装powershell和powercli "><i class="fas fa-angle-left fa-fw"></i>centos安装powershell和powercli </a>
+            <a href="/openvpn-introduction.html" class="next" rel="next" title="openvpn introduction">openvpn introduction<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

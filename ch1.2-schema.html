@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>kubernetes schema - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="kubernetes schema" />
+<meta property="og:description" content="[toc]
+什么是schema schema一词起源于希腊语中的form或figure，但具体应该如何定义schema取决于应用环境的上下文。schema有不同的类型，其含义与数据科学、教育、营销和SEO以及心理学等领域密切相关。
+在维基百科中将schema解释为，图式，在心里学中主要描述一种思维或行为类型，用来组织资讯的类别，以及资讯之间的关系。它也可以被描述为先入为主思想的心理结构，表示世界某些观点的框架，或是用于组织和感知新资讯的系统。
+但在计算机中的schema其实与这个解释很接近了，从很多地方都可以看到 schema 这个名词，例如 database，openldap，programing language等的。这里可以简单的吧schema 理解为 元数据集合 （metadata component），主要包含元素及属性的声明，与其他数据结构组成。
+数据库中的schema 在数据库中，schema 就像一个骨架结构，代表整个数据库的逻辑视图。它设计了应用于特定数据库中数据的所有约束。当在数据建模时，就会产生一个schema。在谈到关系数据库]和面向对象数据库时经常使用schema。有时也指将结构或文本的描述。
+数据库中schema描述数据的形状以及它与其他模型、表和库之间的关系。在这种情况下，数据库条目是schema的一个实例，包含schema中描述的所有属性。
+数据库schema通常分为两类：定义数据文件实际存储方式的**物理数据库schema ；和逻辑数据库schema **，它描述了应用于存储数据的所有逻辑约束，包括完整性、表和视图。常见包括
+星型模式（star schema） 雪花模式（snowflake schema） 事实星座模型（fact constellation schema 或 galaxy schema） 星型模式是类似于一个简单的数据仓库图，包括一对多的事实表和维度表。它使用非规范化数据。
+雪花模式是更为复杂的一种流行的数据库模式，在该模式下，维度表是规范化的，可以节省存储空间并最大限度地减少数据冗余。
+事实星座模式远比星型模式和雪花模式复杂得多。它拥有多个共享多个维度表的事实表。
+Kubernetes中的schema 通过上面的阐述，大概上可以明白 schema究竟是什么东西了，在Kubernetes中也有schema的概念，通过对kubernetes中资源（GVK）的规范定义、相互关系间的映射等，schema即k8s资源对象元数据。
+而kubernetes中资源对象即 Group Version Kind 这些被定义在 staging/src/k8s.io/api/type.go中，即平时所操作的yaml文件，例如
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 apiVersion: apps/v1 kind: Deployment metadata: name: ngx namespace: default spec: selector: matchLabels: app: ngx template: metadata: labels: app: nginx spec: containers: - name: ngx-schema image: nginx ports: - containerPort: 80 而对应的的即为TypeMeta 、ObjectMeta 和 DeploymentSpec," />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch1.2-schema.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-08-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-08-28T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="kubernetes schema"/>
+<meta name="twitter:description" content="[toc]
+什么是schema schema一词起源于希腊语中的form或figure，但具体应该如何定义schema取决于应用环境的上下文。schema有不同的类型，其含义与数据科学、教育、营销和SEO以及心理学等领域密切相关。
+在维基百科中将schema解释为，图式，在心里学中主要描述一种思维或行为类型，用来组织资讯的类别，以及资讯之间的关系。它也可以被描述为先入为主思想的心理结构，表示世界某些观点的框架，或是用于组织和感知新资讯的系统。
+但在计算机中的schema其实与这个解释很接近了，从很多地方都可以看到 schema 这个名词，例如 database，openldap，programing language等的。这里可以简单的吧schema 理解为 元数据集合 （metadata component），主要包含元素及属性的声明，与其他数据结构组成。
+数据库中的schema 在数据库中，schema 就像一个骨架结构，代表整个数据库的逻辑视图。它设计了应用于特定数据库中数据的所有约束。当在数据建模时，就会产生一个schema。在谈到关系数据库]和面向对象数据库时经常使用schema。有时也指将结构或文本的描述。
+数据库中schema描述数据的形状以及它与其他模型、表和库之间的关系。在这种情况下，数据库条目是schema的一个实例，包含schema中描述的所有属性。
+数据库schema通常分为两类：定义数据文件实际存储方式的**物理数据库schema ；和逻辑数据库schema **，它描述了应用于存储数据的所有逻辑约束，包括完整性、表和视图。常见包括
+星型模式（star schema） 雪花模式（snowflake schema） 事实星座模型（fact constellation schema 或 galaxy schema） 星型模式是类似于一个简单的数据仓库图，包括一对多的事实表和维度表。它使用非规范化数据。
+雪花模式是更为复杂的一种流行的数据库模式，在该模式下，维度表是规范化的，可以节省存储空间并最大限度地减少数据冗余。
+事实星座模式远比星型模式和雪花模式复杂得多。它拥有多个共享多个维度表的事实表。
+Kubernetes中的schema 通过上面的阐述，大概上可以明白 schema究竟是什么东西了，在Kubernetes中也有schema的概念，通过对kubernetes中资源（GVK）的规范定义、相互关系间的映射等，schema即k8s资源对象元数据。
+而kubernetes中资源对象即 Group Version Kind 这些被定义在 staging/src/k8s.io/api/type.go中，即平时所操作的yaml文件，例如
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 apiVersion: apps/v1 kind: Deployment metadata: name: ngx namespace: default spec: selector: matchLabels: app: ngx template: metadata: labels: app: nginx spec: containers: - name: ngx-schema image: nginx ports: - containerPort: 80 而对应的的即为TypeMeta 、ObjectMeta 和 DeploymentSpec,"/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch1.2-schema.html" /><link rel="prev" href="https://cylonchau.github.io/ch2.3.1-token-bucket-algorithm.html" /><link rel="next" href="https://cylonchau.github.io/ch4.2-scheduling-algorithm.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "kubernetes schema",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch1.2-schema.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "kubernetes develop","wordcount":  471 ,
+        "url": "https:\/\/cylonchau.github.io\/ch1.2-schema.html","datePublished": "2022-08-28T00:00:00+00:00","dateModified": "2022-08-28T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册"><span class="header-title-pre"><i class='far fa-kiss-wink-heart fa-fw'></i></span>cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">kubernetes schema</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 471 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[toc]</p>
+<h2 id="什么是schema">什么是schema</h2>
+<p>schema一词起源于希腊语中的<code>form</code>或<code>figure</code>，但具体应该如何定义<code>schema</code>取决于应用环境的上下文。<code>schema</code>有不同的类型，其含义与数据科学、教育、营销和SEO以及心理学等领域密切相关。</p>
+<blockquote>
+<p>在维基百科中将schema解释为，<strong>图式</strong>，在心里学中主要描述一种思维或行为类型，用来组织资讯的类别，以及资讯之间的关系。它也可以被描述为先入为主思想的心理结构，表示世界某些观点的框架，或是用于组织和感知新资讯的系统。</p>
+</blockquote>
+<p>但在计算机中的schema其实与这个解释很接近了，从很多地方都可以看到 <em>schema</em> 这个名词，例如 database，openldap，programing language等的。这里可以简单的吧<em>schema</em> 理解为 <strong>元数据集合</strong> （metadata component），主要包含元素及属性的声明，与其他数据结构组成。</p>
+<h3 id="数据库中的schema">数据库中的schema</h3>
+<p>在数据库中，<code>schema</code> 就像一个骨架结构，代表整个数据库的逻辑视图。它设计了应用于特定数据库中数据的所有约束。当在数据建模时，就会产生一个schema。在谈到关系数据库]和面向对象数据库时经常使用schema。有时也指将结构或文本的描述。</p>
+<p>数据库中schema描述数据的形状以及它与其他模型、表和库之间的关系。在这种情况下，数据库条目是schema的一个实例，包含schema中描述的所有属性。</p>
+<p>数据库schema通常分为两类：定义数据文件实际存储方式的**物理数据库schema <strong>；和</strong>逻辑数据库schema **，它描述了应用于存储数据的所有逻辑约束，包括完整性、表和视图。常见包括</p>
+<ul>
+<li>星型模式（star schema）</li>
+<li>雪花模式（snowflake schema）</li>
+<li>事实星座模型（fact constellation schema 或 galaxy schema）</li>
+</ul>
+<p>星型模式是类似于一个简单的数据仓库图，包括一对多的事实表和维度表。它使用非规范化数据。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-star_schema-f_mobile.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-star_schema-f_mobile.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-star_schema-f_mobile.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-star_schema-f_mobile.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-star_schema-f_mobile.png"
+        title="星型模式" /></p>
+<p>雪花模式是更为复杂的一种流行的数据库模式，在该模式下，维度表是规范化的，可以节省存储空间并最大限度地减少数据冗余。</p>
+<p>事实星座模式远比星型模式和雪花模式复杂得多。它拥有多个共享多个维度表的事实表。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-snowflake_schema-f_mobile.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-snowflake_schema-f_mobile.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-snowflake_schema-f_mobile.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-snowflake_schema-f_mobile.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/dm-snowflake_schema-f_mobile.png"
+        title="snowflake schema" /></p>
+<h2 id="kubernetes中的schema">Kubernetes中的schema</h2>
+<p>通过上面的阐述，大概上可以明白 schema究竟是什么东西了，在Kubernetes中也有schema的概念，通过对kubernetes中资源（GVK）的规范定义、相互关系间的映射等，schema即k8s资源对象元数据。</p>
+<p>而kubernetes中资源对象即  <code>Group</code> <code>Version</code> <code>Kind</code> 这些被定义在 <code>staging/src/k8s.io/api/type.go</code>中，即平时所操作的yaml文件，例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Deployment  </span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w">  </span><span class="l">ngx</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">default</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ngx</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ngx-schema</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">nginx</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211117001624039.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211117001624039.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211117001624039.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211117001624039.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211117001624039.png"
+        title="image-20211117001624039" /></p>
+<p>而对应的的即为<code>TypeMeta</code> 、<code>ObjectMeta</code> 和 <code>DeploymentSpec</code>,</p>
+<p><code>TypeMeta</code> 为 <code>kind</code> 与 <code>apiserver</code></p>
+<p><code>ObjectMeta</code> 为  <code>Name</code> 、<code>Namespace</code>  <code>CreationTimestamp</code>等段。</p>
+<p><code>DeploymentSpec</code> 则对应了 yaml 中的 spec。</p>
+<p>而整个yaml组成了 一个 k8s的资源对象。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Deployment</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Standard object metadata.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span> <span class="s">`json:&#34;metadata,omitempty&#34; protobuf:&#34;bytes,1,opt,name=metadata&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Specification of the desired behavior of the Deployment.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Spec</span> <span class="nx">DeploymentSpec</span> <span class="s">`json:&#34;spec,omitempty&#34; protobuf:&#34;bytes,2,opt,name=spec&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Most recently observed status of the Deployment.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Status</span> <span class="nx">DeploymentStatus</span> <span class="s">`json:&#34;status,omitempty&#34; protobuf:&#34;bytes,3,opt,name=status&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><code>register.go</code> 则是将对应的资源类型注册到schema中的类</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// TODO: move SchemeBuilder with zz_generated.deepcopy.go to k8s.io/api.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">SchemeBuilder</span>      <span class="p">=</span> <span class="nx">runtime</span><span class="p">.</span><span class="nf">NewSchemeBuilder</span><span class="p">(</span><span class="nx">addKnownTypes</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">localSchemeBuilder</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">SchemeBuilder</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">AddToScheme</span>        <span class="p">=</span> <span class="nx">localSchemeBuilder</span><span class="p">.</span><span class="nx">AddToScheme</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Adds the list of known types to the given scheme.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">addKnownTypes</span><span class="p">(</span><span class="nx">scheme</span> <span class="o">*</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">Scheme</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">scheme</span><span class="p">.</span><span class="nf">AddKnownTypes</span><span class="p">(</span><span class="nx">SchemeGroupVersion</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">Deployment</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">DeploymentList</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">StatefulSet</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">StatefulSetList</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">DaemonSet</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">DaemonSetList</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">ReplicaSet</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">ReplicaSetList</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">ControllerRevision</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">ControllerRevisionList</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">	<span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nf">AddToGroupVersion</span><span class="p">(</span><span class="nx">scheme</span><span class="p">,</span> <span class="nx">SchemeGroupVersion</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>而 <code>apimachinery</code> 包则是 schema的实现，通过看其内容可以发下，kubernetes中 schema就是 <strong>GVK</strong> 的属性约束 与 <strong>GVR</strong> 之间的映射。</p>
+<h2 id="通过示例了解schema">通过示例了解schema</h2>
+<p>例如在 <code>apps/v1/deployment</code> 这个资源，在代码中表示 <code>k8s.io/api/apps/v1/types.go</code> ，如果需要对其资源进行扩展那么需要怎么做？如，建立一个 <code>StateDeplyment</code> 资源</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">type Deployment struct {
+</span></span><span class="line"><span class="cl">	metav1.TypeMeta `json:&#34;,inline&#34;`
+</span></span><span class="line"><span class="cl">	// Standard object metadata.
+</span></span><span class="line"><span class="cl">	// +optional
+</span></span><span class="line"><span class="cl">	metav1.ObjectMeta `json:&#34;metadata,omitempty&#34; protobuf:&#34;bytes,1,opt,name=metadata&#34;`
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>如上述代码所示，Deployment 中的 <code>metav1.TypeMeta</code> 和 <code>metav1.ObjectMeta</code></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517172901775.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517172901775.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517172901775.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517172901775.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517172901775.png"
+        title="image-20220517172901775" /></p>
+<p>那么我们复制一个 Deployment 为 StateDeployment，注意，因为 Deployment的两个属性， <code>metav1.TypeMeta</code> 和 <code>metav1.ObjectMeta</code> 分别实现了不同的方法，如图所示</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517173136077.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517173136077.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517173136077.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517173136077.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220517173136077.png"
+        title="image-20220517173136077" /></p>
+<p>所以在实现方法时，需要实现 <code>DeepCopyinfo</code> ， <code>DeepCopy</code>  和继承接口 <code>Object</code> 的 <code>DeepCopyObject</code> 方法</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">in</span> <span class="o">*</span><span class="nx">StateDeployment</span><span class="p">)</span> <span class="nf">DeepCopyInto</span><span class="p">(</span><span class="nx">out</span> <span class="o">*</span><span class="nx">StateDeployment</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="o">*</span><span class="nx">out</span> <span class="p">=</span> <span class="o">*</span><span class="nx">in</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">out</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="p">=</span> <span class="nx">in</span><span class="p">.</span><span class="nx">TypeMeta</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">in</span><span class="p">.</span><span class="nx">ObjectMeta</span><span class="p">.</span><span class="nf">DeepCopyInto</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">out</span><span class="p">.</span><span class="nx">ObjectMeta</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">in</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nf">DeepCopyInto</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">out</span><span class="p">.</span><span class="nx">Spec</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">in</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nf">DeepCopyInto</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">out</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new StateDeployment.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">in</span> <span class="o">*</span><span class="nx">StateDeployment</span><span class="p">)</span> <span class="nf">DeepCopy</span><span class="p">()</span> <span class="o">*</span><span class="nx">StateDeployment</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">in</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">out</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">StateDeployment</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">in</span><span class="p">.</span><span class="nf">DeepCopyInto</span><span class="p">(</span><span class="nx">out</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">out</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// DeepCopyObject is an autogenerated deepcopy function, copying the receiver, creating a new runtime.Object.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">in</span> <span class="o">*</span><span class="nx">StateDeployment</span><span class="p">)</span> <span class="nf">DeepCopyObject</span><span class="p">()</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">Object</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">c</span> <span class="o">:=</span> <span class="nx">in</span><span class="p">.</span><span class="nf">DeepCopy</span><span class="p">();</span> <span class="nx">c</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">c</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>那么扩展一个资源的整个流为：</p>
+<ul>
+<li>资源类型在：<code>k8s.io/api/{Group}/types.go</code></li>
+<li>资料类型的实现接口 <code>k8s.io/apimachinery/pkg/runtime/interfaces.go.Object</code></li>
+<li>其中是基于 <code>Deployment</code> 的类型，<code>metav1.TypeMeta</code> 和 <code>metav1.ObjectMeta</code></li>
+<li><code>metav1.TypeMeta</code> 实现了 <code>GetObjectKind()</code> ；<code>metav1.ObjectMeta</code> 实现了<code>DeepCopyinfo=()</code> ， <code>DeepCopy()</code> ，还需要实现 <code>DeepCopyObject()</code></li>
+<li>最后注册资源到schema中 <code>k8s.io/api/apps/v1/register.go</code></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-08-28 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-title="kubernetes schema" data-hashtags="kubernetes develop"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-hashtag="kubernetes develop"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-title="kubernetes schema" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch1.2-schema.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-title="kubernetes schema"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-title="kubernetes schema"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch1.2-schema.html" data-title="kubernetes schema"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch2.3.1-token-bucket-algorithm.html" class="prev" rel="prev" title="token bucket algorithm"><i class="fas fa-angle-left fa-fw"></i>token bucket algorithm</a>
+            <a href="/ch4.2-scheduling-algorithm.html" class="next" rel="next" title="Kubernetes scheduling Algorithm">Kubernetes scheduling Algorithm<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line">
+                </div><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
