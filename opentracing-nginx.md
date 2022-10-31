@@ -258,9 +258,9 @@ http {
 
 此时我们可以在jaeger上查看，可以看到 NGINX 的 span（因为这里只配置了NGINX，没有配置更多的后端）。
 
-![image-20220704002209142](../../../images/opentracing%20nginx/image-20220704002209142.png)
+![image-20220704002209142](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220704002209142.png)
 
-![image-20220704002227865](../../../images/opentracing%20nginx/image-20220704002227865.png)
+![image-20220704002227865](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220704002227865.png)
 
 > Reference
 >

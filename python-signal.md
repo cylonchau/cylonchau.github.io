@@ -46,7 +46,7 @@ while True:
     time.sleep(10) 
 ```
 
-![python signal processing, python SIGINT handler](../../images/python signal/python-signal-processing.png)
+![python signal processing, python SIGINT handler](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/python-signal-processing.png)
 
 如果不对对应信号进行捕获处理时，python将会抛出异常。
 

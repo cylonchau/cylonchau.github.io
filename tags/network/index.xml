@@ -3,7 +3,53 @@
         <title>network - 标签 - cylon的收藏册</title>
         <link>https://cylonchau.github.io/tags/network.html</link>
         <description>network - 标签 - cylon的收藏册</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Sat, 18 Jun 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/network.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Fri, 28 Oct 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/network.html" rel="self" type="application/rss+xml" /><item>
+    <title>ch2.5 networking stack</title>
+    <link>https://cylonchau.github.io/ch02.5-network-stack.html</link>
+    <pubDate>Fri, 28 Oct 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch02.5-network-stack.html</guid>
+    <description><![CDATA[[toc]
+Linux 架构概述 本章节简单阐述Linux系统的结构，并讨论子系统中的模块之间以及与其他子系统之间的关系。
+Linux内核本身鼓励无用，是作为一个操作系统的一部分参与的，只有为一个整体时他才是一个有用的实体，下图展示了Linux操作系统的分层
+图：Linux子系统分层图 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+由图可以看出Linux操作系统由四部分组成：
+用户应用 OS服务，操作系统的一部分（例如shell）内核编程接口等 内核 硬件控制器，CPU、内存硬件、硬盘和NIC等都数据这部分 Linux内核阐述 Linux内核将所有硬件抽象为一致的接口，为用户进程提供了一个虚拟接口，使用户无需知道计算机上安装了哪些物理硬件即可编写进程，并且Linux支持用户进程的多任务处理，每个进程都可以视作为操作系统的唯一进程独享硬件资源。内核负责维护多个用户进程，并协调其对硬件资源的访问，使得每个进程都可以公平的访问资源，并保证进程间安全。
+Linux内核主要为五个子系统组成：
+进程调度器(SCHED)， 控制进程对 CPU 的访问。调度程序执行策略，确保进程可以公平地访问 CPU。 内存管理器 (MM)， 允许多个进程安全地共享操作系统的内存 虚拟文件系统 (VFS)，向所有设备提供通用文件接口来抽象出各种硬件设备 网络接口 (NET)，提供对多种网络标准与各种网络硬件的访问 进程间通信 (IPC)，在单个操作系统上的多种机制进程间通信机制 网络子系统架构 网络子系统功能主要是允许 Linux 系统通过网络连接到其他系统。支持多种硬件设备，以及可以使用的多种网络协议。网络子系统抽象了这两个实现细节，以便用户进程和其他内核子系统可以访问网络，而不必知道使用什么物理设备或协议。
+子系统模块包含
+网络设备驱动层 (Network device drivers)，网络设备驱动程序与硬件设备通信。每个硬件设备都有对应的设备驱动程序模块。 独立设备接口层(device independent interface)，设备独立接口提供了所有硬件设备的统一视图，因此在网络子系统之上的级别无需了解硬件信息 网络协议层 (*** network protocol***)，网络协议实现了网络传输的协议 协议独立/无关接口层 (protocol independent interface)，提供了独立于硬件设备的网络接口，为内核内其他子系统访问网络时不依赖特定的协议和硬件接口。 系统调用层 (system call) 用于限制用户进程导出资源的访问 网络子系统的结构图如下图所示，
+图：网络子系统中的上下文 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+当网络子系统转换为网络栈时，如下图所示
+图：ISO Stack与TCP/IP Stack Source：https://www.washington.edu/R870/Networking.html
+当然Linux网络子系统是类似于TCP/IP栈的一种结构，当发生一个网络传输时，数据包会按照所经过的层进行封装。例如应用层应用提供了REST API，那么应用将要传输的数据封装为HTTP协议，然后传递给向下的传输层。传输层是TCP协议就会被添加对应的TCP包头。整个封装过程原始包保持不变，会根据所经过层的不同增加固定格式的包头。
+图：数据包传输在每层被封装的过程 Source：http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-13-SECT-1.html
+对于Linux来说TCP/IP 的五层结构则是构成网络子系统的的核心组件，下图是Linux网络栈结构图
+图：Linux网络栈的结构图 Source：https://medium.com/geekculture/linux-networking-deep-dive-731848d791c0
+图中橙色部分是位于TCP/IP的五层结构中的应用层，应用层向下通讯通过 system call 与 socket接口进行交互 蓝色部分是位于内核空间，socket向下则是传输层与网络层 最底层是物理层包含网卡驱动与NIC 通过图可以看出，NIC是发送与接收数据包的基本单位，当系统启动时内核通过驱动程序向操作系统注册网卡，当数据包到达网卡时，被放入队列中。内核通过硬中断，运行中断处理程序，为网络帧分配内核数据结构(sk_buff)，并将其拷贝到缓冲区中，此为内核与网卡交互的过程。]]></description>
+</item><item>
+    <title>ch2.6 协议数据单元：帧 包 段 报文间的区别</title>
+    <link>https://cylonchau.github.io/ch2.6-network-unit-in-osi.html</link>
+    <pubDate>Fri, 28 Oct 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch2.6-network-unit-in-osi.html</guid>
+    <description><![CDATA[Overview [1] 协议数据单元 Protocol Data Unit (PDU) 是应用于OSI模型中的数据结构，在OSI模型中每一层都会被添加一个header，tailer进行封装，header, tailer加原始报文的组合就是PDU。
+在每层中，PDU的名称都是不同的，这也是很多人的疑问，一会数据报文称为数据包，一会数据报文成为数据帧，该文介绍网络中的单元，以了解之间的区别
+物理层 物理层数据的呈现方式是以 “位” (bit) 为单位的，即0 1，在该层中数据以二进制形式进行传输
+数据链路层 [2] 到达数据链路层，实际上可以说进入了TCP/IP栈对底层，而该层的单位为 ”帧“ (frame)，该层中，MAC地址会被封装到数据包中，比如以太网帧，PPP帧都是指该层的数据包
+该层中数据帧包含：
+源MAC 目的MAC 数据，由网络层给出的 数据的总长度 校验序列 网络层 [3] 在网络层中协议数据单元被称为数据 “包&quot; (package) ，是网络间节点通讯的基本单位。该层中IP地址会被封装到数据包内。
+该层中数据包包含：
+标头：源IP，目的IP，协议，数据包编号，帮助数据包匹配网络的位 playload：数据包的主体 标尾：包含几个位，用于告知已到达数据包的末尾与错误检查（循环冗余检查 (CRC)） 图：数据包组成 Source：https://computer.howstuffworks.com/question525.htm
+例如一个电子邮件，假设电子邮件大小尾3500bit，发送时使用1024的固定大小数据包进行发送，那么每个数据包标头为 96bits，标尾为 32bit，剩余 896bits 将用于实际的数据大小。这里为3500bits，会被分为4个数据包，前三个数据包为 896bits，最后一个数据包大小为 812bits。接收端会根据包编号进行解包重组
+传输层 Segment 在传输层TCP协议的协议数据单元被称为 ”段“ (Segment) ，上面讲到，IP数据包会以固定大小的数据包进行发送，如果超出大小的会被划分为多个数据包，每个数据包的碎片就被称之为Segment。
+数据包分割通常会发生在该层，当发生下列场景时会需要分段
+数据包大于网络支持的最大传输单元 (MTU) 网络不可靠，将数据包分为更小的包 datagram [4] 在传输层UDP协议的协议数据单元被称为 ”数据报“ (datagram) ，datagram是一种逐层增加的设计，用于无连接通讯
+下图是一个UDP数据报被封装位一个IP数据包：IPv4字段值位17 表示udp协议
+图：udp的IP包 Source：https://notes.shichao.io/tcpv1/ch10
+对于udp数据报的组成包含header与playload，udp的header大小为固定的8字节
+源端口：可选 目的端口：识别接收信息的进程 Length：udp header + udp playload的长度，最小值为8 checksum：与lenght一样其实是多余的，因为第三层包含了这两个信息 图：udp数据报组成 Source：https://notes.]]></description>
+</item><item>
     <title>OSI模型与IP协议</title>
     <link>https://cylonchau.github.io/ch02.1-network-basics.html</link>
     <pubDate>Sat, 18 Jun 2022 00:00:00 &#43;0000</pubDate>
@@ -85,7 +131,7 @@ VLAN 区分的广播域的标准是VLAN ID，此功能是Linux内核3.8中引入
 在Linux中创建一个VLAN
 1 ip link add link eth0 name eth0.2 type vlan id 2 VETH [1] VETH (Virtual Ethernet device)，是一个本地的以太网隧道，创建出的设备是成对的，通常会存在两个名称空间内，例如在docker中创建出的设备一端在root名称空间内，一端被挂在到容器的名称空间内。
 图：veth topology Source：https://medium.com/@arpitkh96/basics-of-container-networking-with-linux-part-1-3a3cdc64c87a
-在Linux中创建一个veth 1 ip link add &lt;p1-name&gt; type veth peer name &lt;p2-name&gt; Bridge 目的 Linux bridge（又称为网桥、VLAN交换机）是Linux内核中集成的功能，用来做tcp/ip做二层协议交换的设备，虽然是软件实现的，但它与普通的二层物理交换机功能一样。bridge 就是为了解决虚拟机网卡连接问题。可以添加若干个网络设备到 bridge 上作为其接口，添加到 bridge 上的设备被设置为只接受二层数据帧并且转发所有收到的数据包到 bridge 中。
+1 ip link add &lt;p1-name&gt; type veth peer name &lt;p2-name&gt; Bridge 目的 Linux bridge（又称为网桥、VLAN交换机）是Linux内核中集成的功能，用来做tcp/ip做二层协议交换的设备，虽然是软件实现的，但它与普通的二层物理交换机功能一样。bridge 就是为了解决虚拟机网卡连接问题。可以添加若干个网络设备到 bridge 上作为其接口，添加到 bridge 上的设备被设置为只接受二层数据帧并且转发所有收到的数据包到 bridge 中。
 由于 Linux bridge 是二层设备，故数据包是根据MAC地址而不是IP转发的。因此所有协议都可以透明地通过网桥。Linux bridge 广泛用于虚拟机，名称空间等。
 图：Linux Bridge Source：https://kbespalov.medium.com/linux-linux-bridge-7e0e887edd01
 MACVLAN [2] MACVLAN 允许在一个物理接口创建多个子接口，并且每个子接口都拥有一个随机生成的MAC地址，与IP地址。
@@ -159,51 +205,5 @@ VLAN Tag各字段含义：
 VLAN PVID 缺省VLAN又称PVID（Port Default VLAN ID）。设备处理的数据帧都带Tag，当设备收到UNTagged帧时，就需要给该帧添加Tag，添加什么Tag，就由接口上的缺省VLAN决定。一个物理端口只能拥有一个PVID，当一个物理端口拥有了一个PVID的时候，必定会拥有和PVID相等的VID，而且在这个VID上，这个物理端口必定是Untagged Port。
 因此，根据接口连接对象以及对收发数据帧处理的不同，华为定义了4种接口的链路类型：Access、Trunk、Hybrid和QinQ，以适应不同的连接和组网：
 Access接口：一般用于和不能识别Tag的用户终端（如用户主机、服务器等）相连，或者不需要区分不同VLAN成员时使用。Access接口大部分情况只能收发Untagged帧，且只能为Untagged帧添加唯一的VLAN Tag。 Trunk接口：一般用于连接交换机、路由器、AP以及可同时收发Tagged帧和Untagged帧的语音终端。它可以允许多个VLAN的帧带Tag通过，但只允许一个VLAN的帧从该类接口上发出时不带Tag（即剥除Tag）。 Hybrid接口：既可以用于连接不能识别Tag的用户终端（如用户主机、服务器等）和网络设备（如Hub、傻瓜交换机），也可以用于连接交换机、路由器以及可同时收发Tagged帧和Untagged帧的语音终端、AP。它可以允许多个VLAN的帧带Tag通过，且允许从该类接口发出的帧根据需要配置某些VLAN的帧带Tag（即不剥除Tag）、某些VLAN的帧不带Tag（即剥除Tag）。 使用QinQ（802.1Q-in-802.1Q）协议，一般用于私网与公网之间的连接，也被称为Dot1q-tunnel接口。它可以给帧加上双层Tag，即在原来Tag的基础上，给帧加上一个新的Tag，从而可以支持多达4094×4094个VLAN。 接口类型 对接收不带Tag的报文处理 对接收带Tag的报文处理 发送帧处理过程 Access接口 接收该报文，并打上缺省的VLAN ID。 当VLAN ID与缺省VLAN ID相同时，接收该报文。当VLAN ID与缺省VLAN ID不同时，丢弃该报文 先剥离帧的PVID Tag，然后再发送。 Trunk接口 打上缺省的VLAN ID，当缺省VLAN ID在允许通过的VLAN ID列表里时，接收该报文。打上缺省的VLAN ID，当缺省VLAN ID不在允许通过的VLAN ID列表里时，丢弃该报文。 当VLAN ID在接口允许通过的VLAN ID列表里时，接收该报文。当VLAN ID不在接口允许通过的VLAN ID列表里时，丢弃该报文 当VLAN ID与缺省VLAN ID相同，且是该接口允许通过的VLAN ID时，去掉Tag，发送该报文。当VLAN ID与缺省VLAN ID不同，且是该接口允许通过的VLAN ID时，保持原有Tag，发送该报文。 Hybrid接口 打上缺省的VLAN ID，当缺省VLAN ID在允许通过的VLAN ID列表里时，接收该报文。打上缺省的VLAN ID，当缺省VLAN ID不在允许通过的VLAN ID列表里时，丢弃该报文。 当VLAN ID在接口允许通过的VLAN ID列表里时，接收该报文。当VLAN ID不在接口允许通过的VLAN ID列表里时，丢弃该报文。 当VLAN ID是该接口允许通过的VLAN ID时，发送该报文。可以通过命令设置发送时是否携带Tag。 由上面各类接口添加或剥除VLAN标签的处理过程可见：]]></description>
-</item><item>
-    <title>实验 - VxLAN</title>
-    <link>https://cylonchau.github.io/experiment-vxlan.html</link>
-    <pubDate>Sat, 02 Jan 2021 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/experiment-vxlan.html</guid>
-    <description><![CDATA[[toc]
-vXlan概念 实验 什么是VxLAN RFC定义了虚拟扩展局域网 VXLAN （Virtual eXtensible Local Area Network，）扩展方案，是对传统VLAN协议的一种扩展。VXLAN采用 （MACin UDP（User Datagram Protocol）封装方式，是NVO3（Network Virtualization over Layer 3）中的一种网络虚拟化技术。VXLAN的特点是将L2的以太帧封装到UDP报文（即L2 over L4）中，并在L3网络中传输。
-VXLAN本质上是一种隧道技术，在源网络设备与目的网络设备之间的IP网络上，建立一条逻辑隧道，将用户报文经过特定的封装后通过这条隧道转发。从用户的角度来看，接入网络的服务器就像是连接到了一个虚拟的二层交换机的不同端口上（可把蓝色虚框表示的数据中心VXLAN网络看成一个二层虚拟交换机），可以方便地通信。
-为什么需要VxLAN 虚拟机规模受网络设备表项规格的限制
-在传统二层网络环境下，数据报文是通过查询MAC地址表进行二层转发。服务器虚拟化后，VM的数量比原有的物理机发生了数量级的增长，伴随而来的便是VM网卡MAC地址数量的空前增加。而接入侧二层设备的MAC地址表规格较小，无法满足快速增长的VM数量。
-网络隔离能力有限
-VLAN作为当前主流的网络隔离技术，在标准定义中只有12比特，因此可用的VLAN数量仅4096个。对于公有云或其它大型虚拟化云计算服务这种动辄上万甚至更多租户的场景而言，VLAN的隔离能力无法满足。
-虚拟机迁移范围受限
-由于服务器资源等问题（如CPU过高，内存不够等），虚拟机迁移已经成为了一个常态性业务。
-什么是虚拟机动态迁移？
-所谓虚拟机动态迁移，是指在保证虚拟机上服务正常运行的同时，将一个虚拟机系统从一个物理服务器移动到另一个物理服务器的过程。该过程对于最终用户来说是无感知的，从而使得管理员能够在不影响用户正常使用的情况下，灵活调配服务器资源，或者对物理服务器进行维修和升级。
-在服务器虚拟化后，虚拟机动态迁移变得常态化，为了保证迁移时业务不中断，就要求在虚拟机迁移时，不仅虚拟机的IP地址、MAC地址等参数保持不变，而且虚拟机的运行状态也必须保持原状（例如TCP会话状态），所以虚拟机的动态迁移只能在同一个二层域中进行，而不能跨二层域迁移。
-VxLAN方案 为了应对传统数据中心网络对服务器虚拟化技术的限制，VXLAN技术应运而生，其能够很好的解决上述问题。
-针对虚拟机规模受设备表项规格限制
-VXLAN将管理员规划的同一区域内的VM发出的原始报文封装成新的UDP报文，并使用物理网络的IP和MAC地址作为外层头，这样报文对网络中的其他设备只表现为封装后的参数。因此，极大降低了大二层网络对MAC地址规格的需求。
-针对网络隔离能力限制
-在传统的VLAN网络中，标准定义所支持的可用VLAN数量只有4000个左右。VXLAN引入了类似VLAN ID的用户标识，称为VXLAN网络标识VNI（VXLAN Network Identifier），由24比特组成，支持多达16M的VXLAN段，有效得解决了云计算中海量租户隔离的问题。
-针对虚拟机迁移范围受限
-VXLAN将VM发出的原始报文进行封装后通过VXLAN隧道进行传输，隧道两端的VM不需感知传输网络的物理架构。这样，对于具有同一网段IP地址的VM而言，即使其物理位置不在同一个二层网络中，但从逻辑上看，相当于处于同一个二层域。即VXLAN技术在三层网络之上，构建出了一个虚拟的大二层网络，只要虚拟机路由可达，就可以将其规划到同一个大二层网络中。这就解决了虚拟机迁移范围受限问题。
-VxLAN与VLAN之间的区别 VLAN是传统的网络隔离技术，在标准定义中VLAN的数量只有4096，无法满足大型数据中心的租户间隔离需求。另外，VLAN的二层范围一般较小且固定，无法支持虚拟机大范围的动态迁移。
-VXLAN完美地弥补了VLAN的上述不足，一方面通过VXLAN中的24比特VNI字段，提供多达16M租户的标识能力，远大于VLAN的4096；另一方面，VXLAN本质上在两台交换机之间构建了一条穿越数据中心基础IP网络的虚拟隧道，将数据中心网络虚拟成一个巨型“二层交换机”，满足虚拟机大范围动态迁移的需求。
-VXLAN Header
-增加VXLAN头（8字节），其中包含24比特的VNI字段，用来定义VXLAN网络中不同的租户。此外，还包含VXLAN Flags（8比特，取值为00001000）和两个保留字段（分别为24比特和8比特）。
-UDP Header
-VXLAN头和原始以太帧一起作为UDP的数据。UDP头中，目的端口号（VXLAN Port）固定为4789，源端口号（UDP Src. Port）是原始以太帧通过哈希算法计算后的值。
-Outer IP Header
-封装外层IP头。其中，源IP地址（Outer Src. IP）为源VM所属VTEP的IP地址，目的IP地址（Outer Dst. IP）为目的VM所属VTEP的IP地址。
-Outer MAC Header
-封装外层以太头。其中，源MAC地址（Src. MAC Addr.]]></description>
-</item><item>
-    <title>网络名称空间</title>
-    <link>https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4.html</link>
-    <pubDate>Sat, 02 Jan 2021 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4.html</guid>
-    <description><![CDATA[linux namespace namespace是Linux内核的一项功能，该功能对内核资源进行分区，以使一组进程看到一组资源，而另一组进程看到另一组资源。该功能通过为一组资源和进程具有相同的名称空间而起作用，但是这些名称空间引用了不同的资源。资源可能存在于多个空间中。
-Linux namespaces 是对全局系统资源的一种封装隔离，使得处于不同 namespace 的进程拥有独立的全局系统资源，改变一个namespace中的系统资源只会影响当前 namespace 里的进程，对其他 namespace 中的进程没有影响。
-每一个进程在其对应的 /proc/[pid]/ns 下都有其 namespace 信息
-查看当前进程的namespace ll /proc/$$/ns
-1 2 3 4 5 6 7 8 9 10 cgroup -&gt; cgroup:[4026531835] cgroup的根目录 ipc -&gt; ipc:[4026531839] 信号量 mnt -&gt; mnt:[4026531840] 文件系统挂载点 net -&gt; net:[4026531992] 网络设备、网络栈、端口 pid -&gt; pid:[4026531836] 进程编号 pid_for_children -&gt; pid:[4026531836] time -&gt; time:[4026531834] time_for_children -&gt; time:[4026531834] user -&gt; user:[4026531837] 用户和用户组 uts -&gt; uts:[4026531838] 主机名和NIS域名 linux的网络名称空间 linux network namespace 是network namespace 是 linux 内核提供的功能，在实现网络虚拟化中起重要作用，每个网络名称空间中有独立的网络协议栈，如路由表、iptables、端口等。在network namespace可以创建多个隔离的网络空间，它们有独自的网络栈信息。在运行的时候仿佛自己就在独立的网络中。]]></description>
 </item></channel>
 </rss>
