@@ -33,7 +33,7 @@
 - playload：数据包的主体
 - 标尾：包含几个位，用于告知已到达数据包的末尾与错误检查（循环冗余检查 (***CRC***)）
 
-<img src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/eyJidWNrZXQiOiJjb250ZW50Lmhzd3N0YXRpYy5jb20iLCJrZXkiOiJnaWZcL3F1ZXN0aW9uNTI1LXBhY2tldC5naWYiLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjI5MH0sInRvRm9ybWF0IjoiYXZpZiJ9fQ%253D%253D" alt="img" style="zoom:200%;" />
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/eyJidWNrZXQiOiJjb250ZW50Lmhzd3N0YXRpYy5jb20iLCJrZXkiOiJnaWZcL3F1ZXN0aW9uNTI1LXBhY2tldC5naWYiLCJlZGl0cyI6eyJyZXNpemUiOnsid2lkdGgiOjI5MH0sInRvRm9ybWF0IjoiYXZpZiJ9fQ%3D%3D)
 
 <center>图：数据包组成</center>
 <center><em>Source：</em>https://computer.howstuffworks.com/question525.htm</center><br>

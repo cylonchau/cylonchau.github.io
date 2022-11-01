@@ -33,7 +33,6 @@
 定义语法
 
 ```go
-
 func test(){
 
 }
@@ -94,7 +93,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004004404068-1876101209.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004004404068-1876101209.png)
 
 
 > _标识符，用来忽略返回值
@@ -134,7 +133,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004005822762-1019812877.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004005822762-1019812877.png)
 
 
 ## 不定参数
@@ -175,7 +174,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004004529342-1382648432.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004004529342-1382648432.png)
 
 练习：写一个函数concat，支持1个或多个string相拼接，并返回结果
 
@@ -195,7 +194,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004004636040-1844877115.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004004636040-1844877115.png)
 
 
 
@@ -249,7 +248,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004005449280-2056741609.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004005449280-2056741609.png)
 
 
 defer的作用域，此处可以看到，defer的传入不是在main的作用域下，测试可发现 `defer`只会在当前函数和方法返回之前被调用。
@@ -270,7 +269,7 @@ func main() {
 }
 ```
 
-![](https://img2020.cnblogs.com/blog/1380340/202010/1380340-20201004005407717-2125693767.png)
+![](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201004005407717-2125693767.png)
 
 
 ## 函数作用域
