@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch4 Non-contiguous memory allocation - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="ch4 Non-contiguous memory allocation" />
+<meta property="og:description" content="操作内存管理：非连续内存分配 overview Q1: 为什么需要非连续内存分配
+连续内存管理 （contiguous memory allocation）, 即 : 操作系统加载到内存以及程序加载到内存中时, 分配一块连续的内存块. 但这种方式会出现碎片问题，而非连续内存分配（Non-contiguous memory allocation ）可以有效的减少碎片（Fragmentation）的出现。
+Q2: 主要的非连续内存分配的管理方法
+分段（Segmentation） 分页（Paging） 页表 （Page Table） 1.非连续内存分配的必要性 连续内存管理的缺陷：
+内存利用率较低（memory wastage），在程序运行时分配的内存是增长的，但在进程使用为达到分配大小时，分配的块并未使用，并且也不能给其他进程使用，造成了内存的浪费。 分配给一个程序的物理内存必须是连续的。 碎片化问题 不灵活（inflexibility），当进程或文件使用的内存超出预期时（即：超出分配的内存块大小），将停止并抛出异常，例如：No disk space。 非连续内存分配的优点:
+一个程序的物理地址空间是非连续的 更好的内存利用和管理，（减少了内存浪费） 允许共享代码与数据(共享库等&hellip;) 支持动态加载和动态链接 非连续内存分配的缺点：
+建立虚拟地址和物理地址的转换难度大 软件方案 硬件方案(采用硬件方案) : 分段 / 分页 分段（segmentation） 首先 segmentation mechanism需要考虑的问题：
+程序的分段地址空间 分段寻址方案 什么是segmentation 段（segmentation）是一个逻辑单元 (logical unit)，例如：
+主程序 main program 程序（主要是指功能的代码，如一段函数） procedure 函数 function 方法 method 对象 object 局部变量和全局变量 local variables, global variables 公共块 common block 堆 stack 符号表 symbol table 数组 arrays [segmentation的逻辑视图]可以看到左边是逻辑地址，右边是不连续的物理地址，中间有一个映射机制将两边建立了一个关联关系（ST Segment Table）。通过映射机制将不同的块（如stack，function." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-04-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-04-25T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch4 Non-contiguous memory allocation"/>
+<meta name="twitter:description" content="操作内存管理：非连续内存分配 overview Q1: 为什么需要非连续内存分配
+连续内存管理 （contiguous memory allocation）, 即 : 操作系统加载到内存以及程序加载到内存中时, 分配一块连续的内存块. 但这种方式会出现碎片问题，而非连续内存分配（Non-contiguous memory allocation ）可以有效的减少碎片（Fragmentation）的出现。
+Q2: 主要的非连续内存分配的管理方法
+分段（Segmentation） 分页（Paging） 页表 （Page Table） 1.非连续内存分配的必要性 连续内存管理的缺陷：
+内存利用率较低（memory wastage），在程序运行时分配的内存是增长的，但在进程使用为达到分配大小时，分配的块并未使用，并且也不能给其他进程使用，造成了内存的浪费。 分配给一个程序的物理内存必须是连续的。 碎片化问题 不灵活（inflexibility），当进程或文件使用的内存超出预期时（即：超出分配的内存块大小），将停止并抛出异常，例如：No disk space。 非连续内存分配的优点:
+一个程序的物理地址空间是非连续的 更好的内存利用和管理，（减少了内存浪费） 允许共享代码与数据(共享库等&hellip;) 支持动态加载和动态链接 非连续内存分配的缺点：
+建立虚拟地址和物理地址的转换难度大 软件方案 硬件方案(采用硬件方案) : 分段 / 分页 分段（segmentation） 首先 segmentation mechanism需要考虑的问题：
+程序的分段地址空间 分段寻址方案 什么是segmentation 段（segmentation）是一个逻辑单元 (logical unit)，例如：
+主程序 main program 程序（主要是指功能的代码，如一段函数） procedure 函数 function 方法 method 对象 object 局部变量和全局变量 local variables, global variables 公共块 common block 堆 stack 符号表 symbol table 数组 arrays [segmentation的逻辑视图]可以看到左边是逻辑地址，右边是不连续的物理地址，中间有一个映射机制将两边建立了一个关联关系（ST Segment Table）。通过映射机制将不同的块（如stack，function."/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" /><link rel="prev" href="https://cylonchau.github.io/ch5-virtual-memory/" /><link rel="next" href="https://cylonchau.github.io/ch3-contiguous-memory-allocation/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch4 Non-contiguous memory allocation",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch4-non-contiguous-memory-allocation\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "OS, CS","wordcount":  601 ,
+        "url": "https:\/\/cylonchau.github.io\/ch4-non-contiguous-memory-allocation\/","datePublished": "2022-04-25T00:00:00+00:00","dateModified": "2022-04-25T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">ch4 Non-contiguous memory allocation</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/operation-system/"><i class="far fa-folder fa-fw"></i>operation system</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-04-25 00:00:00">2022-04-25 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 601 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h1 id="操作内存管理非连续内存分配">操作内存管理：非连续内存分配</h1>
+<h2 id="overview">overview</h2>
+<blockquote>
+<p>Q1: 为什么需要非连续内存分配</p>
+</blockquote>
+<p>连续内存管理 （<code>contiguous memory allocation</code>）, 即 : 操作系统加载到内存以及程序加载到内存中时, 分配一块连续的内存块. 但这种方式会出现碎片问题，而非连续内存分配（<code>Non-contiguous memory allocation</code> ）可以有效的减少碎片（<code>Fragmentation</code>）的出现。</p>
+<ul>
+<li></li>
+</ul>
+<blockquote>
+<p>Q2: 主要的非连续内存分配的管理方法</p>
+</blockquote>
+<ul>
+<li>分段（<code>Segmentation</code>）</li>
+<li>分页（<code>Paging</code>）</li>
+<li>页表 （<code>Page Table</code>）</li>
+</ul>
+<h2 id="1非连续内存分配的必要性">1.非连续内存分配的必要性</h2>
+<p><strong>连续内存管理的缺陷：</strong></p>
+<ul>
+<li>内存利用率较低（<code>memory wastage</code>），在程序运行时分配的内存是增长的，但在进程使用为达到分配大小时，分配的块并未使用，并且也不能给其他进程使用，造成了内存的浪费。</li>
+<li>分配给一个程序的物理内存必须是连续的。</li>
+<li>碎片化问题</li>
+<li>不灵活（<code>inflexibility</code>），当进程或文件使用的内存超出预期时（即：超出分配的内存块大小），将停止并抛出异常，例如：<code>No disk space</code>。</li>
+</ul>
+<p><strong>非连续内存分配的优点</strong>:</p>
+<ul>
+<li>一个程序的物理地址空间是非连续的</li>
+<li>更好的内存利用和管理，（减少了内存浪费）</li>
+<li>允许共享代码与数据(共享库等&hellip;)</li>
+<li>支持动态加载和动态链接</li>
+</ul>
+<p><strong>非连续内存分配的缺点：</strong></p>
+<ol>
+<li>建立虚拟地址和物理地址的转换难度大
+<ul>
+<li>软件方案</li>
+<li>硬件方案(采用硬件方案) : 分段 / 分页</li>
+</ul>
+</li>
+</ol>
+<h2 id="分段segmentation">分段（segmentation）</h2>
+<p>首先 segmentation mechanism需要考虑的问题：</p>
+<ul>
+<li>程序的分段地址空间</li>
+<li>分段寻址方案</li>
+</ul>
+<h3 id="什么是segmentation">什么是segmentation</h3>
+<p>段（<code>segmentation</code>）是一个逻辑单元 (<code>logical unit</code>)，例如：</p>
+<ul>
+<li>主程序 <code>main program</code></li>
+<li>程序（主要是指功能的代码，如一段函数） <code>procedure</code></li>
+<li>函数 <code>function</code></li>
+<li>方法 <code>method</code></li>
+<li>对象 <code>object</code></li>
+<li>局部变量和全局变量 <code>local variables</code>, <code>global variables</code></li>
+<li>公共块 <code>common block</code></li>
+<li>堆 <code>stack</code></li>
+<li>符号表 <code>symbol table</code></li>
+<li>数组 <code>arrays</code></li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232723274-16412841827931.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232723274-16412841827931.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232723274-16412841827931.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232723274-16412841827931.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232723274-16412841827931.png"
+        title="image-20211219232723274" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232741181-16412841956352.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232741181-16412841956352.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232741181-16412841956352.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232741181-16412841956352.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232741181-16412841956352.png"
+        title="image-20211219232741181" /></p>
+<center>[segmentation的逻辑视图]</center>
+<p>可以看到左边是逻辑地址，右边是不连续的物理地址，中间有一个映射机制将两边建立了一个关联关系（<code>ST</code> Segment Table）。通过映射机制将不同的块（如stack，function..）分别映射到内存中的段中。</p>
+<h3 id="分段寻址方案">分段寻址方案</h3>
+<p>一维逻辑地址与分段的物理地址对应的方法，分段寻址 （<code>Segmentation Addressing modes</code>），逻辑地址由两部分组成，<strong>segment number (==s==) 和 offset (==d==)</strong>。</p>
+<ul>
+<li><strong>s</strong> 表示段所需的总位数</li>
+<li><strong>d</strong> 指定了段大小所需的位数</li>
+</ul>
+<h4 id="基于硬件的分段管理机制--segmention-hardware">基于硬件的分段管理机制  Segmention hardware</h4>
+<p>程序表示为了一个二维地址，但在实际物理内存中是一个一维地址。因此需要将二位地址 （ <code>two-dimensional</code>）映射为一个一维物理地址 (<code>one-dimensional</code>)，这个机制就是段表 （<code>Segment Table</code>）,ST映射了逻辑地址的段号和物理地址的段号。并且段的长度与起始信息也是存放在ST中的。</p>
+<p>段表（ST）中的每个条目都有一个<code>base</code>和一个段 <code>limit</code>。==<strong>base</strong>== 包含段所在在内存中的起始物理地址，而==<strong>limit</strong>==指定段的长度。</p>
+<p>如图所示，逻辑地址由两部分组成：<code>s</code>和<code>d</code>。<code>s</code> 作为 <code>ST</code> 的 <code>index</code> 。d必须在0和 <code>limit</code> 之间。当超出limit范围是，CPU会产生异常。当 <code>d</code> 合法时，将其添加到 <code>base</code> 以生成地址物理地址。</p>
+<p>起始物理地址 = d + base</p>
+<p>结束物理地址 = base + limit</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232755022-16412842068243.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232755022-16412842068243.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232755022-16412842068243.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232755022-16412842068243.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232755022-16412842068243.png"
+        title="image-20211219232755022" /></p>
+<h2 id="分页paging">分页(Paging)</h2>
+<h3 id="overview-1">overview</h3>
+<p>本章主要分为两部分：</p>
+<ul>
+<li>分页地址空间</li>
+<li>页寻址方式</li>
+</ul>
+<p>分页 (<code>Paging</code>) 与 分段 (<code>Segmentation</code>) 都是非连续性内存管理的机制，分段允许进程的物理地址空间不连续；而分页则是比分段较有优势的另一种内存管理方案。</p>
+<p><strong>分页的特点</strong>:</p>
+<ul>
+<li>将每个块划分为固定的页。
+<ul>
+<li>划分物理内存为固定大小( <code>fixed-sized</code> ) 的块 (<code>block</code>) 称作帧 ( <code>frame</code> ）
+<ul>
+<li>大小是2的幂, e.g. 512 / 4096 / 8192</li>
+</ul>
+</li>
+<li>逻辑地址相同大小的的块 (<code>blocks</code>) 称作 (<code>Pages</code>)
+<ul>
+<li>大小是2的幂, e.g. 512 / 4096 / 8192</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>每个段需要一个页表。</li>
+<li>CPU的内存管理单元需要同时支持 分页和分段。</li>
+</ul>
+<h3 id="帧-frame">帧 Frame</h3>
+<p>物理地址 （<code>Physical Address</code>）空间在划分为若干固定大小的块，称为帧。帧由两部分组成，<strong>Frame number(f)</strong> 和 <strong>Frame offset(==d==)</strong></p>
+<ul>
+<li><strong>Frame number(f):</strong>  表示物理地址空间的帧所需的位数。</li>
+<li><strong>Frame offset(d):</strong> 表示页中物理地址空间的页大小或页或页偏移量的字数所需的位数。</li>
+</ul>
+<p>如图所示，物理地址是一个二元组  $(f,d)$，页帧占 $F$ 位，共有 $2^F$ 帧；偏移量 o 占了 $S$ 位（一个帧的大小），共$2^S$ 字节 ，则物理地址 =  $2^S\times f+d$ 。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232803970-16412842156934.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232803970-16412842156934.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232803970-16412842156934.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232803970-16412842156934.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232803970-16412842156934.png"
+        title="image-20211219232803970" /></p>
+<blockquote>
+<p><strong>地址计算：16bit的物理地址空间，页帧大小为9bit（512byte）</strong></p>
+<ul>
+<li>给出物理地址$(f,d) = (3,6)$，求物理地址的位置 。
+<ul>
+<li>$S=9$，$F=7$， $f=3$ ，$d=6$</li>
+<li>套用公式得出，$2^9\times3+6 = 1542$</li>
+</ul>
+</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232813003-16412842188565.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232813003-16412842188565.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232813003-16412842188565.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232813003-16412842188565.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232813003-16412842188565.png"
+        title="image-20211219232813003" /></p>
+</blockquote>
+<h3 id="页-page">页 Page</h3>
+<p>逻辑地址相同大小的的块 (<code>blocks</code>) 称作 (<code>Pages</code>)，</p>
+<ul>
+<li>页的偏移的大小=帧内偏移的大小</li>
+<li>页号 &lt;&gt; 帧号大小</li>
+</ul>
+<p>Page也有两部分组成，页号和页的偏移。<strong>Page number(==p==)</strong> 和 <strong>Page offset(==d==)</strong>；</p>
+<ul>
+<li><strong>Page number(p)</strong> 逻辑地址空间中页所需的位数</li>
+<li><strong>Page offset(d)</strong>：逻辑地址空间中页偏移量的字数所需的位数。</li>
+</ul>
+<p>如图所示，一个逻辑地址表示为一个二元组 $(p,d)$，页帧占 $P$ 位，共有 $2^P$ 帧；偏移量 o 占了 $S$ 位 (一个页的大小)，共$2^S$ 字节 ，则物理地址 =  $2^S\times p+d$ 。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232823332-16412842301146.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232823332-16412842301146.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232823332-16412842301146.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232823332-16412842301146.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232823332-16412842301146.png"
+        title="image-20211219232823332" /></p>
+<h4 id="页的寻址机制">页的寻址机制</h4>
+<p>在图中可以看出，逻辑地址是一个连续的地址空间，并且由一个个Page组成，首先CPU寻址，地址分位两块（一个二元组）$(p,d)$，p作为一个<code>index</code> 去查一个<code>page table</code> (以页号为索引的值为帧号) ，以index与base（基地址）作为查找项查找对应的f，$f + (f)d$ 就找到了对应的物理地址。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232835340-16412842404887.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232835340-16412842404887.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232835340-16412842404887.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232835340-16412842404887.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232835340-16412842404887.png"
+        title="image-20211219232835340" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232844391-16412842422978.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232844391-16412842422978.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232844391-16412842422978.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232844391-16412842422978.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211219232844391-16412842422978.png"
+        title="image-20211219232844391" /></p>
+<ul>
+<li>页映射到帧</li>
+<li>页是连续的虚拟内存</li>
+<li>帧是非连续的物理内存</li>
+<li>不是所有的页都有对应的帧</li>
+</ul>
+<h2 id="页表">页表</h2>
+<h3 id="overview-2">overview</h3>
+<p>页表（<code>page table</code>）结构：页表虚拟内存统用来存储逻辑地址 (<code>Virtual Address</code>) 到物理地址 ( <code>Physical Address</code> ) 映射关系的一种数据结构。</p>
+<p><strong>页表的特性：</strong></p>
+<ul>
+<li>在页表中，每个映射被称为页表项（<code>Page Table Entries (PTEs)</code>）这个页表项负责逻辑地址到物理地址的转换。</li>
+<li>该表存储在页表基址寄存器（<code>PTBR</code> ，``Page-table base register`）</li>
+<li>随进程运行状态而动态变化。</li>
+</ul>
+<p><strong>页表项（<code>PTE</code>） 的组成：</strong></p>
+<ul>
+<li>
+<p>物理页号（<code>Physical Page Number</code> PPN）</p>
+</li>
+<li>
+<p>DPN（<code>disk page number</code>）的磁盘上的页面</p>
+</li>
+<li>
+<p>帧号</p>
+</li>
+<li>
+<p>标记位</p>
+<ul>
+<li>脏位/修改位（<code>Dirty Bit</code> (D)）：每个PTE都包含的一个修改位，表示页面自加载后是否已写入。是在操作系统中完成，而不是在硬件中完成的操作。
+<ul>
+<li>1：表示数据是&quot;脏的（<code>dirty</code>）&quot;，即已写入。</li>
+<li>0：数据是“干净的(<code>clean</code>)”，与加载时相同。</li>
+</ul>
+</li>
+<li>存在位/驻留位 (<code>resident bit</code> (R))：每个PTE都包含的一个驻留位，表示逻辑地址是否有一个物理地址与其相对应。
+<ul>
+<li>1：当逻辑页在物理内存中时，该位被设置为1。</li>
+<li>0：如果为0，则访问该虚拟页面将导致页面错误。</li>
+</ul>
+</li>
+<li>引用位 (<code>Eviction Bit</code> ，In x86: <code>Reference Bit</code>)，过去一段时间内是否有对其引用（是否访问过页内的某个存储单元）。存在页表的第二位，在每次访问页面时（读/写），<code>Reference Bit</code>设置为1。
+<ul>
+<li>1：最近被引用过。</li>
+<li>0：从未被引用。</li>
+</ul>
+</li>
+<li>Read/Write Bit</li>
+<li>NX Bit</li>
+</ul>
+</li>
+</ul>
+<h4 id="页表的转换-translation-process">页表的转换 （<code>translation process</code>）</h4>
+<p>CPU的内存单元（<code>MMU</code>， <code>memory management unit</code>）根据程序的page的页号的若干位, 计算出索引值index, 在页表中搜索这个index, 得到的是帧号, 帧号和原本的offset组成物理地址.</p>
+<blockquote>
+<p><strong>Quick Activity</strong></p>
+<p>具有16位地址的计算机系统，物理地址大小32KB，每页大小1024bites，的逻辑地址如何进行转换。</p>
+<p>16位地址是0~15，0~9是页内偏移 <code>d</code>, 10~15是页号。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211227232825378-16412842514469.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211227232825378-16412842514469.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211227232825378-16412842514469.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211227232825378-16412842514469.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211227232825378-16412842514469.png"
+        title="image-20211227232825378" /></p>
+</blockquote>
+<h4 id="页式存储管理机制存在的问题">页式存储管理机制存在的问题</h4>
+<ul>
+<li>内存访问性能问题(<code>Performance Issues</code>)：内存访问性能，虚拟地址访问需要2次内存访问
+<ul>
+<li>第一次获取页表项</li>
+<li>第二次访问数据</li>
+</ul>
+</li>
+<li>页表大小问题：页表可以非常大。
+<ul>
+<li>页表可能很大
+<ul>
+<li>如图实例，32K内存，每页1K，即32个页表项，如果每项占4byte，则为128byte。</li>
+</ul>
+</li>
+<li>对于具有64位地址和1024字节页的机器，页表的大小是多少？
+<ul>
+<li>页：$2^{64}$，页的大小：$2^{10}$，需要建立页表的大小：$2^{64} \div 2^{10} = 2^{54}$</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>如何解决上述问题(what to do)：</p>
+<ul>
+<li>Caching  缓存，solution：快表，利用缓存机制减少对页表的访问。</li>
+<li>Indirection 间接访问，solution：多级页表，通过间接引用的方式来减少页表的长度。</li>
+</ul>
+<h3 id="快表-translation-look-aside-buffers-tlbs">快表 translation look-aside buffers (TLBs)</h3>
+<p>对于上述的性能问题，有效的解决方法是对页表项（<code>PTE</code>）的高速缓存，成为快表（<code>translation look-aside buffer (TLB)</code>）。快表就是将近期访问过的页表项在CPU内部使用硬件缓存，即将近期访问过的项缓存到CPU中；TLB由内存管理单元（MMU）管理</p>
+<center>[未使用页表的情况]</center>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220224356302-164128426198510.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220224356302-164128426198510.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220224356302-164128426198510.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220224356302-164128426198510.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220224356302-164128426198510.png"
+        title="image-20211220224356302" /></p>
+<center>[TLB mechanics]</center>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220223035884-164128427175911.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220223035884-164128427175911.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220223035884-164128427175911.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220223035884-164128427175911.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220223035884-164128427175911.png"
+        title="image-20211220223035884" /></p>
+<p>如图所示，如果TLB命中，则直接可以获取到物理地址，如果TLS未命中，则同时将内容缓存到CPU中的TLB。</p>
+<h3 id="多级页表">多级页表</h3>
+<p>多级页表是通过间接引用的方式将页号分成多级。多级页表是树状结构，用于保存页表。</p>
+<p>例子，考虑两个级别的页表再次在具有$2^{12}=4$ KB Page 的32-bit架上，</p>
+<blockquote>
+<p>Q1：第二级页面表格有多少位？</p>
+<ul>
+<li>$4KB\div4B = 1024=2^{10}$</li>
+</ul>
+<p>Q2：顶级页表有多少位？</p>
+<ul>
+<li>$32-12-10=10$</li>
+</ul>
+</blockquote>
+<p>10bits 表示0级索引，10bits表示1级索引，12bits表示页面内的偏移量。每一个子页表的开头作为上一个页表的页号物理页号填写到上一级页表当中。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220225010394-164128428376712.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220225010394-164128428376712.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220225010394-164128428376712.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220225010394-164128428376712.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220225010394-164128428376712.png"
+        title="image-20211220225010394" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220233116354-164128428562713.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220233116354-164128428562713.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220233116354-164128428562713.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220233116354-164128428562713.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211220233116354-164128428562713.png"
+        title="image-20211220233116354" /></p>
+<h4 id="多级页表计算题">多级页表计算题</h4>
+<p>一个32位操作系统中进程的虚拟地址空间可达到4GB，假设用户地址空间为2GB，页面大小为4KB，</p>
+<p>Q1：则一个进程最多可以有（）页。</p>
+<ul>
+<li>$2G = 2\times 2^{10} \times 2^{10} \times 2^{10} = 2^{31} $​</li>
+<li>$4KB = 2^2 \times 2^{10} = 2^{12}$​​</li>
+<li>即 $2^{31}\div2^{12} = 2^{19}$​​</li>
+</ul>
+<p>Q2：若用4个字节表示一页的物理页号，则页表本身就占用（）？</p>
+<ul>
+<li>$4B\times 2^{19} = 2^2  \times 2^{19} = 2^{21} = 2M	$</li>
+</ul>
+<p>Q3：即需要（）个页面存放。</p>
+<ul>
+<li>$2M\div4KB = 2^{21}\div2^{12} = 2^{9} = 512$</li>
+</ul>
+<h3 id="反置页表">反置页表</h3>
+<p>使用页寄存器(<code>Page Registers</code>)，又名反置页表(<code>Inverted page table (IPT)</code>)，是为了减少所占用存储空间的一种做法。使用反置页表的原因是在大地址空间(<code>64-bits</code>)的系统上，多级页表会变得繁琐，例如，逻辑地址空间增长速度快于物理空间地址。（以页帧号为索引，页表号为内容 ）</p>
+<p>此时产生一个问题：如何查找？（frame number是索引，pagenumber是内容）。基于关联存储器（<code>associative memory</code>）的方案：</p>
+<p>关联存储器也可以并行的查找，与寄存器可以同时比较，如果找到匹配值，则输出与键对应的值。</p>
+<ul>
+<li>如果帧数较少，页寄存器可以被放置在关联内存中</li>
+<li>在关联内存中查找逻辑页号</li>
+</ul>
+<p>关联存储器的代价：</p>
+<p>如果帧数较少，页寄存器可以被放置在关联内存中；在关联内存中查找逻辑页号：</p>
+<ul>
+<li>成功，则拿到帧号</li>
+<li>失败，也错误异常（<code>page fault</code>）</li>
+</ul>
+<p>限制因素：很难在单个时钟周期完成；耗电。</p>
+<p>IPT的具体思路为，不让页表与逻辑地址空间的大小对应，而是让页表与物理地址空间大小相对应，每个帧都与一个寄存器相关联，通常该寄存器包含：</p>
+<ul>
+<li>引用位(<code>Residence bit</code>）：标记该帧(<code>Frame</code>) 是否被进程占用。</li>
+<li>占用页号(<code>Occupier</code>)：页帧对应的页号</li>
+<li>保护位(<code>Protection bits</code>)：约定页的访问方式(R/W)</li>
+</ul>
+<blockquote>
+<p><strong>Quick Activity</strong></p>
+<p>系统有</p>
+<ul>
+<li>物理内存大小：16MB( $4096 \times 4096 = 4K \times 4K = 16MB $ )</li>
+<li>页大小为：4KB( $4096bytes = 4KB $​​​​)</li>
+<li>页帧数为4K(4096)。</li>
+<li>假定每一个页寄存器(<code>page resigter</code>)占8bytes， $4096 \times 8 = 32Kbytes$。</li>
+</ul>
+<p>那么页寄存器占用的开销为： $32Kb\div 16Mb \approx 0.2%$​​。此时和虚拟地址没有关联了。创建​的进程的物理地址就与页寄存器对应。</p>
+</blockquote>
+<p><strong>页寄存器方案的优缺点：</strong></p>
+<ul>
+<li>优点：
+<ul>
+<li>页表大小相对于物理内存而言很小</li>
+<li>页表大小与逻辑（虚拟）地址无关</li>
+</ul>
+</li>
+<li>缺点：
+<ul>
+<li>页表信息对调后，需要帧号可以找到页号</li>
+<li>在页寄存器中搜索逻辑地址中的页号</li>
+</ul>
+</li>
+</ul>
+<h4 id="基于hash计算的反向页表-hash-table">基于hash计算的反向页表 hash table</h4>
+<p>hash table，一个数学计算的方法。通过hash计算输入为page number，输出为 frame number。由图所示</p>
+<ul>
+<li>Virtual Page Number (VPN): <code>p</code>, <code>q</code></li>
+<li>Page Frame Number (PFN):  <code>r</code></li>
+<li>Offset: <code>d</code></li>
+<li>Hash Function: <code>h(x)</code></li>
+<li>Hashed Page Table with schema <code>(key, VPN, PFN, Pointer to next entry with key)</code> 每一个页表项</li>
+</ul>
+<p>hash table方式的工作流</p>
+<ul>
+<li>
+<p>操作系统从CPU拿到 虚拟内存 <code>p</code>，并执行 <code>h（p）</code> 以获取 same_key。</p>
+</li>
+<li>
+<p>操作系统查找哈希页表中的第一个条目，其中 key = same_key，并根据第一个页表的 虚拟内存页号 <code> p</code>。(根据第一个项中的指针来查找第二个项。它知道第二个项具有相同的键 = same_key，因为多级页表工作流是如此。操作系统根据第二项的页表号字段检查p。</p>
+</li>
+<li>
+<p>操作系统从第二个条目中获取帧号 <code>r</code>。<code>r</code> 对应于虚拟页号 <code>p</code> 的正确物理帧号；操作系统使用 页帧<code>r</code>  + 偏移量 <code>d</code> 在物理内存中查找它想要的物理地址。</p>
+</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220104161937728.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220104161937728.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220104161937728.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220104161937728.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220104161937728.png"
+        title="image-20220104161937728" /></p>
+<p>由图可以看出，为了提高效率，可以对hash函数增加一个参数 <code>pid</code> ，可以作为输入，来设计一个hash函数，算出对应的frame number。这种可以很好的解决映射的开销。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211228221115112-164128430524414.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211228221115112-164128430524414.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211228221115112-164128430524414.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211228221115112-164128430524414.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211228221115112-164128430524414.png"
+        title="image-20211228221115112" /></p>
+<h3 id="段页式存储管理">段页式存储管理</h3>
+<p>段页式存储管理机制 ( <code>Segmented Paging</code> )，是从页式与段式两种技术中获得最佳特性，纯分段不是很流行，并且在许多操作系统中都没有使用。但是，分段可以与分页相结合。段式存储在内存保护方面有优势，页式存储在内存利用和转移到后备存储方面有优势。</p>
+<p>段页式存储管理机制是在段式存储的基础上给每一个段加一级页表。即，主存被划分为可变大小的段，这些段又被进一步划分为固定大小的页，此时就有三个定义词<code>Definitions </code></p>
+<ul>
+<li>段号 **Segment Number **</li>
+<li>页号 **Page Number **</li>
+<li>页偏移 **Page Offset **</li>
+</ul>
+<p>如图所示，通过为每个段创建页表，可以减小页表的大小（要实现这一点，需要硬件支持），CPU提供的地址现在将被划分为段号、页号和偏移量。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Virtualaddresswithsegmentnoandpageno-164128431474015.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Virtualaddresswithsegmentnoandpageno-164128431474015.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Virtualaddresswithsegmentnoandpageno-164128431474015.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Virtualaddresswithsegmentnoandpageno-164128431474015.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Virtualaddresswithsegmentnoandpageno-164128431474015.png"
+        title="img" /></p>
+<p>段页式存储机制工作流如图所示：</p>
+<p>CPU生成一个逻辑地址分为两部分：段号和段偏移量。段偏移必须小于段限制。偏移量又分为页码和页偏移。要映射页表中的确切页码，请将页码添加到页表库中。带有页帧号+页偏移组成了实际被映射的物理地址。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/os-segmented-paging2.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/os-segmented-paging2.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/os-segmented-paging2.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/os-segmented-paging2.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/os-segmented-paging2.png"
+        title="os Segmented Paging" /></p>
+<p>通过只想相同的页表基址，时间进程间的段共享</p>
+<p><a href="https://www.cs.utexas.edu/users/witchel/372/lectures/15.VirtualMemory.pdf" target="_blank" rel="noopener noreffer">https://www.cs.utexas.edu/users/witchel/372/lectures/15.VirtualMemory.pdf</a></p>
+<p><a href="https://www.pvpsiddhartha.ac.in/dep_it/lecture%20notes/OS/unit4.pdf" target="_blank" rel="noopener noreffer">https://www.pvpsiddhartha.ac.in/dep_it/lecture%20notes/OS/unit4.pdf</a></p>
+<p><a href="https://www.studytonight.com/operating-system/difference-between-paging-and-segmentation" target="_blank" rel="noopener noreffer">https://www.studytonight.com/operating-system/difference-between-paging-and-segmentation</a></p>
+<p><a href="https://www.utc.edu/sites/default/files/2021-04/2800-lecture8-memeory-management.pdf" target="_blank" rel="noopener noreffer">https://www.utc.edu/sites/default/files/2021-04/2800-lecture8-memeory-management.pdf</a></p>
+<p><a href="https://www.geeksforgeeks.org/paging-in-operating-system/?ref=lbp" target="_blank" rel="noopener noreffer">https://www.geeksforgeeks.org/paging-in-operating-system/?ref=lbp</a></p>
+<p><a href="https://cw.fel.cvut.cz/old/_media/courses/ae3b33osd/osd-lec6-14.pdf" target="_blank" rel="noopener noreffer">https://cw.fel.cvut.cz/old/_media/courses/ae3b33osd/osd-lec6-14.pdf</a>
+<a href="https://www.inf.ed.ac.uk/teaching/courses/os/slides/10-paging16.pdf" target="_blank" rel="noopener noreffer">https://www.inf.ed.ac.uk/teaching/courses/os/slides/10-paging16.pdf</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-04-25 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-title="ch4 Non-contiguous memory allocation" data-hashtags="OS,CS"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-hashtag="OS"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-title="ch4 Non-contiguous memory allocation" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-title="ch4 Non-contiguous memory allocation"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-title="ch4 Non-contiguous memory allocation"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch4-non-contiguous-memory-allocation/" data-title="ch4 Non-contiguous memory allocation"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/os/">OS</a>,&nbsp;<a href="/tags/cs/">CS</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch5-virtual-memory/" class="prev" rel="prev" title="ch5 Virtual Memory"><i class="fas fa-angle-left fa-fw"></i>ch5 Virtual Memory</a>
+            <a href="/ch3-contiguous-memory-allocation/" class="next" rel="next" title="ch3 Contiguous memory allocation">ch3 Contiguous memory allocation<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-04-25T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch4 Non-contiguous memory allocation"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

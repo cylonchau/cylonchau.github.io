@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Logstash 使用 - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="Logstash 使用" />
+<meta property="og:description" content="[TOC]
+1 logstash概述 logstash是基于Jruby语言研发的server/agent结构的日志收集工具，可以在任何一个能产生日志的服务器上部署其agent。agent能同时监控多个产生日志的服务，并把每个服务所产生的日志信息收集并发送给logstash server端。由于收集到的日志信息是分散的，logstash有专门的节点用来将所有的节点收集到的日志信息按时间序列合并在一起形成一个序列，基于这一个序列请求写入并存储在elasticsearch集群中。
+kibana是基于node.js开发的elasticsearch的图形用户接口。它可以将用户的搜索语句发送给ES，有ES完成搜索，并且将结果返回。kibana可以将返回的数据，用非常直观的方式（画图）来做趋势展示的。
+logstash基于多种数据获取机制，TCP/UDP协议、文件、syslog、windows EventLogs及STDIN等。同时也支持多种数据输出机制。获取到数据后，它支持对数据执行过滤、修改等操作。
+logstash基于JRuby语言研发，需要运行在JVM虚拟机之上。工作于agent/server模型。
+1.1 logstash工作机制 在每一个产生日志的节点之上部署一个agent，这个agent通常称为shipper。shipper负责收集日志，并且发送给server端。但是在发送给server端时，为了避免server端可能无法应付大量节点同时发来的信息，会在server端和agent端之间放置一个消息队列，通常称之为broker。这个消息队列比较常见的使用redis。各agent将数据发送至broker，logstash服务器会从broker中依次取出日志拿来在本地做过滤、修改等操作。在完修改后将其发送至ES集群。
+对于logstash而言，server端也是插件式的工作的模式，与ES的不同在于，ES的插件是可有可无的。logstash的除核心外的所有功能都是基于插件来完成的。
+1.2 logstash工作流程 logstash的工作模式类似于管道，从指定位置读入数据，而后过滤数据，最后将其输出到指定位置。事实上logstash的工作流程为：input | filter | output。如无需对数据额外处理，filter可省略。
+1.3 logstash插件分类 input plugin：收集数据 codec plugin：编码插件 filter plugin：过滤 output plugin：输出插件 2 logstash安装下载 官网地址：https://www.elastic.co/cn/products../../images/Logstash
+3 logstash的配置使用 /etc../../images/Logstash/conf.d/路径下所有以.conf结尾的文件都被当做配置文件使用。对于logstash的配置文件定义，就是定义插件。从哪得到数据。向哪里输出数据。
+3.1 logstash的基本配置框架 1 2 3 4 5 6 7 8 9 10 11 input{ .... } filter{ .... } output{ .... } 简单的
+1 2 3 4 5 6 7 8 input{ stdin {} } output { stdout{ codec =&gt;rubydebug } } 检查配置文件语法是否正确logstash -f /etc." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/logstash/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-11-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-11-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Logstash 使用"/>
+<meta name="twitter:description" content="[TOC]
+1 logstash概述 logstash是基于Jruby语言研发的server/agent结构的日志收集工具，可以在任何一个能产生日志的服务器上部署其agent。agent能同时监控多个产生日志的服务，并把每个服务所产生的日志信息收集并发送给logstash server端。由于收集到的日志信息是分散的，logstash有专门的节点用来将所有的节点收集到的日志信息按时间序列合并在一起形成一个序列，基于这一个序列请求写入并存储在elasticsearch集群中。
+kibana是基于node.js开发的elasticsearch的图形用户接口。它可以将用户的搜索语句发送给ES，有ES完成搜索，并且将结果返回。kibana可以将返回的数据，用非常直观的方式（画图）来做趋势展示的。
+logstash基于多种数据获取机制，TCP/UDP协议、文件、syslog、windows EventLogs及STDIN等。同时也支持多种数据输出机制。获取到数据后，它支持对数据执行过滤、修改等操作。
+logstash基于JRuby语言研发，需要运行在JVM虚拟机之上。工作于agent/server模型。
+1.1 logstash工作机制 在每一个产生日志的节点之上部署一个agent，这个agent通常称为shipper。shipper负责收集日志，并且发送给server端。但是在发送给server端时，为了避免server端可能无法应付大量节点同时发来的信息，会在server端和agent端之间放置一个消息队列，通常称之为broker。这个消息队列比较常见的使用redis。各agent将数据发送至broker，logstash服务器会从broker中依次取出日志拿来在本地做过滤、修改等操作。在完修改后将其发送至ES集群。
+对于logstash而言，server端也是插件式的工作的模式，与ES的不同在于，ES的插件是可有可无的。logstash的除核心外的所有功能都是基于插件来完成的。
+1.2 logstash工作流程 logstash的工作模式类似于管道，从指定位置读入数据，而后过滤数据，最后将其输出到指定位置。事实上logstash的工作流程为：input | filter | output。如无需对数据额外处理，filter可省略。
+1.3 logstash插件分类 input plugin：收集数据 codec plugin：编码插件 filter plugin：过滤 output plugin：输出插件 2 logstash安装下载 官网地址：https://www.elastic.co/cn/products../../images/Logstash
+3 logstash的配置使用 /etc../../images/Logstash/conf.d/路径下所有以.conf结尾的文件都被当做配置文件使用。对于logstash的配置文件定义，就是定义插件。从哪得到数据。向哪里输出数据。
+3.1 logstash的基本配置框架 1 2 3 4 5 6 7 8 9 10 11 input{ .... } filter{ .... } output{ .... } 简单的
+1 2 3 4 5 6 7 8 input{ stdin {} } output { stdout{ codec =&gt;rubydebug } } 检查配置文件语法是否正确logstash -f /etc."/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/logstash/" /><link rel="prev" href="https://cylonchau.github.io/es/" /><link rel="next" href="https://cylonchau.github.io/%E6%94%B6%E9%9B%86syslog/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Logstash 使用",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/logstash\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "ELK","wordcount":  836 ,
+        "url": "https:\/\/cylonchau.github.io\/logstash\/","datePublished": "2018-11-02T00:00:00+00:00","dateModified": "2018-11-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">Logstash 使用</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/elk/"><i class="far fa-folder fa-fw"></i>ELK</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-11-02 00:00:00">2018-11-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 836 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[TOC]</p>
+<h2 id="1-logstash概述">1 logstash概述</h2>
+<p>logstash是基于Jruby语言研发的server/agent结构的日志收集工具，可以在任何一个能产生日志的服务器上部署其agent。agent能同时监控多个产生日志的服务，并把每个服务所产生的日志信息收集并发送给logstash server端。由于收集到的日志信息是分散的，logstash有专门的节点用来将所有的节点收集到的日志信息按时间序列合并在一起形成一个序列，基于这一个序列请求写入并存储在elasticsearch集群中。</p>
+<p>kibana是基于node.js开发的elasticsearch的图形用户接口。它可以将用户的搜索语句发送给ES，有ES完成搜索，并且将结果返回。kibana可以将返回的数据，用非常直观的方式（画图）来做趋势展示的。</p>
+<p>logstash基于多种数据获取机制，TCP/UDP协议、文件、syslog、windows EventLogs及STDIN等。同时也支持多种数据输出机制。获取到数据后，它支持对数据执行过滤、修改等操作。</p>
+<p>logstash基于JRuby语言研发，需要运行在JVM虚拟机之上。工作于agent/server模型。</p>
+<h3 id="11-logstash工作机制">1.1 logstash工作机制</h3>
+<p>在每一个产生日志的节点之上部署一个agent，这个agent通常称为<font color="#f8070d" size=3><code>shipper</code></font>。shipper负责收集日志，并且发送给server端。但是在发送给server端时，为了避免server端可能无法应付大量节点同时发来的信息，会在server端和agent端之间放置一个消息队列，通常称之为<font color="#f8070d" size=3><code>broker</code></font>。这个消息队列比较常见的使用redis。各agent将数据发送至broker，logstash服务器会从broker中依次取出日志拿来在本地做过滤、修改等操作。在完修改后将其发送至ES集群。</p>
+<p>对于logstash而言，server端也是插件式的工作的模式，与ES的不同在于，ES的插件是可有可无的。logstash的除核心外的所有功能都是基于插件来完成的。</p>
+<h3 id="12-logstash工作流程">1.2 logstash工作流程</h3>
+<p>logstash的工作模式类似于管道，从指定位置读入数据，而后过滤数据，最后将其输出到指定位置。事实上logstash的工作流程为：<font color="#f8070d" size=3><code>input | filter | output</code></font>。如无需对数据额外处理，filter可省略。</p>
+<h3 id="13-logstash插件分类">1.3 logstash插件分类</h3>
+<ul>
+<li>input plugin：收集数据</li>
+<li>codec plugin：编码插件</li>
+<li>filter plugin：过滤</li>
+<li>output plugin：输出插件</li>
+</ul>
+<h2 id="2-logstash安装下载">2 logstash安装下载</h2>
+<p>官网地址：https://www.elastic.co/cn/products../../images/Logstash</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="../../images/Logstash/da565791.png"
+        data-srcset="../../images/Logstash/da565791.png, ../../images/Logstash/da565791.png 1.5x, ../../images/Logstash/da565791.png 2x"
+        data-sizes="auto"
+        alt="../../images/Logstash/da565791.png"
+        title="image" /></p>
+<h2 id="3-logstash的配置使用">3 logstash的配置使用</h2>
+<p><font color="#f8070d" size=3><code>/etc../../images/Logstash/conf.d/</code></font>路径下所有以<font color="#f8070d" size=3><code>.conf</code></font>结尾的文件都被当做配置文件使用。对于logstash的配置文件定义，就是定义插件。从哪得到数据。向哪里输出数据。</p>
+<h3 id="31-logstash的基本配置框架">3.1 logstash的基本配置框架</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input<span class="o">{</span>
+</span></span><span class="line"><span class="cl"> 	....
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">filter<span class="o">{</span>
+</span></span><span class="line"><span class="cl"> 	....
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output<span class="o">{</span>
+</span></span><span class="line"><span class="cl"> 	....
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>简单的</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input<span class="o">{</span>
+</span></span><span class="line"><span class="cl"> 	stdin <span class="o">{}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">output <span class="o">{</span> 
+</span></span><span class="line"><span class="cl"> 	stdout<span class="o">{</span>
+</span></span><span class="line"><span class="cl"> 		<span class="nv">codec</span> <span class="o">=</span>&gt;rubydebug
+</span></span><span class="line"><span class="cl"> 	<span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>检查配置文件语法是否正确<font color="#f8070d" size=2><code>logstash -f /etc../../images/Logstash/conf.d/sample.conf --configtest</code></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="o">[</span>root@test conf.d<span class="o">]</span><span class="c1"># logstash -f /etc../../images/Logstash/conf.d/sample.conf </span>
+</span></span><span class="line"><span class="cl">hellow owrd
+</span></span><span class="line"><span class="cl">Settings: Default pipeline workers: <span class="m">1</span>
+</span></span><span class="line"><span class="cl">Pipeline main started
+</span></span><span class="line"><span class="cl"><span class="o">{</span>
+</span></span><span class="line"><span class="cl">       <span class="s2">&#34;message&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;hellow owrd&#34;</span>, <span class="c1">#←信息的完整内容。logstash的信息是在input → filter → output之间流动的。</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;@version&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;1&#34;</span>, <span class="c1">#←版本号。</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;@timestamp&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;2018-06-04T15:02:47.912Z&#34;</span>, <span class="c1">#←事件发生时的时间戳。</span>
+</span></span><span class="line"><span class="cl">          <span class="s2">&#34;host&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;test&#34;</span> <span class="c1">#←时间发生的主机。</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="32-logstash支持的数据类型">3.2 logstash支持的数据类型</h3>
+<p>Array：[iteml,item2,&hellip;]
+Boolean：true,false
+Bytes
+Codec：编码器。
+Hash: key =&gt;value 
+Number
+Password：
+Path：文件系统路径。
+String：字符串。
+logstash还支持字段引用，使用<font color="#f8070d" size=3><code>[]</code></font>进行引用</p>
+<p>3.3 支持的条件判断
+==，!=，&lt;，&lt;=，&gt;，&gt;= 正则匹配=~ !~
+in,not in and,or</p>
+<h2 id="4-logstash常用的插件">4 Logstash常用的插件</h2>
+<p>logstash是高度插件化的，主要分为<font color="#f8070d" size=3><code>input</code></font> <font color="#f8070d" size=3><code>codec</code></font> <font color="#f8070d" size=3><code>filter</code></font> <font color="#f8070d" size=3><code>output</code></font>插件：</p>
+<h3 id="41-input插件">4.1 input插件</h3>
+<h4 id="411-file">4.1.1 File</h4>
+<p>从指定的文件中读取事件流。其工作特性类似于<font color="#f8070d" size=3><code>tail -1f</code></font>，能够将日志文件尾部的一行不断的读取出来。</p>
+<p>logstash使用<font color="#f8070d" size=3><code>FileWatch</code></font>（ruby gem库）机制来监听文件变化。filewatch是linux内核中提供的一种功能。filewatch库支持以glob方式展开文件名。因此可以监听多个文件。并且可以将每个文件读取的位置及状态信息保存在<font color="#f8070d" size=3><code>.sincedb</code></font>数据库中。即使重启logstash后也不会从头读取文件的。.sincedb记录了每个被监听的文件的<font color="#f8070d" size=3><code>inode</code></font>,<font color="#f8070d" size=3><code>major number</code></font>,<font color="#f8070d" size=3><code>minor nubmer</code></font>,<font color="#f8070d" size=3><code>pos</code></font>。默认情况下位于启动logstash服务的用户家目录下。也可以自行定义位置。另外，file插件还可以自动识别日志的滚动（日志分割）操作。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    file<span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">path</span> <span class="o">=</span>&gt; <span class="o">[</span><span class="s1">&#39;/var/log/messages&#39;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">type</span> <span class="o">=</span>&gt; <span class="s2">&#34;system&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">start_postition</span> <span class="o">=</span>&gt; <span class="s2">&#34;beginning&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    stdout<span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">codec</span> <span class="o">=</span>&gt; rubydebug
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://www.elastic.co/guide/en../../images/Logstash/2.4/index.html" target="_blank" rel="noopener noreffer">Logstash</a>
+<a href="https://www.elastic.co/guide/en../../images/Logstash/2.4/plugins-inputs-file.html" target="_blank" rel="noopener noreffer">file</a></p>
+<h4 id="412-udp">4.1.2 UDP</h4>
+<p>logstash支持通过一个简单的协议来读取信息，如UDP、TCP，说明对方只要通过TCP协议发送时间也是支持的。或者哪怕通过syslog收集事件也是可以的。</p>
+<p>logstash通过UDP协议通过网络连接来读取信息，其唯一必须制定的参数为<font color="#f8070d" size=3><code>port</code></font>，用于指定自己监听的端口，agent可以向服务器端端口发送日志信息。而每个被收集数据的主机使用守护进程向server端发送事件。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    udp<span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">prot</span> <span class="o">=</span>&gt; <span class="m">25826</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">queue_size</span> <span class="o">=</span>&gt; <span class="m">2000</span>  <span class="c1">#←队列大小</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">workers</span> <span class="o">=</span>&gt; <span class="m">2</span>        <span class="c1">#←启动的工作线程数来接收发送的事件。</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">buffer_size</span> <span class="o">=</span>&gt;      <span class="c1">#←接收缓冲区的大小</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>UDP插件实现</strong></p>
+</blockquote>
+<p>collectd：基于C语言开发的一款高度插件式的主机性能监控程序，以守护进程方式运行，能够收集系统性能相关的各种数据；并且能够基于各种存储机制将收集的结果存储下来。collectd本身所收集到的数据可以通过自身的network插件，将自己在本机所收集到的数据发送至其他主机。</p>
+<p>collectd在epel源中</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">yum install collectd -y
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>collectd的大量.so文件为其模块（插件），每一个模块分别实现每一种相应的功能。其配置文件 <font color="#f8070d" size=3><code>/etc/collectd.conf</code></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">Hostname <span class="s2">&#34;node3.magedu.com&#34;</span>
+</span></span><span class="line"><span class="cl">LoadPlugin syslog 
+</span></span><span class="line"><span class="cl">LoadPlugin cpu  <span class="c1"># cpu性能数据</span>
+</span></span><span class="line"><span class="cl">LoadPlugin df  <span class="c1"># 磁盘空间使用情况</span>
+</span></span><span class="line"><span class="cl">LoadPlugin interface <span class="c1"># 网络接口</span>
+</span></span><span class="line"><span class="cl">LoadPlugin 1oad  <span class="c1"># 服务器负载</span>
+</span></span><span class="line"><span class="cl">LoadPlugin memory  <span class="c1"># 内存</span>
+</span></span><span class="line"><span class="cl">LoadPlugin network 
+</span></span><span class="line"><span class="cl">&lt;Plugin network&gt;
+</span></span><span class="line"><span class="cl">    &lt;server <span class="s2">&#34;10.0.0.19&#34;</span> <span class="s2">&#34;25826&#34;</span>&gt; <span class="c1">#10.0.0.19是logstash主机的地址，25826是其监听的udp端口</span>
+</span></span><span class="line"><span class="cl">    &lt;/server&gt;
+</span></span><span class="line"><span class="cl">&lt;/Plugin
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input udp <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">port</span> <span class="o">=</span>&gt; <span class="s2">&#34;25826&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">codec</span> <span class="o">=</span>&gt; collectd <span class="o">{}</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">type</span> <span class="o">=</span>&gt; <span class="s2">&#34;collectd&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    stdout<span class="o">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">codec</span> <span class="o">=</span>&gt; rubydebug
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="413-redis">4.1.3 redis</h4>
+<p>redis插件主要作用在于从redis中获取数据。它支持redis中的两种方式；支持redis channel（发布频道）以及lists两种方式。logstash从redis读数据，可以基于列表方式进行。也可以基于channel方式进行。也就是说redis可以仅工作在正常模式下，不用启用channel机制，也一样能够使logstash从中获取数据。</p>
+<p>对于logstash而言，一般要求redis版本在<font color="#f8070d" size=3><code>2.6.0</code></font>之后的版本。</p>
+<h3 id="42-filter插件">4.2 filter插件</h3>
+<p>filter插件主要用于将event通过output发出之前对其实现某些处理功能。对所收集到的数据当中，期望能够基于某种特定格式进行拆分、组合、过滤其中某些信息，都可以使用filter插件实现。在过滤前后如果有需要，都可以调用codec插件，事先基于某种形式对消息做编码。将处理过数据存往任何可存储位置，需要用到特定于存储位置的输出插件。logstash有众多filter过滤器。</p>
+<h4 id="421-grok">4.2.1 grok</h4>
+<p>gork是logstash中最重要的插件之一，主要用于分析并结构化文本数据。从web服务器日志读取的日志事件是遵循同种格式的，如：我们只想统计有多少访问IP，但是获取的是一行信息。为了能够方便随后的统计操作，需要将每读到的任何一行日志实现切好。使得对日志分析能够得以进行。目前是logstash中将非结构化日志数据转化为结构化的可查询数据的不二之选。</p>
+<p>目前支持处理 <font color="#f8070d" size=3><code>syslog</code></font> <font color="#f8070d" size=3><code>httpd</code></font> <font color="#f8070d" size=3><code>nginx</code></font> 等。默认情况下，logstash提供了120种默认grok模式。这些模式定义在<font color="#f8070d" size=3><code>patterns</code></font>目录下，每个模式都有默认的名称。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">rpm -ql logstash<span class="p">|</span>grep <span class="s2">&#34;patterns</span>$<span class="s2">&#34;</span><span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="422-gork语法格式">4.2.2 gork语法格式</h4>
+<p>logstash中grok的语法格式是使用<font color="#f8070d" size=3><code>%{}</code></font>括起的一组信息使用<font color="#f8070d" size=3><code>:</code></font>隔开，其中左半段称之为<font color="#f8070d" size=3><code>SYNTAX</code></font>由半段称之为<font color="#f8070d" size=3><code>SEMANTIC</code></font>。其中SYNTAX表示grok模板预定义模式中已有的模式名称，SEMANTIC，匹配到的文本的自定义的标识符。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">%<span class="o">{</span>SYNTAX:SEMANTIC<span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>例:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">10.0.0.1 GET /index.html <span class="m">30</span> 0.23
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">%<span class="o">{</span>IP:client_ip<span class="o">}</span> %<span class="o">{</span>WORD:method<span class="o">}</span> %<span class="o">{</span>URIPATHPARAM:request<span class="o">}</span> %<span class="o">{</span>NUMBER:bytes<span class="o">}</span> %<span class="o">{</span>NUMBER:duration<span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>10.0.0.1 GET /index.html 30 0.23
+{
+&ldquo;message&rdquo; =&gt; &ldquo;10.0.0.1 GET /index.html 30 0.23&rdquo;,
+&ldquo;@version&rdquo; =&gt; &ldquo;1&rdquo;,
+&ldquo;@timestamp&rdquo; =&gt; &ldquo;2018-05-31T10:34:37.150Z&rdquo;,
+&ldquo;host&rdquo; =&gt; &ldquo;mysql&rdquo;,
+&ldquo;client_ip&rdquo; =&gt; &ldquo;10.0.0.1&rdquo;,
+&ldquo;method&rdquo; =&gt; &ldquo;GET&rdquo;,
+&ldquo;request&rdquo; =&gt; &ldquo;/index.html&rdquo;,
+&ldquo;bytes&rdquo; =&gt; &ldquo;30&rdquo;,
+&ldquo;duration&rdquo; =&gt; &ldquo;0.23&rdquo;
+}</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input <span class="o">{</span>
+</span></span><span class="line"><span class="cl">		stdin <span class="o">{}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">filter <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  grok <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">match</span> <span class="o">=</span>&gt; <span class="o">{</span> 
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;message&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;%{IP:client_ip} %{WORD:method} %{URIPATHPARAM:request} %{NUMBER:bytes} %{NUMBER:duration}&#34;</span> 
+</span></span><span class="line"><span class="cl">    <span class="o">}</span> 
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output <span class="o">{</span>
+</span></span><span class="line"><span class="cl">		stdout <span class="o">{</span> <span class="nv">codec</span> <span class="o">=</span>&gt; rubydebug <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>自定义grok模式</p>
+<p>grok模式是基于正则表达式的模式编写，其元字符与其他用到正则表达式的工具awk\sed\grep\pcre差别不大</p>
+<p>nginx log匹配方式</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">NGUSERNAME <span class="o">[</span>a-zA-Z<span class="se">\.\@\-\+</span>_%<span class="o">]</span>+
+</span></span><span class="line"><span class="cl">NGUSER %<span class="o">{</span>NGUSERNAME<span class="o">}</span>
+</span></span><span class="line"><span class="cl">NGINXACCESS %<span class="o">{</span>IPORHOST:clientip<span class="o">}</span> - %<span class="o">{</span>NOTSPACE:remote_user<span class="o">}</span> <span class="se">\[</span>%<span class="o">{</span>HTTPDATE:timestamp<span class="o">}</span><span class="se">\]</span> <span class="se">\&#34;</span><span class="o">(</span>?:%<span class="o">{</span>WORD:verb<span class="o">}</span> %<span class="o">{</span>NOTSPACE:request<span class="o">}(</span>?: HTTP/%<span class="o">{</span>NUMBER:httpversion<span class="o">})</span>?<span class="p">|</span>%<span class="o">{</span>DATA:rawrequest<span class="o">})</span><span class="se">\&#34;</span> %<span class="o">{</span>NUMBER:response<span class="o">}</span> <span class="o">(</span>?:%<span class="o">{</span>NUMBER:bytes<span class="o">}</span><span class="p">|</span>-<span class="o">)</span> %<span class="o">{</span>QS:referrer<span class="o">}</span> %<span class="o">{</span>QS:agent<span class="o">}</span> %<span class="o">{</span>NOTSPACE:http_x_forwarded_for<span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://blog.csdn.net/joeyon1985/article/details/46639511" target="_blank" rel="noopener noreffer">LOGSTASH+ELASTICSEARCH+KIBANA处理NGINX访问日志 - CSDN博客</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input <span class="o">{</span>
+</span></span><span class="line"><span class="cl">		file <span class="o">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nv">path</span> <span class="o">=</span>&gt; <span class="o">[</span><span class="s1">&#39;/var/log/nginx/access.log&#39;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">				<span class="nb">type</span> <span class="o">=</span>&gt; <span class="s2">&#34;nginxlog&#34;</span>
+</span></span><span class="line"><span class="cl">				<span class="nv">start_position</span> <span class="o">=</span>&gt; <span class="s2">&#34;beginning&#34;</span>
+</span></span><span class="line"><span class="cl">		<span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">filter <span class="o">{</span>
+</span></span><span class="line"><span class="cl">		grok <span class="o">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nv">match</span> <span class="o">=</span>&gt; <span class="o">{</span> <span class="s2">&#34;message&#34;</span> <span class="o">=</span>&gt; <span class="s2">&#34;%{NGINXACCESS}&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">		<span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output <span class="o">{</span>
+</span></span><span class="line"><span class="cl">		stdout	<span class="o">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nv">codec</span> <span class="o">=</span>&gt; rubydebug
+</span></span><span class="line"><span class="cl">		<span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>action 将数据输出到至elasticsearch中后基于什么方式做操作
+hosts es主机集群列表。数组
+index 存储在es的哪个索引当中</p>
+<p>logstash在使用redis做输入或输出插件时，有两种数据类型，用来保存logstash输出的数据list channel</p>
+<p><a href="https://blog.csdn.net/aaronhadoop/article/details/73163025" target="_blank" rel="noopener noreffer">ES5.4.0 记录 - CSDN博客</a></p>
+<p><a href="https://blog.csdn.net/qq_21383435/article/details/79323739" target="_blank" rel="noopener noreffer">18-elasticsearch集群健康为黄色 - CSDN博客</a></p>
+<p>curl -X PUT 172.16.16.18:9200/gongsufanghua-work_record/_settings -d &lsquo;{
+&ldquo;index&rdquo; : {
+&ldquo;number_of_replicas&rdquo; : 0
+}
+}&rsquo;</p>
+<p><a href="https://segmentfault.com/a/1190000011784259" target="_blank" rel="noopener noreffer">logstash-input-jdbc同步mysql数据到elasticsearch - 运维学习之路 - SegmentFault 思否</a></p>
+<p><a href="https://blog.csdn.net/u012546526/article/details/78598608" target="_blank" rel="noopener noreffer">Elasticsearch yellow unassigned_shards 恢复 replicas 节点恢复 - CSDN博客</a></p>
+<p><a href="https://www.jianshu.com/p/62433b9c5c96" target="_blank" rel="noopener noreffer">logstash mysql 准实时同步到 elasticsearch - 简书</a></p>
+<h2 id="5-conditionals">5 conditionals</h2>
+<p>当需要在特定条件下过滤或输出事件。可以使用条件条件判断语句。Logstash中的条件查看和行为与编程语言中的条件相同。条件语句支持if，else if以及else和可以被嵌套。</p>
+<p><a href="https://www.elastic.co/guide/en../../images/Logstash/6.4/event-dependent-configuration.html#conditionals" target="_blank" rel="noopener noreffer">conditionals</a></p>
+<h3 id="51-语法">5.1 语法</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="k">if</span> EXPRESSION <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  ...
+</span></span><span class="line"><span class="cl"><span class="o">}</span> <span class="k">else</span> <span class="k">if</span> EXPRESSION <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  ...
+</span></span><span class="line"><span class="cl"><span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  ...
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>logstash支持以下比较运算符：</p>
+<ul>
+<li><font color="#f8070d" size=3><code>==</code></font> <font color="#f8070d" size=3><code>!=</code></font>、 <font color="#f8070d" size=3><code>&lt;</code></font> <font color="#f8070d" size=3><code>&gt;</code></font> <font color="#f8070d" size=3><code>&lt;=</code></font> <font color="#f8070d" size=3><code>&gt;=</code></font></li>
+<li>regexp：<font color="#f8070d" size=3><code>=~</code></font><font color="#f8070d" size=3><code>!~</code></font>（检查右边的模式与左边的字符串值）</li>
+<li>包含：<font color="#f8070d" size=3><code>in</code></font> <font color="#f8070d" size=3><code>not in</code></font></li>
+<li>布尔运算符是： <font color="#f8070d" size=3><code>and</code></font> <font color="#f8070d" size=3><code>or</code></font> <font color="#f8070d" size=3><code>nand</code></font> <font color="#f8070d" size=3><code>xor（异或）</code></font></li>
+<li>支持的一元运算符是：<font color="#f8070d" size=3><code>!</code></font></li>
+</ul>
+<hr>
+<p>注：条件判断语句不包括数学运算符，如下写法logstash会报错</p>
+<hr>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="k">if</span> <span class="o">[</span>seg_num<span class="o">]</span>&lt;<span class="o">[</span>total_seg<span class="o">]</span>-1 <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  ...
+</span></span><span class="line"><span class="cl"><span class="o">}</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="52-logstash常用条件判断语句">5.2 logstash常用条件判断语句</h3>
+<p>为了避免多个input的数据提交到Elasticsearch后共存于一个索引中。使用index参数来为每个不同的type建立单独的索引。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">input<span class="o">{</span>
+</span></span><span class="line"><span class="cl">  file<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">path</span><span class="o">=</span>&gt; <span class="s2">&#34;/usr/local/elasticsearch-2.3.2/logs/elasticsearch.log.*&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">type</span><span class="o">=</span>&gt; <span class="s2">&#34;elasticsearch&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">start_position</span><span class="o">=</span>&gt; <span class="s2">&#34;beginning&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  file<span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">path</span><span class="o">=</span>&gt; <span class="s2">&#34;/var/log/secure&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">type</span><span class="o">=</span>&gt; <span class="s2">&#34;secure&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">start_position</span><span class="o">=</span>&gt; <span class="s2">&#34;beginning&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">output<span class="o">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>type<span class="o">]</span> <span class="o">==</span> <span class="s2">&#34;elasticsearch&#34;</span> <span class="o">{</span>  
+</span></span><span class="line"><span class="cl">    elasticsearch <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">hosts</span><span class="o">=</span>&gt; <span class="o">[</span><span class="s2">&#34;192.168.44.129:9200&#34;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">index</span><span class="o">=</span>&gt; <span class="s2">&#34;elasticsearch-%{+YYYY-MM}&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>type<span class="o">]</span> <span class="o">==</span> <span class="s2">&#34;secure&#34;</span> <span class="o">{</span>  
+</span></span><span class="line"><span class="cl">    elasticsearch <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">hosts</span><span class="o">=</span>&gt; <span class="o">[</span><span class="s2">&#34;192.168.44.129:9200&#34;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">index</span><span class="o">=</span>&gt; <span class="s2">&#34;secure-%{+YYYY-MM}&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>使用in运算符来测试字段是否包含特定字符串，键或（对于列表）元素：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">filter <span class="o">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>foo<span class="o">]</span> in <span class="o">[</span>foobar<span class="o">]</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;field in field&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>foo<span class="o">]</span> in <span class="s2">&#34;foo&#34;</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;field in string&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="s2">&#34;hello&#34;</span> in <span class="o">[</span>greeting<span class="o">]</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;string in field&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>foo<span class="o">]</span> in <span class="o">[</span><span class="s2">&#34;hello&#34;</span>, <span class="s2">&#34;world&#34;</span>, <span class="s2">&#34;foo&#34;</span><span class="o">]</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;field in list&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="o">[</span>missing<span class="o">]</span> in <span class="o">[</span>alsomissing<span class="o">]</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;shouldnotexist&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> !<span class="o">(</span><span class="s2">&#34;foo&#34;</span> in <span class="o">[</span><span class="s2">&#34;hello&#34;</span>, <span class="s2">&#34;world&#34;</span><span class="o">])</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    mutate <span class="o">{</span> <span class="nv">add_tag</span> <span class="o">=</span>&gt; <span class="s2">&#34;shouldexist&#34;</span> <span class="o">}</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在单个条件中指定多个表达式：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="k">if</span> <span class="o">[</span>loglevel<span class="o">]</span> <span class="o">==</span> <span class="s2">&#34;ERROR&#34;</span> and <span class="o">[</span>deployment<span class="o">]</span> <span class="o">==</span> <span class="s2">&#34;production&#34;</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    pagerduty <span class="o">{</span>
+</span></span><span class="line"><span class="cl">    ...
+</span></span><span class="line"><span class="cl">    <span class="o">}</span>
+</span></span><span class="line"><span class="cl"><span class="o">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2018-11-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/logstash/" data-title="Logstash 使用" data-hashtags="ELK"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/logstash/" data-hashtag="ELK"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/logstash/" data-title="Logstash 使用" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/logstash/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/logstash/" data-title="Logstash 使用"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/logstash/" data-title="Logstash 使用"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/logstash/" data-title="Logstash 使用"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/elk/">ELK</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/es/" class="prev" rel="prev" title="安装elasticsearch"><i class="fas fa-angle-left fa-fw"></i>安装elasticsearch</a>
+            <a href="/%E6%94%B6%E9%9B%86syslog/" class="next" rel="next" title="ELK 收集syslog">ELK 收集syslog<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-11-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Logstash 使用"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

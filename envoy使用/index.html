@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Envoy部署 - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="Envoy部署" />
+<meta property="og:description" content="[toc]
+常用的构建方法 https://skyao.io/learning-envoy/
+手动配置构建环境，手动构建Envoy。
+使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy
+使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy，并直接将Envoy程序打包成Docker镜像
+提供Bootstrap配置文件，存在使用xDS的动态资源时，还需要基于文件或管理服务器向其提供必须的配置信息
+也可使用Envoy的配置生成器生成示例性配置 基于Bootstrap配置文件启动Envoy实例
+直接启动二进制Envoy 于Kubernetes平台基于Sidecar的形式运行Envoy，或运行单独的Envoy Pod（Edge Proxy） 启动Envoy 启动Envoy时，需要通过（-c 选项为其指定初始配置文件以提供引导配置（Bootstrap configuration），这也是使用v2APl的必然要求；
+1 envoy -c &lt;path to config&gt;.{json,yaml,pb,pb_text} 扩展名代表了配置信息的组织格式；
+引导配置是Envoy配置信息的基点，用于承载Envoy的初始配置，它可能包括静态资源和动态资源的定义
+静态资源（static_resources）于启动直接加载
+动态资源（dynamic_resources）则需要通过配置的xDS服务获取并生成
+通常，Listener 和 Cluster 是Envoy得以运行的基础，而二者的配置可以全部为静态格式，也可以混合使用动态及静态方式提供，或者全部配置为动态；
+一个yaml格式纯静态的基础配置框架类似如下所示：
+1 2 3 4 5 6 7 8 9 10 11 static_resources: linteners: - name: ... address: {} filter_chains: [] clusters: - name: ... type: ... connect_timeout: {} lb_policy: ... load_assignment: {} Listener 简易静态配置 侦听器主要用于定义Envoy监听的用于接收Down streams请求的套接字、用于处理请求时调用的过滤器链及相关的其它配置属性;目前envoy仅支持tcp的协议
+1 2 3 4 listeners: - name: address: socket_address: { address: ." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2020-09-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Envoy部署"/>
+<meta name="twitter:description" content="[toc]
+常用的构建方法 https://skyao.io/learning-envoy/
+手动配置构建环境，手动构建Envoy。
+使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy
+使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy，并直接将Envoy程序打包成Docker镜像
+提供Bootstrap配置文件，存在使用xDS的动态资源时，还需要基于文件或管理服务器向其提供必须的配置信息
+也可使用Envoy的配置生成器生成示例性配置 基于Bootstrap配置文件启动Envoy实例
+直接启动二进制Envoy 于Kubernetes平台基于Sidecar的形式运行Envoy，或运行单独的Envoy Pod（Edge Proxy） 启动Envoy 启动Envoy时，需要通过（-c 选项为其指定初始配置文件以提供引导配置（Bootstrap configuration），这也是使用v2APl的必然要求；
+1 envoy -c &lt;path to config&gt;.{json,yaml,pb,pb_text} 扩展名代表了配置信息的组织格式；
+引导配置是Envoy配置信息的基点，用于承载Envoy的初始配置，它可能包括静态资源和动态资源的定义
+静态资源（static_resources）于启动直接加载
+动态资源（dynamic_resources）则需要通过配置的xDS服务获取并生成
+通常，Listener 和 Cluster 是Envoy得以运行的基础，而二者的配置可以全部为静态格式，也可以混合使用动态及静态方式提供，或者全部配置为动态；
+一个yaml格式纯静态的基础配置框架类似如下所示：
+1 2 3 4 5 6 7 8 9 10 11 static_resources: linteners: - name: ... address: {} filter_chains: [] clusters: - name: ... type: ... connect_timeout: {} lb_policy: ... load_assignment: {} Listener 简易静态配置 侦听器主要用于定义Envoy监听的用于接收Down streams请求的套接字、用于处理请求时调用的过滤器链及相关的其它配置属性;目前envoy仅支持tcp的协议
+1 2 3 4 listeners: - name: address: socket_address: { address: ."/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" /><link rel="prev" href="https://cylonchau.github.io/envoy%E5%9F%BA%E7%A1%80/" /><link rel="next" href="https://cylonchau.github.io/envoy-%E5%81%A5%E5%BA%B7%E7%8A%B6%E6%80%81%E7%9B%91%E6%B5%8B/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Envoy部署",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/envoy%E4%BD%BF%E7%94%A8\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "envoy","wordcount":  1054 ,
+        "url": "https:\/\/cylonchau.github.io\/envoy%E4%BD%BF%E7%94%A8\/","datePublished": "2020-09-02T00:00:00+00:00","dateModified": "2020-09-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">Envoy部署</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/envoy/"><i class="far fa-folder fa-fw"></i>envoy</a>&nbsp;<a href="/categories/traffic-management/"><i class="far fa-folder fa-fw"></i>traffic management</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-09-02 00:00:00">2020-09-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1054 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 5 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[toc]</p>
+<h3 id="常用的构建方法">常用的构建方法</h3>
+<p><a href="https://skyao.io/learning-envoy/" target="_blank" rel="noopener noreffer">https://skyao.io/learning-envoy/</a></p>
+<ul>
+<li>
+<p>手动配置构建环境，手动构建Envoy。</p>
+</li>
+<li>
+<p>使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy</p>
+</li>
+<li>
+<p>使用Envoy提供的预制于Docker中的构建环境进行手动构建二进制Envoy，并直接将Envoy程序打包成Docker镜像</p>
+</li>
+<li>
+<p>提供Bootstrap配置文件，存在使用xDS的动态资源时，还需要基于文件或管理服务器向其提供必须的配置信息</p>
+<ul>
+<li>也可使用Envoy的配置生成器生成示例性配置</li>
+</ul>
+</li>
+<li>
+<p>基于Bootstrap配置文件启动Envoy实例</p>
+<ul>
+<li>直接启动二进制Envoy</li>
+<li>于Kubernetes平台基于Sidecar的形式运行Envoy，或运行单独的Envoy Pod（Edge Proxy）</li>
+</ul>
+<h3 id="启动envoy">启动Envoy</h3>
+</li>
+</ul>
+<p>启动Envoy时，需要通过（<code>-c</code> 选项为其指定初始配置文件以提供引导配置（Bootstrap configuration），这也是使用v2APl的必然要求；</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">envoy -c  &lt;path to config&gt;.{json,yaml,pb,pb_text}
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>扩展名代表了配置信息的组织格式；</p>
+<p>引导配置是Envoy配置信息的基点，用于承载Envoy的初始配置，它可能包括静态资源和动态资源的定义</p>
+<ul>
+<li>
+<p>静态资源（static_resources）于启动直接加载</p>
+</li>
+<li>
+<p>动态资源（dynamic_resources）则需要通过配置的xDS服务获取并生成</p>
+</li>
+</ul>
+<p>通常，<code>Listener</code> 和 <code>Cluster</code> 是Envoy得以运行的基础，而二者的配置可以全部为静态格式，也可以混合使用动态及静态方式提供，或者全部配置为动态；</p>
+<p>一个yaml格式纯静态的基础配置框架类似如下所示：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">static_resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">linteners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="listener-简易静态配置">Listener 简易静态配置</h3>
+<p>侦听器主要用于定义Envoy监听的用于接收Down streams请求的套接字、用于处理请求时调用的过滤器链及相关的其它配置属性;目前envoy仅支持tcp的协议</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: ..., port_value: ..., protocol</span><span class="p">:</span><span class="w"> </span><span class="l">...}</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>L4过滤器echo主要用于演示网络过滤器APl的功能，它会回显接收到的所有数据至下游的请求者；在配置文件中调用时其名称为 <code>envoy.echo</code> ；</p>
+<p>下面是一个最简单的静态侦听器配置示例：</p>
+<p><a href="https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/network_filters/echo_filter" target="_blank" rel="noopener noreffer">echo文档</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">static_resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">listener_0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">socket_address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="m">0.0.0.0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">port_value</span><span class="p">:</span><span class="w"> </span><span class="m">15001</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.echo</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225303515.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225303515.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225303515.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225303515.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225303515.png"
+        title="image-20220506225303515" /></p>
+<h3 id="cluster-静态配置">Cluster 静态配置</h3>
+<p>通常，集群代表了一组提供相同服务的上游服务器（端点）的组合，它可由用户静态配置，也能够通过CDS动态获取；</p>
+<p>集群需要在“预热”环节完成之后方能转为可用状态，这意味着集群管理器通过DNS解析或EDS服务完成端点初始化，以及健康状态检测成功之后才可用；</p>
+<p><a href="https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto" target="_blank" rel="noopener noreffer">cluster 官方参数</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 集群的唯一名称，且为提供alt_stat_name时会被用于统计信息中</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">alt_state_name</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 统计信息中使用集群带名称。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># 用于解析集群（生成集群端点）时使用的服务发现类型，可用值有 STATIC STRJCT_DNS LOGICAL_DNS GRIGINAL_DST和EDS等</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">.. </span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># 负载均衡算法，支持 ROUND_ROBIN LEAST_REQUEST RING_HASH RANDOM MAGLEV CLUSTER_PROVIDED</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># 为 STATIC STRJCT_DNS LOGICAL_DNS 类型的集群指定成员获取方式，EDS类型继承要使用eds_cluster_config字段配置。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">loda_assignment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">cluser_name</span><span class="p">:</span><span class="w"> </span><span class="l">..</span><span class="w"> </span><span class="c"># 集群名称</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w"> </span><span class="c">#端点列表</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">locality</span><span class="p">:</span><span class="w"> </span>{}<span class="w"> </span><span class="c">#表示上游主机所处的位置，通常以 region、none等进行标识。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">lb_endpoints</span><span class="p">:</span><span class="w"> </span><span class="c"># 属于指定位置的端点列表</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">endpoint_name</span><span class="p">:</span><span class="w"> </span><span class="c">#端点的名称</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="c"># 端点的定义</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span><span class="c">#端点地址标识</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">port_value</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">portocol</span><span class="p">:</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>静态Cluster的各端点可以在配置中直接给出，也可借助DNS服务进行动态发现；</p>
+<p>下面的示例直接给出了两个端点地址</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">test_cluster</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span><span class="m">0.25</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">STATIC</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">ROUND_ROBIN</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">cluster_name</span><span class="p">:</span><span class="w"> </span><span class="l">test_cluster</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">lb_endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 10.0.0.1, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 10.0.0.2, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="filter">filter</h3>
+<h4 id="tcp_proxy">tcp_proxy</h4>
+<p><a href="https://www.envoyproxy.io/docs/envoy/v1.15.0/api-v2/config/filter/network/tcp_proxy/v2/tcp_proxy.proto" target="_blank" rel="noopener noreffer">官方文档</a></p>
+<p>TCP代理过滤器在下游客户端及上游集群之间执行1:1网络连接代理</p>
+<ul>
+<li>它可以单独用作隧道替换，也可以同其他过滤器（如MongoDB过滤器或速率限制过滤器）结合使用；</li>
+<li>TCP代理过滤器严格执行由全局资源管理于为每个上游集群的全局资源管理器设定的连接限制
+<ul>
+<li>TCP代理过滤器检查上游集群的资源管理器是否可以在不超过该集群的最大连接数的情况下创建连接；</li>
+</ul>
+</li>
+<li>TCP代理过滤器可直接将请求路由至指定的集群，也能够在多个目标集群间基于权重进行调度转发；</li>
+</ul>
+<p>配置示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">listener_0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address:0.0.0.0, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.tcp_proxy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">typed_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;@type&#34;: </span><span class="l">type.googleapis.com/envoy.config.filter.network.tcp_proxy.v2.TcpProxy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">stat_prefix</span><span class="p">:</span><span class="w"> </span><span class="l">tcp_01</span><span class="w"> </span><span class="c"># 统计数据的前缀</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l">test_cluster</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>下面的示例基于TCP代理将下游用户（本机）请求代理至外部的（egress）两个web服务器</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">static_resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">listener_0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 0.0.0.0, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.tcp_proxy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">typed_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;@type&#34;: </span><span class="l">type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">stat_prefix</span><span class="p">:</span><span class="w"> </span><span class="l">tcp_01</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l">test_tcp</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">test_tcp</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span><span class="m">0.</span><span class="l">5s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">STATIC</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">ROUND_ROBIN</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">cluster_name</span><span class="p">:</span><span class="w"> </span><span class="l">test_tcp</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">lb_endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 127.0.0.1, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">90</span><span class="w"> </span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-dockerfile" data-lang="dockerfile"><span class="line"><span class="cl">version: <span class="s1">&#39;3&#39;</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>services:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  envoy:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    image: envoyproxy/envoy-alpine:v1.15-latest<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    ports: <span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    - 81:80<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    environment: <span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    - <span class="nv">ENVOY_UID</span><span class="o">=</span><span class="m">0</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    volumes:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    - ./envoy.yaml:/etc/envoy/envoy.yaml<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    network_mode: <span class="s2">&#34;service:mainserver&#34;</span> <span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    depends_on:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    - mainserver<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  mainserver:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    image: sealloong/envoy-end:latest<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>    networks:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>      envoymesh:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>        aliases:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>        - webserver<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>        - httpserver<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>        - envoy_end<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>networks:<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span>  envoymesh: <span class="o">{}</span><span class="err">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="http_connection_manager">http_connection_manager</h4>
+<p><code>http_connection_manager</code> 通过引入L7过滤器链实现了对http协议的操纵，其中router过滤器用于配置路由转发；</p>
+<p><a href="https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto" target="_blank" rel="noopener noreffer">官方文档</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: ..., port_value</span><span class="p">:</span><span class="w"> </span><span class="l">...., protocol:... }</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.http_connection_manager</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">condec_type</span><span class="p">:</span><span class="w"> </span><span class="l">..</span><span class="w"> </span><span class="c"># 链接管理器使用的编解码器类型，可用值有 AUTO HTTP1 HTTP2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">stat_prefix</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 统计信息中使用的易读性的信息前缀。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">route_config</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 静态路由配置，动态配置应该使用rds字段进行指定。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="c"># 路由配置的名称</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">virtual_hosts</span><span class="p">:</span><span class="w"> </span><span class="c"># 虚拟主机的路基名称，用于构成路由表</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 虚拟主机的逻辑名称，用于统计信息，与路由无关</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">domains</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c"># 虚拟主机匹配的域名列表，支持 * 通配符，匹配搜索次序为精确匹配、前缀匹配、后缀匹配及完全匹配。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">routes</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c"># 路由列表，按照顺序搜索，第一个匹配到的路由信息。</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">http_filters</span><span class="p">:</span><span class="w"> </span><span class="c"># 定义http过滤器链</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.router</span><span class="w"> </span><span class="c"># 调用过滤器为envoy.router</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>处理请求时，Envoy首先根据下游客户端请求的 <code>host</code> 来搜索虚拟主机列表中各 <code>virtual_host</code> 中的<code>domains</code> 列表中的定义，第一个匹配到的 <code>Domain</code> 的定义所属的 <code>virtual_host</code> 即可处理请求的虚拟主机;</p>
+<p>而后搜索当前虚拟生机中的 <code>routes</code> 列表中的路由列表中各路由条目的 <code>match</code> 的定义，第一个匹配到的 <code>match</code> 后的路由机制（route.redirect或direct_response）即生效；</p>
+<p><code>route_config.virtual_hosts.routes</code> 配置的路由信息用于将下游的客户端请求路由至合适的上游集群中某Server上；</p>
+<ul>
+<li>其路由方式是将url匹配match字段的定义
+<ul>
+<li><code>match</code> 字段可通过  <code>prefix</code>（前级）、<code>path</code>（路径）或 <code>regex</code>（正则表达式）三者之一来表示匹配模式；</li>
+</ul>
+</li>
+<li>与match相关的请求将由 <code>route</code> 、<code>redirect</code> 或 <code>direct_response</code> 三个字段其中之一完成路由；</li>
+<li>由route定义的路由目标必须是 <code>cluster</code>（上游集群名称）、<code>cluster_header</code>（根据请求标头中的 <code>cluster_header</code> 的值确定目标集群）或 <code>weighted_clusters</code>（路由目标有多个集群，每个集群拥有一定的权重）其中之一；</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">routes</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">...    </span><span class="w"> </span><span class="c"># 路由条目的名称</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">match</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l">...</span><span class="w"> </span><span class="c"># 请求的URL的前缀</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">route</span><span class="p">:</span><span class="w">        </span><span class="c"># 路由条目</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w">    </span><span class="c"># 目标下游集群。</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h5 id="egress代理配置示例">Egress代理配置示例</h5>
+<p>下面是一个egree类型的Envoy配置示例，定义了两个virtual_host，不过，发往第二个virtual_host的请求将被重定向至第一个。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">static_resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">listener_0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 0.0.0.0, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.http_connection_manager</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">typed_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;@type&#34;: </span><span class="l">type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">stat_prefix</span><span class="p">:</span><span class="w"> </span><span class="l">egress_http</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">codec_type</span><span class="p">:</span><span class="w"> </span><span class="l">AUTO</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">route_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">study_route</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">virtual_hosts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">web_service_1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">domains</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&#34;*.ik8s.io&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;ik8s.io&#34;</span><span class="w"> </span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">routes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span>- <span class="nt">match</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/&#34;</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">route</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l">web_cluster_1 }</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">web_service_2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">domains</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&#34;*.k8scast.cn&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;k8scast.cn&#34;</span><span class="w"> </span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">routes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span>- <span class="nt">match</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/&#34;</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">redirect</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                  </span><span class="nt">host_redirect</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;www.ik8s.io&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">http_filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.filters.http.router</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">web_cluster_1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span><span class="m">0.</span><span class="l">25s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">STRICT_DNS</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">ROUND_ROBIN</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">cluster_name</span><span class="p">:</span><span class="w"> </span><span class="l">web_cluster_1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">lb_endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: myservice, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">90</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">web_cluster_2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span><span class="m">0.</span><span class="l">25s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">STRICT_DNS</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">ROUND_ROBIN</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">cluster_name</span><span class="p">:</span><span class="w"> </span><span class="l">web_cluster_2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">lb_endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: webserver2, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">90</span><span class="w"> </span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;3&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">services</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">envoyproxy/envoy-alpine:v1.15-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">ENVOY_UID=0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="m">81</span><span class="p">:</span><span class="m">80</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">./envoy.yaml:/etc/envoy/envoy.yaml</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">aliases</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">envoy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">webserver1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">webserver2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">webserver1</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">sealloong/envoy-end:latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">COLORFUL=red</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">aliases</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">webservice</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">myservice</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">expose</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="m">90</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">webserver2</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">sealloong/envoy-end:latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">COLORFUL=blue</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">aliases</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">myservice</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">expose</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="m">90</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">     
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>测试结果</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ curl -H <span class="s1">&#39;Host: www.ik8s.io&#39;</span> 127.0.0.1:81/ping
+</span></span><span class="line"><span class="cl"><span class="o">{</span><span class="s2">&#34;message&#34;</span>:<span class="s2">&#34;pong&#34;</span><span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ curl -H <span class="s1">&#39;Host: www.ik8s.io&#39;</span> 127.0.0.1:81/colorful
+</span></span><span class="line"><span class="cl"><span class="o">{</span><span class="s2">&#34;message&#34;</span>:<span class="s2">&#34;hello with red.&#34;</span><span class="o">}</span>$ 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h5 id="ingress-配置示例">ingress 配置示例</h5>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">static_resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">listeners</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">listener_0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 0.0.0.0, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">filter_chains</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy_http_connection_manager</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">typed_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;@type&#34;: </span><span class="l">type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">stat_prefix</span><span class="p">:</span><span class="w"> </span><span class="l">ingress_http</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">codec_type</span><span class="p">:</span><span class="w"> </span><span class="l">AUTO</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">route_config</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">local_route</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">virtual_hosts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">local_service</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">domains</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&#34;*&#34;</span><span class="w"> </span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">routes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span>- <span class="nt">match</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/&#34;</span><span class="w"> </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">route</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l">local_service }</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">http_filters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">envoy.filters.http.router</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusters</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">local_service</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">connect_timeout</span><span class="p">:</span><span class="w"> </span><span class="m">0.</span><span class="l">25s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">STATIC</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">lb_policy</span><span class="p">:</span><span class="w"> </span><span class="l">ROUND_ROBIN</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">load_assignment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">cluster_name</span><span class="p">:</span><span class="w"> </span><span class="l">local_service</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">lb_endpoints</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">endpoint</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">address</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">socket_address</span><span class="p">:</span><span class="w"> </span>{<span class="w"> </span><span class="nt">address: 127.0.0.1, port_value</span><span class="p">:</span><span class="w"> </span><span class="m">90</span><span class="w"> </span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;3&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">services</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">envoyproxy/envoy-alpine:v1.15-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">ENVOY_UID=0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">./envoy.yaml:/etc/envoy/envoy.yaml</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">network_mode</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;service:webserver&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">webserver</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">webserver</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">sealloong/envoy-end:latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">COLORFUL=red</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">aliases</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">webservice</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">myservice</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">expose</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="m">90</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">networks</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-09-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-title="Envoy部署" data-hashtags="envoy"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-hashtag="envoy"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-title="Envoy部署" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-title="Envoy部署"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-title="Envoy部署"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/envoy%E4%BD%BF%E7%94%A8/" data-title="Envoy部署"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/envoy/">envoy</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/envoy%E5%9F%BA%E7%A1%80/" class="prev" rel="prev" title="envoy概念"><i class="fas fa-angle-left fa-fw"></i>envoy概念</a>
+            <a href="/envoy-%E5%81%A5%E5%BA%B7%E7%8A%B6%E6%80%81%E7%9B%91%E6%B5%8B/" class="next" rel="next" title="Envoy 健康状态监测">Envoy 健康状态监测<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2020-09-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Envoy部署"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

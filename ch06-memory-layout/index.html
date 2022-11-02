@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch06 memory layout - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="ch06 memory layout" />
+<meta property="og:description" content="[toc]
+Overview 在编写程序时包含任意指令如，已初始化和未初始化数据，局部变量，函数等都是用于动态分配内存的指令。当程序编译后（默认生成 x.out 文件）这是一个可执行的链接文件( Executable and linking format)。在执行时这些不组织成几部分，包含不同的内存分段 (segments)
+ELF：这是系统中标准二进制格式，其一些功能包含，动态链接，动态加载，对程序运行时控制。
+可以使用 size {ELF_file} 查看被分配的每个段的大小（Linux操作系统）；
+dec 列给出的是这个程序 text &#43; data &#43; bss 段的总大小，用十进制表示 text 段是存储可执行命令的段 data 段包含所有初始化数据，全局与静态变量 BSS 段包含未初始化数据 1 2 3 $ size 1 text data bss dec hex filename 1843 584 8 2435 983 1 Memory Layout in C [1] 在C语言中内存布局模型包含六个部分
+命令行参数 (Command Line Arguments) 栈 (Stack) 堆 (Heap) 未初始化数据段 (Uninitialized Data Segment BSS) 已初始化数据段 (Initialized Data Segment) 文本/代码段 (Text/Code Segment) 这6部分结构可以再划分为两种类型：" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch06-memory-layout/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-09-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-09-28T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch06 memory layout"/>
+<meta name="twitter:description" content="[toc]
+Overview 在编写程序时包含任意指令如，已初始化和未初始化数据，局部变量，函数等都是用于动态分配内存的指令。当程序编译后（默认生成 x.out 文件）这是一个可执行的链接文件( Executable and linking format)。在执行时这些不组织成几部分，包含不同的内存分段 (segments)
+ELF：这是系统中标准二进制格式，其一些功能包含，动态链接，动态加载，对程序运行时控制。
+可以使用 size {ELF_file} 查看被分配的每个段的大小（Linux操作系统）；
+dec 列给出的是这个程序 text &#43; data &#43; bss 段的总大小，用十进制表示 text 段是存储可执行命令的段 data 段包含所有初始化数据，全局与静态变量 BSS 段包含未初始化数据 1 2 3 $ size 1 text data bss dec hex filename 1843 584 8 2435 983 1 Memory Layout in C [1] 在C语言中内存布局模型包含六个部分
+命令行参数 (Command Line Arguments) 栈 (Stack) 堆 (Heap) 未初始化数据段 (Uninitialized Data Segment BSS) 已初始化数据段 (Initialized Data Segment) 文本/代码段 (Text/Code Segment) 这6部分结构可以再划分为两种类型："/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch06-memory-layout/" /><link rel="prev" href="https://cylonchau.github.io/ch07-composite-type/" /><link rel="next" href="https://cylonchau.github.io/ch05-pointer/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch06 memory layout",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch06-memory-layout\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "C","wordcount":  1224 ,
+        "url": "https:\/\/cylonchau.github.io\/ch06-memory-layout\/","datePublished": "2022-09-28T00:00:00+00:00","dateModified": "2022-09-28T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">ch06 memory layout</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/programming/"><i class="far fa-folder fa-fw"></i>Programming</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-09-28 00:00:00">2022-09-28 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1224 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 6 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[toc]</p>
+<h2 id="overview">Overview</h2>
+<p>在编写程序时包含任意指令如，已初始化和未初始化数据，局部变量，函数等都是用于动态分配内存的指令。当程序编译后（默认生成 <code>x.out</code> 文件）这是一个可执行的链接文件( <em><strong>Executable and linking format</strong></em>)。在执行时这些不组织成几部分，包含不同的内存分段 (<em><strong>segments</strong></em>)</p>
+<blockquote>
+<p>ELF：这是系统中标准二进制格式，其一些功能包含，动态链接，动态加载，对程序运行时控制。</p>
+</blockquote>
+<p>可以使用 <code>size {ELF_file}</code> 查看被分配的每个段的大小（Linux操作系统）；</p>
+<ul>
+<li><code>dec</code> 列给出的是这个程序 text + data + bss 段的总大小，用十进制表示</li>
+<li><code>text</code> 段是存储可执行命令的段</li>
+<li><code>data</code> 段包含所有初始化数据，全局与静态变量</li>
+<li><code>BSS</code> 段包含未初始化数据</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ size <span class="m">1</span> 
+</span></span><span class="line"><span class="cl">   text    data     bss     dec     hex filename
+</span></span><span class="line"><span class="cl">   <span class="m">1843</span>     <span class="m">584</span>       <span class="m">8</span>    <span class="m">2435</span>     <span class="m">983</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="memory-layout-in-c-supa-href11asup">Memory Layout in C <sup><a href="#1">[1]</a></sup></h2>
+<p>在C语言中内存布局模型包含六个部分</p>
+<ul>
+<li>命令行参数 (<em><strong>Command Line Arguments</strong></em>)</li>
+<li>栈 (<em><strong>Stack</strong></em>)</li>
+<li>堆 (<em><strong>Heap</strong></em>)</li>
+<li>未初始化数据段 (<em><strong>Uninitialized Data Segment BSS</strong></em>)</li>
+<li>已初始化数据段 (<em><strong>Initialized Data Segment</strong></em>)</li>
+<li>文本/代码段 (<em><strong>Text/Code Segment</strong></em>)</li>
+</ul>
+<p>这6部分结构可以再划分为两种类型：</p>
+<ul>
+<li>静态内存结构 (<em><strong>Static Memory Layout</strong></em>)：包含代码段, 数据段</li>
+<li>动态内存结构 (<em><strong>Dynamic Memory Layout</strong></em>)：包含栈, 堆</li>
+</ul>
+<p>通过Overview中可以看到可以执行文件包含一些段，而缺少一些段，这部分是由运行时构建出来的。</p>
+<p>整个C程序的内存布局为下图所示</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Memory-layout.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Memory-layout.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Memory-layout.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Memory-layout.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Memory-layout.png"
+        title="C程序的内存布局" /></p>
+<center>图：memory layout C</center>
+<center><em>Source：</em>https://hackthedeveloper.com/memory-layout-c-program/</center><br>
+<h2 id="静态内存布局">静态内存布局</h2>
+<p>静态内存布局中，包含代码段(<em><strong>Code Segment</strong></em>)，数据段(<em><strong>Data Segment</strong></em>)；数据段中又分为已初始化段，通常称为数据分段(<em><strong>DS</strong></em>)，未初始化分段(<em><strong>BSS</strong></em>)。</p>
+<h3 id="代码段">代码段</h3>
+<p>代码段包含可执行的机器指令，这部分包含了程序的逻辑，为了防止堆, 栈的溢出，代码段在内存结构中处于布局中最下方。而且为了防止指令被修改，这部分是只读的。</p>
+<ul>
+<li>已编译二进制文件</li>
+<li>只读段，防止程序被修改</li>
+<li>可共享</li>
+</ul>
+<p>可以通过 <code>objdump -S &lt;file&gt;</code> 来导出代码段中存的汇编代码</p>
+<h3 id="已初始化数据段">已初始化数据段</h3>
+<p>所有已初始化的静态变量和全局变量都被存储在DS中，该段具有写权限，程序可以在运行时修改该段中变量的值。</p>
+<p>定义一个C程序，通过size观看其data段的大小</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="kt">char</span> <span class="nf">main</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="sc">&#39;1&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>size输出为528</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="err">$</span> <span class="n">size</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">   <span class="n">text</span>    <span class="n">data</span>     <span class="n">bss</span>     <span class="n">dec</span>     <span class="n">hex</span> <span class="n">filename</span>
+</span></span><span class="line"><span class="cl">   <span class="mi">1358</span>     <span class="mi">528</span>       <span class="mi">8</span>    <span class="mi">1894</span>     <span class="mi">766</span> <span class="mi">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>通过增加两个变量，一个全局变量一个静态变量，观看编译后可执行文件data段的大小与之前大小相比较</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="k">static</span> <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span> <span class="c1">// int 类型占4byte
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kt">char</span> <span class="n">b</span> <span class="o">=</span> <span class="sc">&#39;a&#39;</span><span class="p">;</span> 	  <span class="c1">// char 类型占1byte
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="kt">char</span> <span class="nf">main</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="sc">&#39;1&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>size查看data输出值为533 与之前 528 增加 5 bytes，与定义的类型相符合</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="n">size</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">   <span class="n">text</span>    <span class="n">data</span>     <span class="n">bss</span>     <span class="n">dec</span>     <span class="n">hex</span> <span class="n">filename</span>
+</span></span><span class="line"><span class="cl">   <span class="mi">1358</span>     <span class="mi">533</span>       <span class="mi">3</span>    <span class="mi">1894</span>     <span class="mi">766</span> <span class="mi">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="未初始化数据段">未初始化数据段</h3>
+<p>未初始化数据段包含如下内容</p>
+<ul>
+<li>未初始化的全局和静态变量</li>
+<li>初始化为0或空指针的变量</li>
+</ul>
+<p>接着上述例子，添加两个变量，一个不初始化值，一个初始化为0</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">a</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">static</span> <span class="kt">int</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="kt">char</span> <span class="nf">main</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="sc">&#39;1&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>通过 size 命令可以看出，这些都被分配到 BSS 部分</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="err">$</span> <span class="n">size</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">   <span class="n">text</span>    <span class="n">data</span>     <span class="n">bss</span>     <span class="n">dec</span>     <span class="n">hex</span> <span class="n">filename</span>
+</span></span><span class="line"><span class="cl">   <span class="mi">1358</span>     <span class="mi">528</span>      <span class="mi">16</span>    <span class="mi">1902</span>     <span class="mi">76</span><span class="n">e</span> <span class="mi">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>对于初始化段与未初始化段和只读数据段 (<em><strong>.rodata</strong></em>) 都会被分配到数据段中</p>
+<h2 id="动态内存布局">动态内存布局</h2>
+<p>动态内存是指程序运行时创建的的内存</p>
+<h3 id="heap">heap</h3>
+<p>堆段是由BSS往上更高部分动态内存分配的段，heap段具有以下特点</p>
+<ul>
+<li>
+<p>程序运行可以没有heap段</p>
+</li>
+<li>
+<p>heap位于在BSS之上stack之下，与stack成反方向增长和减少</p>
+</li>
+<li>
+<p>运行时分配内存</p>
+</li>
+<li>
+<p>由函数 <code>malloc()</code> , <code>calloc()</code> , <code>free()</code> 等函数管理</p>
+</li>
+<li>
+<p>heap段内存由进程中共享库和动态模块等共享内存</p>
+</li>
+</ul>
+<p>heap对于stack来说，最大的特点就是没有自动的内存管理功能，所有内存的申请和销毁都是通过开发者自行定义的，C中的Glibc API 提供了申请和销毁heap内存的功能。</p>
+<ul>
+<li>函数 <code>malloc()</code> / <code>calloc()</code> 用户空间实现的库函数，用于申请heap内存，可用于windows/linux</li>
+<li>函数 <code>free()</code> 释放由 <code>malloc()</code> / <code>calloc()</code> 申请的内存</li>
+<li><code>brk()</code> / <code>sbrk()</code> 是linux下的系统调用，在内核空间实现的库函数</li>
+</ul>
+<p>下列代码为heap内存分配示例</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdlib.h&gt; </span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">func</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="o">*</span><span class="n">aptr</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">a</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span> <span class="o">*</span><span class="p">)</span><span class="n">malloc</span><span class="p">(</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">    <span class="o">*</span><span class="n">ptr</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Heap Memory Value = %d</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="o">*</span><span class="n">ptr</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Pointing in Stack = %d</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="o">*</span><span class="n">aptr</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">free</span><span class="p">(</span><span class="n">ptr</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">func</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>下图为上述代码的图形化布局，通过申明一个指针变量 *ptr 指向了通过函数 <code>malloc()</code> 申请的 heap内存</p>
+<blockquote>
+<p>Notes: heap变量的存储实际存储时在物理内存上，而heap,stack.. 都是虚拟内存中某个进程的地址空间，通过MMU将其转为物理地址进行读写。<sup><a href="#2">[2]</a></sup></p>
+</blockquote>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/heap-layout.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/heap-layout.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/heap-layout.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/heap-layout.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/heap-layout.png"
+        title="堆内存布局" /></p>
+<center>图：heap layout of C</center>
+<center><em>Source：</em>https://hackthedeveloper.com/memory-layout-c-program/</center><br>
+<h3 id="stack">stack</h3>
+<p>stack是与heap相邻的地区，并与heap以反方向增长，当遇到heap时表示可用内存耗尽。stack段具有如下特点：</p>
+<ul>
+<li>程序运行必须拥有的内存段</li>
+<li>以先进先出 (<em><strong>LIFO</strong></em>) 的顺序添加和移除数据</li>
+<li>包含以下内容
+<ul>
+<li>所有局部变量</li>
+<li>函数参数（逆序）</li>
+<li>函数调用的返回地址</li>
+<li>基于指针的函数调用</li>
+</ul>
+</li>
+<li>stack段自动分配和销毁内存，开发者无法控制stack段内存
+<ul>
+<li>当函数执行完函数局部变量会从stack中弹出释放，也就是局部变量的作用域范围</li>
+</ul>
+</li>
+</ul>
+<p>例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> 
+</span></span><span class="line"><span class="cl"><span class="cpf">int sum(int a, int b)</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">float</span> <span class="n">avg</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">s</span> <span class="o">=</span> <span class="n">sum</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">s</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">10</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">20</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Average of %d, %d = %f</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">avg</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>下图是上述代码对于stack内存段执行时的说明，如图所示，整个如下：</p>
+<ul>
+<li>当main函数被执行时会被压入stack中</li>
+<li>main函数会调用avg函数求平均值，此时avg被压入stack</li>
+<li>avg执行sum函数，sum被压入stack</li>
+<li>此时正在执行的帧时位于最顶层的，被称为基指针 (<em><strong>base pointer</strong></em>)</li>
+<li>栈帧指向stack段顶部，存储stack最顶部地址</li>
+<li>s是一个指针保存着sum的位置，即sum函数的结尾，依次类推</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Stack-Layout.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Stack-Layout.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Stack-Layout.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Stack-Layout.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Stack-Layout.png"
+        title="堆栈布局" /></p>
+<center>图：stack layout of C</center>
+<center><em>Source：</em>https://hackthedeveloper.com/memory-layout-c-program/</center><br>
+<h4 id="栈异常">栈异常</h4>
+<p>栈异常常见异常情况有</p>
+<ul>
+<li>栈溢出 (<em><strong>Stack Overflow</strong></em>)：栈溢出是指超出stack的大小，例如很长的函数调用，造成该错误原因如下：
+<ul>
+<li>递归函数调用</li>
+<li>大数据声明</li>
+</ul>
+</li>
+<li>栈毁坏 (<em><strong>Stack Corruption</strong></em>)：是指stack段中的某些内存位置由于错误的编码而被无意访问，导致内存位置发生变化。由于数据毁坏位置发生在Stack段因此被称为 “<em><strong>Stack Corruption</strong></em>” <sup><a href="#4">[4]</a></sup></li>
+</ul>
+<p>例如下面代码模拟了一个 SC 异常</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;string.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="kt">int</span> <span class="nf">copy</span><span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>   
+</span></span><span class="line"><span class="cl">    <span class="kt">char</span> <span class="n">name</span><span class="p">[</span><span class="mi">10</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="n">strcpy</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">argv</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">copy</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Exit</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>输出结果为：可以看到当char大小大于10，会覆盖其他stack位置，使程序无法继续执行从而输出“Exit”。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ gcc .<span class="se">\1</span>.c -o 1.exe
+</span></span><span class="line"><span class="cl">$ .<span class="se">\1</span>.exe testargs
+</span></span><span class="line"><span class="cl">Exit
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ .<span class="se">\1</span>.exe testargs000000000000000000
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="stack-vs-heap-supa-href33asup">Stack VS Heap <sup><a href="#3">[3]</a></sup></h3>
+<ul>
+<li>Stack与Heap都存储与RAM中</li>
+<li>Stack自动管理内存，而Heap则需要手动申请和取消</li>
+<li>Stack分配速度快（一段程序启动时预先分配好的连续内存），而Heap分配速度较慢（动态分配的非连续内存）</li>
+<li>Stack在使用是会出现溢出问题，而Heap可以分配大数据</li>
+<li>Stack常见错误为内存溢出，Heap常见错误为内存泄漏</li>
+</ul>
+<p><em><strong>Stack</strong></em> 和 <em><strong>Heap</strong></em> 的一些常见问题</p>
+<ul>
+<li>默认Stack大小为多少：Linux中通过 <code>ulimit -s</code> 可以查看</li>
+<li>默认的Heap大小为多少：没有默认的Heap大小，在32位操作系统中，每个进程可以看到连续的4GB空间，这个空间没有被映射到物理地址中，而是根据使用情况进行映射，在64位操作系统中，这个空间会更大</li>
+<li><strong>stack和heap存放在哪里</strong>？：在虚拟内存中，通过MMU进行映射到物理地址上</li>
+<li><strong>如何手动配置heap</strong>？：可以使用 <code>ulimit -v</code> 设置虚拟内存的大小</li>
+</ul>
+<h2 id="函数调用栈">函数调用栈</h2>
+<p>函数调用与栈有不可密切的关系，在一个函数调用过程所需要的信息一般包括以下几个方面：</p>
+<ul>
+<li>函数返回地址</li>
+<li>函数参数</li>
+<li>变量</li>
+<li>保存的上下文 ：包括在函数调用前后需要保持不变的寄存器。</li>
+</ul>
+<p>当在调用一个函数时，控制流从调用函数转移到被调用函数。如下列代码在运行时产生了如下几项疑问：</p>
+<ul>
+<li>函数参数和用于调用函数的变量的区别</li>
+<li>为什么具有多个相同名称但位于不同函数中的变量可以共存？</li>
+<li>为什么函数doing有一定的限制？</li>
+<li>为什么未初始化的局部变量可能包含任何值？</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt; </span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">mogrify</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">){</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">a</span><span class="o">*</span><span class="mi">4</span> <span class="o">-</span> <span class="n">b</span> <span class="o">/</span> <span class="mi">3</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">tmp</span><span class="p">;</span>                <span class="c1">// (mogrify函数返回值)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">double</span> <span class="nf">truly_half</span><span class="p">(</span><span class="kt">int</span> <span class="n">x</span><span class="p">){</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">double</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">x</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">;</span>                   
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">tmp</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">(){</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">17</span><span class="p">;</span>    
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">mog</span> <span class="o">=</span> <span class="n">mogrify</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">y</span><span class="p">);</span>              <span class="c1">// 调用mogrify
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Done with mogrify</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">double</span> <span class="n">x</span> <span class="o">=</span> <span class="n">truly_half</span><span class="p">(</span><span class="n">y</span><span class="p">);</span>            <span class="c1">// 调用truly_half
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Done with truly_half</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">);</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">a</span> <span class="o">=</span> <span class="n">mogrify</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mog</span><span class="p">);</span>                  <span class="c1">// 第二次调用mogrify
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl">    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;Results: %d %lf</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span><span class="n">mog</span><span class="p">,</span><span class="n">x</span><span class="p">);</span>   <span class="c1">// (last_print)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>                            <span class="c1">// (main函数返回)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>输出</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">lila <span class="o">[</span>stack-demo-code<span class="o">]</span>% gcc simple_calls.c
+</span></span><span class="line"><span class="cl">lila <span class="o">[</span>stack-demo-code<span class="o">]</span>% ./a.out
+</span></span><span class="line"><span class="cl">Done with mogrify
+</span></span><span class="line"><span class="cl">Done with truly_half
+</span></span><span class="line"><span class="cl">Results: <span class="m">23</span> 8.500000
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="栈行为-supa-href44asup">栈行为 <sup><a href="#4">[4]</a></sup></h3>
+<ul>
+<li>
+<p><strong>main函数的调用</strong></p>
+<p>上述代码调用stack发生的变化，程序从第一行的 main() 函数开始。 main() 有 3 个局部变量：a,y 是int，x 是double。栈的初始状态如下表（其中地址栏为虚构地址）</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>12行开始</td>
+<td>a</td>
+<td>?</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>?</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>?</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+  <center>表1</center><br>
+</li>
+<li>
+<p><strong>main函数的第一行被执行</strong></p>
+<p>在运行 main（从第 12 行开始）时，会为所有局部变量分配了栈空间，但没有定义值（随机被初始化）在向下移动时，为局部变量a,y 定义了值。</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>13行</td>
+<td>a</td>
+<td>7</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>17</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>?</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+  <center>表2</center><br>
+</li>
+<li>
+<p><strong>mogrify()被调用</strong>
+在第13行时产生一个函数调用，main函数被暂停，至函数 mogrify 完成。函数调用使一个栈push到调用栈，如下表所示。</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>13行</td>
+<td>a</td>
+<td>7</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>17</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>?</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+<tr>
+<td>mogrify()</td>
+<td>4行</td>
+<td>a</td>
+<td>7</td>
+<td>1044</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>b</td>
+<td>17</td>
+<td>1048</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>tmp</td>
+<td>?</td>
+<td>1052</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+  <center>表3</center><br>
+</li>
+<li>
+<p><strong>mogrify()第一行被执行</strong>
+此时从 mogrify 的第一行开始，完成后返回至 main 函数，将在第 13 行继续执行。表3中由于没有执行到tmp，所以还没被分配值。</p>
+<p>表4是 完成mogrify 函数执行，局部变量 tmp 被赋值。</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>13行</td>
+<td>a</td>
+<td>7</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>17</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>?</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+<tr>
+<td>mogrify()</td>
+<td>5行</td>
+<td>a</td>
+<td>7</td>
+<td>1044</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>b</td>
+<td>17</td>
+<td>1048</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>tmp</td>
+<td>23</td>
+<td>1052</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+  <center>表4</center><br>
+</li>
+<li>
+<p><strong>mogrify()函数返回</strong></p>
+<p>mogrify函数返回在这里有两个作用：</p>
+<ul>
+<li>返回值被存储在调用函数位置：main函数 （第 13 行）变量 mog 中。</li>
+<li>弹出栈帧，从调用堆栈中移除。</li>
+</ul>
+<p>此时状态为表5</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>14</td>
+<td>a</td>
+<td>7</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>17</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>23</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+  <center>表5</center><br>
+</li>
+<li>
+<p><strong>执行Printf()</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Line</th>
+<th>Var</th>
+<th>Value</th>
+<th>Addr</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>main()</td>
+<td>13行</td>
+<td>a</td>
+<td>7</td>
+<td>1024</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>y</td>
+<td>17</td>
+<td>1028</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>mod</td>
+<td>?</td>
+<td>1032</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>x</td>
+<td>?</td>
+<td>1036</td>
+<td></td>
+</tr>
+<tr>
+<td>printf()</td>
+<td>lib call</td>
+<td>format</td>
+<td>?</td>
+<td>1044</td>
+<td>pointer</td>
+</tr>
+</tbody>
+</table>
+  <center>表6</center><br>
+<p>printf()也是作为函数，将另一个栈帧推入栈中，并为其参数和局部变量预留空间。 printf()是一个可变参数的函数。</p>
+</li>
+<li>
+<p><strong>第二次函数调用</strong></p>
+<p>从第 16 行起，调用了函数 <code>truly_half</code> 此时会将一个栈帧推入调用栈。此时状态如表5相同</p>
+</li>
+<li>
+<p><strong>调用函数truly_half()</strong></p>
+<p>当函数 <code>truly_half()</code> 被调用，对应的栈帧被push到main的栈帧下，表7中所示的地址（局部变量）与之前 <code>mogrify()</code> 函数是相同的地址，这是因为栈中的空间是可重用的。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">16</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">7</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">?</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"><code>truly_half()</code></td>
+<td style="text-align:center">8</td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1044</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">tmp</td>
+<td style="text-align:center">?</td>
+<td style="text-align:center">1048</td>
+<td style="text-align:center"></td>
+</tr>
+</tbody>
+</table>
+  <center>表7</center><br>
+</li>
+<li>
+<p><strong>truly_half()被执行</strong></p>
+<p>执行 <code>truly_half</code> 函数的第二行返回计算后的值来赋值给 main 中的局部变量 x，并从调用栈中弹出 <code>truly_half</code> 的栈帧，如表8所示</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">16</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">7</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">?</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"><code>truly_half()</code></td>
+<td style="text-align:center">9</td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1044</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">tmp</td>
+<td style="text-align:center">8.5</td>
+<td style="text-align:center">1048</td>
+<td style="text-align:center"></td>
+</tr>
+</tbody>
+</table>
+  <center>表8</center><br>
+</li>
+<li>
+<p><strong>返回main函数控制流</strong></p>
+<p>main函数中会打印这个值，此时内存结构为表8所示</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">7</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">8.5</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center"></td>
+</tr>
+</tbody>
+</table>
+<center>表9</center><br>
+</li>
+<li>
+<p><strong>再次调用函数mogrify()</strong></p>
+<p>此时，main函数在第19行暂停，在 <code>mogrify()</code> 第一行开始。</p>
+<p>需要注意的一点是 <code>mogrify()</code> 参数类型是int，这里会强制转换 8 字节double 为一个 4 字节的int，小数点被省去。如表10所示</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">19</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">7</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">8.5</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center">double</td>
+</tr>
+<tr>
+<td style="text-align:center">mogrify()</td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">8</td>
+<td style="text-align:center">1044</td>
+<td style="text-align:center">convert to int</td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">b</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1048</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">tmp</td>
+<td style="text-align:center">?</td>
+<td style="text-align:center">1052</td>
+<td style="text-align:center"></td>
+</tr>
+</tbody>
+</table>
+  <center>表10</center><br>
+</li>
+<li>
+<p><strong>mogrify()被执行后</strong>：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">19</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">7</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">8.5</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center">double</td>
+</tr>
+<tr>
+<td style="text-align:center">mogrify()</td>
+<td style="text-align:center">5</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">8</td>
+<td style="text-align:center">1044</td>
+<td style="text-align:center">convert to int</td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">b</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1048</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">tmp</td>
+<td style="text-align:center">25</td>
+<td style="text-align:center">1052</td>
+<td style="text-align:center"></td>
+</tr>
+</tbody>
+</table>
+  <center>表11</center><br>
+</li>
+<li>
+<p><strong>mogrify()被执行后</strong>：
+<code>mogrify()</code> 执行完成后将结果分配给 main 函数中的局部变量 a 并弹出栈帧。此时数据如表12所示</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Method</th>
+<th style="text-align:center">Line</th>
+<th style="text-align:center">Var</th>
+<th style="text-align:center">Value</th>
+<th style="text-align:center">Addr</th>
+<th style="text-align:center">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">main()</td>
+<td style="text-align:center">19</td>
+<td style="text-align:center">a</td>
+<td style="text-align:center">25</td>
+<td style="text-align:center">1024</td>
+<td style="text-align:center">a的值被覆盖</td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">y</td>
+<td style="text-align:center">17</td>
+<td style="text-align:center">1028</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">mog</td>
+<td style="text-align:center">23</td>
+<td style="text-align:center">1032</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td style="text-align:center"></td>
+<td style="text-align:center"></td>
+<td style="text-align:center">x</td>
+<td style="text-align:center">8.5</td>
+<td style="text-align:center">1036</td>
+<td style="text-align:center">double</td>
+</tr>
+</tbody>
+</table>
+  <center>表12</center><br>
+</li>
+</ul>
+<p>至此返回最开始的部分，一个函数的过程包含四个部分 (<em><strong>function call stack</strong></em>)</p>
+<ul>
+<li>函数调用栈</li>
+<li>动态分配内存区域 (heap)</li>
+<li>存储全局变量的区域</li>
+<li>程序允许的实际代码(data text)</li>
+</ul>
+<p>栈帧(<em><strong>stack frame</strong></em>) 指的是：栈内存中单个函数调用（正在允许的函数）的一部分内存块，（参数和局部变量）。编译器在编译期间确定函数的栈帧大小。栈上的栈帧通常与尚未返回的函数一样多。</p>
+<p>栈行为：</p>
+<ul>
+<li><strong>pushing</strong> ：当函数被调用时，新的帧被推到调用堆栈的 “顶部”。</li>
+<li><strong>popping</strong>：当函数执行完成，会将控制权返回给调用它的函数。并将函数关联的帧从栈顶部弹出。</li>
+</ul>
+<p>溢出：如果在返回之前调用了太多函数（例如递归），程序可能会耗尽栈空间。</p>
+<h3 id="关于栈的总结">关于栈的总结</h3>
+<h4 id="c语言的执行模型">C语言的执行模型</h4>
+<ul>
+<li>C 语言是过程式编程，不支持在函数之外编写代码</li>
+<li>C 语言的执行模型是指函数调用工作原理（函数调用栈行为分析的）及函数工作原理。</li>
+<li>C 语言使用 ”栈“ 数据结构来实现函数与函数调用。</li>
+</ul>
+<h4 id="关于函数调用栈">关于函数调用栈</h4>
+<ul>
+<li>
+<p>函数调用栈是动态数据结构，用于参数传递、局部变量分配、保存调用的返回地址、保存寄存器以供恢复。</p>
+</li>
+<li>
+<p>栈向下增长，从较高的地址开始，向较低的地址。</p>
+</li>
+<li>
+<p>Push 将栈帧添加到栈，Pop从栈中弹出</p>
+</li>
+<li>
+<p>栈帧的增长在x86架构下是4字节：</p>
+<ul>
+<li>假设栈指位于1000，此时push一个函数，则该栈指指向996(1000 - 4)</li>
+<li>假设此时弹出函数，那么会从996处从栈中弹出，并递增并指向地址1000</li>
+</ul>
+</li>
+</ul>
+<h3 id="调用惯例-supa-href66asup">调用惯例 <sup><a href="#6">[6]</a></sup></h3>
+<p>调用惯例 (<em><strong>Calling Conventions</strong></em>) 是指函数调用的标准化方法，当在函数调用时例如，如何将参数传递给子程序？子程序可以覆盖寄存器中的值，还是调用者希望保留寄存器内容？子程序中的局部变量应该存储在哪里？函数应该如何返回结果？</p>
+<p>C语言中调用惯例在很大程度上使用了基于硬件支持栈。对C中调用惯例的理解就需要对函数执行模型的理解（应确保完全理解 push、pop、call 和 ret 指令的行为）。在此调用约定中，子程序参数在stack上传递。寄存器保存在stack上，子程序使用的局部变量放在stack上的内存中。</p>
+<ul>
+<li>
+<p>cdecl (<em><strong>c declaration</strong></em>)：C/C++默认调用约定，调用时按照从右向左的参数入</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="n">push</span> <span class="n">arg3</span>  <span class="p">;</span> <span class="n">rightmost</span> <span class="n">argument</span>
+</span></span><span class="line"><span class="cl"><span class="n">push</span> <span class="n">arg2</span>
+</span></span><span class="line"><span class="cl"><span class="n">push</span> <span class="n">arg1</span>  <span class="p">;</span> <span class="n">leftmost</span> <span class="n">argument</span>
+</span></span><span class="line"><span class="cl"><span class="n">call</span> <span class="n">f</span>
+</span></span><span class="line"><span class="cl"><span class="n">add</span> <span class="n">esp</span><span class="p">,</span> <span class="mi">12</span>  <span class="p">;</span> <span class="mi">12</span> <span class="o">=</span> <span class="mi">3</span> <span class="n">arguments</span> <span class="n">each</span> <span class="n">being</span> <span class="mi">4</span> <span class="n">bytes</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>fastcall：通过寄存器传递值（从右到左）</p>
+</li>
+<li>
+<p>thiscall：指针类型被存储在寄存器 <code>ecx</code> ，其他类型放置堆栈</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>Reference</strong></p>
+<p><sup id="1">[1]</sup> <a href="http://webcache.googleusercontent.com/search?q=cache:Nk6EgMoO494J:https://hackthedeveloper.com/memory-layout-c-program/&amp;hl=zh-CN&amp;strip=0&amp;vwsrc=0" target="_blank" rel="noopener noreffer">memory layout c program</a></p>
+<p><sup id="2">[2]</sup> <a href="https://stackoverflow.com/questions/32418750/stack-and-heap-locations-in-ram" target="_blank" rel="noopener noreffer">stack and heap locations in ram</a></p>
+<p><sup id="3">[3]</sup> <a href="https://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap?page=1&amp;tab=scoredesc#tab-top" target="_blank" rel="noopener noreffer">what and where are the stack and heap</a></p>
+<p><sup id="4">[4]</sup> <a href="https://www.go4expert.com/articles/understanding-stack-corruption-c-t27207/" target="_blank" rel="noopener noreffer">understanding stack corruption c</a></p>
+<p><sup id="5">[5]</sup> <a href="https://cs.gmu.edu/~kauffman/cs222/stack-demo.html" target="_blank" rel="noopener noreffer">static</a></p>
+<p><sup id="6">[6]</sup> <a href="https://renenyffenegger.ch/notes/development/languages/C-C-plus-plus/calling-convention" target="_blank" rel="noopener noreffer">calling convention</a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-09-28 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-title="ch06 memory layout" data-hashtags="C"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-hashtag="C"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-title="ch06 memory layout" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch06-memory-layout/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-title="ch06 memory layout"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-title="ch06 memory layout"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch06-memory-layout/" data-title="ch06 memory layout"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/c/">C</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch07-composite-type/" class="prev" rel="prev" title="ch07 composite type"><i class="fas fa-angle-left fa-fw"></i>ch07 composite type</a>
+            <a href="/ch05-pointer/" class="next" rel="next" title="ch05 pointer">ch05 pointer<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-09-28T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch06 memory layout"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

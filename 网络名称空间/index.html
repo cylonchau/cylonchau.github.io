@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>网络名称空间 - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="网络名称空间" />
+<meta property="og:description" content="linux namespace namespace是Linux内核的一项功能，该功能对内核资源进行分区，以使一组进程看到一组资源，而另一组进程看到另一组资源。该功能通过为一组资源和进程具有相同的名称空间而起作用，但是这些名称空间引用了不同的资源。资源可能存在于多个空间中。
+Linux namespaces 是对全局系统资源的一种封装隔离，使得处于不同 namespace 的进程拥有独立的全局系统资源，改变一个namespace中的系统资源只会影响当前 namespace 里的进程，对其他 namespace 中的进程没有影响。
+每一个进程在其对应的 /proc/[pid]/ns 下都有其 namespace 信息
+查看当前进程的namespace ll /proc/$$/ns
+1 2 3 4 5 6 7 8 9 10 cgroup -&gt; cgroup:[4026531835] cgroup的根目录 ipc -&gt; ipc:[4026531839] 信号量 mnt -&gt; mnt:[4026531840] 文件系统挂载点 net -&gt; net:[4026531992] 网络设备、网络栈、端口 pid -&gt; pid:[4026531836] 进程编号 pid_for_children -&gt; pid:[4026531836] time -&gt; time:[4026531834] time_for_children -&gt; time:[4026531834] user -&gt; user:[4026531837] 用户和用户组 uts -&gt; uts:[4026531838] 主机名和NIS域名 linux的网络名称空间 linux network namespace 是network namespace 是 linux 内核提供的功能，在实现网络虚拟化中起重要作用，每个网络名称空间中有独立的网络协议栈，如路由表、iptables、端口等。在network namespace可以创建多个隔离的网络空间，它们有独自的网络栈信息。在运行的时候仿佛自己就在独立的网络中。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-01-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-01-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="网络名称空间"/>
+<meta name="twitter:description" content="linux namespace namespace是Linux内核的一项功能，该功能对内核资源进行分区，以使一组进程看到一组资源，而另一组进程看到另一组资源。该功能通过为一组资源和进程具有相同的名称空间而起作用，但是这些名称空间引用了不同的资源。资源可能存在于多个空间中。
+Linux namespaces 是对全局系统资源的一种封装隔离，使得处于不同 namespace 的进程拥有独立的全局系统资源，改变一个namespace中的系统资源只会影响当前 namespace 里的进程，对其他 namespace 中的进程没有影响。
+每一个进程在其对应的 /proc/[pid]/ns 下都有其 namespace 信息
+查看当前进程的namespace ll /proc/$$/ns
+1 2 3 4 5 6 7 8 9 10 cgroup -&gt; cgroup:[4026531835] cgroup的根目录 ipc -&gt; ipc:[4026531839] 信号量 mnt -&gt; mnt:[4026531840] 文件系统挂载点 net -&gt; net:[4026531992] 网络设备、网络栈、端口 pid -&gt; pid:[4026531836] 进程编号 pid_for_children -&gt; pid:[4026531836] time -&gt; time:[4026531834] time_for_children -&gt; time:[4026531834] user -&gt; user:[4026531837] 用户和用户组 uts -&gt; uts:[4026531838] 主机名和NIS域名 linux的网络名称空间 linux network namespace 是network namespace 是 linux 内核提供的功能，在实现网络虚拟化中起重要作用，每个网络名称空间中有独立的网络协议栈，如路由表、iptables、端口等。在network namespace可以创建多个隔离的网络空间，它们有独自的网络栈信息。在运行的时候仿佛自己就在独立的网络中。"/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" /><link rel="prev" href="https://cylonchau.github.io/%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91/" /><link rel="next" href="https://cylonchau.github.io/experiment-vxlan/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "网络名称空间",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "network","wordcount":  613 ,
+        "url": "https:\/\/cylonchau.github.io\/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4\/","datePublished": "2021-01-02T00:00:00+00:00","dateModified": "2021-01-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">网络名称空间</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/network/"><i class="far fa-folder fa-fw"></i>network</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-01-02 00:00:00">2021-01-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 613 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="linux-namespace">linux namespace</h2>
+<p><strong>namespace</strong>是Linux内核的一项功能，该功能对内核资源进行分区，以使一组<a href="https://en.wikipedia.org/wiki/Process_%28computing%29" target="_blank" rel="noopener noreffer">进程</a>看到一组资源，而另一组进程看到另一组资源。该功能通过为一组资源和进程具有相同的名称空间而起作用，但是这些名称空间引用了不同的资源。资源可能存在于多个空间中。</p>
+<p>Linux namespaces 是对全局系统资源的一种封装隔离，使得处于不同 namespace 的进程拥有独立的全局系统资源，改变一个namespace中的系统资源只会影响当前 namespace 里的进程，对其他 namespace 中的进程没有影响。</p>
+<p>每一个进程在其对应的 <code>/proc/[pid]/ns</code> 下都有其 namespace 信息</p>
+<p>查看当前进程的namespace <code>ll /proc/$$/ns</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cgroup -&gt; cgroup:<span class="o">[</span>4026531835<span class="o">]</span> cgroup的根目录
+</span></span><span class="line"><span class="cl">ipc -&gt; ipc:<span class="o">[</span>4026531839<span class="o">]</span> 信号量
+</span></span><span class="line"><span class="cl">mnt -&gt; mnt:<span class="o">[</span>4026531840<span class="o">]</span> 文件系统挂载点
+</span></span><span class="line"><span class="cl">net -&gt; net:<span class="o">[</span>4026531992<span class="o">]</span> 网络设备、网络栈、端口
+</span></span><span class="line"><span class="cl">pid -&gt; pid:<span class="o">[</span>4026531836<span class="o">]</span> 进程编号
+</span></span><span class="line"><span class="cl">pid_for_children -&gt; pid:<span class="o">[</span>4026531836<span class="o">]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">time</span> -&gt; time:<span class="o">[</span>4026531834<span class="o">]</span>
+</span></span><span class="line"><span class="cl">time_for_children -&gt; time:<span class="o">[</span>4026531834<span class="o">]</span>
+</span></span><span class="line"><span class="cl">user -&gt; user:<span class="o">[</span>4026531837<span class="o">]</span> 用户和用户组
+</span></span><span class="line"><span class="cl">uts -&gt; uts:<span class="o">[</span>4026531838<span class="o">]</span> 主机名和NIS域名
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="linux的网络名称空间">linux的网络名称空间</h2>
+<p>linux network namespace 是network namespace 是 linux 内核提供的功能，在实现网络虚拟化中起重要作用，每个网络名称空间中有独立的网络协议栈，如路由表、iptables、端口等。在network namespace可以创建多个隔离的网络空间，它们有独自的网络栈信息。在运行的时候仿佛自己就在独立的网络中。</p>
+<h3 id="linux网络管理命令ip">linux网络管理命令ip</h3>
+<p>ip命令是Linux管理网络的工具，他对路由、地址、链路、namespace等的管理。</p>
+<p>ip命令的使用说明：</p>
+<ul>
+<li>
+<p><code>ip netns list</code> 查看网络命名空间</p>
+</li>
+<li>
+<p><code>ip netns add net2</code> 创建一个网络命名空间</p>
+</li>
+<li>
+<p><code>ip link add $name link eth0 type ipvlan mode l2</code> 在当前名称空间创建一个类型为ipvlan l2模式的接口，将该接口关联至父接口eth0上。</p>
+</li>
+<li>
+<p><code>ip link set $name netns $nsName</code> 将接口加入到对应网络名称空间内</p>
+</li>
+<li>
+<p><code>ip netns exec $nsName $cmd</code>  在对应的网络名称空间内运行命令</p>
+</li>
+<li>
+<p><code>ip link add $p1-name type veth peer name $p2-name</code> 创建一个网卡对</p>
+</li>
+<li>
+<p><code>ethtool -S $interface_name</code> 查看网卡对对应关系，通过index获得另外一端</p>
+</li>
+</ul>
+<h2 id="虚拟以太网对-veth-pair">虚拟以太网对 VETH Pair</h2>
+<p>VETH virtual-ethernet 虚拟以太网对，是网络交换机中的虚拟接口，在linux名称空间中，vEth可以充当名称空间之间的隧道，通过建立一个网桥链接到另一个名称空间中的物理设备，所有设备始终以互连对的形式创建。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174025232.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174025232.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174025232.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174025232.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174025232.png"
+        title="image-20221025174025232" /></p>
+<h3 id="实验使在不同网络名称空间下的veth互通">实验：使在不同网络名称空间下的vEth互通</h3>
+<p>实验实现：创建两个名称空间<code>net1</code>和<code>net2</code>，以及一对VETH设备，并将其分配<code>veth1</code>给namespace<code>net1</code> 和<code>veth2</code>namespace <code>net2</code>。这两个名称空间与此VETH对相连。分配一对IP地址，使两个名称空间之间ping通。</p>
+<p>开启linuxip转发功能</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">echo 1 &gt; /proc/sys/net/ipv4/ip_forward
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>创建两个名称空间</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip netns add net1
+</span></span><span class="line"><span class="cl">ip netns add net2
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>创建两个虚拟网卡对</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip link a veth0 type veth peer name br-veth0
+</span></span><span class="line"><span class="cl">ip link a veth1 type veth peer name br-veth1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>创建一个网桥</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip link add bridge1 type bridge
+</span></span><span class="line"><span class="cl"># 启动设备
+</span></span><span class="line"><span class="cl">ip link set bridge1 up
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>将虚拟网卡对的一段链接至网桥上</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip link set br-veth0 master bridge1
+</span></span><span class="line"><span class="cl">ip link set br-veth1 master bridge1
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">ip link set br-veth1 up
+</span></span><span class="line"><span class="cl">ip link set br-veth0 up
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>虚拟网桥另外一端关联至对应名称空间内</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip link set veth0 netns net1
+</span></span><span class="line"><span class="cl">ip link set veth1 netns net2
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip netns exec net1 ip addr add 192.168.0.1/24 dev veth0
+</span></span><span class="line"><span class="cl">ip netns exec net2 ip addr add 192.168.0.2/24 dev veth1
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip netns exec net1 ip link set veth0 up
+</span></span><span class="line"><span class="cl">ip netns exec net2 ip link set veth1 up
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>此时可以通过网桥对这两个网络进行互相ping通，不同网段的需要手动添加相应的路由表规则。而ping自己的地址不通，原因是因为lo设备未启动。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip netns exec net2 ip link set lo up
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="ovs">OVS</h2>
+<h2 id="ipip-mode">ipip mode</h2>
+<p>IPIP是<a href="https://tools.ietf.org/html/rfc2003" target="_blank" rel="noopener noreffer">RFC 2003中</a>定义的IP over IP隧道。IPIP隧道标头如下所示：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174038429.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174038429.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174038429.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174038429.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174038429.png"
+        title="image-20221025174038429" /></p>
+<h2 id="实验实现一个ipip隧道">实验：实现一个IPIP隧道</h2>
+<p><code>ipip</code> 模式需要内核模块 <code>ipip.ko</code>  使用命令查看内核是否加载IPIP模块<code>lsmod | grep ipip</code> ；使用命令<code>modprobe ipip</code> 加载</p>
+<p>实验效果，如下图，在两个名称空间内创建一个 tun 设备，然后将该 tun 设备绑定为一个 <code>ipip</code> 隧道。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174049463.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174049463.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174049463.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174049463.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174049463.png"
+        title="image-20221025174049463" /></p>
+<p>创建名称空间及虚拟网卡对</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip netns add net1
+</span></span><span class="line"><span class="cl">ip netns add net2
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip link a veth0 type veth peer name br-veth0
+</span></span><span class="line"><span class="cl">ip link a veth1 type veth peer name br-veth1
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip link set veth0 netns net1
+</span></span><span class="line"><span class="cl">ip link set veth1 netns net2
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>给虚拟网卡对的一端配置地址</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ip addr add 192.168.10.1/24 dev br-veth0
+</span></span><span class="line"><span class="cl">ip addr add 192.168.20.1/24 dev br-veth1
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip netns exec net1 ip link set veth0 up
+</span></span><span class="line"><span class="cl">ip netns exec net2 ip link set veth1 up
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在两个名称空间内分别创建一个ipip tunnel</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">netns exec net2 ip tunnel add tun1 mode ipip remote 192.168.10.2 local 192.168.20.2
+</span></span><span class="line"><span class="cl">netns exec net1 ip tunnel add tun1 mode ipip remote 192.168.20.2 local 192.168.10.2
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip netns exec net1 ip link set tun1 up
+</span></span><span class="line"><span class="cl">ip netns exec net2 ip link set tun1 up
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">ip netns exec net1 ip addr add 192.168.100.10 peer 192.168.200.10 dev tun1
+</span></span><span class="line"><span class="cl">ip netns exec net2 ip addr add 192.168.200.10 peer 192.168.100.10 dev tun1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这个命令是在对应网络名称空间内创建隧道设备tun1，并设置隧道模式为 <code>ipip</code>，然后还需要设置隧道端点，用 <code>remote</code> 和 <code>local</code> 表示，这是<strong>隧道外层 IP</strong>，对应设置 <strong>隧道内层 IP</strong>，用 <code>ip addr xx peer xx</code> 配置。</p>
+<p>分析ipip tunnel过程。</p>
+<ol>
+<li>首先 ping 命令构建一个 ICMP 请求包，ICMP 包封装在 IP 包中，源目的 IP 地址分别为 <code>tun1(192.168.200.10)</code> 和 <code>tun2(192.168.100.10)</code> 的地址。</li>
+<li>由于 tun1 和 tun2 不在同一网段，所以会查路由表，当通过 <code>ip tunnel</code> 命令建立 <code>ipip</code> 隧道之后，会自动生成一条路由，如下，表明去往目的地 <code>192.168.100.10</code> 的路由直接从 tun1 出去。</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ip netns <span class="nb">exec</span> net2 route -n
+</span></span><span class="line"><span class="cl">Kernel IP routing table
+</span></span><span class="line"><span class="cl">Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+</span></span><span class="line"><span class="cl">192.168.10.0    192.168.20.1    255.255.255.0   UG    <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> veth1
+</span></span><span class="line"><span class="cl">192.168.20.0    0.0.0.0         255.255.255.0   U     <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> veth1
+</span></span><span class="line"><span class="cl">192.168.100.10  0.0.0.0         255.255.255.255 UH    <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> tun1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol start="3">
+<li>由于配置了隧道端点，数据包出了 tun1，到达 veth1，根据 <code>ipip</code> 隧道的配置，会封装上一层新的 IP 报头，源目的 IP 地址分别为 <code>veth2(192.168.20.2)</code> 和 <code>veth1(192.168.10.2)</code>。</li>
+<li>veth2和 veth1不在一个网段，因为手动添加的路由表，发现去往 <code>192.168.10.0</code> 网段从 <code>192.168.20.1</code> veth2虚拟网卡对另外一端 br-veth2出。</li>
+<li>因为Linux 打开了 <code>ip_forward</code>，类似于路由器功能，<code>192.168.10.0</code> 和 <code>192.168.20.1</code> 为直连路由，直接有路由器转发。完成了net2到net1的过程。</li>
+<li>数据包到达 net1 的 veth1，解封装数据包，发现内层 IP 报文的目的 IP 地址是 <code>192.168.100.10</code>，这正是自己配置的 <code>ipip</code> 隧道的 <code>tun1(192.168.100.10)</code> 地址，于是将报文转交 <code>tun1(192.168.100.10)</code>。</li>
+<li>ICMP报文是双向的，故，相通的步骤还要返回到<code>tun1(192.168.200.10)</code> 。</li>
+</ol>
+<blockquote>
+<p><strong>通过抓包工具查看数据包的详细内容</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174102350.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174102350.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174102350.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174102350.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174102350.png"
+        title="image-20221025174102350" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174126074.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174126074.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174126074.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174126074.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025174126074.png"
+        title="image-20221025174126074" /></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-01-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-title="网络名称空间" data-hashtags="network"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-hashtag="network"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-title="网络名称空间" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-title="网络名称空间"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-title="网络名称空间"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/%E7%BD%91%E7%BB%9C%E5%90%8D%E7%A7%B0%E7%A9%BA%E9%97%B4/" data-title="网络名称空间"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/network/">network</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91/" class="prev" rel="prev" title="windows NAT 端口转发"><i class="fas fa-angle-left fa-fw"></i>windows NAT 端口转发</a>
+            <a href="/experiment-vxlan/" class="next" rel="next" title="实验 - VxLAN">实验 - VxLAN<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2021-01-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"网络名称空间"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

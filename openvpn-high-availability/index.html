@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>openvpn high-availability - cylon的收藏册</title><meta name="Description" content=""><meta property="og:title" content="openvpn high-availability" />
+<meta property="og:description" content="方案1：在Vpn 客户端使用多个配置文件实现（由用户选择拨号）类 方案1：需求分析与操作过程讲解。
+基本说明：
+生产场景中比较规范的做法是让所有的VPN SERVER尽可能共享同一套 server，ca证书或者连接同一个认证系统（即使是跨机房）。这样只需要一份客户端认证和文件和多份指定不同vpn client的配置文件即可实现vpn的负载均衡了。
+总结结论：
+1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，当用户连接的vpn不能使用时，用户就可以人工选择拨号其他的VPN服务器。
+2）如果使用者为公司内部工作人员，此种方案是值得推荐的。老男孩老师推荐。
+3）从广义上讲这是在用户端实现的负载均衡方案，类似早期的华军下载站一样，由用户选择下载站点，而不是用什么智能DNS等复杂的业务模式。
+缺点：当一个vpnserver不能使用时，不能自动连上别的vpn server。
+方案2：通过在客户端配置文件实现负载均衡（客户端文件里随机连接服务器） 提示：同方案1，所有VPN SERVER 需要共享同一套 server，ca证书。openvpn 服务器一套keys的多份拷贝方式式。
+1 2 3 4 remote 10.0.0.28 52115 remote 10.0.0.552115 remote-random resolv-retry 20 implementing-a-load-balancing-failover-configuration
+总结结论：
+1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，，当用户连接的vpn不能使用时，电脑可以重新再次自动拨号连接VPN服务器。
+2）如果使用者为公司内部工作人员，此种方案是值得推荐的。-老男孩老师推荐。如果是使用者为外部人员，那么这个方案依然是可以的。
+3）本方案是比较标准的在VPN用户端，由客户端配置参数实现的负载均衡的方案，是非常值得推荐的方案。
+4）和方案1对比，方案2的配置更简单，仅需一个配置文件多个remote参数，拨号时客户端会随机自动选择拨号，方案1则需要手动选择不同的配置文件拨号。当正在连接的VPN服务端右机时，那么此时方案2不需要人工干预，客户端的VPN会自动判断并且自动重新连接其他的可用vpn服务器。.
+方案3：通过域名加DNS轮询的方式实现负载均衡（由DNS自动分配vpn） 总结结论：
+1）通过dns轮询实现VPN负载均衡方案操作比较复杂，引入了DNS服务，因此增加了单点故障及维护成本，当用户连接的vpn不能使用时，用户也需要重新人工再次拨号。
+2）如果使用者为公司内部工作人员，此种方案是不推荐的。如果是外部的用户可以考虑用这种方式，但是复杂度比方案1大了很多（如果存在DNS服务器加配置还可以）。
+3）当机房多，配置文件多时，无需用户选择服务器，只需拨号即可。如果多个VPN在一个机房还好一些，如果多个VPN服务器不在一个机房，还需要通过IPSEC进行连接。 总之，此法很麻烦，中小型公司老男孩老师极不推荐。
+4）DNS轮询会遭遇到客户端DNS缓存问题，从而导致服务切换失效。。
+one-network-interface-on-a-public-network" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/openvpn-high-availability/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-11-18T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-11-18T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="openvpn high-availability"/>
+<meta name="twitter:description" content="方案1：在Vpn 客户端使用多个配置文件实现（由用户选择拨号）类 方案1：需求分析与操作过程讲解。
+基本说明：
+生产场景中比较规范的做法是让所有的VPN SERVER尽可能共享同一套 server，ca证书或者连接同一个认证系统（即使是跨机房）。这样只需要一份客户端认证和文件和多份指定不同vpn client的配置文件即可实现vpn的负载均衡了。
+总结结论：
+1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，当用户连接的vpn不能使用时，用户就可以人工选择拨号其他的VPN服务器。
+2）如果使用者为公司内部工作人员，此种方案是值得推荐的。老男孩老师推荐。
+3）从广义上讲这是在用户端实现的负载均衡方案，类似早期的华军下载站一样，由用户选择下载站点，而不是用什么智能DNS等复杂的业务模式。
+缺点：当一个vpnserver不能使用时，不能自动连上别的vpn server。
+方案2：通过在客户端配置文件实现负载均衡（客户端文件里随机连接服务器） 提示：同方案1，所有VPN SERVER 需要共享同一套 server，ca证书。openvpn 服务器一套keys的多份拷贝方式式。
+1 2 3 4 remote 10.0.0.28 52115 remote 10.0.0.552115 remote-random resolv-retry 20 implementing-a-load-balancing-failover-configuration
+总结结论：
+1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，，当用户连接的vpn不能使用时，电脑可以重新再次自动拨号连接VPN服务器。
+2）如果使用者为公司内部工作人员，此种方案是值得推荐的。-老男孩老师推荐。如果是使用者为外部人员，那么这个方案依然是可以的。
+3）本方案是比较标准的在VPN用户端，由客户端配置参数实现的负载均衡的方案，是非常值得推荐的方案。
+4）和方案1对比，方案2的配置更简单，仅需一个配置文件多个remote参数，拨号时客户端会随机自动选择拨号，方案1则需要手动选择不同的配置文件拨号。当正在连接的VPN服务端右机时，那么此时方案2不需要人工干预，客户端的VPN会自动判断并且自动重新连接其他的可用vpn服务器。.
+方案3：通过域名加DNS轮询的方式实现负载均衡（由DNS自动分配vpn） 总结结论：
+1）通过dns轮询实现VPN负载均衡方案操作比较复杂，引入了DNS服务，因此增加了单点故障及维护成本，当用户连接的vpn不能使用时，用户也需要重新人工再次拨号。
+2）如果使用者为公司内部工作人员，此种方案是不推荐的。如果是外部的用户可以考虑用这种方式，但是复杂度比方案1大了很多（如果存在DNS服务器加配置还可以）。
+3）当机房多，配置文件多时，无需用户选择服务器，只需拨号即可。如果多个VPN在一个机房还好一些，如果多个VPN服务器不在一个机房，还需要通过IPSEC进行连接。 总之，此法很麻烦，中小型公司老男孩老师极不推荐。
+4）DNS轮询会遭遇到客户端DNS缓存问题，从而导致服务切换失效。。
+one-network-interface-on-a-public-network"/>
+<meta name="application-name" content="cylon的收藏册">
+<meta name="apple-mobile-web-app-title" content="cylon的收藏册"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/openvpn-high-availability/" /><link rel="prev" href="https://cylonchau.github.io/openvpn-identifiy-authentication/" /><link rel="next" href="https://cylonchau.github.io/installconfiguration-openvpn/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "openvpn high-availability",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/openvpn-high-availability\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "openvpn","wordcount":  46 ,
+        "url": "https:\/\/cylonchau.github.io\/openvpn-high-availability\/","datePublished": "2019-11-18T00:00:00+00:00","dateModified": "2019-11-18T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "cylon的收藏册","logo": "https:\/\/cylonchau.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="cylon的收藏册">cylon的收藏册</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">openvpn high-availability</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/vpn/"><i class="far fa-folder fa-fw"></i>vpn</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-11-18 00:00:00">2019-11-18 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 46 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="方案1在vpn-客户端使用多个配置文件实现由用户选择拨号类">方案1：在Vpn 客户端使用多个配置文件实现（由用户选择拨号）类</h2>
+<p>方案1：需求分析与操作过程讲解。</p>
+<p>基本说明：</p>
+<p>生产场景中比较规范的做法是让所有的VPN SERVER尽可能共享同一套 server，ca证书或者连接同一个认证系统（即使是跨机房）。这样只需要一份客户端认证和文件和多份指定不同vpn client的配置文件即可实现vpn的负载均衡了。</p>
+<p>总结结论：</p>
+<p>1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，当用户连接的vpn不能使用时，用户就可以人工选择拨号其他的VPN服务器。</p>
+<p>2）如果使用者为公司内部工作人员，此种方案是值得推荐的。老男孩老师推荐。</p>
+<p>3）从广义上讲这是在用户端实现的负载均衡方案，类似早期的华军下载站一样，由用户选择下载站点，而不是用什么智能DNS等复杂的业务模式。</p>
+<p>缺点：当一个vpnserver不能使用时，不能自动连上别的vpn server。</p>
+<h2 id="方案2通过在客户端配置文件实现负载均衡客户端文件里随机连接服务器">方案2：通过在客户端配置文件实现负载均衡（客户端文件里随机连接服务器）</h2>
+<p>提示：同方案1，所有VPN SERVER 需要共享同一套 server，ca证书。openvpn 服务器一套keys的多份拷贝方式式。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">remote 10.0.0.28 52115
+</span></span><span class="line"><span class="cl">remote 10.0.0.552115
+</span></span><span class="line"><span class="cl">remote-random
+</span></span><span class="line"><span class="cl">resolv-retry 20
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://openvpn.net/community-resources/how-to/#implementing-a-load-balancing-failover-configuration" target="_blank" rel="noopener noreffer">implementing-a-load-balancing-failover-configuration</a></p>
+<p>总结结论：</p>
+<p>1）该负载均衡方案操作简单，不引入多余服务（后面的方案都会引入服务），因此不会增加多余的单点故障，，当用户连接的vpn不能使用时，电脑可以重新再次自动拨号连接VPN服务器。</p>
+<p>2）如果使用者为公司内部工作人员，此种方案是值得推荐的。-老男孩老师推荐。如果是使用者为外部人员，那么这个方案依然是可以的。</p>
+<p>3）本方案是比较标准的在VPN用户端，由客户端配置参数实现的负载均衡的方案，是非常值得推荐的方案。</p>
+<p>4）和方案1对比，方案2的配置更简单，仅需一个配置文件多个remote参数，拨号时客户端会随机自动选择拨号，方案1则需要手动选择不同的配置文件拨号。当正在连接的VPN服务端右机时，那么此时方案2不需要人工干预，客户端的VPN会自动判断并且自动重新连接其他的可用vpn服务器。.</p>
+<h2 id="方案3通过域名加dns轮询的方式实现负载均衡由dns自动分配vpn">方案3：通过域名加DNS轮询的方式实现负载均衡（由DNS自动分配vpn）</h2>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1539219005583-ovpn-load-balance.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1539219005583-ovpn-load-balance.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1539219005583-ovpn-load-balance.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1539219005583-ovpn-load-balance.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1539219005583-ovpn-load-balance.png"
+        title="SOLVE)OVPN Load Balance Review | Netgate Forum" /></p>
+<p>总结结论：</p>
+<p>1）通过dns轮询实现VPN负载均衡方案操作比较复杂，引入了DNS服务，因此增加了单点故障及维护成本，当用户连接的vpn不能使用时，用户也需要重新人工再次拨号。</p>
+<p>2）如果使用者为公司内部工作人员，此种方案是不推荐的。如果是外部的用户可以考虑用这种方式，但是复杂度比方案1大了很多（如果存在DNS服务器加配置还可以）。</p>
+<p>3）当机房多，配置文件多时，无需用户选择服务器，只需拨号即可。如果多个VPN在一个机房还好一些，如果多个VPN服务器不在一个机房，还需要通过IPSEC进行连接。
+总之，此法很麻烦，中小型公司老男孩老师极不推荐。</p>
+<p>4）DNS轮询会遭遇到客户端DNS缓存问题，从而导致服务切换失效。。</p>
+<p><a href="https://openvpn.net/access-server-manual/typical-network-configurations/#one-network-interface-on-a-public-network" target="_blank" rel="noopener noreffer">one-network-interface-on-a-public-network</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2019-11-18 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-title="openvpn high-availability" data-hashtags="openvpn"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-hashtag="openvpn"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-title="openvpn high-availability" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/openvpn-high-availability/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-title="openvpn high-availability"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-title="openvpn high-availability"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/openvpn-high-availability/" data-title="openvpn high-availability"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/openvpn/">openvpn</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/openvpn-identifiy-authentication/" class="prev" rel="prev" title="openvpn identifiy authentication"><i class="fas fa-angle-left fa-fw"></i>openvpn identifiy authentication</a>
+            <a href="/installconfiguration-openvpn/" class="next" rel="next" title="ch01 cpenvpn install&amp;configuration">ch01 cpenvpn install&amp;configuration<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2019-11-18T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"openvpn high-availability"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":5,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
