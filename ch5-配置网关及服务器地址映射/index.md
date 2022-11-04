@@ -91,11 +91,11 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 **C为内网PC或者服务器**
 
 ```bash
-[root@Lnmp-01 ~]# ifconfig
+$ ifconfig
 eth0      Link encap:Ethernet  HWaddr 00:0C:29:BE:2D:75  
           inet addr:172.168.1.11  Bcast:172.168.1.255  Mask:255.255.255.0
 ....
-[root@Lnmp-01 ~]# route -n
+$ route -n
 Kernel IP routing table
 Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 172.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth0
@@ -108,9 +108,9 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 1.登陆C主机172.168.1.11看是否能访问外部页面（配好DNS）。如ping www.baidu.com。正确结果：当前情况不通 lamp为10 lnmp为11
 
 ```bash
-[root@Lnmp-01 ~]# ping www.baidu.com
+$ ping www.baidu.com
 ^C
-[root@Lnmp-01 ~]# ping 61.105.221.1
+$ ping 61.105.221.1
 PING 61.105.221.1 (61.105.221.1) 56(84) bytes of data.
 ```
 
@@ -121,7 +121,7 @@ $ telnet 172.168.1.10 80
 Trying 172.168.1.10...
 Connected to 172.168.1.10.
 Escape character is &#39;^]&#39;.	
-[root@Lnmp-01 ~]#  telnet 172.168.1.10 80
+$  telnet 172.168.1.10 80
 Trying 172.168.1.10...
 Connected to 172.168.1.10.
 Escape character is &#39;^]&#39;
@@ -160,7 +160,7 @@ iptables -t nat -A POSTROUTING -s 172.168.1.0/24 -j MASQUERADE
 测试结果
 
 ```bash
-[root@Lnmp-01 ~]# ping www.baidu.com
+$ ping www.baidu.com
 PING www.a.shifen.com (58.217.200.112) 56(84) bytes of data.
 64 bytes from 58.217.200.112: icmp_seq=1 ttl=127 time=32.1 ms
 

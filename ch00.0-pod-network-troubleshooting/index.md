@@ -667,7 +667,7 @@ Pod网络异常时排查思路，可以按照下图所示
 
 &lt;center&gt;图：包传送过程，服务端&lt;/center&gt;&lt;br&gt;
 
-由此可以知道，NAT的动作已经完成，而只是后端Pod（ *registry* 服务）没有回包，接下来在问题节点执行 `curl10.233.65.46:5000`，在问题节点和后端（ *registry* 服务）Pod所在节点的 *flannel.1* 上同时抓包，两节点收发正常，发包如图所示
+由此可以知道，NAT的动作已经完成，而只是后端Pod（ *registry* 服务）没有回包，接下来在问题节点执行 `curl 10.233.65.46:5000`，在问题节点和后端（ *registry* 服务）Pod所在节点的 *flannel.1* 上同时抓包，两节点收发正常，发包如图所示
 
 ![image-20220821232550959](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png)
 

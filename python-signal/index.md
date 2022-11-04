@@ -1,4 +1,7 @@
-# 
+# python中的signal
+
+
+
 
 ## 什么是信号
 
@@ -51,7 +54,7 @@ while True:
 如果不对对应信号进行捕获处理时，python将会抛出异常。
 
 ```
-root@Seal:/mnt/d/pywork/signal# python signal.py
+$ python signal.py
 ^CTraceback (most recent call last):
   File &#34;signal.py&#34;, line 3, in &lt;module&gt;
     while True:

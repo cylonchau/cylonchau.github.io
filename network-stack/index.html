@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>networking stack - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="networking stack" />
+<meta property="og:description" content="[toc]
+Linux 架构概述 [1] 本章节简单阐述Linux系统的结构，并讨论子系统中的模块之间以及与其他子系统之间的关系。
+Linux内核本身鼓励无用，是作为一个操作系统的一部分参与的，只有为一个整体时他才是一个有用的实体，下图展示了Linux操作系统的分层
+图：Linux子系统分层图 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+由图可以看出Linux操作系统由四部分组成：
+用户应用 OS服务，操作系统的一部分（例如shell）内核编程接口等 内核 硬件控制器，CPU、内存硬件、硬盘和NIC等都数据这部分 Linux内核阐述 Linux内核将所有硬件抽象为一致的接口，为用户进程提供了一个虚拟接口，使用户无需知道计算机上安装了哪些物理硬件即可编写进程，并且Linux支持用户进程的多任务处理，每个进程都可以视作为操作系统的唯一进程独享硬件资源。内核负责维护多个用户进程，并协调其对硬件资源的访问，使得每个进程都可以公平的访问资源，并保证进程间安全。
+Linux内核主要为五个子系统组成：
+进程调度器(SCHED)， 控制进程对 CPU 的访问。调度程序执行策略，确保进程可以公平地访问 CPU。 内存管理器 (MM)， 允许多个进程安全地共享操作系统的内存 虚拟文件系统 (VFS)，向所有设备提供通用文件接口来抽象出各种硬件设备 网络接口 (NET)，提供对多种网络标准与各种网络硬件的访问 进程间通信 (IPC)，在单个操作系统上的多种机制进程间通信机制 网络子系统架构 [2] 网络子系统功能主要是允许 Linux 系统通过网络连接到其他系统。支持多种硬件设备，以及可以使用的多种网络协议。网络子系统抽象了这两个实现细节，以便用户进程和其他内核子系统可以访问网络，而不必知道使用什么物理设备或协议。
+子系统模块包含
+网络设备驱动层 (Network device drivers)，网络设备驱动程序与硬件设备通信。每个硬件设备都有对应的设备驱动程序模块。 独立设备接口层(device independent interface)，设备独立接口提供了所有硬件设备的统一视图，因此在网络子系统之上的级别无需了解硬件信息 网络协议层 (*** network protocol***)，网络协议实现了网络传输的协议 协议独立/无关接口层 (protocol independent interface)，提供了独立于硬件设备的网络接口，为内核内其他子系统访问网络时不依赖特定的协议和硬件接口。 系统调用层 (system call) 用于限制用户进程导出资源的访问 网络子系统的结构图如下图所示，
+图：网络子系统中的上下文 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+当网络子系统转换为网络栈时，如下图所示
+图：ISO Stack与TCP/IP Stack Source：https://www.washington.edu/R870/Networking.html
+当然Linux网络子系统是类似于TCP/IP栈的一种结构，当发生一个网络传输时，数据包会按照所经过的层进行封装。例如应用层应用提供了REST API，那么应用将要传输的数据封装为HTTP协议，然后传递给向下的传输层。传输层是TCP协议就会被添加对应的TCP包头。整个封装过程原始包保持不变，会根据所经过层的不同增加固定格式的包头。
+图：数据包传输在每层被封装的过程 Source：http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-13-SECT-1.html
+对于Linux来说TCP/IP 的五层结构则是构成网络子系统的的核心组件，下图是Linux网络栈结构图
+图：Linux网络栈的结构图 Source：https://medium." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/network-stack/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-10-28T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-10-28T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="networking stack"/>
+<meta name="twitter:description" content="[toc]
+Linux 架构概述 [1] 本章节简单阐述Linux系统的结构，并讨论子系统中的模块之间以及与其他子系统之间的关系。
+Linux内核本身鼓励无用，是作为一个操作系统的一部分参与的，只有为一个整体时他才是一个有用的实体，下图展示了Linux操作系统的分层
+图：Linux子系统分层图 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+由图可以看出Linux操作系统由四部分组成：
+用户应用 OS服务，操作系统的一部分（例如shell）内核编程接口等 内核 硬件控制器，CPU、内存硬件、硬盘和NIC等都数据这部分 Linux内核阐述 Linux内核将所有硬件抽象为一致的接口，为用户进程提供了一个虚拟接口，使用户无需知道计算机上安装了哪些物理硬件即可编写进程，并且Linux支持用户进程的多任务处理，每个进程都可以视作为操作系统的唯一进程独享硬件资源。内核负责维护多个用户进程，并协调其对硬件资源的访问，使得每个进程都可以公平的访问资源，并保证进程间安全。
+Linux内核主要为五个子系统组成：
+进程调度器(SCHED)， 控制进程对 CPU 的访问。调度程序执行策略，确保进程可以公平地访问 CPU。 内存管理器 (MM)， 允许多个进程安全地共享操作系统的内存 虚拟文件系统 (VFS)，向所有设备提供通用文件接口来抽象出各种硬件设备 网络接口 (NET)，提供对多种网络标准与各种网络硬件的访问 进程间通信 (IPC)，在单个操作系统上的多种机制进程间通信机制 网络子系统架构 [2] 网络子系统功能主要是允许 Linux 系统通过网络连接到其他系统。支持多种硬件设备，以及可以使用的多种网络协议。网络子系统抽象了这两个实现细节，以便用户进程和其他内核子系统可以访问网络，而不必知道使用什么物理设备或协议。
+子系统模块包含
+网络设备驱动层 (Network device drivers)，网络设备驱动程序与硬件设备通信。每个硬件设备都有对应的设备驱动程序模块。 独立设备接口层(device independent interface)，设备独立接口提供了所有硬件设备的统一视图，因此在网络子系统之上的级别无需了解硬件信息 网络协议层 (*** network protocol***)，网络协议实现了网络传输的协议 协议独立/无关接口层 (protocol independent interface)，提供了独立于硬件设备的网络接口，为内核内其他子系统访问网络时不依赖特定的协议和硬件接口。 系统调用层 (system call) 用于限制用户进程导出资源的访问 网络子系统的结构图如下图所示，
+图：网络子系统中的上下文 Source：https://docs.huihoo.com/linux/kernel/a1/index.html
+当网络子系统转换为网络栈时，如下图所示
+图：ISO Stack与TCP/IP Stack Source：https://www.washington.edu/R870/Networking.html
+当然Linux网络子系统是类似于TCP/IP栈的一种结构，当发生一个网络传输时，数据包会按照所经过的层进行封装。例如应用层应用提供了REST API，那么应用将要传输的数据封装为HTTP协议，然后传递给向下的传输层。传输层是TCP协议就会被添加对应的TCP包头。整个封装过程原始包保持不变，会根据所经过层的不同增加固定格式的包头。
+图：数据包传输在每层被封装的过程 Source：http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-13-SECT-1.html
+对于Linux来说TCP/IP 的五层结构则是构成网络子系统的的核心组件，下图是Linux网络栈结构图
+图：Linux网络栈的结构图 Source：https://medium."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/network-stack/" /><link rel="prev" href="https://cylonchau.github.io/network-unit-in-osi/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "networking stack",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/network-stack\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "network, kubernetes network","wordcount":  236 ,
+        "url": "https:\/\/cylonchau.github.io\/network-stack\/","datePublished": "2022-10-28T00:00:00+00:00","dateModified": "2022-10-28T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">networking stack</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/network/"><i class="far fa-folder fa-fw"></i>network</a>&nbsp;<a href="/categories/kubernetes-network/"><i class="far fa-folder fa-fw"></i>kubernetes network</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-10-28 00:00:00">2022-10-28 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 236 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[toc]</p>
+<h2 id="linux-架构概述-supa-href11asup">Linux 架构概述 <sup><a href="#1">[1]</a></sup></h2>
+<p>本章节简单阐述Linux系统的结构，并讨论子系统中的模块之间以及与其他子系统之间的关系。</p>
+<p>Linux内核本身鼓励无用，是作为一个操作系统的一部分参与的，只有为一个整体时他才是一个有用的实体，下图展示了Linux操作系统的分层</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221028214224508.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221028214224508.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221028214224508.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221028214224508.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221028214224508.png"
+        title="image-20221028214224508" /></p>
+<center>图：Linux子系统分层图</center>
+<center><em>Source：</em>https://docs.huihoo.com/linux/kernel/a1/index.html</center><br>
+<p>由图可以看出Linux操作系统由四部分组成：</p>
+<ul>
+<li>用户应用</li>
+<li>OS服务，操作系统的一部分（例如shell）内核编程接口等</li>
+<li>内核</li>
+<li>硬件控制器，CPU、内存硬件、硬盘和NIC等都数据这部分</li>
+</ul>
+<h2 id="linux内核阐述">Linux内核阐述</h2>
+<p>Linux内核将所有硬件抽象为一致的接口，为用户进程提供了一个虚拟接口，使用户无需知道计算机上安装了哪些物理硬件即可编写进程，并且Linux支持用户进程的多任务处理，每个进程都可以视作为操作系统的唯一进程独享硬件资源。内核负责维护多个用户进程，并协调其对硬件资源的访问，使得每个进程都可以公平的访问资源，并保证进程间安全。</p>
+<p>Linux内核主要为五个子系统组成：</p>
+<ul>
+<li>进程调度器(<em><strong>SCHED</strong></em>)， 控制进程对 CPU 的访问。调度程序执行策略，确保进程可以公平地访问 CPU。</li>
+<li>内存管理器 (<em><strong>MM</strong></em>)， 允许多个进程安全地共享操作系统的内存</li>
+<li>虚拟文件系统 (<em><strong>VFS</strong></em>)，向所有设备提供通用文件接口来抽象出各种硬件设备</li>
+<li>网络接口 (<em><strong>NET</strong></em>)，提供对多种网络标准与各种网络硬件的访问</li>
+<li>进程间通信 (<em><strong>IPC</strong></em>)，在单个操作系统上的多种机制进程间通信机制</li>
+</ul>
+<h2 id="网络子系统架构-supa-href22asup">网络子系统架构 <sup><a href="#2">[2]</a></sup></h2>
+<p>网络子系统功能主要是允许 Linux 系统通过网络连接到其他系统。支持多种硬件设备，以及可以使用的多种网络协议。网络子系统抽象了这两个实现细节，以便用户进程和其他内核子系统可以访问网络，而不必知道使用什么物理设备或协议。</p>
+<p>子系统模块包含</p>
+<ul>
+<li>网络设备驱动层 (<em><strong>Network device drivers</strong></em>)，网络设备驱动程序与硬件设备通信。每个硬件设备都有对应的设备驱动程序模块。</li>
+<li>独立设备接口层(<em><strong>device independent interface</strong></em>)，设备独立接口提供了所有硬件设备的统一视图，因此在网络子系统之上的级别无需了解硬件信息</li>
+<li>网络协议层 (*** network protocol***)，网络协议实现了网络传输的协议</li>
+<li>协议独立/无关接口层 (<em><strong>protocol independent interface</strong></em>)，提供了独立于硬件设备的网络接口，为内核内其他子系统访问网络时不依赖特定的协议和硬件接口。</li>
+<li>系统调用层 (<em><strong>system call</strong></em>) 用于限制用户进程导出资源的访问</li>
+</ul>
+<p>网络子系统的结构图如下图所示，</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221029170129050.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221029170129050.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221029170129050.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221029170129050.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221029170129050.png"
+        title="image-20221029170129050" /></p>
+<center>图：网络子系统中的上下文</center>
+<center><em>Source：</em>https://docs.huihoo.com/linux/kernel/a1/index.html</center><br>
+<p>当网络子系统转换为网络栈时，如下图所示</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://miro.medium.com/max/700/1*LcGaDm_ZOCbrIerM2UDj0g.png"
+        data-srcset="https://miro.medium.com/max/700/1*LcGaDm_ZOCbrIerM2UDj0g.png, https://miro.medium.com/max/700/1*LcGaDm_ZOCbrIerM2UDj0g.png 1.5x, https://miro.medium.com/max/700/1*LcGaDm_ZOCbrIerM2UDj0g.png 2x"
+        data-sizes="auto"
+        alt="https://miro.medium.com/max/700/1*LcGaDm_ZOCbrIerM2UDj0g.png"
+        title="img" /></p>
+<center>图：ISO Stack与TCP/IP Stack</center>
+<center><em>Source：</em>https://www.washington.edu/R870/Networking.html</center><br>
+<p>当然Linux网络子系统是类似于TCP/IP栈的一种结构，当发生一个网络传输时，数据包会按照所经过的层进行封装。例如应用层应用提供了REST API，那么应用将要传输的数据封装为HTTP协议，然后传递给向下的传输层。传输层是TCP协议就会被添加对应的TCP包头。整个封装过程原始包保持不变，会根据所经过层的不同增加固定格式的包头。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/understandlni_1304.jpg"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/understandlni_1304.jpg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/understandlni_1304.jpg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/understandlni_1304.jpg 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/understandlni_1304.jpg"
+        title="img" /></p>
+<center>图：数据包传输在每层被封装的过程</center>
+<center><em>Source：</em>http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-13-SECT-1.html</center><br>
+<p>对于Linux来说TCP/IP 的五层结构则是构成网络子系统的的核心组件，下图是Linux网络栈结构图</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221030005922405.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221030005922405.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221030005922405.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221030005922405.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221030005922405.png"
+        title="image-20221030005922405" /></p>
+<center>图：Linux网络栈的结构图</center>
+<center><em>Source：</em>https://medium.com/geekculture/linux-networking-deep-dive-731848d791c0</center><br>
+<ul>
+<li>图中橙色部分是位于TCP/IP的五层结构中的应用层，应用层向下通讯通过 <code>system call</code> 与 socket接口进行交互</li>
+<li>蓝色部分是位于内核空间，socket向下则是传输层与网络层</li>
+<li>最底层是物理层包含网卡驱动与NIC</li>
+</ul>
+<p>通过图可以看出，NIC是发送与接收数据包的基本单位，当系统启动时内核通过驱动程序向操作系统注册网卡，当数据包到达网卡时，被放入队列中。内核通过硬中断，运行中断处理程序，为网络帧分配内核数据结构(sk_buff)，并将其拷贝到缓冲区中，此为内核与网卡交互的过程。</p>
+<p>网卡硬中断只处理网卡核心数据的读取或发送，网络协议栈中的大部分处理都在软中断中进行处理。内核协议栈将从缓冲区中取出网络帧，通过网络协议栈，从下到上的根据网络栈结构逐层处理这个网络帧。</p>
+<h2 id="socket-supa-href44asup">Socket <sup><a href="#4">[4]</a></sup></h2>
+<p>Unix Socket是一种使用了Unix文件描述符的IPC机制，在网络栈中是位于内核空间网络栈的一层，是一个用户空间与传输层之间的一个接口，可以为网络连接, 文本文件, 终端或其他；他的行为很像一个文件描述符，因为信息的读写，<code>read()</code>, <code>write()</code>与文件的方式很相似。下图是socket通信模型。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031203257214.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031203257214.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031203257214.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031203257214.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031203257214.png"
+        title="image-20221031203257214" /></p>
+<center>图：socket通信模型</center>
+<center><em>Source：</em>https://slideplayer.com/slide/10740698/</center><br>
+<p>作为用户空间到内核空间的第一层，Socket位于两层之间，由于IPC机制支持不同的通讯协议以及需要对不同的网络协议进行访问，故这些协议实现为位于socket的层，这种情况下，用户空间仅通过系统调用socket接口，而内核空间负责一些其他工作，例如，缓冲区管理，标准协议接口，网络接口与各种不同的网络协议。</p>
+<blockquote>
+<p>Notes:</p>
+<ul>
+<li><code>/etc/protocols</code> 定义的协议号</li>
+<li><code>/etc/services</code> 定义的服务的端口号</li>
+</ul>
+</blockquote>
+<h2 id="网络栈的工作原理">网络栈的工作原理</h2>
+<p>当网络包到达时，网卡（硬中断+DMA）通过DMA将网络数据包放入队列中，告知中断程序硬中断已收到网络数据包。</p>
+<h3 id="数据包的发送">数据包的发送</h3>
+<p>用户程序发送网络包时，通过网络栈模型自上而下逐层处理帧：</p>
+<ul>
+<li>应用层：通过系统调用，调用socket API发送网络包，会被限制在内核空间的socket层，socket层将数据包放入到缓冲区内。</li>
+<li>传输层：网络栈从socket取出数据包，传输层添加TCP标头</li>
+<li>网络层：将IP添加到数据标头，根据MTU大小分片</li>
+<li>数据链路层：MAC地址寻址，并添加到帧头尾，将帧放入发送队列，触发软中断通知</li>
+<li>物理层：网卡驱动通过DMA从发送队列读取网络帧，通过网卡发送出</li>
+</ul>
+<h3 id="数据包的接收">数据包的接收</h3>
+<p>内核网络栈从缓冲区读取帧，通过网络栈模型自下而上逐层处理帧：</p>
+<ul>
+<li>数据链路层：
+<ul>
+<li>检查数据包的有效性</li>
+<li>确定网络协议类型 IPV4 or IPV6</li>
+<li>去除帧 头, 尾</li>
+</ul>
+</li>
+<li>网络层：
+<ul>
+<li>取出IP头，确定网络流量的方向（转发或者本机流量）</li>
+<li>删除标头，传递给传输层</li>
+</ul>
+</li>
+<li>传输层：取出TCP/UDP协议头，根据源IP, 目的IP, 源端口, 目的端口作为标识找到socket，将数据报文放置socket缓冲区</li>
+<li>应用层：应用程序通过socket来读数据</li>
+</ul>
+<p>下图为网络栈收/发数据的结构图</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031210517384.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031210517384.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031210517384.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031210517384.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221031210517384.png"
+        title="image-20221031210517384" /></p>
+<center>图：Linux网络进程接收网络数据包流程图</center>
+<center><em>Source：</em>https://slideplayer.com/slide/10740698/</center><br>
+<h2 id="网络子系统分层结构">网络子系统分层结构</h2>
+<p>在了解了网络接受网络数据包的流程后，还需要对网络子系统中分层结构进行了解，在该结构中将需要基础掌握一些对于工作与网络子系统中的API的命令是如何调用的。</p>
+<p>下图是结合 《深入理解Linux网络技术内幕》第13章 <sup><a href="#3">[3]</a></sup> 中插图13-2与 托马斯格拉夫发表于2019年的文章 &ldquo;How to Make Linux Microservice-Aware with Cilium and eBPF&rdquo; <sup><a href="#5">[5]</a></sup> 的结合旨在让零基础同学可以更好的了解到各API的分层调用</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104153434745.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104153434745.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104153434745.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104153434745.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104153434745.png"
+        title="image-20221104153434745" /></p>
+<center>图：Linux网络子系统分层调用</center><br>
+<p>图中可以看出，是一个基于TCP/IP栈的调用模型，其中应用层包含了常用的工具：</p>
+<ul>
+<li>配置IP路由：<code>ip</code></li>
+<li>ip防火墙（包过滤）：<code>iptables</code></li>
+<li>流量整形：<code>tc</code></li>
+<li>网络抓包：<code>tcpdump</code></li>
+<li>网卡信息：<code>ethtool</code></li>
+</ul>
+<p>对于云原生网络中，了解完整的分层是非常重要的，这将有利于开发基于eBPF服务。下面就简单的论证下该图</p>
+<p>正如图中所示，所有的网络命令都是提供给用户的用户空间API，当发生网络动作时是需要通过内核将数据导入/出，这里使用了系统调用，调用内核提供的导入到用户空间的接口，例如 <code>socket</code>，<code>sysctl</code> 等，更多的接口介绍可以详见《深入理解Linux网络技术内幕》第3章 <sup><a href="#6">[6]</a></sup></p>
+<p>到达socket后，继续向下通信时，socket提供了几种级别的接口，这些可以在常见编程语言包中被提供</p>
+<ul>
+<li><code>AE_PACKAGE</code> / <code>PE_PACKAGE</code>：提供设备级别的API，通俗来讲，就是在网络层之下发送/接受消息的接口，工作于2层，这将允许用户在用户空间实现物理层数据包发送和接收</li>
+<li><code>AF_INET</code> / <code>PE_INET</code>：是基于网络层Socket类型，<code>AF_INET</code>是指IPv4，<code>AF_INET6</code> 是IPv6，这里就是IP 地址和端口号。</li>
+</ul>
+<p>如图所示，对于 <code>PE_PACKAGE</code> 套接字类型而言，Linux在链路层捕捉帧并将其注入至链路层的方式，这样跳过了所有的中间层，例如 <code>tcpdump</code> 与 <code>ethtool</code>， <code>PE_PACKAGE</code> 套接字通过将帧直接交给 <code>dev_queue_xmit</code>。</p>
+<ul>
+<li><code>dev_queue_xmit</code> 是传输 buffer (<code>sk_buff</code>) 到网络设备中的函数，将封包传递给TC或QoS层，L3封包时调用</li>
+</ul>
+<p>接下来是iptables，netfilter，是工作与多层协议栈中一系列hook，用户端由命令行工具iptables/nftables控制，可以在数据包经由的数据点上被调用对应的hook函数来改变包的行为。所有的数据包都独立存在于对应的协议栈，经过的数据包会便利所有对应的hook，因为iptables(etables)支持工作于L2的ARP协议。所有的hook都存在与每个网络名称空间内，并且每个网络设备都拥有ingress hook，这也是云原生网络中提到的为什么使用eBPF 跳过netfilter框架可以提升网络性能。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/understandlni_1801.jpg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/understandlni_1801.jpg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/understandlni_1801.jpg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/understandlni_1801.jpg 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/understandlni_1801.jpg"
+        title="img" /></p>
+<center>图：Linux 栈中经由netfilter框架示意图</center>
+<center><em>Source：</em>http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-18-SECT-1.html</center><br>
+<p>接下来就是传统的一些应用，例如telnet，ping都是使用了<code>AE_PACKAGE</code> / <code>PE_PACKAGE</code> 传统联网模式</p>
+<p>最后一个点就是 <em><strong>traffic control</strong></em> TC，是工作与L2的一组队列与其机制组成的，通常情况下是一个队列，上面也提到，所有的设备都是使用队列来调度底层设备进入的数据包，liunx中默认的队列是 <code>qdisc </code> 。</p>
+<blockquote>
+<p><strong>Reference</strong></p>
+<p><sup id="1">[1]</sup> <a href="https://docs.huihoo.com/linux/kernel/a1/index.html" target="_blank" rel="noopener noreffer"><em><strong>Conceptual Architecture of the Linux Kernel</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://medium.com/geekculture/linux-networking-deep-dive-731848d791c0" target="_blank" rel="noopener noreffer"><em><strong>Linux — Networking Deep Dive</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-13-SECT-1.html" target="_blank" rel="noopener noreffer"><em><strong>Network Stack Chapter13</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://notes.shichao.io/tcpv1/ch10/" target="_blank" rel="noopener noreffer"><em><strong>User Datagram Protocol (UDP) and IP Fragmentation</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="https://www.infoq.com/presentations/linux-cilium-ebpf/" target="_blank" rel="noopener noreffer"><em><strong>How to Make Linux Microservice-Aware with Cilium and eBPF</strong></em></a></p>
+<p><sup id="6">[6]</sup> <a href="http://www.embeddedlinux.org.cn/linux_net/0596002556/understandlni-CHP-3-SECT-1.html" target="_blank" rel="noopener noreffer"><em><strong>Network Stack Chapter13</strong></em></a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-10-28 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/network-stack/" data-title="networking stack" data-hashtags="network,kubernetes network"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/network-stack/" data-hashtag="network"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/network-stack/" data-title="networking stack" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/network-stack/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/network-stack/" data-title="networking stack"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/network-stack/" data-title="networking stack"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/network-stack/" data-title="networking stack"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/network/">network</a>,&nbsp;<a href="/tags/kubernetes-network/">kubernetes network</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/network-unit-in-osi/" class="prev" rel="prev" title="为什么网络是分层的"><i class="fas fa-angle-left fa-fw"></i>为什么网络是分层的</a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-10-28T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"networking stack"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
