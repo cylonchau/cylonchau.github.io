@@ -1,8 +1,0 @@
-# windows NAT 端口转发
-
-
-```bat
-netsh interface portproxy add v4tov4 listenport=2122 connectaddress=10.0.0.21 connectport=22
-```
-
-

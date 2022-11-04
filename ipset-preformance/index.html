@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ipset性能测试 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ipset性能测试" />
+<meta property="og:description" content="测试方法 基于使用场景，最后⽣成的规则会是按照 ip 或者 ip:port 来进行过滤，测试时将使用10万条 iptables 规则来模拟对性能的压力；为了最大化测试压力情况，10万条 iptables 规则将都是==不会匹配==机房流量，通俗来讲，就是链式匹配会进行所有匹配并最后以无匹配告终。
+网络负载的模拟将使用同机房 scp 来模拟，并按照下述条件进行匹配：
+查看正常的拷贝速度，cpu负载等 我们建⽴10万条的普通 iptables 规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时操作等 我们建⽴10万的 ipset ，并把普通的 iptables 规则转为结合 ipset 的规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时等。 实验开始 步骤一：在同机房的⼀个机器构造⼀个大文件
+同机房拷贝
+观察网卡速度，CPU，系统主要耗时操作的等，此场景将在iptables 规则为空的情况下进行观察
+使用 sar 观测网卡速度
+使用 top 观察CPU负载
+使用 perf top -G 观察CPU占用
+步骤二：创建10万条iptables，观察⽹卡速度、cpu、系统主要耗时操作的等，会发现cpu利⽤率⼤部分被ipt占⽤，拷⻉速度下降到不到⼗分之⼀
+1 2 3 4 5 6 7 8 #!/bin/bash echo *filter for ((i=1;i&lt;=$1;i&#43;&#43;)) do echo -I INPUT -S $i -j ACCEPT done echo COMMIT 执行脚本
+1 $ time ./mkrule.sh 100000 | sudo iptables-restore 观察添加规则后的⽹卡速度，CPU，系统主要耗时操作的等" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ipset-preformance/" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-11-04T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-11-04T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ipset性能测试"/>
+<meta name="twitter:description" content="测试方法 基于使用场景，最后⽣成的规则会是按照 ip 或者 ip:port 来进行过滤，测试时将使用10万条 iptables 规则来模拟对性能的压力；为了最大化测试压力情况，10万条 iptables 规则将都是==不会匹配==机房流量，通俗来讲，就是链式匹配会进行所有匹配并最后以无匹配告终。
+网络负载的模拟将使用同机房 scp 来模拟，并按照下述条件进行匹配：
+查看正常的拷贝速度，cpu负载等 我们建⽴10万条的普通 iptables 规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时操作等 我们建⽴10万的 ipset ，并把普通的 iptables 规则转为结合 ipset 的规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时等。 实验开始 步骤一：在同机房的⼀个机器构造⼀个大文件
+同机房拷贝
+观察网卡速度，CPU，系统主要耗时操作的等，此场景将在iptables 规则为空的情况下进行观察
+使用 sar 观测网卡速度
+使用 top 观察CPU负载
+使用 perf top -G 观察CPU占用
+步骤二：创建10万条iptables，观察⽹卡速度、cpu、系统主要耗时操作的等，会发现cpu利⽤率⼤部分被ipt占⽤，拷⻉速度下降到不到⼗分之⼀
+1 2 3 4 5 6 7 8 #!/bin/bash echo *filter for ((i=1;i&lt;=$1;i&#43;&#43;)) do echo -I INPUT -S $i -j ACCEPT done echo COMMIT 执行脚本
+1 $ time ./mkrule.sh 100000 | sudo iptables-restore 观察添加规则后的⽹卡速度，CPU，系统主要耗时操作的等"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ipset-preformance/" /><link rel="prev" href="https://cylonchau.github.io/network-stack/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ipset性能测试",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ipset-preformance\/"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "Linux, iptables","wordcount":  225 ,
+        "url": "https:\/\/cylonchau.github.io\/ipset-preformance\/","datePublished": "2022-11-04T00:00:00+00:00","dateModified": "2022-11-04T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts"> 文章 </a><a class="menu-item" href="/categories"> 分类 </a><a class="menu-item" href="/tags"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts" title="">文章</a><a class="menu-item" href="/categories" title="">分类</a><a class="menu-item" href="/tags" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">ipset性能测试</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/iptables/"><i class="far fa-folder fa-fw"></i>iptables</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-11-04 00:00:00">2022-11-04 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 225 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="测试方法">测试方法</h2>
+<p>基于使用场景，最后⽣成的规则会是按照 ip 或者 <code>ip:port</code> 来进行过滤，测试时将使用10万条 <code>iptables</code> 规则来模拟对性能的压力；为了最大化测试压力情况，10万条 <code>iptables</code> 规则将都是==不会匹配==机房流量，通俗来讲，就是链式匹配会进行所有匹配并最后以无匹配告终。</p>
+<p>网络负载的模拟将使用同机房 <code>scp</code> 来模拟，并按照下述条件进行匹配：</p>
+<ul>
+<li>查看正常的拷贝速度，cpu负载等</li>
+<li>我们建⽴10万条的普通 <code>iptables</code> 规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时操作等</li>
+<li>我们建⽴10万的 <code>ipset</code> ，并把普通的 <code>iptables</code> 规则转为结合 <code>ipset</code> 的规则，查看规则建立速度，拷贝速度，CPU负载，CPU主要耗时等。</li>
+</ul>
+<h2 id="实验开始">实验开始</h2>
+<p><strong>步骤一</strong>：在同机房的⼀个机器构造⼀个大文件</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233138861.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233138861.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233138861.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233138861.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233138861.png"
+        title="image-20221104233138861" /></p>
+<p>同机房拷贝</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233643372.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233643372.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233643372.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233643372.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233643372.png"
+        title="image-20221104233643372" /></p>
+<p>观察网卡速度，CPU，系统主要耗时操作的等，此场景将在<code>iptables</code> 规则为空的情况下进行观察</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234017089.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234017089.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234017089.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234017089.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234017089.png"
+        title="image-20221104234017089" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234322789.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234322789.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234322789.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234322789.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234322789.png"
+        title="image-20221104234322789" /></p>
+<p>使用 <code>sar</code> 观测网卡速度</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233834434.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233834434.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233834434.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233834434.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104233834434.png"
+        title="image-20221104233834434" /></p>
+<p>使用 <code>top</code> 观察CPU负载</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234452841.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234452841.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234452841.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234452841.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234452841.png"
+        title="image-20221104234452841" /></p>
+<p>使用 <code>perf top -G</code> 观察CPU占用</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234724668.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234724668.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234724668.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234724668.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104234724668.png"
+        title="image-20221104234724668" /></p>
+<p><strong>步骤二</strong>：创建10万条iptables，观察⽹卡速度、cpu、系统主要耗时操作的等，会发现cpu利⽤率⼤部分被ipt占⽤，拷⻉速度下降到不到⼗分之⼀</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> *filter
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;<span class="o">=</span><span class="nv">$1</span><span class="p">;</span>i++<span class="o">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">do</span>
+</span></span><span class="line"><span class="cl">	<span class="nb">echo</span> -I INPUT -S <span class="nv">$i</span> -j ACCEPT
+</span></span><span class="line"><span class="cl"><span class="k">done</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> COMMIT
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>执行脚本</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ <span class="nb">time</span> ./mkrule.sh <span class="m">100000</span> <span class="p">|</span> sudo iptables-restore
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>观察添加规则后的⽹卡速度，CPU，系统主要耗时操作的等</p>
+<p>使用 <code>sar</code> 观测网卡速度</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235306056.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235306056.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235306056.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235306056.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235306056.png"
+        title="image-20221104235306056" /></p>
+<p>使用 <code>top</code> 观察CPU负载</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235441887.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235441887.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235441887.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235441887.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235441887.png"
+        title="image-20221104235441887" /></p>
+<p>使用 <code>perf top -G</code> 观察CPU占用</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235624488.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235624488.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235624488.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235624488.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221104235624488.png"
+        title="image-20221104235624488" /></p>
+<p><strong>步骤三</strong>：使用ipset替换iptables</p>
+<p>此时改为使⽤ <code>ipset</code> ⽅式观察网卡卡速度，CPU，系统主要耗时操作的等，会发现跟没有规则没有明显变化。ipset的内存量不到2M。初步估计内存使⽤量 = $hashsize \times 16 + 存⼊数 \times (4～32之间)$</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">#ipset create whitelist hash:ip maxelem 1000000 -exist</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#ipset flush whitelist</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39; creae whitelist hash:ip family inet hashsize 65536 maxelem 100000000&#39;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="o">((</span><span class="nv">i</span><span class="o">=</span>1<span class="p">;</span>i&lt;<span class="o">=</span><span class="nv">$1</span><span class="p">;</span>i++<span class="o">))</span>
+</span></span><span class="line"><span class="cl"><span class="k">do</span>	
+</span></span><span class="line"><span class="cl">	<span class="c1">#ipset add whitelist $i</span>
+</span></span><span class="line"><span class="cl">	<span class="nb">echo</span> add whitelist <span class="nv">$i</span>
+</span></span><span class="line"><span class="cl"><span class="k">done</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># iptables -I INPUT -m set --match-set whitelisti src -j ACCEPT</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>执行脚本</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ <span class="nb">time</span> ./mkset.sh <span class="m">100000</span> <span class="p">|</span> sudo ipset restore
+</span></span><span class="line"><span class="cl">$ sudo iptables -Ln
+</span></span><span class="line"><span class="cl">$ sudo iptables -I INPUT -m <span class="nb">set</span> --match-set whitelisti src -j ACCEPT
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>观察添加规则后的⽹卡速度，CPU，系统主要耗时操作的等</p>
+<p>使用 <code>sar</code> 观测网卡速度</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000318616.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000318616.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000318616.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000318616.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000318616.png"
+        title="image-20221105000318616" /></p>
+<p>使用 <code>top</code> 观察CPU负载</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000454342.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000454342.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000454342.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000454342.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000454342.png"
+        title="image-20221105000454342" /></p>
+<p>使用 <code>perf top -G</code> 观察CPU占用</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000630330.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000630330.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000630330.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000630330.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221105000630330.png"
+        title="image-20221105000630330" /></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ sudo ipset list <span class="p">|</span> head
+</span></span><span class="line"><span class="cl">Name: whitelist
+</span></span><span class="line"><span class="cl">Type: hash:ip
+</span></span><span class="line"><span class="cl">Header: family inet hashsize <span class="m">65536</span> maxelem <span class="m">100000000</span>
+</span></span><span class="line"><span class="cl">Size in memory: <span class="m">1891208</span>
+</span></span><span class="line"><span class="cl">References: <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>总结：ipset对于CPU和内存的影响很小，在大量规则场景下符合预期</p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-11-04 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ipset-preformance/" data-title="ipset性能测试" data-hashtags="Linux,iptables"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ipset-preformance/" data-hashtag="Linux"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ipset-preformance/" data-title="ipset性能测试" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ipset-preformance/"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ipset-preformance/" data-title="ipset性能测试"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ipset-preformance/" data-title="ipset性能测试"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ipset-preformance/" data-title="ipset性能测试"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux/">Linux</a>,&nbsp;<a href="/tags/iptables/">iptables</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/network-stack/" class="prev" rel="prev" title="networking stack"><i class="fas fa-angle-left fa-fw"></i>networking stack</a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-11-04T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ipset性能测试"}},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
