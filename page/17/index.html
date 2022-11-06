@@ -77,6 +77,94 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/kubernetes-service/">Kubernetes Service</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">在Kubernetes集群中，Pod是有生命周期的，为了能够给对应的客户端提供一个固定访问端点，因此在客户端与服务端（Pod之间）添加了一个固定中间层，这个中间层被称之为Service。Service的工作严重依赖于在Kubernetes集群之上，部署的附件Kubernetes DNS服务。较新版本使用的coreDNS，1.11之前使用的KubeDNS。
+service的名称解析是强依赖于DNS附件的。因此在部署完Kubernetes后，需要部署CoreDNS或KubeDNS。 Kubernetes要想向客户端提供网络功能，依赖于第三方方案，在较新版本中，可通过CNI容器网络插件标准接口，来接入任何遵循插件标准的第三方方案。 Service从一定程度上来说，在每个节点之上都工作有一个组件Kube-proxy，Kube-proxy将始终监视apiserver当中，有关service资源的变动状态。此过程是通过Kubernetes中固有的请求方法watch来实现的。一旦有service资源的内容发生变动，kube-proxy都将其转换为当前节点之上的能够实现service资源调度至特定Pod之上的规则。
+service实现方式 在Kubernetes中service的实现方式有三种模型。
+userspace 用户空间，可以理解为，用户的请求。 1.1之前包括1.1使用此模型。 用户的请求到达当前节点的内核空间的iptables规则（service规则），由service转发至本地监听的某个套接字上的用户空间的kube-proxy，kube-proxy在处理完再转发给service，最终代理至service相关联的各个Pod，实现调度。
+iptables 1.10- 客户端IP请求时，直接请求serviceIP，IP为本地内核空间中的service规则所截取，并直接调度至相关Pod。service工作在内核空间，由iptables直接调度。
+ipvs 1.11默认使用，如IPVS没有激活，默认降级为iptables 客户端请求到达内核空间后，直接由ipvs规则直接调度至Pod网络地址范围内的相关Pod资源。
+使用清单创建service资源 SVC中的kubernetes service是集群中各Pod需要与Kubernetes集群apiserver联系时需要通过此svc地址联系。这个地址是集群内的apiserver服务地址。
+service类型 ClusterIP 默认值，表示分配集群IP地址，仅用于集群内通信。自动分配地址，如需固定，需要指定相应地址，在创建后无法修改。当使用ClusterIP时，只有两个端口有用，port与targetPort
+NodePort 接入集群外部流量，默认分配的端口是30000~32767
+LoadBalancer 表示将Kubernetes部署在虚拟机上，虚拟机是工作在云环境中，云环境支持lbaas（负载均衡及服务的一键调用）。
+ExternaName 表示将集群外部服务引用到集群内部中来，在集群内部直接使用。
+1 2 3 4 5 6 7 8 9 10 11 12 spec: ports: # 将哪个端口与后端容器端口建立关联关系。 - port # service对外提供服务的端口 name 指明port的名称 targetPort # 容器的端口 nodePort # 只有类型为NodePort时，才有必要用节点端口，否则此选项是无用的。 protocol 协议，默认TCP seletcor 关联到哪些Pod资源上 app: redis run: redis clusterIP: # clusterIP可以动态分贝可以不配置 type: ClusterIP 1 2 3 4 5 6 7 8 9 10 11 12 13 apiVersion: v1 kind: Service metadata: name: redis namespace: default spec: selector: run: redis clusterIP: 10.</div><div class="post-footer">
+        <a href="/kubernetes-service/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes/">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/kubernetes-serviceaccount/">Kubernetes serviceaccount</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">在整个Kubernetes集群来讲 apiserver是访问控制的唯一入口。如通过service或ingress暴露之后，是可以不通过apiserver接入的，只需要通过节点的nodePort或者ingress controller daemonset共享宿主机节点网络名称空间监听的宿主机网络地址（节点地址），直接接入。
+当请求到达APIServer时，会经历几个阶段，如图所示
+图：Kubernetes API 请求的请求处理步骤图Source：https://kubevious.io/blog/post/securing-kubernetes-using-pod-security-policy-admission-controller任何用户（sa与人类用户）在通过任何方式试图操作API资源时，必须要经历下列的操作：
+Authentication，这个步骤在建立TLS连接后，验证包含，证书、密码，Token；可以指定多种认证，依次尝试每一个，直到其中一个认证成功。如果认证失败，此时客户端收到的是401。 Authorization，此步骤是在完成 Authentication 后确定了来源用户，此时用户的请求动作必须被授权。如bob用户对pod资源有 get , list 权限操作。如果 Admission Control：此步骤为图3，与 Authorization 不同的时，这里只要有任意准入控制器拒绝，则拒绝；多个准入控制器会按顺序执行 Refer to controlling access
+认证 Kubernetes是高度模块化设计的，因此其认证授权与准入控制是各自都通过插件的方式，可由用户自定义选择经由什么样的插件来完成何种控制逻辑。如对称秘钥认证方式、令牌认证。由于Kubernetes提供的是resetful方式的接口，其服务都是通过HTTP协议提供的，因此认证信息只能经由HTTP协议的认证首部进行传递，此认证首部通常被称作认证令牌(token)。
+ssl认证，对于Kubernetes访问来讲，ssl证书能让客户端去确认服务器的身份，（要求服务端发送服务端证书，确认证书是否为认可的CA签署的。）在Kubernetes通信过程当中，重要的是服务器还需认证客户端的身份，因此==Kubectl也应有一个证书，并且此证书为server端所认可的CA所签署的证书==。并且客户端身份也要与证书当中标识的身份保持一致。双方需互相做双向证书认证。认证之后双方基于SSL会话实现加密通讯。
+注：kubernetes认证无需执行串行检查，用户经过任何一个认证插件通过后，即表示认证通过，无需再经由其他插件进行检查。
+授权 kubernetes的授权也支持多种授权插件来完成用户的权限检查，kubernetes 1.6之后开始支持基于RBAC的认证。除此只外还有基于节点的认证、webhook基于http回调机制，通过web的rest服务来实现认证的检查机制。最重要的是RBAC的授权检查机制。基于角色的访问控制，通常只有许可授权，没有拒绝授权。默认都是拒绝。
+在默认情况下，使用kubeadm部署Kubernetes集群是强制启用了RBAC认证的。
+准入控制 一般而言，准入控制本身只是用来定义对应授权检查完成之后的后续其他安全检查操作的。
+用户账号 一般而言用户账号大体上应具有以下信息
+user 用户，一般而言由username与userid组成。
+group 用户组
+extra 用来提供额外信息
+API资源 k8sapiserver是分组的，向哪个组，哪个版本的哪个api资源对象发出请求必须进行标识，所有的请求资源通过url path进行标识的。如 /apis/apps/v1/，所有名称空间级别的资源在访问时一般都需指名namespaces关键词，并给出namespaces名称来获取 /apis/apps/v1/namespaces/default/ /apis/apps/v1/namespaces/default/nginx 。
+一个完整意义上的url 对象引用url格式 ==/apis/&lt;GROUPS&gt;/&lt;VERSION&gt;/namespaces/&lt;NameSpace_name&gt;/&lt;Kind&gt;/[/object_id]==
+1 2 3 $ kubectl api-versions admissionregistration.k8s.io/v1beta1 ... Kubernetes中，所有的api都取决于一个根 /apis
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 $ curl -k --cert /etc/k8s/pki/apiserver-kubelet-client.</div><div class="post-footer">
+        <a href="/kubernetes-serviceaccount/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes/">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/k8s-troubleshooting/">Kubernetes安装错误</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">apiserver报错 没有kubeappserver用户
+1 Failed at step USER spawning No such process 1 2 3 Mar 2 04:54:56 node02 systemd: controller-manager.service: main process exited, code=exited, status=1/FAILURE Mar 2 04:54:56 node02 kube-controller-manager: Get http://127.0.0.1:8443/api/v1/namespaces/kube-system/configmaps/extension-apiserver-authentication: net/http: HTTP/1.x transport connection broken: malformed HTTP response &#34;\x15\x03\x01\x00\x02\x02&#34; Mar 2 04:54:56 node02 systemd: Unit controller-manager.service entered failed state. Unable to connect to the server: net/http: HTTP/1.x transport connection broken: malformed HTTP resp - kevin_loving的博客 - CSDN博客
+可能是启动单元文件有问题，手动启动后正常</div><div class="post-footer">
+        <a href="/k8s-troubleshooting/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes/">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/kubernetes-schedule/">kubernetes调度</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">[toc]
+Overview kube-scheduler 是kubernetes控制平面的核心组件，其默认行为是将 pod 分配给节点，同时平衡Pod与Node间的资源利用率。通俗来讲就是 kube-scheduler 在运行在控制平面，并将工作负载分配给 Kubernetes 集群。
+本文将深入 Kubernetes 调度的使用，包含：”一般调度”，”亲和度“，“污点与容忍的调度驱逐”。最后会分析下 Scheduler Performance Tuning，即微调scheduler的参数来适应集群。
+简单的调度 NodeName [1] 最简单的调度可以指定一个 NodeName 字段，使Pod可以运行在对应的节点上。如下列资源清单所示
+1 2 3 4 5 6 7 8 9 apiVersion: v1 kind: Pod metadata: name: netpod spec: containers: - name: netbox image: cylonchau/netbox nodeName: node01 通过上面的资源清单Pod最终会在 node01上运行。这种情况下也会存在很多的弊端，如资源节点不足，未知的nodename都会影响到Pod的正常工作，通常情况下，这种方式是不推荐的。
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 $ kubectl describe pods netpod Name: netpod Namespace: default .</div><div class="post-footer">
+        <a href="/kubernetes-schedule/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes/">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/kubernetes%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/">kubernetes基础概念</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">[TOC]
+Kubernetes集群，集群的角色都是对等的，分为主节点和工作节点。主节点之上，有三个组件分别运行为守护进程API Server Scheduler Contorller-Manager，分别担负一定的任务。
+在node节点上也有三个组件：kubelet与API Server进行交互的集群角色的核心组件，docker作为容器引擎来运行pod中的容器而创建的。kube-proxy负责与apiserver进行通讯，当Pod内容发生改变后会生成事件，事件被kube-proxy接收，一旦发现某一service背后的Pod发生该改变，由kube-proxy负责在本地将地址反应在IPVS规则中。
+1 lable 为了能够统一管理一个集群当中大量的pod资源，需要给pod添加元数据信息，元数据表现为Lable。格式为 KEY=VLAUE类型数据。在定义完成后就可使用标签选择器Lable Selecter。通过定义条件，来挑选出符合条件的pod资源。
+2 pod 在Kubernetes的集群设计中，Pod可以完全称之为有生命周期的对象，由调度器将其调度至集群中的
+在k8s中，同一类pod可能不止一个。当用户的请求达到时，如何去接入请求给同类pod的那一个pod负责处理和相应。
+Pod本身是需要有控制器来管理，尽量不要人手工去管理。
+在k8s中，Pod有两类（非k8s官方提出，是强性分类）：
+自主式pod：创建后仍然需要提交给apiserver，由apiserver借助于调度器将其调度至指定的node节点，由node启动此pod。如果pod中容器出现故障需要重启容器，是由kubelet完成
+控制器控制管理的pod
+ReplicationController 副本控制器，同一时间运行指定数量的pod副本。 ReplicaSet 副本集控制器，不直接使用。 Deployment 负责管理无状态应用，支持2级控制器HPA（HorizontalPodAutoscaler） StatefulSet 负责管理有状态副本集 Daemonset 在每一个node上运行一个副本，而不是随意运行。 Job 运行作业 Ctonjob 周期性任务计划作业 3 service Pod是有生命周期的，因此Pod随时都有可能被销毁。在多个Pod都提供同一服务时，客户端没法通过固定的手段访问Pod。因此为了尽可能的降低二者之间的协调的复杂度，kubernetes为每一组提供同类服务的pod，和客户端之间添加了一个固定的中间层service。 service只要不删除，他的地址和服务名称都是固定的。
+service不但能提供一个稳定的访问入口，还能起到调度功能。当客户端需要访问某个服务时，只需指明service的地址或名称即可。service再把请求代理到后端的pod之上。一旦pod因故障消失，新的pod会立即被service关联进来，作为service后端的可用pod对象之一。pod上有一个固定的元数据lable，service是靠标签选择器来关联pod对象的。service在将pod关联后，再动态探测pod的IP地址和端口，并作为自己可调度的后端可用服务器。主机对象。
+在kubernetes中，service不是应用程序、实体组件，它只是iptables dnat规则。service作为kubernetes的对象，有service名称，相当于是服务的名称。名称可以被解析。
+4 AddOns，附件 AddOns不作为本身一部分存在，是另外的应用程序，两者可以很紧密的结合起来，提供工作，AddOns通常被称为附加组件。
+kubernetes的附件，
+kubernetes的DNS可以动态改变、创建、删除、变动。如更改service名称会动态触发更改DNS中的解析记录名称。客户端在访问某一服务时，可直接访问服务的名称，由集群中DNS服务来负责解析，一般而言解析的是Service地址，而不是pod地址。因此访问是由Service代为代理实现，这种代理是由端口代理DNat来实现。但是Service背后的同一类Pod有很多使用DNAT来实现，在调度效果上不太尽如人意。因此在1.11中将iptables规则，改为ipvs规则。支持用户指定各种调度算法。
+HPA水平Pod自动伸缩控制器
+K8s网络模型
+在k8s模型中要求拥有三种网络模型 1、pod网络：各Pod运行在一个网络中。 2、集群网络：service网络，service和pod地址是处在不同网段的。service网络不同于Pod的网络，service网络地址是虚拟的。只存在于IPVS规则中。 3、节点网络：各node节点的网络地址。
+在Kubernetes集群中还存在三位通信 1、同一Pod内的多个容器间的通信：lo 2、各Pod之间的通信 3、Pod与service之间的通信
+共享存储
+在master主机来讲，数据并不是存在master本地，而是放在共享存储中。共享存称之为K8S的DB，这个DB是etcd。etcd是键值对存储的数据库系统，和redis很相似，但是etcd还拥有很多协调功能是redis所不具备的。etcd本身是restful风格的集群。
+一般情况下etcd内部通讯需要一套CA和签署证书，etcd向客户端apiserver需要CA和证书，apiserver向客户端提供服务需要另外一套CA和证书。apiserver与kubelet、kube-proxy需要证书进行认证。
+CNI
+K8S通过CNI（容器网络接口）插件体系来接入外部网络服务解决方案，只要遵循CNI开发服务，就能够作为kubernetes网络解决方案来使用。网络解决方案可以以附件的方式托管运行在集群之上。此Pod为特殊Pod，虽然托管运行在集群之上，但需要共享节点的网络命名空间。
+目前能作为附件运行的常见CNI插件的网络功能以两个纬度，一是提供网络功能。如给Pod、Service提供IP地址。其次Kubernetes之上的网络解决方案还要求能够提供Network Policy（网络策略）功能。
+网络策略是允许自定义名称空间与名称空间之间，甚至同一个名称空间和各Pod之间，通过iptables规则来隔离彼此之间的互相访问。
+对于K8S来讲，网络策略和网络功能是两个纬度的概念，
+flannel 实现网络配置，不支持网络策略 calico 网络策略 网络配置 canel </div><div class="post-footer">
+        <a href="/kubernetes%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes/">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/statefulset/">StatefulSet 有状态应用副本集</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes/"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">Kubernetes从1.3开始支持PetSet宠物集，1.5更名为StatefulSet。在Kubernetes之上，StatefulSet一般主要用于管理具有以下特性的应用程序
 每一个Pod、组件，稳定且唯一的网络标识符。 稳定且持久的存储。 有序、平滑的部署和扩展。 有序、平滑的终止和删除。 有序的滚动更新。 一般典型的StatefulSet有三个组件组成
@@ -155,67 +243,6 @@ the Docker daemon creates managed volumes in a portion of the host&rsquo;s file 
 在容器中使用Volumes 为docker run命令使用一v选项即可使用Volume</div><div class="post-footer">
         <a href="/docker-volume/">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/docker-%E7%BD%91%E7%BB%9C/">docker 网络</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker/"><i class="far fa-folder fa-fw"></i>docker</a></span></div><div class="content">1. docker的四种网络模式 1.1 Bridge模式（默认） 当Docker进程启动时，会在宿主机上创建一个名为docker0的虚拟网桥，此主机上启动的Docker容器会连接到这个虚拟网桥上。虚拟网桥的工作方式和物理交换机类似，这样主机上的所有容器就通过交换机连在了一个二层网络中。
-默认ip段172.17.0.1/16；从docker0子网中分配一个IP给容器使用，并设置docker0的IP为容器的默认网关。在主机上创建一对虚拟网卡veth pair设备，Docker将veth pair设备的一端放在新创建的容器中，并命名为eth0（容器的网卡），另一端放在主机中，以vethxxx这样类似的名字命名，并将这个网络设备加入到docker0网桥中。可以通过brctl show命令查看。
-使用 docker run -p 时，docker实际是在iptables做了DNAT规则，实现端口转发功能。可以使用 iptables -t nat -nL 查看。
-1.2 host模式 启动容器的时候使用host模式，那么这个容器将不会获得一个独立的Network Namespace，而是和宿主机共用一个Network Namespace。容器将不会虚拟出自己的网卡，配置自己的IP等，而是使用宿主机的IP和端口。但是，容器的其他方面，如文件系统、进程列表等还是和宿主机隔离的。
-1.3 none模式 使用none模式，Docker容器拥有自己的Network Namespace，但是，并不为Docker容器进行任何网络配置。也就是说，这个Docker容器没有网卡、IP、路由等信息。需要我们自己为Docker容器添加网卡、配置IP等。
-1.4 container模式 这个模式指定新创建的容器和已经存在的一个容器共享一个 Network Namespace，而不是和宿主机共享。新创建的容器不会创建自己的网卡，配置自己的 IP，而是和一个指定的容器共享 IP、端口范围等。同样，两个容器除了网络方面，其他的如文件系统、进程列表等还是隔离的。两个容器的进程可以通过 lo 网卡设备通信。
-2. 容器外部访问原理 1 2 3 4 5 6 7 8 docker0: flags=4163&lt;UP,BROADCAST,RUNNING,MULTICAST&gt; mtu 1500 inet 172.17.0.1 netmask 255.255.0.0 broadcast 0.0.0.0 inet6 fe80::42:a5ff:fe59:2034 prefixlen 64 scopeid 0x20&lt;link&gt; ether 02:42:a5:59:20:34 txqueuelen 0 (Ethernet) RX packets 56986 bytes 2746876 (2.</div><div class="post-footer">
-        <a href="/docker-%E7%BD%91%E7%BB%9C/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/docker-compose%E5%AE%9E%E6%88%98/">docker-compose示例</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker/"><i class="far fa-folder fa-fw"></i>docker</a></span></div><div class="content">[toc]
-使用docker-compose构建LNMP环境。 编写Dockerfile 这里采用的是先将nginx php打包为rpm包，然后做成镜像。与直接在容器里编译安装同理的。
-nginx Dockerfile
-1 2 3 4 5 6 7 8 FROM centos MAINTAINER lc RUN yum install -y gcc gcc-c++ openssl-devel make pcre-devel ADD nginx-1.13.9-1.el7.centos.x86_64.rpm /tmp/ RUN cd /tmp/ &amp;&amp; rpm -ivh nginx-1.13.9-1.el7.centos.x86_64.rpm ADD nginx.conf /etc/nginx/ EXPOSE 80 CMD [&#34;/usr/sbin/nginx&#34;, &#34;-g&#34;, &#34;daemon off;&#34;] php Dockerfile
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 FROM centos MAINTAINER LC RUN curl -o /etc/yum.</div><div class="post-footer">
-        <a href="/docker-compose%E5%AE%9E%E6%88%98/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/dockerfile/">Dockerfile</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker/"><i class="far fa-folder fa-fw"></i>docker</a></span></div><div class="content">[TOC]
-一、使用前提 通用镜像未必与应用程序和配置是符合我们需要的。
-1.1 常见镜像制作方式 常见制作镜像方式有两种
-基于容器 基于镜像制作：编辑一个Dockerfile，而后根据此文件制作； 二、Dockerfile概述 Dockerfile只是构建Docker镜像的源代码，docker可以通过读取Dockerfile中的指令自动构建图像。Dockerfile是一个文本文档，其中包含用户可以在命令行上调用以组合图像的所有命令。用户可以使用 docker build 创建连续执行多个命令行指令的自动构建。
-2.1 Dockerfile的工作模式 基于Dockerfile制作镜像时，需在专用目录放置Dockerfile文件，并且文件首字母必须大写。基于Dockerfile中打包的文件必须奇基于工作目录往下走的路径。在打包镜像时，.dockeringore 文件本身与所有包含在 .dockeringore 文件中的路径，都不被打包进去。在Dockerfile制作环境为底层镜像启动容器时所能够提供的环境。
-2.2 环境变量替换 制作镜像中还可以使用环境变量。环境变量（使用ENV语句声明）也可以在某些指令中使用，因为Dockerfile环境变量在 Dockerfile 中以 $variable_name 或${variable_name}标记。
-语法还支持一些标准`bash修饰符
-${variable:-word} 表示如果设置了变量，那么结果将是该值。如果未设置变量，那么word将是结果。 ${variable+word} 表示如果设置了变量，则word将是结果，否则结果为空字符串。 三、Dockerfile指令说明 特别说明：Dockerfile中每一条指令都会生成一个新的镜像层。
-FROM FROM指令（最重要的一个），必须为Dockerfile文件开篇的第一个非注释行，用于为镜像文件构建过程指定基准镜像，后续的指令运行于此基准镜像所提供的运行环境。基准镜像可以是任何可用镜像文件，默认情况下，docker build会在docker主机上查找指定的镜像文件，在其不存在时，则会从 Docker Hub Registry 上拉取所需的镜像文件。如果找不到指定的镜像文件，docker build 会返回一个错误信息
-Syntax:
-1 FROM repository[:tag] 1 FROM registry/repository[:tag] 1 FROM resository@[digest] #←相同名称时，可以使用resository@镜像hush码指定镜像。 参数 说明- reposotiry 某一个镜像的仓库，如redis镜像仓库。 registry docker镜像仓库，如docker hub，docker registry包含很多reposotiry，如nginx php tomcat等。不指定registry，默认从docker hub下载。 tag image的标签，为可选项，省略时默认为latest。 MAINTANIER(depreacted) MAINTANIER（depreacted）用于让Dockerfile制作者提供本人的详细信息。Dockerfile并不限制MAINTAINER指令可在出现的位置，但推荐将其放置于FROM指令之后。
-Syntax
-1 MAINTAINER &lt;authtor&#39;s detail&gt; &lt;author&rsquo;s detail&gt; 可是任何文本信息，但约定俗成地使用作者名称及邮箱地址</div><div class="post-footer">
-        <a href="/dockerfile/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/docker%E8%B7%A8%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">docker跨宿主机网络通信</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker/"><i class="far fa-folder fa-fw"></i>docker</a></span></div><div class="content">[toc]
-Docker Overlay Network Overlay网络是指在不改变现有网络基础设施的前提下，通过某种约定通信协议，把二层报文封装在IP报文之上的新的数据格式。这样不但能够充分利用成熟的IP路由协议进程数据分发；而且在Overlay技术中采用扩展的隔离标识位数，能够突破VLAN的4000数量限制支持高达16M的用户，并在必要时可将广播流量转化为组播流量，避免广播数据泛滥。
-因此，Overlay网络实际上是目前最主流的容器跨节点数据传输和路由方案。
-要想使用Docker原生Overlay网络，需要满足下列任意条件
-Docker 运行在Swarm 使用键值存储的Docker主机集群 使用键值存储搭建Docker主机集群 使用键值存储的Docker主机集群，需满足下列条件：
-集群中主机连接到键值存储，Docker支持 Consul、Etcd和Zookeeper 集群中主机运行一个Docker守护进程 集群中主机必须具有唯一的主机名，因为键值存储使用主机名来标识集群成员 集群中linux主机内核版本在3.12+,支持VXLAN数据包处理，否则可能无法通行 部署docker内置的OverLAY网络 环境准备说明 host ip- node01 10.0.0.15 node02 10.0.0.16 安装Consul 下载地址：Download Consul
-启动命令
-1 2 3 4 5 6 7 8 consul agent -server -bootstrap -ui -data-dir /data/docker/consul \ -client=10.0.0.16 -bind=10.0.0.16 docker run -d -p 8400:8400 -p 8500:8500 -p 8600:53/udp -h consul progrium/consul -server -bootstrap -ui-dir /ui #-ui : consul 的管理界面 #-data-dir : 数据存储 配置docker链接consul 1 2 3 4 5 ExecStart=/usr/bin/dockerd \ -H tcp://0.</div><div class="post-footer">
-        <a href="/docker%E8%B7%A8%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/docker%E5%AE%B9%E5%99%A8%E7%AE%A1%E7%90%86/">docker容器管理</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker/"><i class="far fa-folder fa-fw"></i>docker</a></span></div><div class="content">docker -it -d
-参数 说明 -i, &ndash;interactive 即使不是交互模式也保持stdin打开 -d, &ndash;detach 后台运行容器并打印容器ID -t, &ndash;tty 分配一个伪TTY 添加自定义主机映射
-1 2 3 4 5 6 $ docker run -tid --add-host docker-node:10.0.0.1 centos 61d5824c720f1a32c743a3d0f434e17a7f6860dba1cb5559653a80c064da8073 $ docker exec 61d5824c720f1a32c cat /etc/hosts ff02::2	ip6-allrouters 10.0.0.1	docker-node 172.17.0.2	61d5824c720f 添加linux功能
-linux内核特性，提供权限访问控制。如需要特殊权限，不赋权限容器将不能正常运行。
-将容器pid写入一个文件内
-1 2 3 4 $ docker run -itd --cidfile /tmp/pid centos 458d9f4b3cc51a4f0f3abffbc78c643b98a89eef3cdfe263e762ac05d3f5f47d $ cat /tmp/pid 458d9f4b3cc51a4f0f3abffbc78c643b98a89eef3cdfe263e762ac05d3f5f47d 将主机列表添加到容器中
-1 --device list 设置自定义dns
-1 2 3 4 5 $ docker run -it centos cat /etc/resolv.</div><div class="post-footer">
-        <a href="/docker%E5%AE%B9%E5%99%A8%E7%AE%A1%E7%90%86/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker/">docker</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
@@ -246,7 +273,7 @@ linux内核特性，提供权限访问控制。如需要特殊权限，不赋权
                     <span class="page-link" aria-hidden="true">&hellip;</span>
                 </li><li class="page-item ">
                     <span class="page-link">
-                        <a href="/page/25/">25</a>
+                        <a href="/page/26/">26</a>
                     </span>
                 </li></ul></div></div>
             </main><footer class="footer">
@@ -270,5 +297,5 @@ linux内核特性，提供权限访问控制。如需要特殊权限，不赋权
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

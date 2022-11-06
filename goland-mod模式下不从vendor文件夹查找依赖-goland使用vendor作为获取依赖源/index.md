@@ -1,0 +1,34 @@
+# goland mod模式下不从vendor文件夹查找依赖
+
+
+## goland使用vendor作为获取依赖源
+
+软件版本：
+
+system：windows10 1709
+terminal： wsl ubuntu1804
+goland：201903
+
+goland 打开项目时使用mod模式，无法识别外部包的依赖
+
+![](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223548527-786340550.png)
+
+![](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223808063-2002771119.png)
+
+根据[goland](https://www.jetbrains.com/help/go/configuring-build-constraints-and-vendoring.html#vendoring)官方提示，开启时，将忽略go.mod依赖描述，所以就找不到相对应的依赖，但是编译时正常的。可以看到下图中，`external libraries` 并没有加载外部的库导致了无法识别。
+
+![](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223827606-198056237.png)
+
+此时想要正常使用的话，可以按照提示操作
+
+![](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213224355732-1993575476.png)
+
+将 goland 改为gopath模式，执行`go mod vendor` 将依赖同步到vendor 。此时正常。
+
+当依赖更新时，可以手动添加对应的依赖库，`go mod tidy` 后 。因为vendor中没有新的依赖，需要手动执行下`go mod vendor`即可正常使用。
+
+## 使用vendor编译
+
+在编译时，可以使用 `-mod=vendor` 标记，使用代码主目录文件夹下`vendor`目录满足依赖获取，`go build -mod=vendor`。此时，`go build` 忽略`go.mod` 中的依赖，（这里仅使用代码root目录下的vendor其他地方的将忽略）
+
+`GOFLAGS=-mod=vendor` 设置顶级vendor作为依赖 `go env -w GOFLAGS=&#34;-mod=vendor&#34;` 进行设置。 取消 `go env -w GOFLAGS=&#34;-mod=&#34;`

@@ -77,6 +77,16 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch4.3-custom-scheduler/">基于Prometheus的Kubernetes调度器</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop/"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">[toc]
+Overview 本文将深入讲解 如何扩展 Kubernetes scheduler 中各个扩展点如何使用，与扩展scheduler的原理，这些是作为扩展 scheduler 的所需的知识点。最后会完成一个实验，基于网络流量的调度器。
+kubernetes调度配置 kubernetes集群中允许运行多个不同的 scheduler ，也可以为Pod指定不同的调度器进行调度。在一般的Kubernetes调度教程中并没有提到这点，这也就是说，对于亲和性，污点等策略实际上并没有完全的使用kubernetes调度功能，在之前的文章中提到的一些调度插件，如基于端口占用的调度 NodePorts 等策略一般情况下是没有使用到的，本章节就是对这部分内容进行讲解，这也是作为扩展调度器的一个基础。
+Scheduler Configuration [1] kube-scheduler 提供了配置文件的资源，作为给 kube-scheduler 的配置文件，启动时通过 --onfig= 来指定文件。目前各个kubernetes版本中使用的 KubeSchedulerConfiguration 为，
+1.21 之前版本使用 v1beta1 1.22 版本使用 v1beta2 ，但保留了 v1beta1 1.23, 1.24, 1.25 版本使用 v1beta3 ，但保留了 v1beta2，删除了 v1beta1 下面是一个简单的 kubeSchedulerConfiguration 示例，其中 kubeconfig 与启动参数 --kubeconfig 是相同的功效。而 kubeSchedulerConfiguration 与其他组件的配置文件类似，如 kubeletConfiguration 都是作为服务启动的配置文件。
+1 2 3 4 apiVersion: kubescheduler.config.k8s.io/v1beta1 kind: KubeSchedulerConfiguration clientConnection: kubeconfig: /etc/srv/kubernetes/kube-scheduler/kubeconfig Notes: --kubeconfig 与 --config 是不可以同时指定的，指定了 --config 则其他参数自然失效 [2]</div><div class="post-footer">
+        <a href="/ch4.3-custom-scheduler/">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop/">kubernetes develop</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/ch3.6-leader-election-eg/">脱管与kubernetes上的leader election应用</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop/"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">Backgroud 前一章中，对kubernetes的选举原理进行了深度剖析，下面就通过一个example来实现一个，利用kubernetes提供的选举机制完成的高可用应用。
 对于此章需要提前对一些概念有所了解后才可以继续看下去
@@ -191,26 +201,6 @@ P() 能够阻塞，V() 不会阻塞
 信号量实现的互斥 1 2 3 4 5 6 7 mutex = new Semaphore(1); mutex-&gt;P(); // 临界区前p ... critical section ... mutex-&gt;V(); // 临界区后v 信号量实现调度约束 1 2 3 4 5 6 7 8 9 10 condition = new Semaphore(0); // Thread A ... condition-&gt;P(); // 等待线程B某一些指令完成之后再继续运行,在此阻塞 .</div><div class="post-footer">
         <a href="/ch10-semaphore-and-monitors/">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/os/">OS</a>,&nbsp;<a href="/tags/cs/">CS</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch11-deadlock/">ch11 deadlock</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-04-25 00:00:00">2022-04-25 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/operation-system/"><i class="far fa-folder fa-fw"></i>operation system</a></span></div><div class="content">死锁问题 死锁 deadlock；是一组阻塞的进程，每个进程都持有一个资源并等待获取另一个进程持有的资源。
-死锁的示例：交通桥
-如图所示，桥是资源，进程是车辆，两个不同方向的车辆同时占用桥，此时发生谁也过不去的情况（死锁的发生）；
-当死锁发生时，如果一辆车倒车（抢占资源和回滚）就可以解决死锁问题 死锁发生时，可能需要后退多台车辆 饥饿，而饥饿并不一定是死锁 系统模型 在正常情况下，进程必须在使用之前请求资源，并在完成后释放它，顺序如下：
-请求：如果不能立即授予请求，则进程等待，直到它需要的资源变得可用。例如，系统调用 open()、malloc()、new() 、request() 等。
-使用：进程使用资源，例如文件中读取数据；使用硬件。
-释放：进程完成后放弃资源，以便其可用于其他进程。如，close()、free()、delete() 、 release()。
-当在集合中的每个进程都在等待当前分配给集合中另一个进程的资源时，这一组进程就会发生死锁
-资源分配 通过实例来理解死锁，
-一组资源：
-${ R_1,\ R_2,\ R_3,\ &hellip;.,\ R_N }$；为方形，图形内的点代表资源数量 一组进程：
-${ P_1,\ P_2,\ P_3,\ &hellip;.,\ P_N }$ 请求边缘 Request Edge：进程需要一些资源，被称为请求边缘；如 $P_i\ →\ R_j$
-分配边缘 Assign Edge：当资源已经被分配给进程，被称为分配边缘；如 $R_j\ →\ P_i$
-当请求被授予时，可以通过反转方向的线将请求边缘转换为分配边缘
-类型 示意图 Process Resource $P_i$ 请求的 $R_j$ 实例 $P_i$ 持有一个 $R_j$ 的实例
-也可以说 $R_j$ 被 $P_i$ 所持有 资源分配图 资源分配图 如图所示，资源类型为：</div><div class="post-footer">
-        <a href="/ch11-deadlock/">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/os/">OS</a>,&nbsp;<a href="/tags/cs/">CS</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
@@ -239,7 +229,7 @@ ${ P_1,\ P_2,\ P_3,\ &hellip;.,\ P_N }$ 请求边缘 Request Edge：进程需要
                     <span class="page-link" aria-hidden="true">&hellip;</span>
                 </li><li class="page-item ">
                     <span class="page-link">
-                        <a href="/page/25/">25</a>
+                        <a href="/page/26/">26</a>
                     </span>
                 </li></ul></div></div>
             </main><footer class="footer">
@@ -263,5 +253,5 @@ ${ P_1,\ P_2,\ P_3,\ &hellip;.,\ P_N }$ 请求边缘 Request Edge：进程需要
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

@@ -1,0 +1,19 @@
+# 
+
+插件下载地址
+
+
+
+- https://github.com/deadtrickster/prometheus_rabbitmq_exporter
+
+
+
+访问地址
+
+```bash
+{{hostname}}/api/metrics
+```
+
+
+
+
