@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Dockerfile - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="Dockerfile" />
+<meta property="og:description" content="[TOC]
+一、使用前提 通用镜像未必与应用程序和配置是符合我们需要的。
+1.1 常见镜像制作方式 常见制作镜像方式有两种
+基于容器 基于镜像制作：编辑一个Dockerfile，而后根据此文件制作； 二、Dockerfile概述 Dockerfile只是构建Docker镜像的源代码，docker可以通过读取Dockerfile中的指令自动构建图像。Dockerfile是一个文本文档，其中包含用户可以在命令行上调用以组合图像的所有命令。用户可以使用 docker build 创建连续执行多个命令行指令的自动构建。
+2.1 Dockerfile的工作模式 基于Dockerfile制作镜像时，需在专用目录放置Dockerfile文件，并且文件首字母必须大写。基于Dockerfile中打包的文件必须奇基于工作目录往下走的路径。在打包镜像时，.dockeringore 文件本身与所有包含在 .dockeringore 文件中的路径，都不被打包进去。在Dockerfile制作环境为底层镜像启动容器时所能够提供的环境。
+2.2 环境变量替换 制作镜像中还可以使用环境变量。环境变量（使用ENV语句声明）也可以在某些指令中使用，因为Dockerfile环境变量在 Dockerfile 中以 $variable_name 或${variable_name}标记。
+语法还支持一些标准`bash修饰符
+${variable:-word} 表示如果设置了变量，那么结果将是该值。如果未设置变量，那么word将是结果。 ${variable&#43;word} 表示如果设置了变量，则word将是结果，否则结果为空字符串。 三、Dockerfile指令说明 特别说明：Dockerfile中每一条指令都会生成一个新的镜像层。
+FROM FROM指令（最重要的一个），必须为Dockerfile文件开篇的第一个非注释行，用于为镜像文件构建过程指定基准镜像，后续的指令运行于此基准镜像所提供的运行环境。基准镜像可以是任何可用镜像文件，默认情况下，docker build会在docker主机上查找指定的镜像文件，在其不存在时，则会从 Docker Hub Registry 上拉取所需的镜像文件。如果找不到指定的镜像文件，docker build 会返回一个错误信息
+Syntax:
+1 FROM repository[:tag] 1 FROM registry/repository[:tag] 1 FROM resository@[digest] #←相同名称时，可以使用resository@镜像hush码指定镜像。 参数 说明- reposotiry 某一个镜像的仓库，如redis镜像仓库。 registry docker镜像仓库，如docker hub，docker registry包含很多reposotiry，如nginx php tomcat等。不指定registry，默认从docker hub下载。 tag image的标签，为可选项，省略时默认为latest。 MAINTANIER(depreacted) MAINTANIER（depreacted）用于让Dockerfile制作者提供本人的详细信息。Dockerfile并不限制MAINTAINER指令可在出现的位置，但推荐将其放置于FROM指令之后。
+Syntax
+1 MAINTAINER &lt;authtor&#39;s detail&gt; &lt;author&rsquo;s detail&gt; 可是任何文本信息，但约定俗成地使用作者名称及邮箱地址" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/dockerfile.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-06-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-06-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Dockerfile"/>
+<meta name="twitter:description" content="[TOC]
+一、使用前提 通用镜像未必与应用程序和配置是符合我们需要的。
+1.1 常见镜像制作方式 常见制作镜像方式有两种
+基于容器 基于镜像制作：编辑一个Dockerfile，而后根据此文件制作； 二、Dockerfile概述 Dockerfile只是构建Docker镜像的源代码，docker可以通过读取Dockerfile中的指令自动构建图像。Dockerfile是一个文本文档，其中包含用户可以在命令行上调用以组合图像的所有命令。用户可以使用 docker build 创建连续执行多个命令行指令的自动构建。
+2.1 Dockerfile的工作模式 基于Dockerfile制作镜像时，需在专用目录放置Dockerfile文件，并且文件首字母必须大写。基于Dockerfile中打包的文件必须奇基于工作目录往下走的路径。在打包镜像时，.dockeringore 文件本身与所有包含在 .dockeringore 文件中的路径，都不被打包进去。在Dockerfile制作环境为底层镜像启动容器时所能够提供的环境。
+2.2 环境变量替换 制作镜像中还可以使用环境变量。环境变量（使用ENV语句声明）也可以在某些指令中使用，因为Dockerfile环境变量在 Dockerfile 中以 $variable_name 或${variable_name}标记。
+语法还支持一些标准`bash修饰符
+${variable:-word} 表示如果设置了变量，那么结果将是该值。如果未设置变量，那么word将是结果。 ${variable&#43;word} 表示如果设置了变量，则word将是结果，否则结果为空字符串。 三、Dockerfile指令说明 特别说明：Dockerfile中每一条指令都会生成一个新的镜像层。
+FROM FROM指令（最重要的一个），必须为Dockerfile文件开篇的第一个非注释行，用于为镜像文件构建过程指定基准镜像，后续的指令运行于此基准镜像所提供的运行环境。基准镜像可以是任何可用镜像文件，默认情况下，docker build会在docker主机上查找指定的镜像文件，在其不存在时，则会从 Docker Hub Registry 上拉取所需的镜像文件。如果找不到指定的镜像文件，docker build 会返回一个错误信息
+Syntax:
+1 FROM repository[:tag] 1 FROM registry/repository[:tag] 1 FROM resository@[digest] #←相同名称时，可以使用resository@镜像hush码指定镜像。 参数 说明- reposotiry 某一个镜像的仓库，如redis镜像仓库。 registry docker镜像仓库，如docker hub，docker registry包含很多reposotiry，如nginx php tomcat等。不指定registry，默认从docker hub下载。 tag image的标签，为可选项，省略时默认为latest。 MAINTANIER(depreacted) MAINTANIER（depreacted）用于让Dockerfile制作者提供本人的详细信息。Dockerfile并不限制MAINTAINER指令可在出现的位置，但推荐将其放置于FROM指令之后。
+Syntax
+1 MAINTAINER &lt;authtor&#39;s detail&gt; &lt;author&rsquo;s detail&gt; 可是任何文本信息，但约定俗成地使用作者名称及邮箱地址"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/dockerfile.html" /><link rel="prev" href="https://cylonchau.github.io/docker%E8%B7%A8%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1.html" /><link rel="next" href="https://cylonchau.github.io/docker-compose%E5%AE%9E%E6%88%98.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Dockerfile",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/dockerfile.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "docker","wordcount":  679 ,
+        "url": "https:\/\/cylonchau.github.io\/dockerfile.html","datePublished": "2018-06-02T00:00:00+00:00","dateModified": "2018-06-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">Dockerfile</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker.html"><i class="far fa-folder fa-fw"></i>docker</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 679 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[TOC]</p>
+<h2 id="一使用前提">一、使用前提</h2>
+<p>通用镜像未必与应用程序和配置是符合我们需要的。</p>
+<h3 id="11-常见镜像制作方式">1.1 常见镜像制作方式</h3>
+<p>常见制作镜像方式有两种</p>
+<ul>
+<li>基于容器</li>
+<li>基于镜像制作：编辑一个Dockerfile，而后根据此文件制作；</li>
+</ul>
+<h2 id="二dockerfile概述">二、Dockerfile概述</h2>
+<p>Dockerfile只是构建Docker镜像的源代码，docker可以通过读取Dockerfile中的指令自动构建图像。Dockerfile是一个文本文档，其中包含用户可以在命令行上调用以组合图像的所有命令。用户可以使用 <font color="#f8070d" size=3><code>docker build</code></font> 创建连续执行多个命令行指令的自动构建。</p>
+<h3 id="21-dockerfile的工作模式">2.1 Dockerfile的工作模式</h3>
+<p>基于Dockerfile制作镜像时，需在专用目录放置Dockerfile文件，并且文件首字母必须大写。基于Dockerfile中打包的文件必须奇基于工作目录往下走的路径。在打包镜像时，<font color="#f8070d" size=3><code>.dockeringore</code></font> 文件本身与所有包含在 <font color="#f8070d" size=3><code>.dockeringore</code></font> 文件中的路径，都不被打包进去。在Dockerfile制作环境为底层镜像启动容器时所能够提供的环境。</p>
+<h3 id="22-环境变量替换">2.2 环境变量替换</h3>
+<p>制作镜像中还可以使用环境变量。环境变量（使用ENV语句声明）也可以在某些指令中使用，因为<code>Dockerfile</code>环境变量在 <code>Dockerfile</code> 中以 <font color="#f8070d" size=3><code>$variable_name</code></font> 或<font color="#f8070d" size=3><code>${variable_name}</code></font>标记。</p>
+<p>语法还支持一些标准`bash修饰符</p>
+<ul>
+<li><font color="#f8070d" size=3><code>${variable:-word}</code></font> 表示如果设置了变量，那么结果将是该值。如果未设置变量，那么word将是结果。</li>
+<li><font color="#f8070d" size=3><code>${variable+word}</code></font> 表示如果设置了变量，则word将是结果，否则结果为空字符串。</li>
+</ul>
+<h2 id="三dockerfile指令说明">三、Dockerfile指令说明</h2>
+<hr>
+<p><strong><font color="#f8070d" size=3>特别说明：Dockerfile中每一条指令都会生成一个新的镜像层。</font></strong></p>
+<hr>
+<h3 id="from">FROM</h3>
+<p>FROM指令（最重要的一个），<font style="background:#ffff00;" size=2>必须为Dockerfile文件开篇的第一个非注释行</font>，用于为镜像文件构建过程指定基准镜像，后续的指令运行于此基准镜像所提供的运行环境。基准镜像可以是任何可用镜像文件，默认情况下，<code>docker build</code>会在docker主机上查找指定的镜像文件，在其不存在时，则会从 <font color="#f8070d" size=3><code>Docker Hub Registry</code></font> 上拉取所需的镜像文件。如果找不到指定的镜像文件，<code>docker build</code> 会返回一个错误信息</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">FROM repository<span class="o">[</span>:tag<span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">FROM registry/repository<span class="o">[</span>:tag<span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">FROM resository@<span class="o">[</span>digest<span class="o">]</span>  <span class="c1">#←相同名称时，可以使用resository@镜像hush码指定镜像。</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明-</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>reposotiry</strong></td>
+<td>某一个镜像的仓库，如redis镜像仓库。</td>
+</tr>
+<tr>
+<td><strong>registry</strong></td>
+<td>docker镜像仓库，如docker hub，docker registry包含很多reposotiry，如nginx php tomcat等。不指定registry，默认从docker hub下载。</td>
+</tr>
+<tr>
+<td><strong>tag</strong></td>
+<td>image的标签，为可选项，省略时默认为latest。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="maintanierdepreacted">MAINTANIER(depreacted)</h3>
+<p>MAINTANIER（depreacted）用于让Dockerfile制作者提供本人的详细信息。Dockerfile并不限制MAINTAINER指令可在出现的位置，但推荐将其放置于FROM指令之后。</p>
+<blockquote>
+<p><strong>Syntax</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">MAINTAINER &lt;authtor<span class="err">&#39;</span>s detail&gt;  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>&lt;author&rsquo;s detail&gt; 可是任何文本信息，但约定俗成地使用作者名称及邮箱地址</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">MAINTAINER <span class="s2">&#34;lc &lt;12399.com@gmail.com&gt;&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="lable">LABLE</h3>
+<p>LABLE可以提供Key value信息，比MAINTANIER具有更宽泛的使用领域。LABLE让用户提供格式各样的元数据，都是键值格式。如果在LABEL值中包含空格，请使用引号和反斜杠。image可以有多个tag。您可以在一行上指定多个tag。docker17+增加此指令。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">LABEL &lt;key&gt;<span class="o">=</span>&lt;value&gt; &lt;key&gt;<span class="o">=</span>&lt;value&gt; &lt;key&gt;<span class="o">=</span>&lt;value&gt;...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">LABEL <span class="nv">maintainer</span><span class="o">=</span><span class="s2">&#34;lc &lt;12399.com@gmail.com&gt;&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="copy">COPY</h3>
+<p>用于从宿主机工作目录将文件复制至到镜像的文件系统中。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">COPY src...dest
+</span></span><span class="line"><span class="cl">COPY <span class="s2">&#34;src&#34;</span>....<span class="s2">&#34;dest&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>src</td>
+<td>要复制的源文件或目录，支持使用通配符。</td>
+</tr>
+<tr>
+<td>dest</td>
+<td>目标路径，即正在创建的image的文件系统路径；建议为dest使用绝对路径，否则，COPY指定则以WORKDIR为其起始路径。</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p>注意：在路径中有空白字符时，通常使用第二种格式。</p>
+<hr>
+<p>文件复制准则</p>
+<ul>
+<li><code>src</code> 必须是build上下文中的路径，不能是其父目录中的文件。</li>
+<li>如果src是目录，则其内部文件或子目录会被递归复制，但src目录自身不会被复制。 等同于 <font color="#f8070d" size=3><code>cp a/*</code></font>而不是 <font color="#f8070d" size=3><code>cp -r a</code></font></li>
+<li>如果指定了多个src，或在src中使用了通配符，则dest必须是一个目录，且必须以<font color="#f8070d" size=3><code>/</code></font>结尾。</li>
+<li>如果dest事先不存在，它将会被自动创建，这包括其父目录路径。</li>
+</ul>
+<h3 id="add">ADD</h3>
+<p>ADD指令类似于COPY指令，ADD支持使用TAR文件和URL路径。</p>
+<p>add官方解释：<a href="https://docs.docker.com/engine/reference/builder/#add" target="_blank" rel="noopener noreffer">ADD</a></p>
+<p>如果src是以</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ADD src dest
+</span></span><span class="line"><span class="cl">ADD <span class="o">[</span><span class="s2">&#34;src&#34;</span>…<span class="s2">&#34;dest&#34;</span><span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>操作准则同COPY指令</p>
+<ul>
+<li>
+<p>如果 <code>&lt;src&gt;</code> 为URL且 <code>&lt;dest&gt;</code> 不以 <font color="#f8070d" size=3><code>/</code></font> 结尾，则 <code>&lt;src&gt;</code> 指定的文件将被下载并直接被创建为dest；如果dest以<font color="#f8070d" size=3><code>/</code></font>结尾，则文件名URL指定的文件将被直接下载并保存为 <font color="#f8070d" size=3><code>dest/filename</code></font></p>
+</li>
+<li>
+<p>如果src是一个本地系统上的可识别的压缩格式（identity，gzip，bzip2或xz）的本地 tar存档，则将其解压缩为目录。，其行为类似于 <font color="#f8070d" size=3><code>tar -xf</code></font> 命令；然而，从URL远程网址不会自动解压。</p>
+</li>
+<li>
+<p>如果src有多个，或其间接或直接使用了通配符，则dest必须是一个以 <font color="#f8070d" size=3><code>/</code></font> 结尾的目录路径；如果dest不以 <font color="#f8070d" size=3><code>/</code></font> 结尾，则其被视作一个普通文件，src的内容将被直接写入到dest。</p>
+</li>
+</ul>
+<hr>
+<p><font color="#0215cd" size=3>Dockerfile中每一条指令都会生成一个新的镜像层。尽量避免很多指令</font></p>
+<hr>
+<h3 id="workdir">WORKDIR</h3>
+<p>用于为Dockerfile中所有的 <font color="#f8070d" size=3><code>RUN</code></font>、<font color="#f8070d" size=3><code>CMD</code></font>、<font color="#f8070d" size=3><code>ENTRYPOINT</code></font>、<font color="#f8070d" size=3><code>COPY</code></font> 和 <font color="#f8070d" size=3><code>ADD</code></font> 指定设定工作目录</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">WORKDIR dirpath  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在Dockerfile文件中，WORKDIR指令可出现多次，其路径也可以为相对路径，不过，其是相对此前一个WORKDR指令指定的路径。另外，WORKDIR也可满用由ENV指定定义的变量</p>
+<p>例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">WORKDIR /var/log
+</span></span><span class="line"><span class="cl">WORKDIR <span class="nv">$STATEPATH</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="volume">VOLUME</h3>
+<p>用于在image中创建一个挂载点目录，以挂载Docker host上的卷或其它容器上的卷，在Dockerfile中的镜像自动指定VOLUME时，一般只能指定挂载点，不能指定宿主机文件。被称之为docker管理的卷。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">VOLUME mountpoint
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">VOLUME <span class="o">[</span><span class="s2">&#34;mountpoint&#34;</span><span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>如果挂载点目录路径下此前在文件存在，docker run命令会在卷挂载完成后将此前的所有文件复制到新挂载的卷中。</p>
+<h3 id="expose">EXPOSE</h3>
+<p>用于为容器打开指定要监听的端口以实现与外部通信，写在文件中的端口暴露并不会直接暴露，当<font color="#f8070d" size=3><code>docker run -P</code></font>时不用声明端口，会自动读取镜像中指定要暴露的端口，动态分配到宿主机端口上。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">EXPOSE port<span class="o">[</span>/protocol<span class="o">]</span> <span class="o">[</span>port<span class="o">[</span>/protocol<span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>protocol用于指定传输层协议，可为tcp或udp二者之一，默认为TCP协议。</p>
+<p>EXPOSE指令可一次指定多个端口，例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">EXPOSE 11211/udp 11211/tcp  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="env">ENV</h3>
+<p>用于为镜像定义新需的环境变量，并可被Dockerfile文件中位于其后的其它指令（如ENV、ADD、COPY等）所调用格式为 <font color="#f8070d" size=3><code>$variable_name</code></font> 或 <font color="#f8070d" size=3><code>${variable_name}</code></font>。在Dockerfile中所定义的所有环境变量，是可以在启动容器后直接在容器中使用的变量。在运行容器时更改ENV并不会影响<code>docker build</code>的值。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ENV key value
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ENV <span class="nv">key1</span><span class="o">=</span>value1 <span class="nv">key2</span><span class="o">=</span>value2....    
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>第一位格式中。key之后的所有内容均会被视作其value的组成部分，因此，一次只能设置一个变量。第二种格式可用一次设置多个变量，每个变量为一个 <font color="#f8070d" size=3><code>key=value</code></font> 的键值对，如果value中包含空格，可以以反斜线（\）进行转义，也可通过对value加引号递行标识；另外，反斜线也可用于续行。</p>
+<p>在定义多个变量时，建议使用第二种方式，以便在同一层中完成所有功能。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/085a742e.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/085a742e.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/085a742e.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/085a742e.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/085a742e.png"
+        title="image" /></p>
+<p>运行命令。</p>
+<h3 id="run">RUN</h3>
+<p>用于指定 <font color="#f8070d" size=3><code>dodker build</code></font> 过程中运行的程序，其可以是任何命令。RUN可以运行多次的，如果多个命令彼此间有关联关系，建议在一条RUN中将多个Command写进来。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">RUN <span class="nb">command</span>
+</span></span><span class="line"><span class="cl">RUN <span class="o">[</span><span class="s2">&#34;executable&#34;</span>，<span class="s2">&#34;param1&#34;</span>，<span class="s2">&#34;param2&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>第一种格式中，command通常是一个shell命令，且以 <font color="#f8070d" size=3><code>/bin/sh -c</code></font> 来运行它，这意味着此进程在容器中的PID不为1，不能接枚Unix信号，因此，当使用 <font color="#f8070d" size=3><code>docker stop container </code></font> 命令停止容器时，此进程接收不到SIGTERM信号；</p>
+<p>第二种语法格式中的参数是一个JSON格式的数组，其中executable为要运行的命令，后面的 <font color="#f8070d" size=3><code>paramN</code></font> 为传递给命令的选项或参数；然而，此种格式指定的命令不会以 <font color="#f8070d" size=3><code>/bin/sh -c</code></font> 来发起，因此常见的shell操作如变量替换以及通配符（，*等）替换将不会进行；不过，如果要运行的命令依赖于此shell特性的话，可以将其替换为奏似下面的格式。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">RUN <span class="o">[</span><span class="s2">&#34;/bin/bash&#34;</span> , <span class="s2">&#34;-c&#34;</span>，<span class="s2">&#34;executable&#34;</span>, <span class="s2">&#34;param1&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>CMD是在镜像运行为容器时没有指定默认运行命令时所运行的命令。
+RUN是在基于Dockerfile构建镜像时要运行的命令。将在docker build中运行。</p>
+<h3 id="cmd">CMD</h3>
+<p>类似于RUN指令，CMD指令也可用于运行任何命令或应用程序，不过，二者的运行时间点不同。RUN指令运行于镜像文件构建过程中，而CMD指令运行于基于Dockerfile构建出的新映像文件启动一个容器时</p>
+<p>CMD指令的首要目的在于为启动的容器指定默认要运行的程序，且其运行结束后，容器也将终止；不过，CMD指定的命令其可以被<font color="#f8070d" size=3><code>docker run</code></font>的命令行选项所覆盖。<font style="background:#ffff00;" size=2>在Dockerfile中可以存在多个CMD指令，但仅最后一个会生效</font>。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">CMD <span class="nb">command</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">CMD <span class="o">[</span><span class="s2">&#34;executable&#34;</span> , <span class="s2">&#34;param1&#34;</span> , <span class="s2">&#34;param2&#34;</span><span class="o">]</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">CMD <span class="o">[</span><span class="s2">&#34;param1&#34;</span> , <span class="s2">&#34;param2&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>使用第一种方式默认使用bin/sh -c</li>
+<li>前两种语法格式的意义同RUN</li>
+<li>第三种则用于为ENTRYPOINT指令提供默认参数</li>
+</ul>
+<h3 id="entrypoint">ENTRYPOINT</h3>
+<p>在<font color="#f8070d" size=3><code>docker run</code></font>时明明指定的运行命令为nginx，但是可以执行<font color="#f8070d" size=3><code>docker run -it --rm busybox ls /</code></font>，这表示了更改了镜像中默认要运行的程序。没有运行默认程序，转而运行了指定的命令。</p>
+<p>对于自定义的镜像而言，默认在运行容器时运行的命令是可以被覆盖的。而不允许在运行命令是改变默认命令CMD就无法完成，而<font color="#f8070d" size=3><code>ENTRYPOINT</code></font>可以做到</p>
+<p>类似CMD指令的功能，用于为容器指定默认运行程序，从而使得容器像是一个单独的可执行程序。但是与CMD不同的是，。<font style="background:#ffff00;" size=2>由ENTRYPOINT启动的程序不会被docker run命令行指定的参数所覆盖</font>，而且，这些命令行参数会被当作参数传递给ENTRYPOINT指定的程序。当CMD和ENTRYPOINT同时存在时，CMD的内容会当做参数传给ENTRYPOINT。不过，docker run命令的&ndash;entrypoint选项的参教可覆盖ENTRYPOINT指令指定的程序。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ENTRYPOINT <span class="nb">command</span>
+</span></span><span class="line"><span class="cl">ENTRYPOINT <span class="o">[</span><span class="s2">&#34;executable&#34;</span>，<span class="s2">&#34;paraml&#34;</span>，<span class="s2">&#34;param2&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>docker run命令传入的命令参数会覆盖CMD指令的内容并且附加到ENTRYPOINT命令最后做为其参数使用，Dockerfile文件中也可以存在多个ENTRYPOINT指令，但仅有最后一个会生效</p>
+<p>当同时CMD与ENTRYPOINT，在运行容器时传入参数会覆盖CMD，除非使用<code>--entrypoint选项</code>否则ENTRYPOINT不能够被覆盖。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">CMD <span class="o">[</span><span class="s2">&#34;/bin/httpd&#34;</span> , <span class="s2">&#34;-f&#34;</span> , <span class="s2">&#34;-h </span><span class="si">${</span><span class="nv">WEB00C_ROOT</span><span class="si">}</span><span class="s2">&#34;</span> <span class="o">]</span>
+</span></span><span class="line"><span class="cl">ENTRYPOINT <span class="o">[</span><span class="s2">&#34;/bin/sh&#34;</span>,<span class="s2">&#34;-c&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>为什么非要同时使用CMD与ENTRYPOINT？</strong></p>
+<ol>
+<li>多数情况下ENTRYPOINT是用来指定一个shell，指定一个谁用来作为启动别的进程的服务进程。在命令行中的参数会当做他的子进程来启动。这样就可以灵活传参数被shell所解析了。</li>
+<li>容器接受配置要靠环境变量，要想让应用镜像（如，nginx）在run时能够通过环境变量接受参数来决定他的配置文件（监听地址、端口、document_root），变量可以在启动容器时进行传递。</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="cp">#!/bin/sh
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>cat &gt;/etc/nginx/conf.d/www.conf <span class="s">&lt;&lt; EOF 
+</span></span></span><span class="line"><span class="cl"><span class="s">  server{
+</span></span></span><span class="line"><span class="cl"><span class="s">    server name ${HOSTNAME};
+</span></span></span><span class="line"><span class="cl"><span class="s">    listen ${IP:-0.0.0.0}:{PORT:-80};
+</span></span></span><span class="line"><span class="cl"><span class="s">    root ${NGX_DOC_ROOT:-/usr/share/nginx/html};
+</span></span></span><span class="line"><span class="cl"><span class="s">}
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span> <span class="nb">exec</span> <span class="s2">&#34;</span><span class="nv">$@</span><span class="s2">&#34;</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">FROM nginx:1.14-alpine 
+</span></span><span class="line"><span class="cl">LABEL <span class="nv">maintainer</span><span class="o">=</span><span class="s2">&#34;lc &lt;lc.com&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">ENV <span class="nv">NGX_DOC_ROOT</span><span class="o">=</span><span class="s2">&#34;/data/web/html/&#34;</span>
+</span></span><span class="line"><span class="cl">ADD index.html <span class="si">${</span><span class="nv">NGX_DOC_ROOT</span><span class="si">}</span>
+</span></span><span class="line"><span class="cl">ADD entrypoint.sh /bin/
+</span></span><span class="line"><span class="cl">CMD <span class="o">[</span><span class="s2">&#34;/usr/sbin/nginx&#34;</span> , <span class="s2">&#34;-g&#34;</span> , <span class="s2">&#34;daemon off;&#34;</span> <span class="o">]</span>
+</span></span><span class="line"><span class="cl">ENTRYPOINT <span class="o">[</span><span class="s2">&#34;/bin/entrypoint.sh&#34;</span><span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="user">USER</h3>
+<p>用于指定运行image时的或运行Dockerfile中任何RUN、CMD或ENTRYPOINT指令指定的程序时的用户名或UID，默认情况下，container的运行身份为root用户</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">USER UID<span class="p">|</span>UseName  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>需要注意的是，UID可以为任意教字，但实践中必须为 <font color="#f8070d" size=3><code>/etc/passwd</code></font> 中某用户的有效UID，否则，<font color="#f8070d" size=3><code>docker run</code></font> 命令将运行失败</p>
+<p>在基于某个镜像启动容器后，只要容器没转向后台（没停止），这个容器就不会停止。在docker引擎在判定容器健康与否并不是主进程能否提供服务，而仅仅判断进程是否运行。因此docker判断机制并不是真正意义上判断主进程的是否健康，需要其他工具来辅助确定。</p>
+<h3 id="healthcheck">HEALTHCHECK</h3>
+<p>HEALTHCHECK指令定义一个command，<font color="#f8070d" size=3><code>CMD</code></font> 为固定关键词，<font color="#f8070d" size=3><code>CMD</code></font> 后指定一个命令，这个命令用于检查容器主进程工作状态健康与否。即使主进程仍在运行，这也可以检测到陷入无限循环且无法处理新连接的Web服务器等情况。</p>
+<p>HEALTHCHECK指令有</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">HEALTHCHECK <span class="o">[</span>OPTIONS<span class="o">]</span> CMD <span class="nb">command</span> <span class="c1"># 通过在容器内运行命令来检查容器运行状况</span>
+</span></span><span class="line"><span class="cl">HEALTHCHECK NONE <span class="c1"># 禁用任何的健康状态检查，包括默认的健康状态检测机制</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>可以在CMD之前出现的选项：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明-</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>--interval  </td>
+<td>间隔 s秒、m分钟、h小时，default:30s。</td>
+</tr>
+<tr>
+<td>--timeout</td>
+<td>执行command需要时间，比如curl一个地址，如果超过timeout秒则认为超时是错误的状态，此时每次健康检查的时间是timeout+interval秒。default:30s。</td>
+</tr>
+<tr>
+<td>--start-period</td>
+<td>在启动容器是，对主进程自我初始化较慢的情况下，default:0s。17.05引入</td>
+</tr>
+<tr>
+<td>--retries=N</td>
+<td>失败次数，default:3。</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>当指定了健康检测状态命令，检测请求发出时，响应值为如下3种情况：</p>
+<ul>
+<li>0: 成功，容器健康且随时可用。</li>
+<li>1: 不健康，容器无法正常工作。</li>
+<li>2: 预留值，无意义，可以自行定义。</li>
+</ul>
+<p>|HEALTHCHECK&ndash;start-period=3s CMD wget-0&ndash;q http://${IP:-0.0.0.0}:10080/</p>
+<p>For example</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">  HEALTHCHECK--interval<span class="o">=</span>5m --timeout<span class="o">=</span>3s <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>  CMD curl -f http://locdlhost/ <span class="o">||</span> <span class="nb">exit</span> <span class="m">1</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="shell">SHELL</h3>
+<p>SHELL指令允许覆盖用于shell命令形式的默认shell。在Linux上的默认shell是 <font color="#f8070d" size=3><code>[&quot;/bin/sh&quot;,&quot;-c&quot;]</code></font> , 在Windows上是 <font color="#f8070d" size=3><code>[&quot;cmd&quot; , &quot;/S&quot; , &quot;/C&quot;]</code></font> 。SHELL指令必须以JSON格式写入Dockerfile。</p>
+<p>SHELL指令可以多次出现。每个SHELL指令覆盖先前的SHELL指令，并影响所有后续指令。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">SHELL <span class="o">[</span><span class="s2">&#34;executable&#34;</span>,<span class="s2">&#34;parameters]  
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="stohsignal">STOHSIGNAL</h3>
+<p>STOPSIGNAL指令设置将发送到容器的系统调用信号，以退出。此信号可以是与内核的系统调用表中的位置匹配的有效无符号数，例如9，或SIGNAME格式的信号名，例如SIGKILL。
+语法：<font color="#f8070d" size=3><code>STOPSIGNAL signal</code></font></p>
+<h3 id="arg">ARG</h3>
+<p>ARG指令使用 <font color="#f8070d" size=3><code>--build-arg varname='value'</code></font> 标志定义一个变量，用户可以在使用<font color="#f8070d" size=3><code>docker build</code></font>命令在构建时将其传递给构建器。</p>
+<p>此功能使得一个Dockerfile能够适用于较多的不同场景，尤其是应用程序版本变换时。直接传参数就能确定应该基于Dockerfile制作哪个版本。<font style="background:#fee904;" size=2>如果用户指定了未在Dockerfile中定义的构建参数，则构建会输出警告</font>。</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ARG <span class="nv">name</span> <span class="o">=</span> default value
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>Dockerfile中可以包括一个或多个ARG指令。</li>
+<li>ARG指令可以选择性地包括默认值：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ARG <span class="nv">version</span> <span class="o">=</span> 1.14
+</span></span><span class="line"><span class="cl"><span class="nv">ARGuser</span> <span class="o">=</span> mageedu  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="onbuild">ONBUILD</h3>
+<p>用于在Dockerfile中定义一个触发器。Dockerfile用于build映像文件，此映像文件亦可作为base image被另一个Dockerfile用作FROM指令的参数，并以之构建新的映像文件</p>
+<p>在后面的这个Dockerfile中的FROM指令在build过程中被执行时，将会“触发”创建其base image的Dockerfile文件中的ONBUILD指令定义的触发器</p>
+<blockquote>
+<p><strong>Syntax:</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ONBUILD INSTRUCTION  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>注意：</strong></p>
+<ul>
+<li>尽管任何指令都可注册成为触发器指令，但ONBUILD不能自我嵌套，且不会触发FROM和MAINTAINER指令。</li>
+<li>使用包含ONBUILD指令的Dockerfle构建的镜像应该使用特殊的标签，例如ruby：2.0-onbuild</li>
+<li>在ONBUILD指令中使用ADD或COPY指令应该格外小心，因为新构建过程的上下文在缺少指定的源文件时会失败。</li>
+</ul>
+<h2 id="四构建php环境镜像">四、构建php环境镜像</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">FROM  centos:6
+</span></span><span class="line"><span class="cl">MAINTAINER   lc
+</span></span><span class="line"><span class="cl">RUN  yum install -y httpd php php-gd php-mysql mysql mysql-server
+</span></span><span class="line"><span class="cl">ENV   MYSQL_ROOT_PASSWORD <span class="m">123456</span>
+</span></span><span class="line"><span class="cl">RUN   <span class="nb">echo</span> <span class="s2">&#34;&lt;?php phpinfo()?&gt;&#34;</span> &gt; /var/www/html/index.php
+</span></span><span class="line"><span class="cl">ADD   start.sh /start.sh
+</span></span><span class="line"><span class="cl">RUN  chmod +x /start.sh
+</span></span><span class="line"><span class="cl">ADD   https://cn.wordpress.org/wordpress-4.7.4-zh_CN.tar.gz /var/www/html
+</span></span><span class="line"><span class="cl">COPY   wp-config.php /var/www/html/wordpress
+</span></span><span class="line"><span class="cl">VOLUME   <span class="o">[</span><span class="s2">&#34;/var/lib/mysql&#34;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">CMD   /start.sh
+</span></span><span class="line"><span class="cl">EXPOSE  <span class="m">80</span> <span class="m">3306</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="五构建java环境镜像">五、构建java环境镜像</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">FROM centos
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">MAINTAINER lc
+</span></span><span class="line"><span class="cl">ADD jdk-8u144-linux-x64.tar.gz /usr/local
+</span></span><span class="line"><span class="cl">ENV <span class="nv">JAVA_HOME</span><span class="o">=</span>/usr/local/jdk1.8.0_144
+</span></span><span class="line"><span class="cl">ADD apache-tomcat-8.5.32.tar.gz /usr/local/
+</span></span><span class="line"><span class="cl">RUN mv /usr/local/apache-tomcat-8.5.32 /usr/local/tomcat
+</span></span><span class="line"><span class="cl">WORKDIR /usr/local/tomcat
+</span></span><span class="line"><span class="cl">ENTRYPOINT <span class="o">[</span><span class="s2">&#34;bin/catalina.sh&#34;</span>,<span class="s2">&#34;run&#34;</span><span class="o">]</span>
+</span></span><span class="line"><span class="cl">EXPOSE <span class="m">8080</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="六构建ssh环境镜像">六、构建ssh环境镜像</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">FROM centos
+</span></span><span class="line"><span class="cl">MAINTAINER zhangsan
+</span></span><span class="line"><span class="cl">ENV PWD <span class="m">123</span>
+</span></span><span class="line"><span class="cl">RUN yum install openssh openssh-server openssh-clients -y
+</span></span><span class="line"><span class="cl">RUN <span class="nb">echo</span> <span class="nv">$PWD</span><span class="p">|</span>passwd --stdin root
+</span></span><span class="line"><span class="cl">RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_dsa_key
+</span></span><span class="line"><span class="cl">RUN ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
+</span></span><span class="line"><span class="cl">CMD <span class="o">[</span><span class="s2">&#34;/usr/sbin/sshd&#34;</span>,<span class="s2">&#34;-D&#34;</span><span class="o">]</span>  
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="61-测试ssh镜像">6.1 测试ssh镜像</h4>
+<blockquote>
+<p><strong>systemd启动</strong></p>
+</blockquote>
+<p>构建完镜像使用systemctl启动发现没有sshd进程</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="o">[</span>root@cae0d8aa0b0c /<span class="o">]</span><span class="c1"># ps</span>
+</span></span><span class="line"><span class="cl">   PID TTY          TIME CMD
+</span></span><span class="line"><span class="cl">     <span class="m">1</span> pts/0    00:00:00 bash
+</span></span><span class="line"><span class="cl">    <span class="m">18</span> pts/0    00:00:00 ps
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@cae0d8aa0b0c /<span class="o">]</span><span class="c1"># systemctl start ssh</span>
+</span></span><span class="line"><span class="cl">Failed to get D-Bus connection: Operation not permitted
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>此问题原因：systemd服务没有启动无法使用systemd启动</p>
+<p><a href="https://github.com/moby/moby/issues/7459" target="_blank" rel="noopener noreffer">Failed to get D-Bus connection: No connection to service manager</a></p>
+<p>故启动时一般使用 <code>CMD [&quot;/usr/sbin/sshd&quot;,&quot;-D&quot;]</code></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2018-06-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/dockerfile.html" data-title="Dockerfile" data-hashtags="docker"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/dockerfile.html" data-hashtag="docker"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/dockerfile.html" data-title="Dockerfile" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/dockerfile.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/dockerfile.html" data-title="Dockerfile"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/dockerfile.html" data-title="Dockerfile"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/dockerfile.html" data-title="Dockerfile"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker.html">docker</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/docker%E8%B7%A8%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1.html" class="prev" rel="prev" title="docker跨宿主机网络通信"><i class="fas fa-angle-left fa-fw"></i>docker跨宿主机网络通信</a>
+            <a href="/docker-compose%E5%AE%9E%E6%88%98.html" class="next" rel="next" title="docker-compose示例">docker-compose示例<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-06-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Dockerfile"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ansible介绍 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ansible介绍" />
+<meta property="og:description" content="运维工具 OS Provisioning: PXE, Cobbler(repository,distritution, profile)
+PXE: dhcp, tftp, (http, ftp)
+dnsusq: dhcp, dns
+OS Config:
+puppet, saltstack, func
+Task Excute:
+fabric, func, saltstack
+Deployment:
+fabric
+管理主机，要想管理被管理节点，二者必须有安全管理通道。puppet、saltstack在管理被管节点时，每一个被管节点必须运行puppet agent，管理端进程与每一个被管节点的agent进程进行通信，通信时使用的HTTP协议。此种方式必须在被管节点安装应用程序的agent，远程接收到指令，并在本地负责执行相应的任务。
+根据远程管理时，是不是在每一个被管主机上安装agent端，分为两种puppet、func、saltstack；与无需agent端，ansible、fabric。依赖被管节点的ssh服务。而管理端需要知道对方主机上的账号密码。
+ansible的组成 ansible核心 host invenory ：为了管控每个被管主机，每个主机在本地需要注册。用来定义由ansible远程配置管理的主机，每个主机的IP地址、掩码、SSH监听的地址、端口号、账号密码等。
+core modules：ansible执行任何特定管理任务，都是不由ansible自身玩成的，而是通过模块完成的。
+custom Modules：使用任何编程语言来编写模块。
+playbooks：将主机要完成的多个任务，事先定义在文件中可以多次调用。
+1 ansible的特性 基于Python语言实现，由Paramiko, PyYAML和jiniia2三个关键模块 部署简单，agentless 默认使用SSH协议 主从模式： master:ansible, ssh client slave: ssh server 支持自定文模块：支持各种编程语言，支持Playbook，基于“模块”完成各种“任务”。 安装依赖于epel源
+配置文件：
+1 2 /etc/ansible/ansible.cfg Invertory:/etc/ansible/hosts 2 ansible命令应用基础 语法: ansible &lt;host-pattern&gt; [-f forks] [-m module_name] [-a args]" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ansible.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-06-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-06-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ansible介绍"/>
+<meta name="twitter:description" content="运维工具 OS Provisioning: PXE, Cobbler(repository,distritution, profile)
+PXE: dhcp, tftp, (http, ftp)
+dnsusq: dhcp, dns
+OS Config:
+puppet, saltstack, func
+Task Excute:
+fabric, func, saltstack
+Deployment:
+fabric
+管理主机，要想管理被管理节点，二者必须有安全管理通道。puppet、saltstack在管理被管节点时，每一个被管节点必须运行puppet agent，管理端进程与每一个被管节点的agent进程进行通信，通信时使用的HTTP协议。此种方式必须在被管节点安装应用程序的agent，远程接收到指令，并在本地负责执行相应的任务。
+根据远程管理时，是不是在每一个被管主机上安装agent端，分为两种puppet、func、saltstack；与无需agent端，ansible、fabric。依赖被管节点的ssh服务。而管理端需要知道对方主机上的账号密码。
+ansible的组成 ansible核心 host invenory ：为了管控每个被管主机，每个主机在本地需要注册。用来定义由ansible远程配置管理的主机，每个主机的IP地址、掩码、SSH监听的地址、端口号、账号密码等。
+core modules：ansible执行任何特定管理任务，都是不由ansible自身玩成的，而是通过模块完成的。
+custom Modules：使用任何编程语言来编写模块。
+playbooks：将主机要完成的多个任务，事先定义在文件中可以多次调用。
+1 ansible的特性 基于Python语言实现，由Paramiko, PyYAML和jiniia2三个关键模块 部署简单，agentless 默认使用SSH协议 主从模式： master:ansible, ssh client slave: ssh server 支持自定文模块：支持各种编程语言，支持Playbook，基于“模块”完成各种“任务”。 安装依赖于epel源
+配置文件：
+1 2 /etc/ansible/ansible.cfg Invertory:/etc/ansible/hosts 2 ansible命令应用基础 语法: ansible &lt;host-pattern&gt; [-f forks] [-m module_name] [-a args]"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ansible.html" /><link rel="prev" href="https://cylonchau.github.io/docker-compose.html" /><link rel="next" href="https://cylonchau.github.io/kubernetes-dashborad-based.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ansible介绍",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ansible.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "ansible","wordcount":  460 ,
+        "url": "https:\/\/cylonchau.github.io\/ansible.html","datePublished": "2018-06-02T00:00:00+00:00","dateModified": "2018-06-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">ansible介绍</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ops.html"><i class="far fa-folder fa-fw"></i>ops</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 460 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="运维工具">运维工具</h2>
+<p><strong>OS Provisioning: PXE, Cobbler(repository,distritution, profile)</strong></p>
+<p>      PXE: dhcp, tftp, (http, ftp)</p>
+<p>      dnsusq: dhcp, dns</p>
+<p><strong>OS Config:</strong></p>
+<p>      puppet, saltstack, func</p>
+<p><strong>Task Excute:</strong></p>
+<p>      fabric, func, saltstack</p>
+<p><strong>Deployment:</strong></p>
+<p>      fabric</p>
+<p>管理主机，要想管理被管理节点，二者必须有安全管理通道。puppet、saltstack在管理被管节点时，每一个被管节点必须运行puppet agent，管理端进程与每一个被管节点的agent进程进行通信，通信时使用的HTTP协议。此种方式必须在被管节点安装应用程序的agent，远程接收到指令，并在本地负责执行相应的任务。</p>
+<p>根据远程管理时，是不是在每一个被管主机上安装agent端，分为两种puppet、func、saltstack；与无需agent端，ansible、fabric。依赖被管节点的ssh服务。而管理端需要知道对方主机上的账号密码。</p>
+<h2 id="ansible的组成">ansible的组成</h2>
+<h3 id="ansible核心">ansible核心</h3>
+<p>host invenory ：为了管控每个被管主机，每个主机在本地需要注册。用来定义由ansible远程配置管理的主机，每个主机的IP地址、掩码、SSH监听的地址、端口号、账号密码等。</p>
+<p>core modules：ansible执行任何特定管理任务，都是不由ansible自身玩成的，而是通过模块完成的。</p>
+<p>custom Modules：使用任何编程语言来编写模块。</p>
+<p>playbooks：将主机要完成的多个任务，事先定义在文件中可以多次调用。</p>
+<h2 id="1-ansible的特性">1 ansible的特性</h2>
+<ul>
+<li>基于Python语言实现，由Paramiko, PyYAML和jiniia2三个关键模块</li>
+<li>部署简单，agentless</li>
+<li>默认使用SSH协议</li>
+<li>主从模式：
+<ul>
+<li>master:ansible, ssh client</li>
+<li>slave: ssh server</li>
+</ul>
+</li>
+<li>支持自定文模块：支持各种编程语言，支持Playbook，基于“模块”完成各种“任务”。</li>
+</ul>
+<hr>
+<p><strong>安装依赖于epel源</strong></p>
+<hr>
+<blockquote>
+<p><strong>配置文件：</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">/etc/ansible/ansible.cfg
+</span></span><span class="line"><span class="cl">Invertory:/etc/ansible/hosts
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="2-ansible命令应用基础">2 ansible命令应用基础</h2>
+<p><strong>语法:</strong>    <em><code>ansible &lt;host-pattern&gt; [-f forks] [-m module_name] [-a args]</code></em></p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-f forks</td>
+<td>启助的并发线程数。</td>
+</tr>
+<tr>
+<td>-m module_name</td>
+<td>要使用的模块。</td>
+</tr>
+<tr>
+<td>-a args</td>
+<td>模块特有的参数</td>
+</tr>
+</tbody>
+</table>
+<h4 id="查看模块">查看模块</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible-doc -l
+</span></span><span class="line"><span class="cl">command           	Executes a command on a remote node                            
+</span></span><span class="line"><span class="cl">composer         	Dependency Manager for PHP                                     
+</span></span><span class="line"><span class="cl">consul          	Add, modify &amp; delete services within a consul cluster.         
+</span></span><span class="line"><span class="cl">consul_acl      	Manipulate Consul ACL keys and rules                           
+</span></span><span class="line"><span class="cl">consul_kv       	Manipulate entries in the key/value store of a consul cluster. 
+</span></span><span class="line"><span class="cl">consul_session    	manipulate consul sessions                                     
+</span></span><span class="line"><span class="cl">copy               	Copies files to remote locations    
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[root@java ~]# ansible-doc -s command
+</span></span><span class="line"><span class="cl">- name: Executes a command on a remote node
+</span></span><span class="line"><span class="cl">  command:
+</span></span><span class="line"><span class="cl">    chdir:# Change into this directory before running the command.
+</span></span><span class="line"><span class="cl">     creates: A filename or (since 2.0) glob pattern, when it already exists, this step will *not* be run.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="21-常见模块">2.1 常见模块</h3>
+<p><em><code>command</code></em>：<font color=#0215cd size=3>命令模块，默认模块，用于在远程执行命令。</font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[root@java ~]# ansible 10.0.0.12 -m command -a &#39;date&#39;
+</span></span><span class="line"><span class="cl">10.0.0.12 | SUCCESS | rc=0 &gt;&gt;
+</span></span><span class="line"><span class="cl">Wed May  2 14:40:57 CST 2018
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[root@java ~]# ansible 10.0.0.12 -a &#39;date&#39;
+</span></span><span class="line"><span class="cl">10.0.0.12 | SUCCESS | rc=0 &gt;&gt;
+</span></span><span class="line"><span class="cl">Wed May  2 14:41:03 CST 2018
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><em><strong>cron</strong></em></p>
+<blockquote>
+<p><em>state：表示任务是添加还是移除。present表示必须提供的，absent表示必须不能提供的
+present：安装、absent移除。<em>可以不写，默认都是</em>。state默认 present</em></p>
+</blockquote>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible websrvs cron -a &#39;minute=&#34;*/10&#34; job=&#34;/bin/echo hellow&#39; name-&#34;test cron job&#34;&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong><code>user</code>：指明创建用户的名字</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m user -a &#39;name=user1&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m group -a &#39;name=mysql gid=2000 system=yes&#39;
+</span></span><span class="line"><span class="cl">ansible all -m user -a &#39;user=mysql group=mysql system=yes uid=3306&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><em><strong><code>copy</code></strong></em></p>
+<blockquote>
+<p><em>src本地原路径，可以使用相对和绝对路径
+dest远程目标路径，必须使用绝对路径</em></p>
+</blockquote>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m copy -a &#39;src=/etc/hosts dest=/tmp/h.ansible&#39; owner=&#39;root&#39; mode=&#39;644&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><em><strong><font color=#0215cd size=3>content：取代src，表示直接用此处指定的信息生成为目标文件内容</font></strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m copy -a &#39;content=&#34;test ansible&#34; dest=/tmp/h.ansible&#39; 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[root@redis ~]# ll /tmp/
+</span></span><span class="line"><span class="cl">total 56
+</span></span><span class="line"><span class="cl">-rw-r--r--. 1 root root   12 May  2 14:50 h.ansible
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><em><strong><code>file</code></strong></em></p>
+<blockquote>
+<p><em>设置文件属性，path指定文件路径，可以用name或dest替代。</em></p>
+</blockquote>
+</blockquote>
+<p><strong>创建文件的符号链接</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m file -a &#39;path=/tmp/h src=/tmp/h.ansible state=link&#39;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[root@iZ8o31djppqzqeZ conf]#  ll /tmp/
+</span></span><span class="line"><span class="cl">lrwxrwxrwx 1 root root   14 May  2 23:08 h -&gt; /tmp/h.ansible
+</span></span><span class="line"><span class="cl">-rw-r--r-- 1 root root   12 May  2 23:05 h.ansible
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m file -a &#39;name=/tmp/h.123 src=/tmp/h.ansible state=link&#39;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[root@redis ~]# ll /tmp/
+</span></span><span class="line"><span class="cl">total 56
+</span></span><span class="line"><span class="cl">lrwxrwxrwx. 1 root root   14 May  2 14:53 h -&gt; /tmp/h.ansible
+</span></span><span class="line"><span class="cl">lrwxrwxrwx. 1 root root   14 May  2 15:00 h.123 -&gt; /tmp/h.ansible
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>删除文件夹</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m file -a &#39;path=/tmp/ state=absent&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>创建文件夹</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible all -m file -a &#39;path=/tmp/test-create state=directory&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color=#0215cd size=2>state=file如果文件不存在，将失败，请使用copy或templates创建</font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible-doc -s file
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>修改文件权限</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible test -m file -a &#39;owner=mysql group=mysql mode=000 path=/tmp/tomcat.xml&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>service 指定运行状态</strong></p>
+</blockquote>
+<ul>
+<li>enabled：是否开机自动启动，取值为true或false</li>
+<li>name：服务名称</li>
+<li>state：状态，取位有started stopped restarted</li>
+</ul>
+<blockquote>
+<p><strong>shell：在远程主机上运行命令。</strong></p>
+</blockquote>
+<blockquote>
+<p><strong>script：将本地脚本复制到远程主机并运行</strong></p>
+</blockquote>
+<blockquote>
+<p><strong>yum 安装程序包</strong></p>
+</blockquote>
+<ul>
+<li>name：指明要安装的程序包，可以带上版本号</li>
+<li>state：present，latest安装 absent卸载</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ansible test -m yum -a &#39;name=zsh state=present&#39;
+</span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2018-06-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ansible.html" data-title="ansible介绍" data-hashtags="ansible"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ansible.html" data-hashtag="ansible"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ansible.html" data-title="ansible介绍" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ansible.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ansible.html" data-title="ansible介绍"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ansible.html" data-title="ansible介绍"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ansible.html" data-title="ansible介绍"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ansible.html">ansible</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/docker-compose.html" class="prev" rel="prev" title="docker compose"><i class="fas fa-angle-left fa-fw"></i>docker compose</a>
+            <a href="/kubernetes-dashborad-based.html" class="next" rel="next" title="转：基于Kubernetes的PaaS平台提供dashboard支持的一种方案 ">转：基于Kubernetes的PaaS平台提供dashboard支持的一种方案 <i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-06-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ansible介绍"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

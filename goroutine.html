@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>go语言的变法编程 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="go语言的变法编程" />
+<meta property="og:description" content="并行和并发 并发编程是指在一台处理器上“同时”处理多个任务。
+宏观并发：在一段时间内，有多个程序在同时运行。
+微观并发：在同一时刻只能有一条指令执行，但多个程序指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个程序快速交替的执行。
+并行 parallel：同一时刻，多条指令在多个处理器上同时执行。
+并发 concurrency：在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，通过cpu时间片轮转使多个进程快速交替的执行。
+通俗来讲，并行是两组队列同时使用一个进程；并发是两个队列分别交替使用两个进程
+进程并发 程序，以Go语言为例，是指编译好的二进制文件，在磁盘上，不占用系统资源(cpu、内存、打开的文件、设备、锁&hellip;.)
+进程，是一个抽象的概念，与操作系统原理联系紧密。以Go语言为例，将编译好的程序运行起来，在内存空间中形成一个独立的内存体，内存体有自己的独立空间，上级挂靠单位是操作系统。
+进程是操作系统进行资源分配和调度的一个独立单位，一般由程序，数据集合和进程控制块三部分组成。
+程序：描述进程完成的功能，是控制进程执行的指令集； 数据集合：程序在执行时所需要的数据和工作区； 程序控制块PCB：Program Control Block，包含进程的描述信息和控制信息，是进程存在的唯一标志。 进程是活跃的程序，占用系统资源。在内存中执行。同一个程序也可以加载为不同的进程(彼此之间互不影响)
+进程状态 进程基本的状态有5种。分别为初始态，就绪态，运行态，挂起态与终止态。其中初始态为进程准备阶段，常与就绪态结合来看。
+线程的任务调度 大部分操作系统的任务调度是采用时间片轮转的抢占式调度方式。
+时间片轮转是指，在一个进程中，当线程任务执行几毫秒后，由操作系统内核进行调度，通过硬件计数器终端处理器，让线程强行暂停，并将该线程的寄存器放入内存中，通过查看线程列表决定接下来执行哪一个线程，并从内存中恢复该线程的寄存器，最后恢复该线程的执行，从而去执行下一个任务。
+在时间片轮转中，任务执行那段时间叫做时间片，任务正在执行时的状态叫运行状态，被暂停的线程任务状态叫做就绪状态，意为等待下一个属于它的时间片的到来。
+由于CPU的执行效率非常高，（i5 6600 约200亿/秒，奔腾4 约13亿/秒）CPU preformance 时间片非常短，在各个任务之间快速地切换，给人的感觉就是多个任务在“同时进行”，这也就是我们所说的并发。多任务运行过程的示意图如下：
+进程实现并发时会出现的问题呢 孤儿进程: 父进程先于子进程结束，则子进程成为孤儿进程，子进程的父进程成为init进程，称为init进程领养孤儿进程。
+僵尸进程: 进程终止，父进程尚未回收，子进程残留资源（PCB）存放于内核中，变成僵尸（Zombie）进程。
+线程并发 在早期操作系统当中，没有线程的概念，进程是最小分配资源与执行单位，可以看做是一个进程中只有一个线程，故进程即线程。所以线程LWP被称为：：Lightweight process，轻量级的进程，是程序执行中一个单一的顺序控制流程，在Linux操作系统下，线程的本质仍是进程。
+线程有独立的PCB，但没有独立的地址空间，各个线程之间共享程序的内存空间。
+进程和线程的区别 进程：最小分配资源单位，可看成是只有一个线程的进程。 线程：最小的执行单位 一个进程由一个或多个线程组成 进程之间相互独立，同一进程下的各个线程之间共享程序的内存空间 协程并发 协程 coroutines，是一种基于线程之上，但又比线程更加轻量级的存在，这种由程序来管理的轻量级线程叫做『用户空间线程』，具有对内核来说不可见的特性。
+多数语言在语法层面并不直接支持协程，而是通过库的方式支持，但用库的方式支持的功能也并不完整，比如仅仅提供协程的创建、销毁与切换等能力。如果在这样的轻量级线程中调用一个同步 IO 操作，比如网络通信、本地文件读写，都会阻塞其他的并发执行轻量级线程，从而无法真正达到轻量级线程本身期望达到的目标。
+协程和线程的区别 占用资源：线程，初始单位为1MB,固定不可变；协程初始一般为 2KB，可随需要而增大。 调度：线程，由操作系统内核完成，协程，由用户完成。 性能： 线程，占用资源高，频繁创建销毁带来性能问题。占用资源小，不会带来严重的性能问题。 数据： 线程，多线程需要锁机制确保数据一致性和可见性；而线程因为只有一个进程，不存在同时读/写冲突，协程中控制共享数据不用加锁，顾执行效率较线程高。 Go并发 goroutine Go语言在语言级别支持协程，叫goroutine。Go语言标准库提供的所有系统调用操作（包括所有同步IO操作），都会出让CPU给其他goroutine。这种轻量级线程的切换管理不依赖于系统的线程和进程，也不需要依赖于CPU的核心数量。
+Go语言为并发编程而内置的上层API基于顺序通信进程模型CSP(communicating sequential processes)。这就意味着显式锁都是可以避免的，因为Go通过相对安全的通道发送和接受数据以实现同步，这大大地简化了并发程序的编写。
+Go语言中的并发程序主要使用两种手段来实现。goroutine和channel。
+什么是goroutine Go语言作者Rob Pike说， “Goroutine是一个与其他goroutines并发运行在同一地址空间的Go函数或方法。一个运行的程序由一个或更多个goroutine组成。它与线程、协程、进程等不同。它是一个goroutine*。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/goroutine.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-10-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-10-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="go语言的变法编程"/>
+<meta name="twitter:description" content="并行和并发 并发编程是指在一台处理器上“同时”处理多个任务。
+宏观并发：在一段时间内，有多个程序在同时运行。
+微观并发：在同一时刻只能有一条指令执行，但多个程序指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个程序快速交替的执行。
+并行 parallel：同一时刻，多条指令在多个处理器上同时执行。
+并发 concurrency：在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，通过cpu时间片轮转使多个进程快速交替的执行。
+通俗来讲，并行是两组队列同时使用一个进程；并发是两个队列分别交替使用两个进程
+进程并发 程序，以Go语言为例，是指编译好的二进制文件，在磁盘上，不占用系统资源(cpu、内存、打开的文件、设备、锁&hellip;.)
+进程，是一个抽象的概念，与操作系统原理联系紧密。以Go语言为例，将编译好的程序运行起来，在内存空间中形成一个独立的内存体，内存体有自己的独立空间，上级挂靠单位是操作系统。
+进程是操作系统进行资源分配和调度的一个独立单位，一般由程序，数据集合和进程控制块三部分组成。
+程序：描述进程完成的功能，是控制进程执行的指令集； 数据集合：程序在执行时所需要的数据和工作区； 程序控制块PCB：Program Control Block，包含进程的描述信息和控制信息，是进程存在的唯一标志。 进程是活跃的程序，占用系统资源。在内存中执行。同一个程序也可以加载为不同的进程(彼此之间互不影响)
+进程状态 进程基本的状态有5种。分别为初始态，就绪态，运行态，挂起态与终止态。其中初始态为进程准备阶段，常与就绪态结合来看。
+线程的任务调度 大部分操作系统的任务调度是采用时间片轮转的抢占式调度方式。
+时间片轮转是指，在一个进程中，当线程任务执行几毫秒后，由操作系统内核进行调度，通过硬件计数器终端处理器，让线程强行暂停，并将该线程的寄存器放入内存中，通过查看线程列表决定接下来执行哪一个线程，并从内存中恢复该线程的寄存器，最后恢复该线程的执行，从而去执行下一个任务。
+在时间片轮转中，任务执行那段时间叫做时间片，任务正在执行时的状态叫运行状态，被暂停的线程任务状态叫做就绪状态，意为等待下一个属于它的时间片的到来。
+由于CPU的执行效率非常高，（i5 6600 约200亿/秒，奔腾4 约13亿/秒）CPU preformance 时间片非常短，在各个任务之间快速地切换，给人的感觉就是多个任务在“同时进行”，这也就是我们所说的并发。多任务运行过程的示意图如下：
+进程实现并发时会出现的问题呢 孤儿进程: 父进程先于子进程结束，则子进程成为孤儿进程，子进程的父进程成为init进程，称为init进程领养孤儿进程。
+僵尸进程: 进程终止，父进程尚未回收，子进程残留资源（PCB）存放于内核中，变成僵尸（Zombie）进程。
+线程并发 在早期操作系统当中，没有线程的概念，进程是最小分配资源与执行单位，可以看做是一个进程中只有一个线程，故进程即线程。所以线程LWP被称为：：Lightweight process，轻量级的进程，是程序执行中一个单一的顺序控制流程，在Linux操作系统下，线程的本质仍是进程。
+线程有独立的PCB，但没有独立的地址空间，各个线程之间共享程序的内存空间。
+进程和线程的区别 进程：最小分配资源单位，可看成是只有一个线程的进程。 线程：最小的执行单位 一个进程由一个或多个线程组成 进程之间相互独立，同一进程下的各个线程之间共享程序的内存空间 协程并发 协程 coroutines，是一种基于线程之上，但又比线程更加轻量级的存在，这种由程序来管理的轻量级线程叫做『用户空间线程』，具有对内核来说不可见的特性。
+多数语言在语法层面并不直接支持协程，而是通过库的方式支持，但用库的方式支持的功能也并不完整，比如仅仅提供协程的创建、销毁与切换等能力。如果在这样的轻量级线程中调用一个同步 IO 操作，比如网络通信、本地文件读写，都会阻塞其他的并发执行轻量级线程，从而无法真正达到轻量级线程本身期望达到的目标。
+协程和线程的区别 占用资源：线程，初始单位为1MB,固定不可变；协程初始一般为 2KB，可随需要而增大。 调度：线程，由操作系统内核完成，协程，由用户完成。 性能： 线程，占用资源高，频繁创建销毁带来性能问题。占用资源小，不会带来严重的性能问题。 数据： 线程，多线程需要锁机制确保数据一致性和可见性；而线程因为只有一个进程，不存在同时读/写冲突，协程中控制共享数据不用加锁，顾执行效率较线程高。 Go并发 goroutine Go语言在语言级别支持协程，叫goroutine。Go语言标准库提供的所有系统调用操作（包括所有同步IO操作），都会出让CPU给其他goroutine。这种轻量级线程的切换管理不依赖于系统的线程和进程，也不需要依赖于CPU的核心数量。
+Go语言为并发编程而内置的上层API基于顺序通信进程模型CSP(communicating sequential processes)。这就意味着显式锁都是可以避免的，因为Go通过相对安全的通道发送和接受数据以实现同步，这大大地简化了并发程序的编写。
+Go语言中的并发程序主要使用两种手段来实现。goroutine和channel。
+什么是goroutine Go语言作者Rob Pike说， “Goroutine是一个与其他goroutines并发运行在同一地址空间的Go函数或方法。一个运行的程序由一个或更多个goroutine组成。它与线程、协程、进程等不同。它是一个goroutine*。"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/goroutine.html" /><link rel="prev" href="https://cylonchau.github.io/golang-type-conver.html" /><link rel="next" href="https://cylonchau.github.io/goroutine-security.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "go语言的变法编程",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/goroutine.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "golang","wordcount":  88 ,
+        "url": "https:\/\/cylonchau.github.io\/goroutine.html","datePublished": "2019-10-02T00:00:00+00:00","dateModified": "2019-10-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">go语言的变法编程</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go.html"><i class="far fa-folder fa-fw"></i>go</a>&nbsp;<a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-10-02 00:00:00">2019-10-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 88 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="并行和并发">并行和并发</h2>
+<p>并发编程是指在一台处理器上“同时”处理多个任务。</p>
+<p>    宏观并发：在一段时间内，有多个程序在同时运行。</p>
+<p>    微观并发：在同一时刻只能有一条指令执行，但多个程序指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个程序快速交替的执行。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022213953628-1042262509.png" /></p>
+<p>并行 <code>parallel</code>：<strong>同一时刻</strong>，多条指令在多个处理器上同时执行。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214443342-1494160147.png" /></p>
+<p><strong>并发</strong> <code>concurrency</code>：在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，通过cpu时间片轮转使多个进程快速交替的执行。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214556610-268912445.png" /></p>
+<p>    通俗来讲，并行是两组队列同时使用一个进程；并发是两个队列分别交替使用两个进程</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022214726191-1905152427.png" /></p>
+<h2 id="进程并发">进程并发</h2>
+<p>    程序，以Go语言为例，是指编译好的二进制文件，在磁盘上，不占用系统资源(cpu、内存、打开的文件、设备、锁&hellip;.)</p>
+<p>    进程，是一个抽象的概念，与操作系统原理联系紧密。以Go语言为例，将编译好的程序运行起来，在内存空间中形成一个独立的内存体，内存体有自己的独立空间，上级挂靠单位是操作系统。</p>
+<p>    进程是操作系统进行资源分配和调度的一个独立单位，一般由程序，数据集合和进程控制块三部分组成。</p>
+<ul>
+<li>程序：描述进程完成的功能，是控制进程执行的指令集；</li>
+<li>数据集合：程序在执行时所需要的数据和工作区；</li>
+<li>程序控制块PCB：<code>Program Control Block</code>，包含进程的描述信息和控制信息，是进程存在的唯一标志。</li>
+</ul>
+<p>进程是活跃的程序，占用系统资源。在内存中执行。<strong>同一个程序也可以加载为不同的进程(彼此之间互不影响)</strong></p>
+<h3 id="进程状态">进程状态</h3>
+<p>    进程基本的状态有5种。分别为初始态，就绪态，运行态，挂起态与终止态。其中初始态为进程准备阶段，常与就绪态结合来看。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022222227435-218532248.png" /></p>
+<h3 id="线程的任务调度">线程的任务调度</h3>
+<p>    大部分操作系统的任务调度是采用<strong>时间片轮转</strong>的抢占式调度方式。</p>
+<p>    <strong>时间片轮转</strong>是指，在一个进程中，当线程任务执行几毫秒后，由操作系统内核进行调度，通过硬件计数器终端处理器，让线程强行暂停，并将该线程的寄存器放入内存中，通过查看线程列表决定接下来执行哪一个线程，并从内存中恢复该线程的寄存器，最后恢复该线程的执行，从而去执行下一个任务。</p>
+<p>    在<strong>时间片轮转</strong>中，任务执行那段时间叫做<strong>时间片</strong>，任务正在执行时的状态叫运行状态，被暂停的线程任务状态叫做就绪状态，意为等待下一个属于它的时间片的到来。</p>
+<p>    由于CPU的执行效率非常高，（i5 6600 约200亿/秒，奔腾4 约13亿/秒）<a href="https://setiathome.berkeley.edu/cpu_list.php" target="_blank" rel="noopener noreffer">CPU preformance</a> 时间片非常短，在各个任务之间快速地切换，给人的感觉就是多个任务在“同时进行”，这也就是我们所说的并发。多任务运行过程的示意图如下：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022224542127-1305299520.png" /></p>
+<h3 id="进程实现并发时会出现的问题呢">进程实现并发时会出现的问题呢</h3>
+<p>    孤儿进程: 父进程先于子进程结束，则子进程成为孤儿进程，子进程的父进程成为init进程，称为init进程领养孤儿进程。</p>
+<p>    僵尸进程: 进程终止，父进程尚未回收，子进程残留资源（PCB）存放于内核中，变成僵尸（Zombie）进程。</p>
+<h2 id="线程并发">线程并发</h2>
+<p>    在早期操作系统当中，没有线程的概念，进程是最小分配资源与执行单位，可以看做是一个进程中只有一个线程，故进程即线程。所以线程LWP被称为：<code>：Lightweight process</code>，轻量级的进程，是程序执行中一个单一的顺序控制流程，在Linux操作系统下，线程的本质仍是进程。</p>
+<p>    线程有独立的PCB，但没有独立的地址空间，各个线程之间共享程序的内存空间。</p>
+<h2 id="进程和线程的区别">进程和线程的区别</h2>
+<ul>
+<li>进程：最小分配资源单位，可看成是只有一个线程的进程。</li>
+<li>线程：最小的执行单位</li>
+<li>一个进程由一个或多个线程组成</li>
+<li>进程之间相互独立，同一进程下的各个线程之间共享程序的内存空间</li>
+</ul>
+<h2 id="协程并发">协程并发</h2>
+<p>    协程 <code>coroutines</code>，是一种基于线程之上，但又比线程更加轻量级的存在，这种由程序来管理的轻量级线程叫做<code>『用户空间线程』</code>，具有对内核来说不可见的特性。</p>
+<p>多数语言在语法层面并不直接支持协程，而是通过库的方式支持，但用库的方式支持的功能也并不完整，比如仅仅提供协程的创建、销毁与切换等能力。如果在这样的轻量级线程中调用一个同步 IO 操作，比如网络通信、本地文件读写，都会阻塞其他的并发执行轻量级线程，从而无法真正达到轻量级线程本身期望达到的目标。</p>
+<h3 id="协程和线程的区别">协程和线程的区别</h3>
+<ul>
+<li>占用资源：线程，初始单位为1MB,固定不可变；协程初始一般为 2KB，可随需要而增大。</li>
+<li>调度：线程，由操作系统内核完成，协程，由用户完成。</li>
+<li>性能： 线程，占用资源高，频繁创建销毁带来性能问题。占用资源小，不会带来严重的性能问题。</li>
+<li>数据： 线程，多线程需要锁机制确保数据一致性和可见性；而线程因为只有一个进程，不存在同时读/写冲突，协程中控制共享数据不用加锁，顾执行效率较线程高。</li>
+</ul>
+<h2 id="go并发-goroutine">Go并发 goroutine</h2>
+<p>    Go语言在语言级别支持协程，叫<code>goroutine</code>。Go语言标准库提供的所有系统调用操作（包括所有同步IO操作），都会出让CPU给其他goroutine。这种轻量级线程的切换管理不依赖于系统的线程和进程，也不需要依赖于CPU的核心数量。</p>
+<p>    Go语言为并发编程而内置的上层API基于顺序通信进程模型CSP(communicating sequential processes)。这就意味着显式锁都是可以避免的，因为Go通过相对安全的通道发送和接受数据以实现同步，这大大地简化了并发程序的编写。</p>
+<p>    Go语言中的并发程序主要使用两种手段来实现。goroutine和channel。</p>
+<h3 id="什么是goroutine">什么是goroutine</h3>
+<blockquote>
+<p>Go语言作者Rob Pike说， “<code>Goroutine</code>是一个与其他<code>goroutines</code>并发运行在同一地址空间的Go函数或方法。一个运行的程序由一个或更多个<code>goroutine</code>组成。它与线程、协程、进程等不同。它是一个<code>goroutine</code>*。</p>
+</blockquote>
+<p>    goroutine是Go并行设计的核心。goroutine说到底其实就是协程，它比线程更小，十几个goroutine可能体现在底层就是五六个线程，Go语言内部帮你实现了这些goroutine之间的内存共享。执行goroutine只需极少的栈内存(大概是4~5KB)，当然会根据相应的数据伸缩。也正因为如此，可同时运行成千上万个并发任务。goroutine比thread更易用、更高效、更轻便。</p>
+<h2 id="mpg模型">MPG模型</h2>
+<p>M 操作系统的线程抽象，一个M直接关联了一个内核线程；代表着真正执行计算的资源。
+P Processor，提供相关执行环境的上下文，处理用户级代码逻辑的处理器，P的数量由用户设置的GOMAXPROCS决定，但是不论GOMAXPROCS设置为多大，P的数量最大为256。
+G Goroutine，G并非执行体，每个G需要绑定到P才能被调度执行。</p>
+<p>    在操作系统每一个线程都有一个固定大小的块来做栈，这个栈会用来存储当前正在被调用或挂起(指在调用其它函数时)的函数的内部变量。</p>
+<p>    在Go语言中，每一个goroutine是一个独立的执行单元，goroutine的栈采取了动态扩容方式， 初始时仅为2KB，随着任务执行按需增长，最大可达1GB（64最大1G，32位最大256M）</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201022234017595-926106329.png" /></p>
+<p>    上图，图中P正在执行的Goroutine为蓝色的，处于待执行状态的Goroutine为灰色的，灰色的Goroutine形成了一个队列runqueues。</p>
+<p>    在这里，当一个P关联多个G时，就会处理G的执行顺序，就是并发，当一个P在执行一个协程工作时，其他的会在等待，当正在执行的协程遇到阻塞情况，例如IO操作等，go的处理器就会去执行其他的协程，因为对于类似IO的操作，处理器不知道你需要多久才能执行结束，所以他不回去等你执行完。</p>
+<blockquote>
+<p>Rreferences
+<a href="https://i6448038.github.io/2017/12/04/golang-concurrency-principle/" target="_blank" rel="noopener noreffer">go语言并发编程</a>
+<a href="https://www.cnblogs.com/Survivalist/p/11527949.html#%E8%BF%9B%E7%A8%8B%E4%B8%8E%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%8C%BA%E5%88%AB" target="_blank" rel="noopener noreffer">进程和线程</a>
+<a href="https://juejin.im/entry/6844903621969215495" target="_blank" rel="noopener noreffer">a</a>
+<a href="https://bingjian-zhu.github.io/2019/09/12/%E5%BC%84%E6%87%82goroutine%E8%B0%83%E5%BA%A6%E5%8E%9F%E7%90%86/" target="_blank" rel="noopener noreffer">groutine之间的调度</a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2019-10-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/goroutine.html" data-title="go语言的变法编程" data-hashtags="golang"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/goroutine.html" data-hashtag="golang"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/goroutine.html" data-title="go语言的变法编程" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/goroutine.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/goroutine.html" data-title="go语言的变法编程"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/goroutine.html" data-title="go语言的变法编程"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/goroutine.html" data-title="go语言的变法编程"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/golang.html">golang</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/golang-type-conver.html" class="prev" rel="prev" title="Go语言数据类型转换"><i class="fas fa-angle-left fa-fw"></i>Go语言数据类型转换</a>
+            <a href="/goroutine-security.html" class="next" rel="next" title="go协程安全">go协程安全<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2019-10-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"go语言的变法编程"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

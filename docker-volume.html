@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>docker Volume - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="docker Volume" />
+<meta property="og:description" content="对于docker来讲，作为容器运行的底层引擎，在组织及运行容器时每个容器内只运行一个程序及子程序。对于这个容器来讲，启动时依赖于 底层镜像联合挂载启动而成。 底层能够存储此类分层构建并联合挂载镜像的文件系统。最上层构建读写层。对于此读写层来说。所有对容器的操作都保存在最上层之上。而下层内容的操作需要使用写时复制。
+Docker镜像由多个只读层叠加而成，启动容器时，Docker会加载只读镜像层并在镜像栈顶部添加一个读写层，如果运行中的容器修改了现有的一个已经存在的文件，那该文件将会从读写层下面的只读层复制到读写层，该文件的只读版本仍然存在，只是已经被读写层中该文件的副本所隐藏，此即 写时复制（COW）机制。此机制对IO较高的应用在实现持久化存储时，势必对在底层应用数据存储时性能要求较高。要想绕过使用限制，可以使用存储卷机制。
+Why Data Volume？
+宿主机的主机文件系统直接与容器内部的文件系统之上的某一访问路径建立绑定关系。
+在宿主机上目录和容器内文件系统建立绑定关系的目录相对于容器来讲被称为volume。容器内所有有效数据都是保存在存储卷，从而脱离容器自身文件系统。当容器关闭并删除时，只要不删除与宿主机与之绑定的存储目录，就能实现数据脱离容器的生命周期而持久化。docker的存储卷默认情况下使用其所在宿主机之上的本地文件系统目录的。
+关闭并重启容器，其数据不受影响；但删除Docker容器，则其更改将会全部丢失 存在的问题 存储于联合文件系统中，不易于宿主机访问； 容器间数据共享不便 删除容器其数据会丢失 解决方案：“卷（volume）” “卷”是容器上的一个或多个“目录”，此类目录可绕过联合文件系统，与宿主机上的某目录“绑定（关联）” 在docker中如果需要动刀存储卷时，不必要手动创建，Volume于容器初始化之时即会创建，由base image提供的卷中的数据会于此期间完成复制
+Volume的初衷是独立于容器的生命周期实现数据持久化，因此删除容器之时既不会删除卷，也不会对哪怕未被引用的卷做垃圾回收操作；
+Data volumes ·卷为docker提供了独立于容器的数据管理机制 ·可以把“镜像”想像成静态文件，例如“程序”，把卷类比为动态内容，例如“数据 &ldquo;；于是，镜像可以重用，而卷可以共享； ·卷实现了“程序（镜像）”和“数据（卷）”分离，以及“程序（镜像）”和“制作镜像的主机 &ldquo;分离，用户制作镜像时无须再考虑镜像运行的容器所在的主机的环境；
+Docker有两种类型的卷，每种类型都在容器中存在一个挂载点，但其在宿主机上的位置有所不同；
+Bind mount volume 绑定挂载卷 在宿主机指定一个特定路径，在容器内指定一个特定路径，二者已知路径建立关联关系。
+a volume that points to a user-specified location on the host file system
+Docker-managed volume docker管理卷 指定容器内的挂载点，与之关联的是宿主机的目录由docker daemon引擎自行创建空目录，或者使用已存在目录与存储卷路径建立关联关系。
+the Docker daemon creates managed volumes in a portion of the host&rsquo;s file system that&rsquo;s owned by Docker
+在容器中使用Volumes 为docker run命令使用一v选项即可使用Volume" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/docker-volume.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2018-06-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2018-06-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="docker Volume"/>
+<meta name="twitter:description" content="对于docker来讲，作为容器运行的底层引擎，在组织及运行容器时每个容器内只运行一个程序及子程序。对于这个容器来讲，启动时依赖于 底层镜像联合挂载启动而成。 底层能够存储此类分层构建并联合挂载镜像的文件系统。最上层构建读写层。对于此读写层来说。所有对容器的操作都保存在最上层之上。而下层内容的操作需要使用写时复制。
+Docker镜像由多个只读层叠加而成，启动容器时，Docker会加载只读镜像层并在镜像栈顶部添加一个读写层，如果运行中的容器修改了现有的一个已经存在的文件，那该文件将会从读写层下面的只读层复制到读写层，该文件的只读版本仍然存在，只是已经被读写层中该文件的副本所隐藏，此即 写时复制（COW）机制。此机制对IO较高的应用在实现持久化存储时，势必对在底层应用数据存储时性能要求较高。要想绕过使用限制，可以使用存储卷机制。
+Why Data Volume？
+宿主机的主机文件系统直接与容器内部的文件系统之上的某一访问路径建立绑定关系。
+在宿主机上目录和容器内文件系统建立绑定关系的目录相对于容器来讲被称为volume。容器内所有有效数据都是保存在存储卷，从而脱离容器自身文件系统。当容器关闭并删除时，只要不删除与宿主机与之绑定的存储目录，就能实现数据脱离容器的生命周期而持久化。docker的存储卷默认情况下使用其所在宿主机之上的本地文件系统目录的。
+关闭并重启容器，其数据不受影响；但删除Docker容器，则其更改将会全部丢失 存在的问题 存储于联合文件系统中，不易于宿主机访问； 容器间数据共享不便 删除容器其数据会丢失 解决方案：“卷（volume）” “卷”是容器上的一个或多个“目录”，此类目录可绕过联合文件系统，与宿主机上的某目录“绑定（关联）” 在docker中如果需要动刀存储卷时，不必要手动创建，Volume于容器初始化之时即会创建，由base image提供的卷中的数据会于此期间完成复制
+Volume的初衷是独立于容器的生命周期实现数据持久化，因此删除容器之时既不会删除卷，也不会对哪怕未被引用的卷做垃圾回收操作；
+Data volumes ·卷为docker提供了独立于容器的数据管理机制 ·可以把“镜像”想像成静态文件，例如“程序”，把卷类比为动态内容，例如“数据 &ldquo;；于是，镜像可以重用，而卷可以共享； ·卷实现了“程序（镜像）”和“数据（卷）”分离，以及“程序（镜像）”和“制作镜像的主机 &ldquo;分离，用户制作镜像时无须再考虑镜像运行的容器所在的主机的环境；
+Docker有两种类型的卷，每种类型都在容器中存在一个挂载点，但其在宿主机上的位置有所不同；
+Bind mount volume 绑定挂载卷 在宿主机指定一个特定路径，在容器内指定一个特定路径，二者已知路径建立关联关系。
+a volume that points to a user-specified location on the host file system
+Docker-managed volume docker管理卷 指定容器内的挂载点，与之关联的是宿主机的目录由docker daemon引擎自行创建空目录，或者使用已存在目录与存储卷路径建立关联关系。
+the Docker daemon creates managed volumes in a portion of the host&rsquo;s file system that&rsquo;s owned by Docker
+在容器中使用Volumes 为docker run命令使用一v选项即可使用Volume"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/docker-volume.html" /><link rel="prev" href="https://cylonchau.github.io/docker-%E7%BD%91%E7%BB%9C.html" /><link rel="next" href="https://cylonchau.github.io/docker-compose.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "docker Volume",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/docker-volume.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "docker","wordcount":  176 ,
+        "url": "https:\/\/cylonchau.github.io\/docker-volume.html","datePublished": "2018-06-02T00:00:00+00:00","dateModified": "2018-06-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">docker Volume</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/docker.html"><i class="far fa-folder fa-fw"></i>docker</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-06-02 00:00:00">2018-06-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 176 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>对于docker来讲，作为容器运行的底层引擎，在组织及运行容器时每个容器内只运行一个程序及子程序。对于这个容器来讲，启动时依赖于
+底层镜像联合挂载启动而成。
+底层能够存储此类分层构建并联合挂载镜像的文件系统。最上层构建读写层。对于此读写层来说。所有对容器的操作都保存在最上层之上。而下层内容的操作需要使用写时复制。</p>
+<p>Docker镜像由多个只读层叠加而成，启动容器时，Docker会加载只读镜像层并在镜像栈顶部添加一个读写层，如果运行中的容器修改了现有的一个已经存在的文件，那该文件将会从读写层下面的只读层复制到读写层，该文件的只读版本仍然存在，只是已经被读写层中该文件的副本所隐藏，此即 <font style="background:#ffff00;" size=3>写时复制（COW）</font>机制。此机制对IO较高的应用在实现持久化存储时，势必对在底层应用数据存储时性能要求较高。要想绕过使用限制，可以使用存储卷机制。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233608002.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233608002.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233608002.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233608002.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233608002.png"
+        title="image-20221025233608002" /></p>
+<p>Why Data Volume？</p>
+<p>宿主机的主机文件系统直接与容器内部的文件系统之上的某一访问路径建立绑定关系。</p>
+<p>在宿主机上目录和容器内文件系统建立绑定关系的目录相对于容器来讲被称为<font color="#f8070d" size=3><code>volume</code></font>。容器内所有有效数据都是保存在存储卷，从而脱离容器自身文件系统。当容器关闭并删除时，只要不删除与宿主机与之绑定的存储目录，就能实现数据脱离容器的生命周期而持久化。docker的存储卷默认情况下使用其所在宿主机之上的本地文件系统目录的。</p>
+<ol>
+<li>关闭并重启容器，其数据不受影响；但删除Docker容器，则其更改将会全部丢失</li>
+<li>存在的问题</li>
+<li>存储于联合文件系统中，不易于宿主机访问；</li>
+<li>容器间数据共享不便</li>
+<li>删除容器其数据会丢失
+解决方案：“卷（volume）”
+“卷”是容器上的一个或多个“目录”，此类目录可绕过联合文件系统，与宿主机上的某目录“绑定（关联）”</li>
+</ol>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233624954.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233624954.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233624954.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233624954.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233624954.png"
+        title="image-20221025233624954" /></p>
+<p>在docker中如果需要动刀存储卷时，不必要手动创建，Volume于容器初始化之时即会创建，由base image提供的卷中的数据会于此期间完成复制</p>
+<p>Volume的初衷是独立于容器的生命周期实现数据持久化，因此删除容器之时既不会删除卷，也不会对哪怕未被引用的卷做垃圾回收操作；</p>
+<p>Data volumes
+·卷为docker提供了独立于容器的数据管理机制
+·可以把“镜像”想像成静态文件，例如“程序”，把卷类比为动态内容，例如“数据
+&ldquo;；于是，镜像可以重用，而卷可以共享；
+·卷实现了“程序（镜像）”和“数据（卷）”分离，以及“程序（镜像）”和“制作镜像的主机
+&ldquo;分离，用户制作镜像时无须再考虑镜像运行的容器所在的主机的环境；</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233642310.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233642310.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233642310.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233642310.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233642310.png"
+        title="image-20221025233642310" /></p>
+<p>Docker有两种类型的卷，每种类型都在容器中存在一个挂载点，但其在宿主机上的位置有所不同；</p>
+<p>Bind mount volume 绑定挂载卷
+在宿主机指定一个特定路径，在容器内指定一个特定路径，二者已知路径建立关联关系。</p>
+<p>a volume that points to a user-specified location on the host file system</p>
+<h3 id="docker-managed-volume-docker管理卷">Docker-managed volume docker管理卷</h3>
+<p>指定容器内的挂载点，与之关联的是宿主机的目录由<code>docker daemon</code>引擎自行创建空目录，或者使用已存在目录与存储卷路径建立关联关系。</p>
+<p>the Docker daemon creates managed volumes in a portion of the host&rsquo;s file system that&rsquo;s owned by Docker</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233706235.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233706235.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233706235.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233706235.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025233706235.png"
+        title="image-20221025233706235" /></p>
+<h3 id="在容器中使用volumes">在容器中使用Volumes</h3>
+<p>为docker run命令使用一v选项即可使用Volume</p>
+<p>Docker-managed volume</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">docker run-it-name box1 -v /data busybox
+</span></span><span class="line"><span class="cl">docker inspect-f <span class="o">{{</span>.Mounts<span class="o">}</span> box1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>查看bbox1容器的卷、卷标识符及挂载的主机目录
+Bind-mount Volume</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">docker run-it-v HOSTDIR:VOLUMEDIR--name box2 busybox
+</span></span><span class="line"><span class="cl">docker inspect-f <span class="o">{{</span>.Mounts<span class="o">}}</span> box2
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>Sharing volumes There are two ways to share volumes between containers
+多个容器的卷使用同一个主机目录，例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ docker run-it--namec1-v/docker/volumes/v1：/data busybox
+</span></span><span class="line"><span class="cl">$ docker run-it--name c2-v/docker/volumes/v1：/data busybox
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>复制使用其它容器的卷，为docker run命令使用&ndash;volumes-from选项</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">docker run-it--name box1 -v /docker/volumes/v1:/data busybox
+</span></span><span class="line"><span class="cl">docker run-it--name box2 --volumes-from box1 busybox
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>EXPOSE
+用于为容器打开指定要监听的端口以实现与外部通信，并不会直接暴露，只是声明需要暴露的端口，在<code>docker run -P</code>时自动暴露端口</p>
+<p>Syntax</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">EXPOSE &lt;port&gt; <span class="o">[</span>/&lt;protocol&gt;<span class="o">]</span> <span class="o">[</span>&lt;port&gt;<span class="o">[</span>/&lt;protocol&gt;<span class="o">]</span>..<span class="o">]</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><protocol> 用于指定传输层协议，可为wp或udp二者之一，默认为TCP协议
+EXPOSE指令可一次指定多个端口，例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">EXPOSE 11211/udp 11211/tcp
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>ENV
+用于为镜像定义所需的环境变量，并可被Dockerfile文件中位于其后的其它指令（如ENV、ADD、COPY等）所调用</p>
+<p>调用格式为Svariable_name或${variable_name}</p>
+<h3 id="syntax">Syntax</h3>
+<ul>
+<li>ENV <code>&lt;key&gt;</code> <code>&lt;value&gt;</code>或</li>
+<li>ENV <code>&lt;key&gt;</code>=<code>&lt;value&gt;</code> .…</li>
+</ul>
+<p>第一种格式中，<key>之后的所有内容均会被视作其 <code>&lt;value&gt;</code> 的组成部分，因此，一次只能设置一个变量；</p>
+<p>第二种格式可用一次设置多个变量，每个变量为一个 <code>&lt;key&gt;=&lt;value&gt;</code> 的键值对，如果
+<code>&lt;value&gt;</code> 中包含空格，可以以反斜线（）进行转义，也可通过对 <code>&lt;value&gt;</code> 加引号进行标识；另外，反斜线也可用于续行；</p>
+<p>定义多个变量时，建议使用第二种方式，以便在同一层中完成所有功能</p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2018-06-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/docker-volume.html" data-title="docker Volume" data-hashtags="docker"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/docker-volume.html" data-hashtag="docker"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/docker-volume.html" data-title="docker Volume" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/docker-volume.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/docker-volume.html" data-title="docker Volume"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/docker-volume.html" data-title="docker Volume"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/docker-volume.html" data-title="docker Volume"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/docker.html">docker</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/docker-%E7%BD%91%E7%BB%9C.html" class="prev" rel="prev" title="docker 网络"><i class="fas fa-angle-left fa-fw"></i>docker 网络</a>
+            <a href="/docker-compose.html" class="next" rel="next" title="docker compose">docker compose<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-06-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"docker Volume"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

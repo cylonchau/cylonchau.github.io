@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>istio流量治理 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="istio流量治理" />
+<meta property="og:description" content="[toc]
+sidecar 介绍 在istio的流量管理等功能，都需要通过下发的配置应用到应用运行环境执行后生效，负责执行配置规则的组件在service mesh中承载应用代理的实体被称为side-car
+Istio对流量策略管理等功能无须对应用程序做变动，
+这种对应用服务完全非侵入的方式完全依赖于Side-car，应用的流量有Sidecar拦截并进行认证、鉴权、策略执行等治理功能。在Kubernetes平台中，Side-car容器于应用容器在同一个Pod中并共享网络名词控件，因此Side-car容易可以通过iptables规则拦截进出流量进行管理。
+sidecar的注入 sidecar是service mesh无侵入式架构的应用模式，在使用sidecar部署服务网格时，无需再每个应用节点运行服务代理，但是需要在每个应用程序中部署一个sidecar容器，来接管所有进出流量。
+Sidecar会将额外容器注入到 Pod 模板中。Istio中的数据平面组件所需的容器有：
+istio-init 用于设置容器的iptables规则，目的是为了接管进出流量。在应用容器前启动并运行完成其生命周期，多个init容器按顺序依次完成。 istio-proxy 基于envoy的sidecar的代理。 sidecar被注入的方式 手动注入，使用 istioctl 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 istio-sidecar-injector 和的 istio 两个 Configmap 对象中获取配置。 refer-istio-sidecar-injector
+自动注入，在部署应用是，istio自动将sidecar注入到pod。这是istio推荐的方法，Istio在基于Kubernetes平台之上，需要在部署应用之前，对要标记部署应用程序的名称空间标记 kubectl label namespace default istio-injection=enabled 这个操作是对名称空间级别生效的。而后所部署的Pod中会注入sidecar执行上面sidecar容器的操作。
+istio injector 注入原理 Sidecar Injector是Istio中实现自动注入Sidecar的组件，它是以Kubernetes准入控制器 AdmissionController 的形式运行的。Admission Controller 的基本工作原理是拦截Kube-apiserver的请求，在对象持久化之前、认证鉴权之后进行拦截。
+Admission Controller有两种：一种是内置的，另一种是用户自定义的。
+Kubernetes允许用户以Webhook的方式自定义准入控制器，Sidecar Injector就是这样一种特殊的MutatingAdmissionWebhook。
+Sidecar Injector只在创建Pod时进行Sidecar容器注入，在Pod的创建请求到达 Kube-apiserver 后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver以REST的方式同步调用Sidecar Injector Webhook服务进行init与istio-proxy容器的注入，最后将Pod对象持久化存储到etcd中。
+sidecar容器 sidecar容器内部运行着 pilot-agent 与 envoy
+Pilot-agent：基于kubernetesAPI资源对象为envoy初始化可用的bootstrap配置进行启动，在运行后管理envoy运行状态，如配置变更，出错重启等。
+envoy：数据平面的执行层，由 pilot-agent 所启动的，从xDS API动态获取配置信息。Envoy并通过流量拦截机制处理入栈及出栈的流量。
+envoy的listener 在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 DestnationRule VirtualService Gateway等资源提供的配置，生成对应的Envoy配置。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2020-08-20T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-08-20T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="istio流量治理"/>
+<meta name="twitter:description" content="[toc]
+sidecar 介绍 在istio的流量管理等功能，都需要通过下发的配置应用到应用运行环境执行后生效，负责执行配置规则的组件在service mesh中承载应用代理的实体被称为side-car
+Istio对流量策略管理等功能无须对应用程序做变动，
+这种对应用服务完全非侵入的方式完全依赖于Side-car，应用的流量有Sidecar拦截并进行认证、鉴权、策略执行等治理功能。在Kubernetes平台中，Side-car容器于应用容器在同一个Pod中并共享网络名词控件，因此Side-car容易可以通过iptables规则拦截进出流量进行管理。
+sidecar的注入 sidecar是service mesh无侵入式架构的应用模式，在使用sidecar部署服务网格时，无需再每个应用节点运行服务代理，但是需要在每个应用程序中部署一个sidecar容器，来接管所有进出流量。
+Sidecar会将额外容器注入到 Pod 模板中。Istio中的数据平面组件所需的容器有：
+istio-init 用于设置容器的iptables规则，目的是为了接管进出流量。在应用容器前启动并运行完成其生命周期，多个init容器按顺序依次完成。 istio-proxy 基于envoy的sidecar的代理。 sidecar被注入的方式 手动注入，使用 istioctl 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 istio-sidecar-injector 和的 istio 两个 Configmap 对象中获取配置。 refer-istio-sidecar-injector
+自动注入，在部署应用是，istio自动将sidecar注入到pod。这是istio推荐的方法，Istio在基于Kubernetes平台之上，需要在部署应用之前，对要标记部署应用程序的名称空间标记 kubectl label namespace default istio-injection=enabled 这个操作是对名称空间级别生效的。而后所部署的Pod中会注入sidecar执行上面sidecar容器的操作。
+istio injector 注入原理 Sidecar Injector是Istio中实现自动注入Sidecar的组件，它是以Kubernetes准入控制器 AdmissionController 的形式运行的。Admission Controller 的基本工作原理是拦截Kube-apiserver的请求，在对象持久化之前、认证鉴权之后进行拦截。
+Admission Controller有两种：一种是内置的，另一种是用户自定义的。
+Kubernetes允许用户以Webhook的方式自定义准入控制器，Sidecar Injector就是这样一种特殊的MutatingAdmissionWebhook。
+Sidecar Injector只在创建Pod时进行Sidecar容器注入，在Pod的创建请求到达 Kube-apiserver 后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver以REST的方式同步调用Sidecar Injector Webhook服务进行init与istio-proxy容器的注入，最后将Pod对象持久化存储到etcd中。
+sidecar容器 sidecar容器内部运行着 pilot-agent 与 envoy
+Pilot-agent：基于kubernetesAPI资源对象为envoy初始化可用的bootstrap配置进行启动，在运行后管理envoy运行状态，如配置变更，出错重启等。
+envoy：数据平面的执行层，由 pilot-agent 所启动的，从xDS API动态获取配置信息。Envoy并通过流量拦截机制处理入栈及出栈的流量。
+envoy的listener 在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 DestnationRule VirtualService Gateway等资源提供的配置，生成对应的Envoy配置。"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" /><link rel="prev" href="https://cylonchau.github.io/istioctl%E5%91%BD%E4%BB%A4.html" /><link rel="next" href="https://cylonchau.github.io/istio%E5%AE%89%E8%A3%85.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "istio流量治理",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "kubernetes, istio","wordcount":  651 ,
+        "url": "https:\/\/cylonchau.github.io\/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html","datePublished": "2020-08-20T00:00:00+00:00","dateModified": "2020-08-20T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">istio流量治理</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/taffic-management.html"><i class="far fa-folder fa-fw"></i>taffic management</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-08-20 00:00:00">2020-08-20 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 651 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><p>[toc]</p>
+<h2 id="sidecar-介绍">sidecar 介绍</h2>
+<p>在istio的流量管理等功能，都需要通过下发的配置应用到应用运行环境执行后生效，负责执行配置规则的组件在service mesh中承载应用代理的实体被称为<code>side-car</code></p>
+<p>Istio对流量策略管理等功能无须对应用程序做变动，</p>
+<p>这种对应用服务完全非侵入的方式完全依赖于Side-car，应用的流量有Sidecar拦截并进行认证、鉴权、策略执行等治理功能。在Kubernetes平台中，Side-car容器于应用容器在同一个Pod中并共享网络名词控件，因此Side-car容易可以通过iptables规则拦截进出流量进行管理。</p>
+<h2 id="sidecar的注入">sidecar的注入</h2>
+<p>sidecar是service mesh无侵入式架构的应用模式，在使用sidecar部署服务网格时，无需再每个应用节点运行服务代理，但是需要在每个应用程序中部署一个sidecar容器，来接管所有进出流量。</p>
+<p>Sidecar会将额外容器注入到 Pod 模板中。Istio中的数据平面组件所需的容器有：</p>
+<ul>
+<li><code>istio-init</code> 用于设置容器的iptables规则，目的是为了接管进出流量。在应用容器前启动并运行完成其生命周期，多个init容器按顺序依次完成。</li>
+<li><code>istio-proxy</code> 基于envoy的sidecar的代理。</li>
+</ul>
+<h3 id="sidecar被注入的方式">sidecar被注入的方式</h3>
+<ul>
+<li>
+<p>手动注入，使用 <a href="https://istio.io/latest/zh/docs/reference/commands/istioctl" target="_blank" rel="noopener noreffer"><code>istioctl</code></a> 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 <code>istio-sidecar-injector</code> 和的 <code>istio</code> 两个 Configmap 对象中获取配置。 <a href="https://istio.io/latest/zh/blog/2019/data-plane-setup/#manual-injection" target="_blank" rel="noopener noreffer">refer-istio-sidecar-injector</a></p>
+</li>
+<li>
+<p>自动注入，在部署应用是，istio自动将sidecar注入到pod。这是istio推荐的方法，Istio在基于Kubernetes平台之上，需要在部署应用之前，对要标记部署应用程序的名称空间标记 <code>kubectl label namespace default istio-injection=enabled</code> <strong>这个操作是对名称空间级别生效的</strong>。而后所部署的Pod中会注入sidecar执行上面sidecar容器的操作。</p>
+</li>
+</ul>
+<h2 id="istio-injector-注入原理">istio injector 注入原理</h2>
+<p>Sidecar  Injector是Istio中实现自动注入Sidecar的组件，它是以Kubernetes准入控制器  AdmissionController 的形式运行的。Admission Controller 的基本工作原理是拦截Kube-apiserver的请求，在对象持久化之前、认证鉴权之后进行拦截。</p>
+<p>Admission Controller有两种：一种是内置的，另一种是用户自定义的。</p>
+<p>Kubernetes允许用户以Webhook的方式自定义准入控制器，Sidecar  Injector就是这样一种特殊的MutatingAdmissionWebhook。</p>
+<p>Sidecar  Injector只在创建Pod时进行Sidecar容器注入，在Pod的创建请求到达  Kube-apiserver  后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver以REST的方式同步调用Sidecar Injector Webhook服务进行init与istio-proxy容器的注入，最后将Pod对象持久化存储到etcd中。</p>
+<h2 id="sidecar容器">sidecar容器</h2>
+<p>sidecar容器内部运行着 <code>pilot-agent</code> 与 <code>envoy</code></p>
+<p>Pilot-agent：基于kubernetesAPI资源对象为envoy初始化可用的bootstrap配置进行启动，在运行后管理envoy运行状态，如配置变更，出错重启等。</p>
+<p>envoy：数据平面的执行层，由 <code>pilot-agent</code> 所启动的，从xDS API动态获取配置信息。Envoy并通过流量拦截机制处理入栈及出栈的流量。</p>
+<h2 id="envoy的listener">envoy的listener</h2>
+<p>在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 <code>DestnationRule</code> <code>VirtualService</code> <code>Gateway</code>等资源提供的配置，生成对应的Envoy配置。</p>
+<p>每个sidecar中的envoy都会生成众多的配置，这些配置在每一个网格中会对对应的流量进行拦截管理。</p>
+<p>通过envoy admin interface查看对应生产的envoy资源配置信息</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl <span class="nb">exec</span> reviews-v1-6549ddccc5-k995p -c istio-proxy -- curl -s 127.0.0.1:15000/listeners
+</span></span><span class="line"><span class="cl">97591f7a-0cbf-469a-a5f2-c9a76a3d0ced::0.0.0.0:15090
+</span></span><span class="line"><span class="cl">e523c9a4-da71-439f-885f-020f70349f21::0.0.0.0:15021
+</span></span><span class="line"><span class="cl">10.96.56.243_10251::10.96.56.243:10251
+</span></span><span class="line"><span class="cl">10.0.0.6_10250::10.0.0.6:10250
+</span></span><span class="line"><span class="cl">10.244.0.51_8443::10.244.0.51:8443
+</span></span><span class="line"><span class="cl">10.0.0.5_10250::10.0.0.5:10250
+</span></span><span class="line"><span class="cl">10.97.190.96_10252::10.97.190.96:10252
+</span></span><span class="line"><span class="cl">10.96.0.1_443::10.96.0.1:443
+</span></span><span class="line"><span class="cl">10.96.0.10_53::10.96.0.10:53
+</span></span><span class="line"><span class="cl">10.105.226.65_80::10.105.226.65:80
+</span></span><span class="line"><span class="cl">10.105.226.65_82::10.105.226.65:82
+</span></span><span class="line"><span class="cl">0.0.0.0_80::0.0.0.0:80
+</span></span><span class="line"><span class="cl">10.0.0.6_4194::10.0.0.6:4194
+</span></span><span class="line"><span class="cl">10.105.226.65_443::10.105.226.65:443
+</span></span><span class="line"><span class="cl">10.105.226.65_81::10.105.226.65:81
+</span></span><span class="line"><span class="cl">10.0.0.5_4194::10.0.0.5:4194
+</span></span><span class="line"><span class="cl">10.102.134.81_14250::10.102.134.81:14250
+</span></span><span class="line"><span class="cl">10.107.39.113_9090::10.107.39.113:9090
+</span></span><span class="line"><span class="cl">0.0.0.0_10255::0.0.0.0:10255
+</span></span><span class="line"><span class="cl">0.0.0.0_20001::0.0.0.0:20001
+</span></span><span class="line"><span class="cl">0.0.0.0_9090::0.0.0.0:9090
+</span></span><span class="line"><span class="cl">10.96.0.10_9153::10.96.0.10:9153
+</span></span><span class="line"><span class="cl">10.102.134.81_14268::10.102.134.81:14268
+</span></span><span class="line"><span class="cl">0.0.0.0_9411::0.0.0.0:9411
+</span></span><span class="line"><span class="cl">10.101.93.145_8000::10.101.93.145:8000
+</span></span><span class="line"><span class="cl">10.99.79.173_443::10.99.79.173:443
+</span></span><span class="line"><span class="cl">10.105.226.65_8080::10.105.226.65:8080
+</span></span><span class="line"><span class="cl">0.0.0.0_9080::0.0.0.0:9080
+</span></span><span class="line"><span class="cl">10.108.161.174_3000::10.108.161.174:3000
+</span></span><span class="line"><span class="cl">virtualOutbound::0.0.0.0:15001
+</span></span><span class="line"><span class="cl">virtualInbound::0.0.0.0:15006
+</span></span><span class="line"><span class="cl">..
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://istio.io/latest/docs/ops/deployment/requirements/" target="_blank" rel="noopener noreffer">istio使用的端口</a></p>
+<table>
+<thead>
+<tr>
+<th>Port</th>
+<th>Protocol</th>
+<th>Description</th>
+<th>Pod-internal only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15000</td>
+<td>TCP</td>
+<td>envoy管理端口</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>15001</td>
+<td>TCP</td>
+<td>envoy出站端口</td>
+<td>No</td>
+</tr>
+<tr>
+<td>15006</td>
+<td>TCP</td>
+<td>envoy入站端口</td>
+<td>No</td>
+</tr>
+<tr>
+<td>15008</td>
+<td>TCP</td>
+<td>envoy隧道端口</td>
+<td>No</td>
+</tr>
+<tr>
+<td>15020</td>
+<td>HTTP</td>
+<td>从istio-agent envoy 应用 合并prometheus遥测</td>
+<td>No</td>
+</tr>
+<tr>
+<td>15021</td>
+<td>HTTP</td>
+<td>健康检查端口</td>
+<td>No</td>
+</tr>
+<tr>
+<td>15090</td>
+<td>HTTP</td>
+<td>Envoy Prometheus telemetry</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>envoy的listener通过绑定与IP Socket或者Unix Domain Socket，接收转发来的数据。</p>
+<p><code>VirtualOutboundListener</code> | <code>VirtualIntboundListener </code>通过一个端口接收所有出/入站流量，并根据目标端口来区分使用哪个Listener进行处理。</p>
+<p>iptables通过对应规则拦截发往所在Pod的流量并转发到对应的Envoy接收端口（如入站流量为15006），该Listener通过配置将请求转发到请求原目标地址关联的Listener之上。<a href="https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/original_dst" target="_blank" rel="noopener noreffer">envoy原始目标地址</a></p>
+<p>若不存在对应的listener则根据全局配置选项进行处理</p>
+<ul>
+<li>ALLOW_ANY：允许外发至任何服务的请求，没有匹配到目标Listener的流量则由tcp_proxy过滤器指向的PassthroughCluster。</li>
+<li>REGISTRY_ONLY：仅允许外发请求至注册过的服务，没有匹配到目标Listener的流量，则由tcp_proxy通过BlackHoleCluster丢弃。</li>
+</ul>
+<p>监听端口配置参数<code>bind_to_port</code>的值为false，意味着该Listener并未真正绑定套接字上，而是通过对应的入站/出站Linstener接收兵转发流量。</p>
+<h2 id="sidecar-流量的拦截">sidecar 流量的拦截</h2>
+<p>sidecar通过注入到Pod中的init，执行在 pod 命名空间中设置 <code>iptable</code> 规则来完成流量捕获并管理。</p>
+<p>通过查看<code>nsenter</code> 命令可以查看对应实现的内容。</p>
+<p>iptables在NAT表中新建了4条链，ISTIO_INBOUND、ISTIO_IN_REDIRECT、ISTIO_OUTPUT
+和 ISTIO_REDIRECT</p>
+<ul>
+<li>当进入Pod的流量会被<code>PREROUTING</code> 拦截处理。根据规则将数据包转发到<code>ISOTIO_INBOUND</code>。<code>-A PREROUTING -p tcp -j ISTIO_INBOUND</code></li>
+<li><code>ISTIO_INBOUND</code>处理对应的规则，当遇到<code>15008</code> , <code>22</code>  <code>15090</code>  <code>15021</code>  <code>15020</code> 不做处理，return给上一个链。 <a href="https://bbs.csdn.net/topics/340237926" target="_blank" rel="noopener noreffer">关于iptables return</a></li>
+<li>剩余流量从<code>ISTIO_INBOUND</code> 转交给 <code>ISTIO_IN_REDIRECT</code> <code>-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT</code></li>
+<li><code>ISTIO_IN_REDIRECT</code> 将流量交给15006端口应用处理。</li>
+<li>Envoy根据数据包的目的地址查看  Inbound方向的监听器配置，根据监听器及路由、Cluster、
+Endpoint等配置，决定是否将数据包转发到应用。</li>
+<li>OUTPUT的流量由规则 <code>-A OUTPUT -p tcp -j ISTIO_OUTPUT</code> 由 <code>ISTIO_OUTPUT</code> ` 链处理。</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ nsenter -t <span class="sb">`</span>ps -ef<span class="p">|</span>grep details<span class="p">|</span>grep envoy<span class="p">|</span>awk <span class="s1">&#39;{print $2}&#39;</span><span class="sb">`</span> -n iptables -t nat -S 
+</span></span><span class="line"><span class="cl">-P PREROUTING ACCEPT
+</span></span><span class="line"><span class="cl">-P INPUT ACCEPT
+</span></span><span class="line"><span class="cl">-P OUTPUT ACCEPT
+</span></span><span class="line"><span class="cl">-P POSTROUTING ACCEPT
+</span></span><span class="line"><span class="cl">-N ISTIO_INBOUND
+</span></span><span class="line"><span class="cl">-N ISTIO_IN_REDIRECT
+</span></span><span class="line"><span class="cl">-N ISTIO_OUTPUT
+</span></span><span class="line"><span class="cl">-N ISTIO_REDIRECT
+</span></span><span class="line"><span class="cl">-A PREROUTING -p tcp -j ISTIO_INBOUND
+</span></span><span class="line"><span class="cl">-A OUTPUT -p tcp -j ISTIO_OUTPUT
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15008</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">22</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15090</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15021</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15020</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT 
+</span></span><span class="line"><span class="cl"><span class="c1"># 到此入栈流量处理完成</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_IN_REDIRECT -p tcp -j REDIRECT --to-ports <span class="m">15006</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 这里开始执行出站流量</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 原地址为127.0.0.6/32 不做处理</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -s 127.0.0.6/32 -o lo -j RETURN
+</span></span><span class="line"><span class="cl"><span class="c1"># 默认目标127.0.0.1/32--uid-owner 1337的由ISTIO_IN_REDIRECT处理</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --uid-owner <span class="m">1337</span> -j ISTIO_IN_REDIRECT
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -o lo -m owner ! --uid-owner <span class="m">1337</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -m owner --uid-owner <span class="m">1337</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --gid-owner <span class="m">1337</span> -j ISTIO_IN_REDIRECT
+</span></span><span class="line"><span class="cl"><span class="c1"># 这些流量都不做处理。继续默认操作</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -o lo -m owner ! --gid-owner <span class="m">1337</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -m owner --gid-owner <span class="m">1337</span> -j RETURN
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -d 127.0.0.1/32 -j RETURN
+</span></span><span class="line"><span class="cl"><span class="c1"># 默认所有ISTIO_OUTPUT链的流量都由ISTIO_REDIRECT</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -j ISTIO_REDIRECT
+</span></span><span class="line"><span class="cl"><span class="c1"># ISTIO_REDIRECT 的流量 默认有envoy进行处理转发到对应的应用</span>
+</span></span><span class="line"><span class="cl">-A ISTIO_REDIRECT -p tcp -j REDIRECT --to-ports <span class="m">15001</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>Istio中目前有两种流量拦截模式：REDIRECT模式和TPROXY模式。</p>
+<p>TPROXY transparent proxy 透明代理，操作的是mangle表，同时需要原始客户端socket设置
+IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端口。</p>
+<p>REDIRECT ：端口重定向，将流量NAT至envoy，此模式会丢失源IP。</p>
+<h2 id="sidecar资源配置">sidecar资源配置</h2>
+<p><code>Sidecar</code>这个资源清单描述了Sidecar代理的配置，从而管理他所连接的workload实例的流量。</p>
+<ul>
+<li><code>workloadSelector</code>：选择sidecar应用此配置的Pod，如省略则为该名称空间的所有workload
+<ul>
+<li>lables: 配置pod的标签</li>
+</ul>
+</li>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#IstioIngressListener" target="_blank" rel="noopener noreffer">ingress</a>：用于指定连接workload的入站流量的sidecar配置，如省略，则从默认获取。
+<ul>
+<li>port：Listener关联的端口</li>
+<li>bind：Listener绑定的IP，ingress不允许unix套接字</li>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode" target="_blank" rel="noopener noreffer">captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
+<ul>
+<li><code>DEFAULT</code> 环境定义默认配置</li>
+<li><code>IPTABLES</code> ：使用IPtables重定向流量</li>
+<li><code>NONE</code> 不捕获。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>egress</code>:  用于指定workload的出站流量的sidecar配置，如省略，则继承默认值
+<ul>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/gateway/#Port" target="_blank" rel="noopener noreffer">port</a>：Listener关联的端口</li>
+<li>bind：Listener绑定的IP或套接字</li>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode" target="_blank" rel="noopener noreffer">captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
+<ul>
+<li><code>DEFAULT</code> 环境定义默认配置</li>
+<li><code>IPTABLES</code> ：使用IPtables重定向流量</li>
+<li><code>NONE</code> 不捕获。</li>
+</ul>
+</li>
+<li>hosts：目标地址，<code>namespace/dnsName</code>格式显示的一台或多台服务主机</li>
+</ul>
+</li>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy" target="_blank" rel="noopener noreffer">outboundTrafficPolicy</a>：出站流量策略的配置，不指定则继承默认值。
+<ul>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy-Mode" target="_blank" rel="noopener noreffer">mode</a>：
+<ul>
+<li>REGISTRY_ONLY：仅允许注册到pilot的服务通过。</li>
+<li>ALLOW_ANY：没有配置的，允许流量的出站。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="声明一个出站流量">声明一个出站流量</h3>
+<p>下面的示例在<code>Sidecar</code>名为的根命名空间中声明了全局默认配置<code>istio-config</code>，该配置在所有命名空间中配置了sidecars，以仅允许将流量发送到同一命名空间中的其他<code>workload</code>以及<code>istio-system</code>命名空间中的服务 。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">networking.istio.io/v1alpha3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Sidecar</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">default</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">istio-config</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">egress</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">hosts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;./*&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;istio-system/*&#34;</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>以下示例配置一个应用的出站与入站规则；在名称空间<code>prod-us1</code>中声明所有<code>app: ratings</code> 属于该<code>prod-us1/ratings</code> 带有标签的Pod 。workload在端口9080上接受入站HTTP通信。然后，将通信转发到侦听Unix套接字的附加workload实例。在出口流量，除了允许发给<code>istio-system</code> 名称空间任何端口任何Pod的流量，如果是9080端口，允许发送给<code>prod-us1</code>名称空间下的所有的服务。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">networking.istio.io/v1alpha3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Sidecar</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ratings</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">prod-us1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">workloadSelector</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ratings</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ingress</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="m">9080</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">HTTP</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">somename</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">defaultEndpoint</span><span class="p">:</span><span class="w"> </span><span class="l">unix:///var/run/someuds.sock</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">egress</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="m">9080</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">HTTP</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">egresshttp</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">hosts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;prod-us1/*&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">hosts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;istio-system/*&#34;</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-08-20 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-title="istio流量治理" data-hashtags="kubernetes,istio"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-hashtag="kubernetes"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-title="istio流量治理" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-title="istio流量治理"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-title="istio流量治理"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html" data-title="istio流量治理"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes.html">kubernetes</a>,&nbsp;<a href="/tags/istio.html">istio</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/istioctl%E5%91%BD%E4%BB%A4.html" class="prev" rel="prev" title="istio命令"><i class="fas fa-angle-left fa-fw"></i>istio命令</a>
+            <a href="/istio%E5%AE%89%E8%A3%85.html" class="next" rel="next" title="istio安装">istio安装<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2020-08-20T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"istio流量治理"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
