@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch6 understanding openldap configuration - Access Control - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ch6 understanding openldap configuration - Access Control" />
+<meta property="og:description" content="Overview 访问控制 (Access Control) 是对目录树中的IDT访问的权限控制。主要指 “谁” 应该能够 “访问记录” 在 “什么条件下” 他们应该能看到多少这样的记录，这些将是本节中阐述的问题 。
+OpenLDAP控制目录数据访问的主要方法是 通过访问控制列表 (Access Control List)。使 slapd 服务端在处理来自客户端的请求时，会评估客户端是否具有访问所请求的 DIT 的权限。要执行此计算，slapd 将依次计算LDIF 中配置的每个ACL策略，以检查客户端是否有权限访问该 DIT。
+Note：
+ACL策略由上而下依次进行匹配 默认的访问控制策略是对所有客户端都允许读取，不管定义了什么ACL策略，rootdn （databases部分设置的）总是允许对所有和任何东西拥有完全的权限（即身份验证、搜索、比较、读和写 ） ACL介绍 访问控制主要定义三大方面：
+what 定义对那些地方的访问，部分选择应用访问的条目和/或属性 who 定义人员，部分指定授予哪些实体访问 access 定义权限，部分指定授予的访问。 1 2 3 access to [what] by [who] [control] by [who] [control] 1 2 3 access to [resources] by [who] [type of access granted] [control] by [who] [type of access granted] [control] 对于完整的ACL语法，如下面所示 [1]" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch06-acl.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-09-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-09-22T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch6 understanding openldap configuration - Access Control"/>
+<meta name="twitter:description" content="Overview 访问控制 (Access Control) 是对目录树中的IDT访问的权限控制。主要指 “谁” 应该能够 “访问记录” 在 “什么条件下” 他们应该能看到多少这样的记录，这些将是本节中阐述的问题 。
+OpenLDAP控制目录数据访问的主要方法是 通过访问控制列表 (Access Control List)。使 slapd 服务端在处理来自客户端的请求时，会评估客户端是否具有访问所请求的 DIT 的权限。要执行此计算，slapd 将依次计算LDIF 中配置的每个ACL策略，以检查客户端是否有权限访问该 DIT。
+Note：
+ACL策略由上而下依次进行匹配 默认的访问控制策略是对所有客户端都允许读取，不管定义了什么ACL策略，rootdn （databases部分设置的）总是允许对所有和任何东西拥有完全的权限（即身份验证、搜索、比较、读和写 ） ACL介绍 访问控制主要定义三大方面：
+what 定义对那些地方的访问，部分选择应用访问的条目和/或属性 who 定义人员，部分指定授予哪些实体访问 access 定义权限，部分指定授予的访问。 1 2 3 access to [what] by [who] [control] by [who] [control] 1 2 3 access to [resources] by [who] [type of access granted] [control] by [who] [type of access granted] [control] 对于完整的ACL语法，如下面所示 [1]"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch06-acl.html" /><link rel="prev" href="https://cylonchau.github.io/ch04-ssl.html" /><link rel="next" href="https://cylonchau.github.io/go-regular-expression.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch6 understanding openldap configuration - Access Control",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch06-acl.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "ldap, linux","wordcount":  1210 ,
+        "url": "https:\/\/cylonchau.github.io\/ch06-acl.html","datePublished": "2019-09-22T00:00:00+00:00","dateModified": "2019-09-22T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 文章 </a><a class="menu-item" href="/categories.html"> 分类 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">文章</a><a class="menu-item" href="/categories.html" title="">分类</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><article class="page single"><h1 class="single-title animated flipInX">ch6 understanding openldap configuration - Access Control</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-09-22 00:00:00">2019-09-22 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1210 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 6 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="content" id="content"><h2 id="overview">Overview</h2>
+<p>访问控制 (<em><strong>Access Control</strong></em>) 是对目录树中的IDT访问的权限控制。主要指 “谁” 应该能够 “访问记录” 在 “什么条件下” 他们应该能看到多少这样的记录，这些将是本节中阐述的问题 。</p>
+<p>OpenLDAP控制目录数据访问的主要方法是 通过访问控制列表 (<em><strong>Access Control List</strong></em>)。使 slapd 服务端在处理来自客户端的请求时，会评估客户端是否具有访问所请求的 DIT 的权限。要执行此计算，slapd 将依次计算<em><strong>LDIF</strong></em> 中配置的每个ACL策略，以检查客户端是否有权限访问该 DIT。</p>
+<hr>
+<blockquote>
+<p><strong>Note</strong>：</p>
+<ul>
+<li>ACL策略由上而下依次进行匹配</li>
+<li>默认的访问控制策略是对所有客户端都允许读取，不管定义了什么ACL策略，<code>rootdn </code> （databases部分设置的）总是允许对所有和任何东西拥有完全的权限（即身份验证、搜索、比较、读和写 ）</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="acl介绍">ACL介绍</h2>
+<p>访问控制主要定义三大方面：</p>
+<ul>
+<li><code>what</code> 定义对那些地方的访问，部分选择应用访问的条目和/或属性</li>
+<li><code>who</code> 定义人员，部分指定授予哪些实体访问</li>
+<li><code>access</code> 定义权限，部分指定授予的访问。</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to [what]
+</span></span><span class="line"><span class="cl">    by [who] [control]
+</span></span><span class="line"><span class="cl">    by [who] [control]
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to [resources]
+</span></span><span class="line"><span class="cl">    by [who] [type of access granted] [control]
+</span></span><span class="line"><span class="cl">    by [who] [type of access granted] [control]
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>对于完整的ACL语法，如下面所示 <sup><a href="#1">[1]</a></sup></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">&lt;access directive&gt; ::= access to &lt;what&gt;
+</span></span><span class="line"><span class="cl">	[by &lt;who&gt; [&lt;access&gt;] [&lt;control&gt;] ]+
+</span></span><span class="line"><span class="cl">&lt;what&gt; ::= * |
+</span></span><span class="line"><span class="cl">	[dn[.&lt;basic-style&gt;]=&lt;regex&gt; | dn.&lt;scope-style&gt;=&lt;DN&gt;]
+</span></span><span class="line"><span class="cl">	[filter=&lt;ldapfilter&gt;] [attrs=&lt;attrlist&gt;]
+</span></span><span class="line"><span class="cl">&lt;basic-style&gt; ::= regex | exact
+</span></span><span class="line"><span class="cl">&lt;scope-style&gt; ::= base | one | subtree | children
+</span></span><span class="line"><span class="cl">&lt;attrlist&gt; ::= &lt;attr&gt; [val[.&lt;basic-style&gt;]=&lt;regex&gt;] | &lt;attr&gt; , &lt;attrlist&gt;
+</span></span><span class="line"><span class="cl">&lt;attr&gt; ::= &lt;attrname&gt; | entry | children
+</span></span><span class="line"><span class="cl">&lt;who&gt; ::= * | [anonymous | users | self
+</span></span><span class="line"><span class="cl">			| dn[.&lt;basic-style&gt;]=&lt;regex&gt; | dn.&lt;scope-style&gt;=&lt;DN&gt;]
+</span></span><span class="line"><span class="cl">	[dnattr=&lt;attrname&gt;]
+</span></span><span class="line"><span class="cl">	[group[/&lt;objectclass&gt;[/&lt;attrname&gt;][.&lt;basic-style&gt;]]=&lt;regex&gt;]
+</span></span><span class="line"><span class="cl">	[peername[.&lt;basic-style&gt;]=&lt;regex&gt;]
+</span></span><span class="line"><span class="cl">	[sockname[.&lt;basic-style&gt;]=&lt;regex&gt;]
+</span></span><span class="line"><span class="cl">	[domain[.&lt;basic-style&gt;]=&lt;regex&gt;]
+</span></span><span class="line"><span class="cl">	[sockurl[.&lt;basic-style&gt;]=&lt;regex&gt;]
+</span></span><span class="line"><span class="cl">	[set=&lt;setspec&gt;]
+</span></span><span class="line"><span class="cl">	[aci=&lt;attrname&gt;]
+</span></span><span class="line"><span class="cl">&lt;access&gt; ::= [self]{&lt;level&gt;|&lt;priv&gt;}
+</span></span><span class="line"><span class="cl">&lt;level&gt; ::= none | disclose | auth | compare | search | read | write | manage
+</span></span><span class="line"><span class="cl">&lt;priv&gt; ::= {=|+|-}{m|w|r|s|c|x|d|0}+
+</span></span><span class="line"><span class="cl">&lt;control&gt; ::= [stop | continue | break]
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><code>what</code> 部分将确定如何控制客户端访问的条目，通常为三种方式：
+<ul>
+<li>通过DN</li>
+<li>通过过滤器 (<em><strong>filter</strong></em>)</li>
+<li>通过属性 (<em><strong>attributes</strong></em>)</li>
+</ul>
+</li>
+<li><code>who</code> 部分将确定被授予访问权限的用户实体
+<ul>
+<li><code>&lt;who&gt;</code> ，  <code>&lt;access&gt;</code> ， <code>&lt;control&gt;</code></li>
+</ul>
+</li>
+<li><code>access</code> 部分确定了实体的访问权限</li>
+</ul>
+<h2 id="控制访问内容">控制访问内容</h2>
+<p>访问内容也是 ACL 中 <em><strong>what</strong></em> 部分，例如下属为简单表示的语法格式</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">to * 
+</span></span><span class="line"><span class="cl">to dn[.&lt;basic-style&gt;]=&lt;regex&gt; 
+</span></span><span class="line"><span class="cl">to dn.&lt;scope-style&gt;=&lt;DN&gt;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>其中 <code>to *</code> 表示选择所有条目</li>
+<li><code>to dn[.&lt;basic-style&gt;]=&lt;regex&gt; </code> ：通过正则表达式与DIT规范的DN来选择内容</li>
+<li><code>to dn.&lt;scope-style&gt;=&lt;DN&gt;</code> ：内容将被限制在DN范围内</li>
+</ul>
+<p>其中范围包含下述几项：</p>
+<ul>
+<li>base：仅匹配提供DN的条目</li>
+<li>one：父条目是指定DN的条目</li>
+<li>subtree：匹配指定DN下的所有子树中的条目，包含RootDN</li>
+<li>children：匹配指定的DN下的所有子条目，不包含RootDN</li>
+</ul>
+<p>例如下列实例</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"> 0: o=suffix 
+</span></span><span class="line"><span class="cl"> 1: cn=Manager,o=suffix 
+</span></span><span class="line"><span class="cl"> 2: ou=people,o=suffix 
+</span></span><span class="line"><span class="cl"> 3: uid=kdz,ou=people,o=suffix 
+</span></span><span class="line"><span class="cl"> 4: cn=addresses,uid=kdz,ou=people, o=suffix 
+</span></span><span class="line"><span class="cl"> 5：uid=hyc,ou=people,o=suffix
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>如果请求为 <code>dn.base=&quot;ou=people,o=suffix&quot;</code> 将匹配2</li>
+<li>如果请求为 <code>dn.one=&quot;ou=people,o=suffix&quot;</code> 将匹配 3, 5</li>
+<li>如果请求为 <code>dn.subtree=&quot;ou=people,o=suffix&quot;</code> 将匹配 2, 3, 4, 5</li>
+<li>如果请求为 <code>dn.children=&quot;ou=people,o=suffix&quot;</code> 将匹配 3, 4, 5</li>
+</ul>
+<hr>
+<blockquote>
+<p><strong>Notes</strong>：在配置ACL时，<code>to *</code> 通常放置在ACL策略中最下层，即代表不匹配所有的权限时给的权限</p>
+</blockquote>
+<hr>
+<h3 id="通过dn匹配示例">通过DN匹配示例</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to dn.regex=&#34;uid[^,]+,ou=Users,dc=example,dc=com&#34;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这表示 所有 来自任意 uid 为逗号开头的 <code>ou=Users,dc=example,dc=com</code> 域的权限</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="../../../images/ch06%20ACL/clipboard-1567527344410.png"
+        data-srcset="../../../images/ch06%20ACL/clipboard-1567527344410.png, ../../../images/ch06%20ACL/clipboard-1567527344410.png 1.5x, ../../../images/ch06%20ACL/clipboard-1567527344410.png 2x"
+        data-sizes="auto"
+        alt="../../../images/ch06%20ACL/clipboard-1567527344410.png"
+        title="image" /></p>
+<h3 id="使用filter匹配">使用filter匹配</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">to filter=&lt;ldap filter&gt;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：DN与filter可以同时包含在 <code>&lt;what&gt; </code>子句中</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to filter=(objectClass=person)
+</span></span><span class="line"><span class="cl">access to filter=&#34;(|(|(givenName=Matt)(givenName=Barbara))(sn=Kant))&#34;
+</span></span><span class="line"><span class="cl">access to dn.subtree=&#34;ou=Users,dc=example,dc=com&#34; filter=&#34;(employeeNumber=*)&#34;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ： <code>&lt;what&gt;</code> 子句中也可以包含属性来进行过滤，多个属性可以通过符号 “<code>,</code>” 分割</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">attrs=&lt;attribute list&gt;
+</span></span><span class="line"><span class="cl">access to attrs=userPassword,shadowLastChange
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong>：通过使用单个 <code>attribute</code> 与使用value选择器来过滤出特定的属性</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">attrs=&lt;attribute&gt; val[.&lt;style&gt;]=&lt;regex&gt;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">access to dn.children=&#34;cn=people,dc=stanford,dc=edu&#34; attrs=suPrivilegeGroup val.regex=&#34;^stanford:.+&#34;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>Notes： “ <code>*</code> ”  代表 <code>dn=*</code></p>
+</blockquote>
+<h3 id="who">WHO</h3>
+<p><code>&lt;who&gt;</code> 部分标识被授权访问的角色，例如被授权访问的用户</p>
+<hr>
+<blockquote>
+<p>Notes：who 代表的是一个实体，例如用户，组，域，二不是访问的条目</p>
+</blockquote>
+<hr>
+<p><strong>下表总结了who拥有的角色</strong></p>
+<table>
+<thead>
+<tr>
+<th>标识符</th>
+<th>访问实体</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>*</td>
+<td>所有，包括匿名和经过身份验证的用户</td>
+</tr>
+<tr>
+<td>anonymous</td>
+<td>匿名用户（未验证）</td>
+</tr>
+<tr>
+<td>users</td>
+<td>通过身份验证的用户</td>
+</tr>
+<tr>
+<td>self</td>
+<td>与目标条目关联的用户</td>
+</tr>
+<tr>
+<td><code>dn[.&lt;basic style&gt;]=&lt;regex&gt;</code></td>
+<td>匹配正则表达式的用户</td>
+</tr>
+<tr>
+<td><code>dn.&lt;scope-style&gt;=&lt;DN&gt;</code></td>
+<td>DN范围内的用户</td>
+</tr>
+</tbody>
+</table>
+<p><strong>例</strong>：who子句中的 <code>dnattr</code> 仅适用于符合ldap语法的DN的属性，而不是其他属性</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dnattr=&lt;dn-valued attribute name&gt;
+</span></span><span class="line"><span class="cl">by *dnattr*=orgaAdmin
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="access">ACCESS</h3>
+<p><code>access</code> 类型可以是下列之一：</p>
+<table>
+<thead>
+<tr>
+<th>级别</th>
+<th style="text-align:right">权限</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td style="text-align:right">0</td>
+<td>禁止访问</td>
+</tr>
+<tr>
+<td>disclose</td>
+<td style="text-align:right">d</td>
+<td>检测信息是否存在</td>
+</tr>
+<tr>
+<td>auth</td>
+<td style="text-align:right">dx</td>
+<td>需要验证</td>
+</tr>
+<tr>
+<td>compare</td>
+<td style="text-align:right">cdx</td>
+<td>需要比较</td>
+</tr>
+<tr>
+<td>search</td>
+<td style="text-align:right">scdx</td>
+<td>需要应用搜索过滤器</td>
+</tr>
+<tr>
+<td>read</td>
+<td style="text-align:right">rscdx</td>
+<td>需要读搜索结果</td>
+</tr>
+<tr>
+<td>write</td>
+<td style="text-align:right">wrscdx</td>
+<td>需要修改/重命名</td>
+</tr>
+<tr>
+<td>manage</td>
+<td style="text-align:right">mwrscdx</td>
+<td>需要管理</td>
+</tr>
+</tbody>
+</table>
+<p>其中权限字段字母意思为：</p>
+<ul>
+<li><code>w</code>：对记录或属性的写访问。</li>
+<li><code>r</code>：对记录或属性的读访问。</li>
+<li><code>s</code>：对记录或属性的搜索访问。</li>
+<li><code>c</code>：访问对记录或属性运行比较操作。</li>
+<li><code>x</code>：访问对记录或属性执行服务器端身份验证操作。</li>
+<li><code>d</code>：访问记录或属性是否存在的信息 (d 代表“disclose” )。</li>
+<li><code>0</code>：不允许访问记录或属性。这相当于 wrscxd 。</li>
+<li><code>m</code>：管理权限</li>
+</ul>
+<p><strong>例</strong> ：最简单的access策略，限制所有人都可以读</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to * by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：下面示例为，对于条目所属者可以修改自己，匿名用户需要登陆，所有人可以读，对于 <code>by anonymous auth</code> 仅仅是声明了匿名用户可以登录，而读的属性是下面那条声明的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to *
+</span></span><span class="line"><span class="cl">    by self write
+</span></span><span class="line"><span class="cl">    by anonymous auth
+</span></span><span class="line"><span class="cl">    by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：使用 SSF <code>Security Strength Factor</code> 进行认证，SSF表示为openldap中保护的强度，与密钥长度有关</p>
+<p>下列带包了，如果ssf强度大于128的将允许被修改自己，大于64的匿名用户可以读操作</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to *
+</span></span><span class="line"><span class="cl">    by ssf=128 self write
+</span></span><span class="line"><span class="cl">    by ssf=64 anonymous auth
+</span></span><span class="line"><span class="cl">    by ssf=64 users read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：下面示例为 DN示例，这将代表了人员必须有所有用户搜索 <code>dc=example,dc=com</code> 子目录，并且对  <code>dn.children=&quot;dc=com</code> 的子目录有读权限，而这里 <code>dc=example,dc=com</code> 为 <code>dc=com</code> 子目录，所以说如果要读 目录 <code>dc=example,dc=com</code> 此时没有权限，因为ACL策略是按照顺序进行的，匹配到后就结束了</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to dn.children=&#34;dc=example,dc=com&#34;
+</span></span><span class="line"><span class="cl">	by * search
+</span></span><span class="line"><span class="cl">access to dn.children=&#34;dc=com&#34;
+</span></span><span class="line"><span class="cl">	by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：还需要注意的一点是，所有列出的策略结尾都会隐式增加一条 <code>access to * by * none</code> 即，当没有通过who子句，也会被拒绝。</p>
+<p>例如该策略将允许 <code>dc=example,dc=com</code> 子目录，并且属性 <code>homePhone</code> 的属于自己条目的可以写入，可以进行搜索，并包含 <code>dn=dc=example,dc=com</code> 下的所有子条目，并且网络客户端为10开头的ip都可以读，其他的将被隐式策略拒绝</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to dn.subtree=&#34;dc=example,dc=com&#34; attrs=homePhone
+</span></span><span class="line"><span class="cl">    by self write
+</span></span><span class="line"><span class="cl">    by dn.children=&#34;dc=example,dc=com&#34; search
+</span></span><span class="line"><span class="cl">    by peername.regex=IP=10\..+ read
+</span></span><span class="line"><span class="cl">access to dn.subtree=&#34;dc=example,dc=com&#34;
+</span></span><span class="line"><span class="cl">    by self write
+</span></span><span class="line"><span class="cl">    by dn.children=&#34;dc=example,dc=com&#34; search
+</span></span><span class="line"><span class="cl">    by anonymous auth
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>例</strong> ：有些场景下需要只有组内成员才能删除自己租的条目对象，这个时候就需要用到 <code>dnattr </code> 作为 who 子句的选择器；下面的策略表示只有符合这个域中的成员才能删除自己的DN，这里attrs是必须的</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">access to attrs=member,entry
+</span></span><span class="line"><span class="cl">	by dnattr=member selfwrite
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="acl的排序">ACL的排序</h3>
+<p>ACL的顺序也非常重要，如果不配置，将按照默认的固定顺序进行，但是也可以控制顺序的先后，通过为每个值添加 <code>{x}</code> x 为数字，这样可以做到ACL的排序</p>
+<p>例如下列策略，在执行时是由 slapd 服务自动维护的</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">olcAccess: to attrs=member,entry 
+</span></span><span class="line"><span class="cl">	by dnattr=member selfwrite 
+</span></span><span class="line"><span class="cl">olcAccess: to dn.children=&#34;dc=example,dc=com&#34; 
+</span></span><span class="line"><span class="cl">	by * search 
+</span></span><span class="line"><span class="cl">olcAccess: to dn.children=&#34;dc=com&#34; 
+</span></span><span class="line"><span class="cl">	by * read
+</span></span><span class="line"><span class="cl"># 在没指定顺序时，将按照下列顺序执行
+</span></span><span class="line"><span class="cl">olcAccess: {0}to attrs=member,entry 
+</span></span><span class="line"><span class="cl">	by dnattr=member selfwrite 
+</span></span><span class="line"><span class="cl">olcAccess: {1}to dn.children=&#34;dc=example,dc=com&#34; 
+</span></span><span class="line"><span class="cl">	by * search 
+</span></span><span class="line"><span class="cl">olcAccess: {2}to dn.children=&#34;dc=com&#34; 
+</span></span><span class="line"><span class="cl">	by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>比如说在生成好的策略进行动态修改时，例如下列所示，此时时修改顺序将是乱的</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">changetype: modify
+</span></span><span class="line"><span class="cl">delete: olcAccess
+</span></span><span class="line"><span class="cl">olcAccess: to dn.children=&#34;dc=example,dc=com&#34; by * search
+</span></span><span class="line"><span class="cl">-
+</span></span><span class="line"><span class="cl">add: olcAccess
+</span></span><span class="line"><span class="cl">olcAccess: to dn.children=&#34;dc=example,dc=com&#34; by * write
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>为了确保可以修改到指定的条目，需要指定对应条目的index，如果并不确定index是多少，可以通过 <code>/etc/openldap/slapd.d/</code> 对应的文件查看</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">changetype: modify
+</span></span><span class="line"><span class="cl">delete: olcAccess
+</span></span><span class="line"><span class="cl">olcAccess: {1}
+</span></span><span class="line"><span class="cl">-
+</span></span><span class="line"><span class="cl">add: olcAccess
+</span></span><span class="line"><span class="cl">olcAccess: {1}to dn.children=&#34;dc=example,dc=com&#34; by * write
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="访问控制示例">访问控制示例</h3>
+<ul>
+<li>关闭匿名访问</li>
+<li>创建一个目录管理员组，属于该组的人员都具有管理目录的权限</li>
+<li>创建一个配置管理员组，属于该组的人员都具有配置 openldap 的权限</li>
+<li>创建一个复制权限用户 ，该账号用于高可用之间的复制</li>
+<li>创建一个搜索用户，用于 linux 集中账号认证时的，搜索</li>
+</ul>
+<blockquote>
+<p>提示：</p>
+<ul>
+<li>目录管理员组：操作目录树的管理员都属于目录管理员组。</li>
+<li>配置管理员组：可以操作服务器配置的（<code>slapd.ldif</code>）属于配置管理员组</li>
+</ul>
+</blockquote>
+<h3 id="关闭匿名访问">关闭匿名访问</h3>
+<p>首先slapd默认是允许匿名用户登录的，现在关闭匿名用户登录 在全局部分配置如下（通常全局在配置文件前几行）</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">olcDisallows: bind_anon
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="初始化一些组与用户">初始化一些组与用户</h3>
+<p>创建RootDN与一些组，这里创建了三个组 ：目录管理员组 <code>dirGroup</code>，配置管理员组 <code>confGroup</code> ，与高级管理员组 <code>adminGroup</code> 。</p>
+<blockquote>
+<p>注：</p>
+<ul>
+<li>这些是在初始化安装好 openldap 环境进行的，而不是存在数据的环境</li>
+<li>这里创建的组使用的 <code>groupOfUniqueNames</code></li>
+</ul>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalUnit
+</span></span></span><span class="line"><span class="cl"><span class="s">ou: tvb
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=adminGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: groupOfUniqueNames
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: adminGroup
+</span></span></span><span class="line"><span class="cl"><span class="s">uniqueMember: uid=admin,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=dirGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: groupOfUniqueNames
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: dirGroup
+</span></span></span><span class="line"><span class="cl"><span class="s">uniqueMember: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=confGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: groupOfUniqueNames
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: confGroup
+</span></span></span><span class="line"><span class="cl"><span class="s">uniqueMember: uid=syncUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>初始化目录管理员用户 <code>syncUser</code> ，配置管理员用户 <code>searchUser</code> ，高级管理员用户 <code>admin</code> ，密码均为111</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=syncUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 10006
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 10002
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=confGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 10005
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 10001
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=dirGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">#cat &lt;&lt; EOF</span> <span class="p">|</span> ldapadd -x -H ldap://10.0.0.10 -D <span class="s2">&#34;cn=admin,dc=test,dc=com&#34;</span> -w <span class="m">111</span>
+</span></span><span class="line"><span class="cl">dn: <span class="nv">uid</span><span class="o">=</span>admin,ou<span class="o">=</span>tvb,dc<span class="o">=</span>test,dc<span class="o">=</span>com
+</span></span><span class="line"><span class="cl">objectClass: inetOrgPerson
+</span></span><span class="line"><span class="cl">objectClass: organizationalPerson
+</span></span><span class="line"><span class="cl">objectClass: person
+</span></span><span class="line"><span class="cl">objectClass: posixAccount
+</span></span><span class="line"><span class="cl">uid: admin
+</span></span><span class="line"><span class="cl">cn: admin
+</span></span><span class="line"><span class="cl">uidNumber: <span class="m">0</span>
+</span></span><span class="line"><span class="cl">gidNumber: <span class="m">0</span>
+</span></span><span class="line"><span class="cl">homeDirectory: /home/admin
+</span></span><span class="line"><span class="cl">loginShell: /bin/bash
+</span></span><span class="line"><span class="cl">userPassword: <span class="o">{</span>SSHA<span class="o">}</span>QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span><span class="line"><span class="cl">sn: admin
+</span></span><span class="line"><span class="cl">givenName: admin
+</span></span><span class="line"><span class="cl">memberOf: <span class="nv">cn</span><span class="o">=</span>adminGroup,ou<span class="o">=</span>tvb,dc<span class="o">=</span>test,dc<span class="o">=</span>com
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dn: <span class="nv">uid</span><span class="o">=</span>admin1,ou<span class="o">=</span>tvb,dc<span class="o">=</span>test,dc<span class="o">=</span>com
+</span></span><span class="line"><span class="cl">objectClass: inetOrgPerson
+</span></span><span class="line"><span class="cl">objectClass: organizationalPerson
+</span></span><span class="line"><span class="cl">objectClass: person
+</span></span><span class="line"><span class="cl">objectClass: posixAccount
+</span></span><span class="line"><span class="cl">uid: admin1
+</span></span><span class="line"><span class="cl">cn: admin
+</span></span><span class="line"><span class="cl">uidNumber: <span class="m">0</span>
+</span></span><span class="line"><span class="cl">gidNumber: <span class="m">0</span>
+</span></span><span class="line"><span class="cl">homeDirectory: /home/admin
+</span></span><span class="line"><span class="cl">loginShell: /bin/bash
+</span></span><span class="line"><span class="cl">userPassword: <span class="o">{</span>SSHA<span class="o">}</span>QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span><span class="line"><span class="cl">sn: admin
+</span></span><span class="line"><span class="cl">givenName: admin
+</span></span><span class="line"><span class="cl">memberOf: <span class="nv">cn</span><span class="o">=</span>adminGroup,ou<span class="o">=</span>tvb,dc<span class="o">=</span>test,dc<span class="o">=</span>com
+</span></span><span class="line"><span class="cl">EOF
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="创建权限管理员用户组有所有权限">创建权限：管理员用户组有所有权限</h3>
+<p>这句意思是筛选出dn下的所有不包含uniqueMember的用户，即找到<code>dn=cn=adminGroup,ou=tvb,dc=test,dc=com</code>  在上面我们把起规划为一个组，然后检查他的属性 <code>uniqueMember</code> ，<code>*</code> 表示递归，这里不用填，所有的 <code>uniqueMember</code> 均为最底层 <sup><a href="#2">[2]</a></sup></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"> by set=&#34;[cn=adminGroup,ou=tvb,dc=test,dc=com]/uniqueMember* &amp; user&#34; manage
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="创建权限普通用户仅允许修改自己的密码">创建权限：普通用户仅允许修改自己的密码</h3>
+<p>这里使用属性选择器进行属性筛选</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">olcAccess: to <span class="nv">attrs</span><span class="o">=</span><span class="s2">&#34;userPassword&#34;</span>
+</span></span><span class="line"><span class="cl">    by <span class="nv">set</span><span class="o">=</span><span class="s2">&#34;[cn=adminGroup,ou=tvb,dc=test,dc=com]/uniqueMember &amp; user&#34;</span> manage
+</span></span><span class="line"><span class="cl"><span class="c1"># 自己可以修改</span>
+</span></span><span class="line"><span class="cl">    by self write
+</span></span><span class="line"><span class="cl"><span class="c1"># 登录时候需要读，必须设置该选项</span>
+</span></span><span class="line"><span class="cl">    by * <span class="nb">read</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="配置数据库的权限">配置数据库的权限</h3>
+<p>对于客户端请求过来的权限，一般通过Frontend settings段来配置，这也可以理解是全局的ACL，对于后面的ACL会覆盖全局的ACL</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">#
+</span></span><span class="line"><span class="cl"># Configuration database
+</span></span><span class="line"><span class="cl">#
+</span></span><span class="line"><span class="cl">dn: olcDatabase=config,cn=config
+</span></span><span class="line"><span class="cl">objectClass: olcDatabaseConfig
+</span></span><span class="line"><span class="cl">olcDatabase: config
+</span></span><span class="line"><span class="cl">olcAccess: to *
+</span></span><span class="line"><span class="cl">    by set=&#34;[cn=adminGroup,ou=tvb,dc=test,dc=com]/uniqueMember &amp; user&#34; manage
+</span></span><span class="line"><span class="cl">    by * none
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>完整的ACL配置部分</p>
+<blockquote>
+<p>Notes：slapd会根据配置的ACL顺序进行检测，匹配到后就不在继续了，所以在配置时，<code>what</code> 部分（选择器范围）要从小到大，这样可以控制范围就正确，正如上面例子，用户只能修改自己密码，属性选择器一旦写在DN选择器下面，将用远不被执行</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">olcAccess: to attrs=&#34;userPassword&#34;
+</span></span><span class="line"><span class="cl">    by set=&#34;[cn=adminGroup,ou=tvb,dc=test,dc=com]/uniqueMember &amp; user&#34; manage
+</span></span><span class="line"><span class="cl">    by self write
+</span></span><span class="line"><span class="cl">    by * read
+</span></span><span class="line"><span class="cl">olcAccess: to dn.subtree=&#34;dc=test,dc=com&#34;
+</span></span><span class="line"><span class="cl">    by set=&#34;[cn=adminGroup,ou=tvb,dc=test,dc=com]/uniqueMember &amp; user&#34; manage
+</span></span><span class="line"><span class="cl">    by dn.children=&#34;dc=test,dc=com&#34; read
+</span></span><span class="line"><span class="cl">    by anonymous auth
+</span></span><span class="line"><span class="cl">    by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="troubleshooting">Troubleshooting</h2>
+<p>默认情况下，获取schema是没有权限的，此时需要添加权限使其可以读取schema权限。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1596103387323.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1596103387323.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1596103387323.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1596103387323.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1596103387323.png"
+        title="image" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344473.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344473.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344473.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344473.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344473.png"
+        title="image" /></p>
+<hr>
+<blockquote>
+<p><strong>注</strong>：在创建用户和组是需要查看schema权限</p>
+</blockquote>
+<hr>
+<p><code>slapd.ldif</code> 文件中添加：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: olcDatabase=frontend,cn=config
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">olcAccess: to dn.subtree=&#34;&#34;
+</span></span><span class="line"><span class="cl">    by * read
+</span></span><span class="line"><span class="cl">or
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">olcAccess: to dn.subtree=&#34;dn: cn=schema,cn=config&#34;
+</span></span><span class="line"><span class="cl">	by * read
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344427.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344427.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344427.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344427.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/clipboard-1567527344427.png"
+        title="image" /></p>
+<p><strong>填写配置后重新生成配置文件报类似如下错误</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ slapadd  -n0 -F /etc/openldap/slapd.d -l kerberos.ldif
+</span></span><span class="line"><span class="cl">SYNTAX 1.3.6.1.4.1.1466.115.121.1.26)): empty AttributeDescription
+</span></span><span class="line"><span class="cl">slapadd: could not parse entry (line=1)
+</span></span><span class="line"><span class="cl">_# 6.36% eta none elapsed none spd 18.6 M/s
+</span></span><span class="line"><span class="cl">Closing DB...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>问题原因：如上配置权限换行方式不可，官网给出的解决方法 <sup><a href="#1">[1]</a></sup></p>
+<p><strong>Insufficient access (50)</strong></p>
+<p>问题原因：没有权限</p>
+<blockquote>
+<p><strong>Reference</strong></p>
+<p><sup id="1">[1]</sup> <a href="https://www.openldap.org/lists/openldap-technical/201705/msg00054.html" target="_blank" rel="noopener noreffer"><em><strong>msg00054</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://www.openldap.org/doc/admin24/access-control.html#8.5.1.%20Groups%20of%20Groups" target="_blank" rel="noopener noreffer"><em><strong>Groups of Groups</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="http://www.uvm.edu/~fcs/tools/ACLs.html" target="_blank" rel="noopener noreffer"><em><strong>ACLs</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://www.openldap.org/faq/data/cache/454.html" target="_blank" rel="noopener noreffer"><em><strong>Controls or what to do after a match</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="https://ubuntu.com/server/docs/service-ldap-access-control" target="_blank" rel="noopener noreffer"><em><strong>LDAP Access Control</strong></em></a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2019-09-22 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch06-acl.html" data-title="ch6 understanding openldap configuration - Access Control" data-hashtags="ldap,linux"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch06-acl.html" data-hashtag="ldap"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch06-acl.html" data-title="ch6 understanding openldap configuration - Access Control" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch06-acl.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch06-acl.html" data-title="ch6 understanding openldap configuration - Access Control"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch06-acl.html" data-title="ch6 understanding openldap configuration - Access Control"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch06-acl.html" data-title="ch6 understanding openldap configuration - Access Control"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch04-ssl.html" class="prev" rel="prev" title="ch4 understanding openldap configuration - TLS/SSL"><i class="fas fa-angle-left fa-fw"></i>ch4 understanding openldap configuration - TLS/SSL</a>
+            <a href="/go-regular-expression.html" class="next" rel="next" title="正则表达式在go中使用">正则表达式在go中使用<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2019-09-22T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch6 understanding openldap configuration - Access Control"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
