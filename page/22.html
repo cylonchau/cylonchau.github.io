@@ -77,6 +77,50 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/consistent-hash.html">consistent hash</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2016-09-28 00:00:00">2016-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/cache.html"><i class="far fa-folder fa-fw"></i>cache</a></span></div><div class="content">[toc]
+Memcached应用场景 基本场景 比如有 N 台 cache 服务器（后面简称 cache），那么如何将一个对象 object 映射到 N 个 cache 上呢，你很可能会采用类似下面的通用方法计算 object 的 hash 值，然后均匀的映射到到N个cache; hash(object)%N
+如下图：
+这时，一切都运行正常，再考虑如下的两种情况：
+一个 cache服务器m down掉了（在实际应用中必须要考虑这种情况），这样所有映射到cache m的对象都会失效，怎么办，需要把cache m从cache 中移除，这时候 cache 是 $N-1$ 台，映射公式变成了 hash(object)%(N-1) 。此时数据 $3%3-1=3%2=1$ 此时，3应该在S3上，但是由于S3down机导致到S1去取，这时会未命中。如下图
+由于访问加重，需要添加 cache ，这时候 cache 是 $N+1$ 台，映射公式变成了 hash(object)%(N+1) 。1和2意味着突然之间几乎所有的 cache 都失效了。对于服务器而言，这是一场灾难，洪水般的访问都会直接冲向后台服务器。$\frac{N-1} { N\times (N-1)}$
+即：
+有N台服务器，变为 $N-1$ 台，即每 $N \times (N-1)$个数中，求余相同的只有 N-1 个。命中率为：$\frac{1}{3}$
+再来考虑第三个问题，由于硬件能力越来越强，你可能想让后面添加的节点多做点活，显然上面的 hash 算法也做不到。
+有什么方法可以改变这个状况呢，这就是 consistent hashing&hellip;
+但现在一致性hash算法在分布式系统中也得到了广泛应用，研究过memcached缓存数据库的人都知道，memcached服务器端本身不提供分布式cache的一致性，而是由客户端来提供，具体在计算一致性hash时采用如下步骤：
+首先求出memcached服务器（节点）的哈希值，并将其配置到 0～232 的圆（continuum）上。
+然后采用同样的方法求出存储数据的键的哈希值，并映射到相同的圆上。</div><div class="post-footer">
+        <a href="/consistent-hash.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/memcache.html">memcache</a>,&nbsp;<a href="/tags/algorithm.html">algorithm</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/memcached.html">memcache</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2016-09-28 00:00:00">2016-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/cache.html"><i class="far fa-folder fa-fw"></i>cache</a></span></div><div class="content">[toc]
+1 Memcached介绍及常见同类软件对比 1.1 Memcached是什么？ Memcached是一个开源的、支持高性能、高并发的分布式缓存系统，由C语言编写，总共2000多行代码。从软件名称上看，前3个字符的单词Mem就是内存的意思，接下来的后面5个字符的单词Cache就是缓存的意思，最后一个字符d是daemon的意思，代表是服务端守护进程模式服务。
+Memcached服务分为服务端和客户端两部分，其中，服务端软件的名字形如 Memcached-1.4.24.tat.gz，客户端软件的名字形如 Memcache-2.25.tar.gz
+Memcached软件诞生于2003年，最初由LiveJournal的BradFitzpatrick开发完成。Memcached是整个项目的名称，而Memcached是服务器端的主程序名，因其协议简单，使用部署方便、且支持高并发而被互联网企业广泛使用，知道现在仍然被广泛应用。官方网址：http://memcached.org
+1.2 Memcached的作用 传统场景，多数Web应用都将数据保存到关系型数据库中（例如MySQL），Web服务器从中读取数据并在浏览器中显示。但随着数据量的增大、访问的集中，关系型数据库的负担就会加重、响应缓慢、导致网站打开延迟等问题，影响用户体验。
+这时就需要Memcached软件出马了。使用Memcached的主要目的是，通过在自身内存中缓存关系型数据库的查询结果，减少数据库自身被访问的次数，以提高动态web应用的速度、提高网站架构的并发能力和可扩展性。
+Memcached服务的运行原理是通过在实现规划好的系统内存空间中临时缓存数据库的各类数据，以达到减少前端业务服务对数据库的直接高并发访问，从而达到提升大规模网站急群众动态服务的并发访问能力。
+生产场景的Memcached服务一般被用来保存网站中经常被读取的对象或数据，就像我们的客户端浏览器也会把经常访问的网页缓存起来一样，通过内存缓存来存取对象或数据要比磁盘存取快很多，因为磁盘是机械的，因此，在当今的IT企业中，Memcached的应用范围很广泛
+1.3 互联网常见内存服务软件 下表为互联网企业场景常见内存缓存服务软件相关对比信息：
+软件 类型 主要作用 缓存的数据 Memcached 纯内存型 常用于缓存网站后端的各类数据，例如数据库中的数据 主要缓存用户重复请求的动态内容，blog的博文BBS的帖子等内容用户的Session会话信息 Redis/Mongodb/memcachedb 可持久化存储，即使用内存也会使用磁盘存储 1. 缓存后端数据库的查询数据
+2.作为关系数据库的重要补充 1.作为缓存：主要缓存用户重复请求的动态内容：例如BLOG的博文、BBS的帖子等内容。2.作为数据库的有效补充：例如：好友关注、粉丝统计、业务统计等功能可以用持久化存储。 Squid/Nginx 内存或内存加磁盘缓存 主要用于缓存web前端的服务内容 主要用于静态数据缓存，例如：图片，附件（压缩包），js,css,html等，此部分功能大多数企业会选择专业的CDN公司如：蓝讯、网宿。 2 Memcached常见用途工作流程 Memcached是一种内存缓存软件，在工作中经常用来缓存数据库的查询数据，数据被缓存在事先预分配的Memcached管理的内存中，可以通过API或命令的方式存取内存中缓存的这些数据，Memcached服务内存中缓存的数据就像一张巨大的HASH表，每条数据都是以key-value对的形式存在。
+2.1 网站读取Memcached数据时的工作流程 Memcached用来缓存查询到的数据库中的数据，逻辑上，当程序访问后端数据库获取数据时会先优先访问Memcached缓存，如果缓存中有数据就直接返回给客户端用户，如果没有数据（没有命中）程序再去读取后端的数据库的数据，读取到需要的数据后，把数据返回给客户端，同时还会把读取到的数据库缓存到Memcached内存中，这样客户端用户再请求相同数据就会直接读取Memcached缓存的数据，这样就大大减轻了后端数据库的压力，并提高了整个网站的响应速断，提升了用户体验。
+图2-1展示了Memcached缓存系统和后端数据库系统的协作流程上图，使用Memcached缓存查询数据来减少数据库压力的具体工作流程如下：
+web程序首先检查客户端请求的数据是否在Memcached缓存中存在，如果存在，直接把请求的数据返回给客户端，此时不在请求后端数据库。
+如果请求的数据在Memcached缓存中不存在，则程序会请求数据库服务，把数据库中取到的数据返回给客户端，此时不再请求后端数据库。
+2.2 网站更新Memcached数据时工作流程 当程序更新或者删除数据时，会首先处理后端数据库中的数据。 程序处理后端数据库中的数据的同时，也会通知Memcached中的对应旧数据失效，从而保证Memcached中缓存的数据始终和数据库中的户数一直，这个数据一致性非常重要，也是大型网站分布式缓存集群的最头痛的问题所在。 如果是在高并发读写场合，除了要程序通知Memcached过期的缓存失效外，还可能会通过相关机制，例如在数据库上部署相关程序（例如：在数据库中设置触发器使用UDFs），实现当数据库有更新就会把数据更新到Memcached服务中，使得客户端在访问新数据前，预先把更新过的数据库数据复制到Memcached中缓存起来，这样可以减少第一次查询数据库带来的访问压力，提升Memcached中缓存的命中率，甚至sina门户还会把持久化存储redis做成MySQL数据库的从库，实现真正的主从复制。 Memcached网站作为缓存应用更新数据流程图见下图1-2Memcached服务作为缓存应用通过相关软件更新数据见图2-23 Memcached在企业中的应用场景 3.1 作为数据库查询数据缓存 3.1.1 完整数据缓存 例如电商的商品分类功能不会经常变动，就可以实现放到Memcached里，然后再对外提供数据访问。这个过程被称之为“数据预热”。
+此时秩序读取缓存无需读取数据库就能读到Memcached缓存里的所有商品分类数据了，所以数据库的访问压力就会大大降低了。
+为什么商品分类数据可以实现放在缓存里呢？
+因为，商品分类几乎都是由内部人员管理的，如果需要更新数据，更新数据库后，就可以把数据同时更新到Memcached里。
+如果把商品分类数据做成静态化文件，然后通过在前段WEB缓存或者使用CDN加速效果更好。
+3.1.2 热点数据缓存 热点数据缓存一般是用于由用户更新的商品，例如淘宝的卖家，当卖家新增商品后，网站程序就会把商品写入后端数据库，同时把这部分数据，放入Memcached内存中，下一次访问这个商品的请求就直接从Memcached内存中取走了。这种方法用来缓存网站热点的数据，即利用Memcached缓存经常被访问的数据。
+特别提示：这个过程可以通过程序实现，也可以在数据库上安装软件进行设置，直接由数据库把内容更新到Memcached中，相当于Memcached是MySQL的丛库一样。
+淘宝、京东、小米等电商双11秒杀抢购场景：</div><div class="post-footer">
+        <a href="/memcached.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/memcache.html">memcache</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/expect.html">expect</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2016-09-18 00:00:00">2016-09-18 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ssh.html"><i class="far fa-folder fa-fw"></i>ssh</a></span></div><div class="content">1 什么是Expect Expent是基于Tcl的相对简单的一个免费的脚本编程工具语言，用来实现自动和交互任务程序进行通信，无需人的手工干预。比如SSH、FTP等，这些程序正常情况都需要手工与它们进行交互，而使用Expect就可以模拟人手工交互的过程，实现自动的和远程的程序交互，从而达到自动化运维的目的。
 2 Expect程序工作流程 Expect的工作流程可以理解为，spawn启动进程 ==&gt; expect期待关键字 ==&gt; send向进程发送字符 ==&gt; 退出结束。
@@ -219,17 +263,6 @@ systemd的设计思路是：
 转置运算
 矩阵的转置是原始矩阵的翻转版本，可以通过转换矩阵的行和列来转置矩阵。我们用 $A^T$ 表示矩阵 A 的转置。例如，$$A=\left[ \begin{matrix} 1 &amp; 2 &amp; 3 \ 4 &amp; 5 &amp; 6 \ \end{matrix} \right]$$ ；那么 A 的转置就为 $$A=\left[ \begin{matrix} 1 &amp; 4 \ 2 &amp; 5 \ 3 &amp; 6 \ \end{matrix} \right]$$ ；</div><div class="post-footer">
         <a href="/svm.html">阅读全文</a></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/centos-7%E4%BF%AE%E6%94%B9%E9%BB%98%E8%AE%A4%E5%88%86%E8%BE%A8%E7%8E%87.html"></a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="0001-01-01 00:00:00">0001-01-01 00:00:00</time></span></div><div class="content">centos6 http://www.cnblogs.com/lost-1987/articles/3997970.html
-修改文件/boot/grub2/grub.cfg
-1 / /vmlinuz-3.10.0-123.el7.x86_64 root=UUID=881ac4e6-4a55-47b1-b864-555de7051763 ro rd.lvm.lv=centos/swap vconsole.font=latarcyrheb-sun16 rd.lvm.lv=centos/root crashkernel=auto vconsole.keymap=us rhgb quiet LANG=en_US.UTF-8 添加如下,???具体看下表
-1 2 3 vga=0x??? vga=0x340 重启后即可生效</div><div class="post-footer">
-        <a href="/centos-7%E4%BF%AE%E6%94%B9%E9%BB%98%E8%AE%A4%E5%88%86%E8%BE%A8%E7%8E%87.html">阅读全文</a></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/dns%E4%B8%BB%E4%BB%8E%E9%83%A8%E7%BD%B2.html"></a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="0001-01-01 00:00:00">0001-01-01 00:00:00</time></span></div><div class="content">1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 // // named.</div><div class="post-footer">
-        <a href="/dns%E4%B8%BB%E4%BB%8E%E9%83%A8%E7%BD%B2.html">阅读全文</a></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
