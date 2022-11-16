@@ -3,7 +3,19 @@
         <title>ldap - 分类 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/categories/ldap.html</link>
         <description>ldap - 分类 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Mon, 30 Sep 2019 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/categories/ldap.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Tue, 15 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/categories/ldap.html" rel="self" type="application/rss+xml" /><item>
+    <title>ch10 understanding openldap applicaiton - Migrating to SSSD</title>
+    <link>https://cylonchau.github.io/ch10-sssd.html</link>
+    <pubDate>Tue, 15 Nov 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch10-sssd.html</guid>
+    <description><![CDATA[Overview SSSD (System Security Services Daemon) 是一套用于远程身份验证的套件服务，为使用SSSD服务的客户端提供了远程访问身份认证服务来获取权限，其后端包括AD, LDAP等，本文将围绕下列方向来阐述SSSD：
+为什么需要SSSD，以及使用SSSD来解决什么 使用SSSD的好处 SSSD服务工作原理及架构 如何在Linux上配置SSSD+LDAP 为什么需要SSSD SSSD设计主要是为了传统使用身份认证服务，例如PAM+NSS架构中存在的一些问题：
+PAM+NSS扩展性差，并配置较为复杂，尽管提供了 authconfig ，通常在大多数教程中以及不同的系统中配置都不相同 PAM+NSS不是真正意义上的离线身份认证，如果当 nslcd 或者 slapd 等服务异常时，无法完成用户认证 以及越来越多的后端，例如LDAP, AD, IPA, IdM,Kerberos等无法做到很好的适配 SSSD就是为了解决上述的问题，对于Linux平台中，SSSD拥有比传统PAM+NSS更好的优势：
+符合现代Linux基础架构设计需求，可以适配更多的后端，并降低了操作配置的复杂性 增加了缓存功能，有效的减少了对于后端服务器的负载 因为有了缓存功能，实现了真正的离线认证功能，即使后端服务异常，例如LDAP服务down 了解SSSD架构 了解SSSD架构，其实就是了解前两章的内容，要做到真正的多后端，真脱机，那么服务就有多个组件组成：
+Monitor：所有SSSD的父进程，即用于管理 Providers 与 Responders Providers：用于感知验证后端的模块，后端就是提供目录树的一端 Responders：为Linux提供与后端交互的功能，这部分通常为 NSS PAM sudo等 图：SSSD架构图 Source：https://sssd.io/docs/architecture.html
+Providers Local：保存在本地缓存中的账户信息 LDAP, Kerberos, AD, IPA ：用于 Linux/UNIX 网络环境中集成身份和身份验证解决方案。 IdM：一种使用本地 Linux 工具在 Linux 系统上创建身份存储、集中身份验证、Kerberos 和 DNS 服务的域控制以及授权策略的目录树后端 sudo，autofs 与LDAP集成的功能 Responders nss：名称解析服务，用于解析组与用户信息 pam：用于用户验证的模块 autofs：自动挂载模块，通常用于与LDAP集成，用于映射LDAP目录树 sudo：linux中用户权限控制，通常也是与LDAP集成 ssh： sssd_be：SSSD的后端进程：其中每一种后端都代表都作为一个sssd_be进程启动 monitor monitor是SSSD的进程，是用于管理（启动，停止，监控服务状态）Provider与Responders的功能]]></description>
+</item><item>
     <title>ch9 understanding openldap applicaiton - linux authentication with ldap</title>
     <link>https://cylonchau.github.io/ch09-linux-with-ldap.html</link>
     <pubDate>Mon, 30 Sep 2019 00:00:00 &#43;0000</pubDate>
@@ -123,26 +135,5 @@ schema overview
 名 称 接 口 IP 用途 ldap主服务器01 eth0 10.0.0.17 外部管理IP，用于WAN数据转发。 eth1 10.0.0.17 备用管理IP，用于LAN内数据转发。 ldap从服务器02 eth0 10.0.0.8 管理IP，用于LAN数据转发。 eth1 10.0.0.18 外部管理IP，用于WAN数据转发。 Tips：内外网IP分配可采用最后8位相同的方式，这样使于管理。
 openldap master服务安装 CentOS/Redhat 安装OpenLDAP组件
 1 2 3 4 5 6 yum install -y \ openldap \ openldap-servers \ openldap-clients \ openldap-devel \ compat-openldap Ubuntu18.]]></description>
-</item><item>
-    <title>ch0 understanding openldap - introduction</title>
-    <link>https://cylonchau.github.io/ch0-understanding-ldap.html</link>
-    <pubDate>Fri, 23 Aug 2019 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch0-understanding-ldap.html</guid>
-    <description><![CDATA[什么是目录服务？ ==目录是一类为了浏览和搜索数据而设计的特殊的数据库==，例如：为人所熟知的微软公 司的活动目录（active directory）就是目录数据库的一种，目录服务是按照==树状形式==存储信息的，目录包含基于属性的描述性信息，并且支持高级的过滤功能。
-http://www.openldap.org/doc/admin24/intro.html 一般来说，目录不支持大多数事务型数据库所支持的高吞吐量和复杂的更新操作。目录进行更新操作，可以说是要么全部，要么都不的原子操作。目录服务适合的业务应用在于提供大量的查询和搜索操作，而不是大量的写入操作。Ldap可以说是活动目录在linux系统上的一个开源实现。
-为了保证目录数据的可用性和可靠性，在确保使用目录服务提供快速查询和搜索操作的同时，目录服务还提供了==主从服务器同步目录数据信息的能力==，这相当于传统的MySQL数据库的主从同步功能一样，可以最大限度的确保基于目录业务的服务持续可用性与提供并发查询能力，微软公司的活动目录（active directory）就有主域和备份域的说法。
-广义的目录服务概念，可以用多种不同的方式来提供目录服务。不同的目录所允许存储的信息是不同的，在信息如何被引用、查询、更新以及防止未经授权的访问等问题上，不同的目录服务的处理方式也有诸多的不同。
-例如：一些目录服务是本地的，只提供受限的服务（比如，单机上的finger服务）。另一些服务是大范围的（global），提供广阔得多的服务（比如面向整个因特网），大范围的服务通常是分布式的，这也就意味着数据是分布在多台机器上的，这些机器一起来提供目录服务，典型的大范围服务定义一个统一的名称空间（namespace）来给出一个相同的数据视图（data view），而不管你相对于数据所在的位置。DNS是一个典型的大范围分布式目录服务的例子。
-http://www.openldap.org/faq/data/cache/595.html 什么是ldap？ 目录服务有两个国际标准，分别是X.500和LDAP。X.500是ITU定义的目录标准，而LDAP是基于TCP/IP的目录访问协议，是Intemet上目录服务的通用访问协议。
-LDAP是 Lightweight Directory Access Protocol（轻量级目录访问协议）的缩写。正如它的名字所表明的那样，它是一个轻量级的目录访问协议，特指基于X.500的目录访问协议的简化版本。LDAP运行在 TCP/IP 或者其他的面向连接的传输服务之上。LDAP完整的技术规范由RFC2251“The Lightweight Directory Access Protocol（v3）”和其他几个在RFC3377中定义的文档组成。
-LDAP是轻量目录访问协议（Lielhtweiglht Directory Access Protocol）的缩写。 LDAP标准实际上是在X.500标准基础上产生的一个简化版本。 什么是X.500？ X.500由ITU-T和ISO定义，它实际上不是一个协议，而是由一个==协议族==组成，包括了从X.501到X.525等一系列非常完整的目录服务协议。
-从技术上来说，LDAP是一个到X.500目录服务的目录访问协议，X.500是一个OSI目录服务。最初，LDAP客户端通过网关访问X.500目录服务。网关在客户端和网关之间运行LDAP，而X.500目录访问协议（Directory Access Protocol，DAP），位于这个网关和X.500服务器之间。
-LDAP是一个重量级的协议，在整个OSI协议栈上进行操作，而且需要占用大量的计算资源。而LDAP被设计为在TCP/IP层上操作，以小得多的代价实现了大多数LDAP的功能。
-虽然LDAP仍旧可以通过网关访问X.500目录服务器，但是现在通常都是在X.500服务器上直接实现LDAP。
-单独的LDAP守护程序openldap slapd，可以被看做是一个轻量级的X.500目录服务器。也就是说，它没有实现X.500完整的DAP协议。作为一个轻量级的目录服务器，slapd实现的仅仅是X.500模型的一个子集。
-LDAP中的常用名词缩写及含义。
-LDAP基本概念中的常用名词缩写及含义
-关 键字 英文全称 含 义 dc Domain Component 城名的部分，其格式是将完整的城名分成几部分，如域名为exaple.com变成dc=exaple,dc=com uid User Id 用户ID，如 “oldboy”。 ou Organization Unit 组织单位，类似于Limux文件系统中的子目录，它是一个容器对象，组织单位可以包含其他各种对象（包括其他组织单元），如“tech，rongjunfeng，bingge” cn Common Name 公共名称，如 “Thowas Johansson” sn Surnase 姓，如 “Johansson” dn Distinguished Name 唯一辨别名，类似于Linux文件系统中的绝对路径，每个对象都有一个唯一的名称，如uid=tos,ou=market,dc=example,dc=com，在一个目录树中 总是唯一的。 rdn Relative dn 相对辨别名，类似于文件系统中的相对路径，它是与目录树结构无关的部分，如uid=tom或cn=Thoeas Johansscn。 c Country 国家，如“CN”或“US”等 o organizatione 组织名，如“Example，Inc.]]></description>
 </item></channel>
 </rss>
