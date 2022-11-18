@@ -3,7 +3,25 @@
         <title>kubernetes - 标签 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/tags/kubernetes.html</link>
         <description>kubernetes - 标签 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Sat, 02 Jul 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Wed, 16 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+    <title>understanding kubernetes - Authentication with LDAP</title>
+    <link>https://cylonchau.github.io/ch3.8-authentication-with-ldap.html</link>
+    <pubDate>Wed, 16 Nov 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch3.8-authentication-with-ldap.html</guid>
+    <description><![CDATA[[toc]
+Overview 本章主要简单阐述kubernetes 认证相关原理，最后以实验来阐述kubernetes用户系统的思路
+objective：
+了解kubernetes 各种认证机制的原理 了解kubernetes 用户的概念 了解kubernetes authentication webhook 完成实验，如何将其他用户系统接入到kubernetes中的一个思路 Kubernetes 认证 在Kubernetes apiserver对于认证部分所描述的，对于所有用户访问Kubernetes API（通过任何客户端，客户端库，kubectl 等）时都会经历 验证 (Authentication) , 授权 (Authorization), 和准入控制 (Admission control) 三个阶段来完成对 “用户” 进行授权，整个流程正如下图所示
+图：Kubernetes API 请求的请求处理步骤图 Source：https://www.armosec.io/blog/kubernetes-admission-controller/
+其中在大多数教程中，在对这三个阶段所做的工作大致上为：
+Authentication 阶段所指用于确认请求访问Kubernetes API 用户是否为合法用户
+Authorization 阶段所指的将是这个用户是否有对操作的资源的权限
+Admission control 阶段所指控制对请求资源进行控制，通俗来说，就是一票否决权，即使前两个步骤完成
+到这里了解到了Kubernetes API实际上做的工作就是 “人类用户” 与 “kubernetes service account&quot; [2]；那么就引出了一个重要概念就是 “用户” 在Kubernetes中是什么，以及用户在认证中的也是本章节的中心。
+在Kubernetes官方手册中给出了 ”用户“ 的概念，Kubernetes集群中存在的用户包括 ”普通用户“ 与 “service account” 但是 Kubernetes 没有普通用户的管理方式，只是将使用集群的证书CA签署的有效证书的用户都被视为合法用户 [3]
+那么对于使得Kubernetes集群有一个真正的用户系统，就可以根据上面给出的概念将Kubernetes用户分为 ”外部用户“ 与 ”内部用户“。如何理解外部与内部用户呢？实际上就是有Kubernetes管理的用户，即在kubernetes定义用户的数据模型这种为 “内部用户” ，正如 service account；反之，非Kubernetes托管的用户则为 ”外部用户“ 这中概念也更好的对kubernetes用户的阐述。]]></description>
+</item><item>
     <title>使nginx支持分布式追踪</title>
     <link>https://cylonchau.github.io/opentracing-nginx.html</link>
     <pubDate>Sat, 02 Jul 2022 00:00:00 &#43;0000</pubDate>
@@ -125,6 +143,22 @@ counter 计数器，累加指标 gauge 测量指标 summary 概略 histogram 直
 一周后积累到100000-150000
 1 2 3 4 5 6 7 8 test = prometheus.NewSummaryVec( prometheus.SummaryOpts{ Name: &#34;zhangsan&#34;, Help: &#34;username&#34;, Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}, }, []string{&#34;service&#34;}, ) 1 2 3 4 5 6 7 # HELP zhangsan username # TYPE zhangsan summary zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085 zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0.]]></description>
 </item><item>
+    <title>转：基于Kubernetes的PaaS平台提供dashboard支持的一种方案</title>
+    <link>https://cylonchau.github.io/kubernetes-dashborad-based.html</link>
+    <pubDate>Sat, 28 Sep 2019 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/kubernetes-dashborad-based.html</guid>
+    <description><![CDATA[本文转自博客： 我的小米粥分你一半
+我一直在负责维护的PaaS平台引入了Kubernetes作为底层支持, 可以借助Kubernetes的生态做更多的事情, 这篇博客主要介绍如何为用户提供dashboard功能, 以及一些可以扩展的想法. 希望读者有一定的kubernetes使用经验, 并且了解rbac的功能。
+Dashboard功能 Kubernetes原生提供了Web界面, 也就是Dashboard, 具体的参考可以见官方文档:
+​	安装完成后, 我们一般是通过token来使用的, 不同的token有着不同的权限.
+​	上面所说的token是Bearer Token, 除了在界面上输入之外, 你可以这么来用, 通过添加header即可.
+1 curl -H &#34;Authorization: Bearer ${TOKEN}&#34; https://{dashboard}/api/myresource PaaS平台使用Dashboard简要讨论 需求分析 Dashboard本身的功能是十分强大的, 但是给所有人admin权限显然是不现实的. 对于一个普通用户来讲, PaaS平台的将他的应用(代码)部署好并运行, 他所需要关注的就只有属于他自己的项目, 平台也需要做好权限控制, 避免一个用户操作了另一个用户的应用.
+权限系统设计 基于以上的需求讨论, 平台需要做的操作就是为每个用户创建属于自己的权限提供, 并限制可以访问到的资源. 考虑这样的情况:
+我们有一个用户A, 他拥有自己的一个应用群组(G), 群组中部署了一系列应用程序(a1, a2…). 在Kubernetes中, 这样的群组概念我们将其映射为namespace, 群组(G) &lt;=&gt; 用户空间(NS), 我们需要控制的权限控制策略就变成了用户A在用户空间NS的权限控制.
+token分发策略 拥有了权限控制后, 所需要打就是将token分发给用户, 当然这是一种极度不安全的做法, Kubernetes中的token创建之后一般是不会改变的, 分发这样的token会有很大的安全风险, 有两个方面:
+1. 用户A将token保存了下来, 那么他就能不经过平台登录Dashboard, 这样不利于审计工作,2. token一旦泄露, PaaS平台很难做到反应(因为token脱离了平台的控制, 无法判断究竟是什么时候发生了泄露, 也无法马上吊销这个token), 安全风险比较高.因此, 最好的做法就是不把token交给用户, 用户每次想要登录dashboard, 从平台进行跳转, 跳转时携带安全信息, 在dashboard登录时, 由平台自己的程序请求token, 避免经手用户.]]></description>
+</item><item>
     <title>Kubernetes 存储卷</title>
     <link>https://cylonchau.github.io/%E5%AD%98%E5%82%A8%E5%8D%B7.html</link>
     <pubDate>Sun, 30 Sep 2018 00:00:00 &#43;0000</pubDate>
@@ -141,28 +175,5 @@ empryDir：只在节点本地使用的，用于做临时目录，或当缓存使
 emptyDir 语法
 emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 空间上限 定义完存储卷之后，需要在container当中使用volumeMounts指明挂载哪个或哪些个存储卷
 1 2 3 4 5 - container - mountPath 挂载路径 - name 挂载那个卷 - readOnly 是否只读挂载 - subPath 是否挂载子路径之下 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 apiVersion: v1 kind: Pod metadata: name: my-nginx namespace: default spec: containers: - name: busybox image: busybox imagePullPolicy: IfNotPresent ports: - name: http containerPort: 80 command: [&#34;tail&#34;] volumeMounts: # 指明挂载哪一个存储卷 - name: html mountPath: /data/web/html # 指明挂载到容器的哪个路径下 volumes: - name: html emptyDir: {} # 表示空映射，都使用默认值，大小不限制，使用磁盘空间，而不是不定义 在Kubernetes中 $()是变量引用]]></description>
-</item><item>
-    <title>etcd</title>
-    <link>https://cylonchau.github.io/etcd.html</link>
-    <pubDate>Fri, 28 Sep 2018 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/etcd.html</guid>
-    <description><![CDATA[[toc]
-概述 etcd 是兼具一致性和高可用性的键值数据库，为云原生架构中重要的基础组件，由CNCF 孵化托管。etcd 在微服务和 Kubernates 集群中不仅可以作为服务注册与发现，还可以作为 key-value 存储的中间件。
-先决条件 运行的 etcd 集群个数成员为奇数。 etcd 是一个 leader-based 分布式系统。确保主节点定期向所有从节点发送心跳，以保持集群稳定。 保持稳定的 etcd 集群对 Kubernetes 集群的稳定性至关重要。因此，请在专用机器或隔离环境上运行 etcd 集群，以满足所需资源需求]。 确保不发生资源不足。
-集群的性能和稳定性对网络和磁盘 IO 非常敏感。任何资源匮乏都会导致心跳超时，从而导致集群的不稳定。不稳定的情况表明没有选出任何主节点。在这种情况下，集群不能对其当前状态进行任何更改，这意味着不能调度新的 pod。 相关术语 Raft：etcd所采用的保证分布式系统强一致性的算法。 Node：节点 ，Raft状态机的一个实例，具有唯一标识。 Member： 成员，一个etcd实例。承载一个Node，且可为客户端请求提供服务。 Cluster：集群，由多个Member构成可以协同工作的etcd集群。 Peer：同伴，Cluster中其他成员。 Proposal ：提议，一个需要完成 raft 协议的请求(例如写请求，配置修改请求)。 Client： 向etcd集群发送HTTP请求的客户端。 WAL：预写式日志，etcd用于持久化存储的日志格式。 snapshot：etcd防止WAL文件过多而设置的快照，存储etcd数据状态。 Proxy：etcd的一种模式，为etcd集群提供反向代理服务。 Leader：Raft算法中通过竞选而产生的处理所有数据提交的节点。 Follower：竞选失败的节点作为Raft中的从属节点，为算法提供强一致性保证。 Candidate：当Follower超过一定时间接收不到Leader的心跳时转变为Candidate开始竞选。 Term：某个节点成为Leader到下一次竞选时间，称为Ubuntu一个Term。 Index：数据项编号。Raft中通过Term和Index来定位数据。 ETCD 部署 源码安装 基于master分支构建etcd
-1 2 3 git clone https://github.com/etcd-io/etcd.git cd etcd ./build # 如脚本格式为dos的，需要将其格式修改为unix，否则报错。 启动命令
---listen-client-urls 于 --listen-peer-urls 不能为域名]]></description>
-</item><item>
-    <title>helm</title>
-    <link>https://cylonchau.github.io/helm.html</link>
-    <pubDate>Fri, 28 Sep 2018 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/helm.html</guid>
-    <description><![CDATA[什么是helm helm是一个用于kubernetes包管理工具，可简化Kubernetes资源的部署和管理。
-helm 名词 chart：类似于rpm包，包含Kubernetes资源所需要的必要信息。 repo：chart仓库，类似于yum的仓库，chart仓库是一个简单的HTTP服务。 values：提供了自定义信息用来覆盖模板中的默认值。 release ：chart安装后的版本记录。 安装helm Helm client 即 helm v3 可以在官方github 下载对应的二进制包。
-添加源
-1 2 helm repo add stable http://mirror.azure.cn/kubernetes/charts/ helm repo add incubator http://mirror.azure.cn/kubernetes/charts-incubator/ 1 2 3 4 5 6 7 8 9 helm list 查看发布 helm remove 删除 helm repo add xxx url 添加仓库 helm upgrade 更新 helm rollback 回滚 &ndash;set覆盖chart默认values值
-1 2 3 4 5 6 7 8 9 10 11 12 13 `helm install http://mirror.]]></description>
 </item></channel>
 </rss>

@@ -77,6 +77,14 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch3.3-code-generator.html">code-generator</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">[toc]
+Overview Kubernetes中提供了多种自定义控制器的方式：
+code-generator kubebuilder Operator Controller 作为CRD的核心，这里将解释如何使用 code-generator 来创建自定义的控制器，作为文章的案例，将完成一个 Firewalld Port 规则的控制器作为描述，通过 Kubernetes 规则来生成对应节点上的 iptables规则。
+Prerequisites CRD 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 apiVersion: apiextensions.k8s.io/v1 kind: CustomResourceDefinition metadata: name: ports.firewalld.fedoraproject.org spec: group: firewalld.fedoraproject.org scope: Namespaced names: plural: ports singular: port kind: PortRule shortNames: - fp versions: - name: v1 served: true storage: true schema: openAPIV3Schema: type: object properties: spec: type: object properties: name: type: string port: type: integer host: type: string isPermanent: type: boolean code-generator 需要预先下载 code-generator 。因为这个工具不是必需要求的。</div><div class="post-footer">
+        <a href="/ch3.3-code-generator.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/ch3.4-controller-runtime.html">controller-runtime</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">[toc]
 Overview controller-runtime 是 Kubernetes 社区提供可供快速搭建一套 实现了controller 功能的工具，无需自行实现Controller的功能了；在 Kubebuilder 与 Operator SDK 也是使用 controller-runtime 。本文将对 controller-runtime 的工作原理以及在不同场景下的使用方式进行简要的总结和介绍。
@@ -177,23 +185,6 @@ kubernetes的调度策略 Kubernetes 1.21之前版本可以在代码 kubernetes\
 在初始化 scheduler 时，会创建一个 profile，profile是关于 scheduler 调度配置相关的定义
 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 func New(client clientset.Interface, ... profiles, err := profile.</div><div class="post-footer">
         <a href="/ch4.2-scheduling-algorithm.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch1.2-schema.html">kubernetes schema</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">[toc]
-什么是schema schema一词起源于希腊语中的form或figure，但具体应该如何定义schema取决于应用环境的上下文。schema有不同的类型，其含义与数据科学、教育、营销和SEO以及心理学等领域密切相关。
-在维基百科中将schema解释为，图式，在心里学中主要描述一种思维或行为类型，用来组织资讯的类别，以及资讯之间的关系。它也可以被描述为先入为主思想的心理结构，表示世界某些观点的框架，或是用于组织和感知新资讯的系统。
-但在计算机中的schema其实与这个解释很接近了，从很多地方都可以看到 schema 这个名词，例如 database，openldap，programing language等的。这里可以简单的吧schema 理解为 元数据集合 （metadata component），主要包含元素及属性的声明，与其他数据结构组成。
-数据库中的schema 在数据库中，schema 就像一个骨架结构，代表整个数据库的逻辑视图。它设计了应用于特定数据库中数据的所有约束。当在数据建模时，就会产生一个schema。在谈到关系数据库]和面向对象数据库时经常使用schema。有时也指将结构或文本的描述。
-数据库中schema描述数据的形状以及它与其他模型、表和库之间的关系。在这种情况下，数据库条目是schema的一个实例，包含schema中描述的所有属性。
-数据库schema通常分为两类：定义数据文件实际存储方式的**物理数据库schema ；和逻辑数据库schema **，它描述了应用于存储数据的所有逻辑约束，包括完整性、表和视图。常见包括
-星型模式（star schema） 雪花模式（snowflake schema） 事实星座模型（fact constellation schema 或 galaxy schema） 星型模式是类似于一个简单的数据仓库图，包括一对多的事实表和维度表。它使用非规范化数据。
-雪花模式是更为复杂的一种流行的数据库模式，在该模式下，维度表是规范化的，可以节省存储空间并最大限度地减少数据冗余。
-事实星座模式远比星型模式和雪花模式复杂得多。它拥有多个共享多个维度表的事实表。
-Kubernetes中的schema 通过上面的阐述，大概上可以明白 schema究竟是什么东西了，在Kubernetes中也有schema的概念，通过对kubernetes中资源（GVK）的规范定义、相互关系间的映射等，schema即k8s资源对象元数据。
-而kubernetes中资源对象即 Group Version Kind 这些被定义在 staging/src/k8s.io/api/type.go中，即平时所操作的yaml文件，例如
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 apiVersion: apps/v1 kind: Deployment metadata: name: ngx namespace: default spec: selector: matchLabels: app: ngx template: metadata: labels: app: nginx spec: containers: - name: ngx-schema image: nginx ports: - containerPort: 80 而对应的的即为TypeMeta 、ObjectMeta 和 DeploymentSpec,</div><div class="post-footer">
-        <a href="/ch1.2-schema.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">

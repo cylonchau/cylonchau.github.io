@@ -3,7 +3,25 @@
         <title>ldap - 标签 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/tags/ldap.html</link>
         <description>ldap - 标签 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Tue, 15 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/ldap.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Wed, 16 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/ldap.html" rel="self" type="application/rss+xml" /><item>
+    <title>understanding kubernetes - Authentication with LDAP</title>
+    <link>https://cylonchau.github.io/ch3.8-authentication-with-ldap.html</link>
+    <pubDate>Wed, 16 Nov 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch3.8-authentication-with-ldap.html</guid>
+    <description><![CDATA[[toc]
+Overview 本章主要简单阐述kubernetes 认证相关原理，最后以实验来阐述kubernetes用户系统的思路
+objective：
+了解kubernetes 各种认证机制的原理 了解kubernetes 用户的概念 了解kubernetes authentication webhook 完成实验，如何将其他用户系统接入到kubernetes中的一个思路 Kubernetes 认证 在Kubernetes apiserver对于认证部分所描述的，对于所有用户访问Kubernetes API（通过任何客户端，客户端库，kubectl 等）时都会经历 验证 (Authentication) , 授权 (Authorization), 和准入控制 (Admission control) 三个阶段来完成对 “用户” 进行授权，整个流程正如下图所示
+图：Kubernetes API 请求的请求处理步骤图 Source：https://www.armosec.io/blog/kubernetes-admission-controller/
+其中在大多数教程中，在对这三个阶段所做的工作大致上为：
+Authentication 阶段所指用于确认请求访问Kubernetes API 用户是否为合法用户
+Authorization 阶段所指的将是这个用户是否有对操作的资源的权限
+Admission control 阶段所指控制对请求资源进行控制，通俗来说，就是一票否决权，即使前两个步骤完成
+到这里了解到了Kubernetes API实际上做的工作就是 “人类用户” 与 “kubernetes service account&quot; [2]；那么就引出了一个重要概念就是 “用户” 在Kubernetes中是什么，以及用户在认证中的也是本章节的中心。
+在Kubernetes官方手册中给出了 ”用户“ 的概念，Kubernetes集群中存在的用户包括 ”普通用户“ 与 “service account” 但是 Kubernetes 没有普通用户的管理方式，只是将使用集群的证书CA签署的有效证书的用户都被视为合法用户 [3]
+那么对于使得Kubernetes集群有一个真正的用户系统，就可以根据上面给出的概念将Kubernetes用户分为 ”外部用户“ 与 ”内部用户“。如何理解外部与内部用户呢？实际上就是有Kubernetes管理的用户，即在kubernetes定义用户的数据模型这种为 “内部用户” ，正如 service account；反之，非Kubernetes托管的用户则为 ”外部用户“ 这中概念也更好的对kubernetes用户的阐述。]]></description>
+</item><item>
     <title>ch10 understanding openldap applicaiton - Migrating to SSSD</title>
     <link>https://cylonchau.github.io/ch10-sssd.html</link>
     <pubDate>Tue, 15 Nov 2022 00:00:00 &#43;0000</pubDate>
@@ -122,18 +140,5 @@ schema overview
 1 $ ldapsearch -x -b &lt;search_base&gt; -H &lt;ldap_host&gt; 例如向 10.0.0.3 上openldap服务查询，该命令需要服务器接受匿名身份验证，这将可以查询而无需绑定管理员帐户
 1 $ ldapsearch -x -b &#34;dc=test,dc=com&#34; -H ldap://10.0.0.3 使用管理员账户进行搜索 使用管理员帐户进行搜索，必须使用backend配置的 RootDN 并在命令行使用 “-D” 选项 和 “-W” ，如果要使用非交互式认证，使用选项 “-w”
 1 $ ldapsearch -x -b &lt;search_base&gt; -H &lt;ldap_host&gt; -D &lt;bind_dn&gt; -W 例如，上章在安装时配置了RootDN：“ cn=admin,dc=test,dc=com ”。如果要使用此帐户执行搜索，可以使用命令]]></description>
-</item><item>
-    <title>ch1 understanding openldap - install</title>
-    <link>https://cylonchau.github.io/ch01-install.html</link>
-    <pubDate>Sun, 25 Aug 2019 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch01-install.html</guid>
-    <description><![CDATA[[toc]
-生产服务器硬件配置需求 ldap服务对系统环境的要求不高，一般在生产场景，ldap服务应该最少是两台，这样某一台物理服务器岩机才不会因单点问题影响生产业务故障，对于硬件要求，本质上openldap使用硬件资源并不大，网上有两个帖子提出了openldap的硬件需求：
-2003年openldap官网留言，我想安装一个 LDAP 服务器来验证邮件服务器的用户，目前有200个用户需要多少内存和CPU？[1] 1GHZ PIII/512MB 足以 运行于Ubuntu LXC 之上的openldap，用户150,000，sladp进程常驻内存为200-300MB，mdb数据库文件大小为377MB，10 并发平均响应时间为 9-11 毫秒 [13] 操作系统：Centos7/8 64bit。
-操 作 系 统 其 它 CentOS-7.6 当前很稳定且免费的Linux版本。 网卡及IP资源
-名 称 接 口 IP 用途 ldap主服务器01 eth0 10.0.0.17 外部管理IP，用于WAN数据转发。 eth1 10.0.0.17 备用管理IP，用于LAN内数据转发。 ldap从服务器02 eth0 10.0.0.8 管理IP，用于LAN数据转发。 eth1 10.0.0.18 外部管理IP，用于WAN数据转发。 Tips：内外网IP分配可采用最后8位相同的方式，这样使于管理。
-openldap master服务安装 CentOS/Redhat 安装OpenLDAP组件
-1 2 3 4 5 6 yum install -y \ openldap \ openldap-servers \ openldap-clients \ openldap-devel \ compat-openldap Ubuntu18.]]></description>
 </item></channel>
 </rss>
