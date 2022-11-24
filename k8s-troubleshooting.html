@@ -33,7 +33,7 @@
         "mainEntityOfPage": {
             "@type": "WebPage",
             "@id": "https:\/\/cylonchau.github.io\/k8s-troubleshooting.html"
-        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "kubernetes","wordcount":  893 ,
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "kubernetes","wordcount":  1010 ,
         "url": "https:\/\/cylonchau.github.io\/k8s-troubleshooting.html","datePublished": "2018-09-28T00:00:00+00:00","dateModified": "2018-09-28T00:00:00+00:00","publisher": {
             "@type": "Organization",
             "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
@@ -92,7 +92,7 @@
             <div class="toc-content" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">Kubernetes安装错误</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div>
-            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 893 字&nbsp;
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-09-28 00:00:00">2018-09-28 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1010 字&nbsp;
                 <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 5 分钟&nbsp;<span id="busuanzi_container_page_pv">
                     <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
                 </span>
@@ -394,6 +394,51 @@
 </span></span></code></pre></td></tr></table>
 </div>
 </div><p><a href="https://stackoverflow.com/questions/50833616/kube-flannel-cant-get-cidr-although-podcidr-available-on-node" target="_blank" rel="noopener noreffer">kube flannel cant get cidr although podcidr available on node</a></p>
+<p><code>mvcc: required revision has been compacted</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">kube-apiserver: W1120 17:18:20.199950   70454 watcher.go:207] watch chan error: etcdserver: mvcc: required revision has been compacted
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里是etcd返回的错误，被apiserver视为警告，在注释中有这么一句话</p>
+<blockquote>
+<p>If the context is &ldquo;context.Background/TODO&rdquo;, returned &ldquo;WatchChan&rdquo; will not be closed and block until event is triggered, except when server returns a non-recoverable error (e.g. ErrCompacted).</p>
+<p>如果这个上下文返回WatchChan将在下次事件被触发前不会被关闭或阻塞，除非服务器返回一个ErrCompacted （不可恢复）</p>
+</blockquote>
+<p>对于etcd 对 Revision 有如下说明</p>
+<p>etcd对每个kv的revision 都会保留一个压缩周期的值，例如每5分钟收集一次最新revision，当压缩周期达到时，将从历史记录中后去最后一个修订版本，例如为100，此时会压缩，压缩成功会重置计数器，并以最新的revision和新的历史记录进行开始，压缩失败将在5分钟后重试<code>--auto-compaction-retention=10</code> 是配置压缩周期的  每多少个小时键值存储运行定期压缩。</p>
+<p>如果最新的revision已被修订，etcd返回一个 <code>ErrCompacted</code>  表示已修订，此时表示为不可恢复状态</p>
+<p>返回错误时表示这个watch被关闭，为了优雅的关闭chan，kubernetes会对这个watch错误进行返回，而 <code>ErrCompacted</code>  本质上不算错误</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">wch</span> <span class="o">:=</span> <span class="nx">wc</span><span class="p">.</span><span class="nx">watcher</span><span class="p">.</span><span class="nx">client</span><span class="p">.</span><span class="nf">Watch</span><span class="p">(</span><span class="nx">wc</span><span class="p">.</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">wc</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="nx">opts</span><span class="o">...</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">wres</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">wch</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">wres</span><span class="p">.</span><span class="nf">Err</span><span class="p">()</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">err</span> <span class="o">:=</span> <span class="nx">wres</span><span class="p">.</span><span class="nf">Err</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// If there is an error on server (e.g. compaction), the channel will return it before closed.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nf">logWatchChannelErr</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">wc</span><span class="p">.</span><span class="nf">sendError</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="o">...</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction" target="_blank" rel="noopener noreffer">https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction</a></p>
 </div><div class="post-footer" id="post-footer">
     <div class="post-info">
         <div class="post-info-line">
