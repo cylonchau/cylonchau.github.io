@@ -1,0 +1,701 @@
+# Linux虚拟网络技术
+
+[toc]
+
+## Overview
+
+本文将介绍Kubernetes中使用的相关虚拟网络功能，目的是为了任何无相关网络背景经历的人都可以了解这些技术在kubernetes中式如何应用的。
+
+## VLAN
+
+***VLAN*** (Virtual local area networks)是逻辑上的LAN而不受限于同一物理网络交换机上。同样的VLAN也可以将同一台交换机/网桥下的设备/划分为不同的子网。
+
+***VLAN*** 区分的广播域的标准是VLAN ID，此功能是Linux内核3.8中引入的
+
+在Linux中创建一个VLAN
+
+```bash
+ip link add link eth0 name eth0.2 type vlan id 2
+```
+
+## VETH <sup><a href="#1">[1]</a></sup>
+
+***VETH*** (Virtual Ethernet device)，是一个本地的以太网隧道，创建出的设备是成对的，通常会存在两个名称空间内，例如在docker中创建出的设备一端在root名称空间内，一端被挂在到容器的名称空间内。
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1tOiYnJv7sx0twVBJGX_zgg.png)
+
+<center>图：veth topology</center>
+<center><em>Source：</em>https://medium.com/@arpitkh96/basics-of-container-networking-with-linux-part-1-3a3cdc64c87a</center><br>
+
+```bash
+ip link add <p1-name> type veth peer name <p2-name>
+```
+
+## Bridge
+
+## 目的
+
+Linux **bridge**（又称为网桥、VLAN交换机）是Linux内核中集成的功能，用来做tcp/ip做二层协议交换的设备，虽然是软件实现的，但它与普通的二层物理交换机功能一样。***bridge***  就是为了解决虚拟机网卡连接问题。可以添加若干个网络设备到 ***bridge*** 上作为其接口，添加到 ***bridge*** 上的设备被设置为只接受二层数据帧并且转发所有收到的数据包到 ***bridge*** 中。
+
+由于 Linux ***bridge*** 是二层设备，故数据包是根据MAC地址而不是IP转发的。因此所有协议都可以透明地通过网桥。Linux ***bridge*** 广泛用于虚拟机，名称空间等。
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1NZpkyrCpcQMxkUHNsNtFVA.png)
+
+<center>图：Linux Bridge</center>
+<center><em>Source：</em>https://kbespalov.medium.com/linux-linux-bridge-7e0e887edd01</center><br>
+
+## MACVLAN <sup><a href="#2">[2]</a></sup>
+
+***MACVLAN*** 允许在一个物理接口创建多个子接口，并且每个子接口都拥有一个随机生成的MAC地址，与IP地址。
+
+***MACVLAN*** 中子接口不能与与父接口直接通讯，例如在虚拟化环境中，容器是不能ping通宿主机的IP，如果子接口需要和父接口进行通讯，需要将子接口分配给父接口。
+
+![Linux macvlan](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-macvlan.png)
+
+<center>图：MACVLAN</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+从 Linux 内核3.0起，MAC已经是linux内核中的一部分。
+
+- 查看内核是否加载 `lsmod | grep macvlan`
+
+- 加载macvlan模块 `modprobe macvlan`
+
+- 如果需要每次启动时都加载该模块，`echo "macvlan" >> /etc/modules`
+
+### MACVLAN的限制
+
+限制：
+
+- 使用MACVLAN技术需要开启网卡的混杂模式
+- 授予NIC支持的MAC数量限制，超出限制会影响性能
+- MACVLAN不能工作在wireless网络环境中 <sup><a href="#3">[3]</a></sup>
+
+### MACVLAN的模式
+
+MACVLAN又五种类型：
+
+- Private
+- VEPA
+- Bridge
+- Passthru
+- Source
+
+#### Private mode
+
+Private模式下的同一物理接口下的子接口将不允许通讯，即使物理设备支持hairpin也不行。
+
+![Macvlan 私有模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-macvlan-private-mode.png)
+
+<center>图：MACVLAN Private mod</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+> ***hairpin*** 有多个名称，***U-turn NAT***, ***NAT loopback***，实际上就是一种网络转换，在一个网络中的两个设备使用外部IP进行通讯。在MACVLAN这个例子中，veth1发往veth2的流量通过外部设备switch进行一个回转，这个行为称为为 ***hairpin turn***。从上图也可以看出，是一个U形的转换。
+
+#### VPEA mode
+
+***VPEA*** 将会将来自子接口的通过父接口转发，这将要求物理交换机需要支持 ***hairpin***
+
+![Macvlan 802.1qbg VEPA 模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-macvlan-802.1qbg-vepa-mode.png)
+
+<center>图：MACVLAN VPEA mode</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+#### Bridge mode
+
+***Bridge*** 是指父接口与所有子接口是通过网桥相连的，因为连接在网桥上，不需要学习MAC地址。这也是容器网络中常用到的模式
+
+![Macvlan 桥接模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-macvlan-bridge-mode.png)
+
+<center>图：MACVLAN bridge mode</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+#### Passthru
+
+***passthru*** 是 pass through，由名字也可以得知，是指允许单个VM与物理接口连接。
+
+![Macvlan 直通模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-macvlan-passthru-mode.png)
+
+<center>图：MACVLAN passthru mode</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+#### Source
+
+这个模式是Linux中的一个 Patch，是流量仅允许被允许的MAC地址列表
+
+## IPVLAN
+
+IPVLAN与MACVLAN类似，只有一个不同的地方是，IPVLAN所有的MAC地址都是一样的，就是使用相同的MAC地址去创建子接口。
+
+![Linux Ipvlan](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-ipvlan.png)
+
+<center>图：IPVLAN</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+### IPVLAN modes
+
+在使用IPVLAN时，只能选择下面两种模式中的一种，选择后，所有的子节接口将工作在这个模式下。
+
+#### L2
+
+***IPVLAN*** L2模式与 ***MACVLAN*** 的 ***brigde*** 模式工作原理很相似，父接口是作为交换机的角色，同一个物理接口上的子接口可以通过父接口来转发数据，而如果要发送数据到其他的网络，报文则会通过父接口的路由转发出去。
+
+![Linux Ipvlan - L2 模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-ipvlan-l2-mode.png)
+
+<center>图：IPVLAN L2</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+>  Notes: IPVLAN 是 linux kernel 比较新的特性，linux kernel 3.19 开始支持 ipvlan，但是比较稳定推荐的版本是 >=4.2
+
+#### L3
+
+在 ***L3*** 模式下也就是 物理接口 是作为路由器，这种情况下就要求子接口之间需要处在不同子网中才可以。因为广播域是 ***L2*** 的，所以 ***IPVLAN L3*** 不支持多播和广播。
+
+![Linux Ipvlan - L3 模式](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/linux-ipvlan-l3-mode-1.png)
+
+<center>图：IPVLAN L3</center>
+<center><em>Source：</em>https://hicu.be/bridge-vs-macvlan</center><br>
+
+### IPVLAN与MACVLAN如何选择
+
+- 在于***MACVLAN***在wireless环境中的不友好，wireless选择 ***IPVLAN***
+- 对于外部设备有MAC地址限制的，或者混杂模式限制NIC性能
+
+
+
+## VxLAN 
+
+### VxLAN Introduction
+
+***VxLAN*** (Virtual eXtensible Local Area Network) 是一种 `MAC-over-IP` 或者称为 UDP隧道机制，本质上来说是使用网络隧道技术将L3网络扩展为一个L2网络。
+
+#### 为什么将 ***VxLAN*** 视为L2网络呢？
+
+虽说 ***VxLAN*** 是将L2的以太网帧封装到UDP报文中（L2 over L4）中，并在L3网络中传输。但是 ***VxLAN*** 最终是基于 ***MAC*** 地址的二层网络（可以无需路由设备），而不像 ***IPIP*** 的隧道技术网络通讯是基于路由的。
+
+下图是一个使用 ***VxLAN*** 技术的网络拓扑，整个篮筐部分可以视为一个二层的虚拟交换机，连接的各设备都可以直连。
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download-16615328145948.png)
+
+<center>图：VXLAN tunneling technology</center>
+<center><em>Source：</em>https://support.huawei.com/enterprise/en/doc/EDOC1100086966</center><br>
+
+#### VNI
+
+***VNI*** (VXLAN Network Identifier) 是类似于VLAN ID的标识符，不同的***VNI*** 之间不能进行二层通讯
+
+#### VEPT
+
+***VTEP*** (VxLAN tunnel endpoint) 是指数据包封包与解包的实体，***VTEP*** 既可以是一台独立的网络设备，也可以是一个基于软件的虚拟交换机。当源服务器发出包时，会在 ***VTEP*** 上封装成 ***VxLAN*** 格式的报文；当传送到对端时，会在对端的 ***VTEP*** 进行解包
+
+下图是一个VxLAN网络拓扑图，其中建立隧道的两端就是 ***VTEP***，这里的 ***VTEP*** 是两台 TOR 交换机，通过两个 ***VTEP*** 来对数据包的解封装。
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download-16615321616635.png)
+
+<center>图：VXLAN network model</center>
+<center><em>Source：</em>https://support.huawei.com/enterprise/en/doc/EDOC1100086966</center><br>
+
+下图是Linux ***VxLAN*** 类型的网络拓扑，***VTEP*** 可以理解为是一种网络接口，通过该接口与内核功能进行解封包，而实际的流量也是通过物理设备进行传输。
+
+![vxlan in linux](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/vxlan%20in%20linux.png)
+
+<center>图：VxLAN in Linux</center>
+
+#### Preliminary knowledge 三层分级网络 <sup><a href="#4">[4]</a></sup>
+
+##### 三层分级网络?
+
+思科的三层分级网络(***three-layer hierarchical model***) 包含三层：
+
+- 核心层 (***Core***)：网络骨干，提供不同分布层之间的高速连接和最优传送路径
+- 分布层 (***distribution***) 将连接接入层到核心层，并且实施安全，流量负载和路由相关的策略
+- 接入层 (***access***) 为用户终端初始网络的接入点。
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/distribution-layer-diagram-1621937301-ES7wiU19cL.jpg)
+
+<center>图：three-layer hierarchical model</center>
+<center><em>Source：</em>https://community.fs.com/blog/how-to-choose-the-right-distribution-switch.html</center><br>
+
+#### 为什么需要VxLAN <sup><a href="#5">[5]</a></sup>
+
+下图是一个 ***CSP*** (Cloud Service Provider ) 的 ***DC*** 网络，
+
+- 接入层：48口交换机20个
+- 分布层：两台分布式交换机，共同组成一个虚拟化交换机。默认网关位于分布式交换机中。
+- 核心层：两个核心交换机
+
+> Notes：工作在分布层的交换机被称为分布式交换机 (***Distribution Switch***)，分布式交换机会将来自访问层的流量转发至核心层，并提供一些连接策略。
+
+每台接入交换机连接48台物理服务器。这些服务器中的每一个都包含五个不同的租户，它们拥有自己的虚拟路由 (VRF)。一个租户由三个广播域组成：`Presiontation`， `Application` 和 `Database` ，每层都是互备的。在管理租户时，可以定义 ***VLAN ID***、虚拟机的 ***MAC*** 地址和 ***IP*** 地址。虚拟机时可移动的，存在如下信息：
+
+![img](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Figure1-1_Topology.jpeg)
+
+<center>图：CSP DC network</center>
+<center><em>Source：</em>https://nwktimes.blogspot.com/2018/02/vxlan-part-i-why-vxlan-is-needed.html</center><br>
+
+通过上述信息可以得知有如下：
+
+- 服务器：$20\times48=960$, 20为ToR交换机数量，48为每个ToR的接口
+- 虚拟机/MAC地址/ARP：28800个虚拟机（每个物理机30个虚拟机）
+- 广播域：每个租户+每个租户的VLAN+所拥有的物理机，$5\times3\times960=14400$
+- VRF：4800，5个租户+960个虚拟机
+
+在这种网络中存在的挑战如下：
+
+- **VLAN ID的限制**，通常来说VLAN ID只有12位，4096个，这意味着不够用
+- **多租户**，多租户场景下，广播域等都是用户自己定义的，此时可能发生客户定义的ID为相同的
+- **MAC表大小限制**，在一个租户下有28800个机器，意味着交换机MAC地址表存放28800个MAC地址。会出现老化过程。（Notes：*Cisco Nexus 9500/9300* 系列支持90000个MAC地址表）
+- **APR表大小限制**，分布式交换机中存在超过28800条MAC-IP的数量（ Notes：*Cisco Nexus 9500*系列交换机支持 60,000 个 IPv4 ARP 和 30,000 个 IPv6 ND）
+- **生成树协议**，在这种网络拓扑结构下，由于 STP 不支持链路之间的负载均衡，因此某些链路可能不会用于流量传输，这种情况下使带宽利用率下降。
+
+由于 ***VxLAN*** 通过L3建立隧道，因此不需要生成树协议。在基于 ***VxLAN*** 技术的 DC 中，VLAN将不再具有意义，因为 VLAN 是交换机甚至交换机端口特定的。
+
+在基于 ***VxLAN***  ***Leaf-Spine*** 的网络架构中，通过将网络压缩为一个L2的网络架构，所有的节点在访问其他节点时，都将仅需要两部，因此除了Leaf交换机之外，其余并不清楚虚拟机的MAC地址。
+
+下图是***Leaf-Spine***网络拓扑图， 在该架构中，每个较低级别的接入（leaf）交换机都以全网状连接到每个较高级别的核心（spine）交换机。
+
+![Tripp 精简版 3.2.png](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Tripp_Lite_3.2.width-880.png)
+
+<center>图：spine-leaf network</center>
+<center><em>Source：</em>https://www.datacenterdynamics.com/en/marketwatch/spine-and-leaf-network-architecture-explained/</center><br>
+
+### VxLAN in Linux
+
+Linux 对 VxLAN 协议的支持时间并不久，2012 年 Stephen Hemminger 才把相关的工作合并到 kernel 中，并最终出现在 kernel 3.7.0 版本。为了稳定性和很多的功能，你可以会看到某些软件推荐在 3.9.0 或者 3.10.0 以后版本的 kernel 上使用 vxlan。
+
+#### linux实现VxLAN网络
+
+两台机器构成一个VxLAN网络，每台机器上有一个 VTEP，VTEP 通过它们的 IP 互相通信。
+
+![vxlan in linux](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/vxlan%20in%20linux.png)
+
+<center>图：VxLAN in Linux</center>
+
+这个图创建的VxLAN0设备模拟了VTEP隧道端点，实现了一个大二层域，突破了虚拟化网络的物理界限。
+
+node01
+
+```bash
+ip link add vxlan1 type vxlan id 1 remote 10.0.0.3 dstport 4789 dev ens33
+ip link set vxlan1 up
+ip addr add 192.168.100.1/24 dev vxlan1
+```
+
+node02
+
+```
+ip link add vxlan1 type vxlan id 1 remote 10.0.0.14 dstport 4789 dev eth0
+ip link set vxlan1 up
+ip addr add 192.168.100.2/24 dev vxlan1
+```
+
+上述命令创建了一个类型为vxlan，名为vxlan1的网络接口，期后面的为配置这个网络设备的内容：
+
+- `id 1`  类似CE设备的`vxlan vni 10` 设置的桥接域，只有相同的VNI之间可以直接进行二层通信。
+- `dstport` VTEP 通信的端口，这里会监听一个udp端口
+- `remote 10.0.0.3` 类似`vni 10 head-end peer-list 2.2.2.2` 用来设置隧道对端的 VTEP 地址，因为这里使用的为单播模式。
+- `local 10.0.0.4` 与 `dev eth0` 类似于 `source 1.1.1.1` 配置源VTEP的IP地址。
+
+```bash
+$ tcpdump -np -i vxlan1 -vv
+tcpdump: listening on vxlan1, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+
+05:07:20.589942 ARP, Ethernet (len 6), IPv4 (len 4), Request who-has 192.168.100.1 tell 192.168.100.2, length 28
+05:07:20.589963 ARP, Ethernet (len 6), IPv4 (len 4), Reply 192.168.100.1 is-at ca:21:c6:01:f9:d5, length 28
+05:07:20.590509 IP (tos 0x0, ttl 64, id 26921, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.100.2 > 192.168.100.1: ICMP echo request, id 1225, seq 1, length 64
+05:07:20.590525 IP (tos 0x0, ttl 64, id 1264, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.100.1 > 192.168.100.2: ICMP echo reply, id 1225, seq 1, length 64
+05:07:21.593791 IP (tos 0x0, ttl 64, id 27468, offset 0, flags [DF], proto ICMP (1), length 84)
+```
+
+抓包查看对应的数据包  [vxlan_linux.cap](..\..\..\images\vxlan in linux\vxlan_linux.cap) 
+
+![image-20210203232317906](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203232317906.png)
+
+清理数据
+
+```
+ip link set vxlan1 down
+ip link delete vxlan1
+```
+
+#### 多播模式的 vxlan
+
+“多播”即“多点传送”(multicast)，也就是一台主机发出的包可以同时被其他多个有资格的主机接收，这台主机和那些有资格的主机就形成了一个组，他们在组内的通信是广播式的。多播的工作原理是，将一个网络上的某些主机的网卡设置成多播传送工作模式，指定其不过滤以某一个多播传送地址作为目的物理地址的数据帧，这样，这些主机的驱动程序中就可以同时接收以该多播传送地址作为目的物理地址的数据帧，而其他主机的驱动程序却接收不到，这些主机在逻辑上便形成了一个“多播”组。采用这种技术，相对广播而言，可有效减轻网络上“多播”组之外的其他主机的负担，因为发送给“多播”组的数据不会被传送到它们的驱动程序中去处理，避免资源的无谓浪费。
+
+多播的IP范围为：从224.0.0.0到239.255.255.255。能够接收发往一个特定多播组地址数据的主机集合称为主机组 (host group)。一个主机组可跨越多个网络。主机组中成员可随时加入或离开主机组。主机组中对主机的数量没有限制，同时不属于某一主机组的主机可以向该组发送信息。
+
+`239.1.1.1` IIANA保留地址用于多播（多点传送）的IP，其mac地址为 `01:00:5e:01:01:01`(参考：[组播地址](https://blog.51cto.com/361531/891466))
+
+要组成同一个 vxlan 网络，vtep 必须能感知到彼此的存在。多播组本来的功能就是把网络中的某些节点组成一个虚拟的组。
+
+实验使用的为多播组组成一个虚拟的整体，通过多播组，组成可容纳多个主机组成 vxlan 网络
+
+
+
+![image-20210203232408799](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203232408799.png)
+
+<center>图：muticast VxLAN in Linux</center>
+
+```bash
+ip link add vxlan2 type vxlan id 10 group 239.1.1.1 dstport 4789 dev eth0
+ip link set vxlan2 up
+ip addr add 192.168.100.10/24 dev vxlan2
+```
+
+node01
+
+```bash
+ip link add vxlan2 type vxlan id 10 group 239.1.1.1 dstport 4789 dev eth0
+ip link set vxlan2 up
+ip addr add 192.168.100.20/24 dev vxlan2
+```
+
+***FDB*** 是 Linux 网桥维护的一个二层转发表，用于保存远端虚拟机/容器的 MAC地址，远端 VTEP IP，以及 VNI 的映射关系，可以通过 `bridge fdb` 命令来对 `FDB` 表进行操作：
+
+vxlan接口在创建后，fdb只有一个表项，就是所有`vxlan2`的流量都发往多播组
+
+```
+$ bridge fdb
+33:33:00:00:00:01 dev eth0 self permanent
+01:00:5e:00:00:01 dev eth0 self permanent
+01:00:5e:01:01:01 dev eth0 self permanent
+00:00:00:00:00:00 dev vxlan2 dst 239.1.1.1 via eth0 self permanent
+```
+
+组播路由方式过程
+
+1. 当发送`ping 192.168.100.10`时在同一个局域网内会先发送ARP广播，为组播方式，node1与node2（10.0.0.4）均受到广播，而node3（10.0.0.6）未受到
+2. ARP报文要获得的内容为vxlan的mac地址，目的地址为全1的广播地址
+3. vxlan隧道封装VNI=10，因为不知道目的地址，所以会发送多播报文
+4. 受到报文后进行解包，取出真实的报文，如果发现是自己的，经由隧道封装后传递
+5. vtep 通过源报文学习到了 vtep 所在的主机，因此会直接单播发送给目的 vtep。发送方主机根据 VNI 把报文转发给 vtep，vtep 解包取出 ARP 应答报文，添加 arp 缓存到内核。并根据报文学习到目的 vtep 所在的主机地址，添加到 fdb 表中
+
+![image-20210204010726897](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210204010726897.png)
+
+而没在多播组中的同网段主机没有受到对应的ARP广播
+
+而在加入多播组中会受到多播的信息，确定不是自己后没有reply
+
+![image-20210204010149338](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210204010149338.png)
+
+此实验的报文内容
+
+ [192.168.10.30 加入同多播组](..\..\..\images\vxlan in linux\10.30.cap) 
+
+ [192.168.10.20 发起端](..\..\..\images\vxlan in linux\10.20.cap) 
+
+ [192.168.10.30 不在多播组内的报文](..\..\..\images\vxlan in linux\10.30 exit multicast.cap) 
+
+清除配置
+
+```bash
+ip link set vxlan2 down
+ip link delete vxlan2 
+```
+
+## 实验一：Linux Bridge[L2]
+
+该实验包含 ***veth***, ***vlan***, ***Linux bridge*** 方面的
+
+![image-20210201195306279](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210201195306279-166133333718927.png)
+
+<center>图：L2 vn topology</center><br>
+
+加载vlan模块
+
+```bash
+modprobe 8021q
+## 查看核心是否提供VLAN 功能
+dmesg | grep -i 802
+[    1.592802] pci 0000:00:15.0: PME# supported from D0 D3hot D3cold
+[ 1755.995461] 8021q: 802.1Q VLAN Support v1.8
+[ 1755.995485] 8021q: adding VLAN 0 to HW filter on device eth0
+```
+
+安装命令
+
+```bash
+yum install vconfig -y
+apt install vlan
+```
+
+创建vlan
+
+```bash
+# 创建bridge
+brctl addbr vlan10
+brctl show
+	
+ip link add veth01 type veth peer name eth01
+ip link add veth02 type veth peer name eth02
+
+# 将veth对的一端加入网桥
+brctl addif vlan10 veth01
+brctl addif vlan10 veth02
+# 启动对应设备
+ip link set dev vlan10 up
+ip link set dev veth01 up
+ip link set dev veth02 up
+ip link set dev eth01 up
+ip link set dev eth02 up
+# 创建ns
+ip netns add net1
+ip netns add net2
+# 将veth关联到对应名称空间内
+ip link set eth01 netns net1
+ip link set eth02 netns net2
+```
+
+网络名称空间net1内的操作，在vlan一端添加接口，与关联到该名称空间内的 *veth* 关联
+
+```
+vconfig add eth01 3001
+vconfig add eth01 3002
+
+ip link set eth01 up
+ip link set eth01.3001 up
+ip link set eth01.3002 up
+
+ip addr add 192.168.100.1/24 dev eth01.3001
+ip addr add 192.168.100.2/24 dev eth01.3002
+```
+
+网络名称空间net2与net1的类似
+
+```
+vconfig add eth02 3001
+vconfig add eth02 3002
+
+ip link set dev eth02 up
+ip link set dev eth02.3001 up
+ip link set dev eth02.3002 up
+
+ip addr add 192.168.100.10/24 dev eth02.3001
+ip addr add 192.168.100.11/24 dev eth02.3002
+```
+
+验证连通性，可以看到发送的包带有tag的标签
+
+![image-20210201211400463](https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210201211400463-166133333718928.png)
+
+
+
+## 实验二：IPVLAN L2
+
+实验结果，通过namespace模拟Pod的网络，做到各Pod间的网络通讯。
+
+`ip netns list` 查看网络命名空间
+
+`ip netns add net2` 创建一个网络命名空间
+
+`ip link add <name> link eth0 type ipvlan mode l2` 在当前名称空间创建一个类型为IPVLAN L2模式的接口，将该接口关联至父接口eth0上。 
+
+`ip link set $name netns $nsName` 将接口加入到对应网络名称空间内
+
+`ip netns exec $nsName $cmd`  在对应的网络名称空间内运行命令
+
+创建两个网络名称空间
+
+```bash
+$ ip netns add net1
+$ ip netns add net2
+$ ip netns list
+net2
+net1
+```
+
+创建 IPVLAN 接口
+
+```bash
+$ ip link add ipvlan01 link eth0 type ipvlan mode l2
+$ ip link add ipvlan02 link eth0 type ipvlan mode l2
+
+$ ip link set ipvlan01 netns net1
+$ ip link set ipvlan02 netns net2
+```
+
+给对应接口添加IP地址
+
+```bash
+ip netns exec net1 ifconfig ipvlan01 192.168.0.1/24 up
+ip netns exec net2 ifconfig ipvlan02 192.168.0.2/24 up
+
+# 这两个名称空间内的mac地址是一样的
+$ ip netns exec net2 ifconfig
+ipvlan02: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.2  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::da78:c800:27a:fb26  prefixlen 64  scopeid 0x20<link>
+        ether da:78:c8:7a:fb:26  txqueuelen 1000  (Ethernet)
+        RX packets 39007  bytes 2394577 (2.2 MiB)
+        RX errors 0  dropped 27  overruns 0  frame 0
+        TX packets 11  bytes 866 (866.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+$ ip netns exec net1 ifconfig
+ipvlan01: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.1  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 fe80::da78:c800:17a:fb26  prefixlen 64  scopeid 0x20<link>
+        ether da:78:c8:7a:fb:26  txqueuelen 1000  (Ethernet)
+        RX packets 132823  bytes 8184548 (7.8 MiB)
+        RX errors 0  dropped 93  overruns 0  frame 0
+        TX packets 12  bytes 936 (936.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+```
+
+测试两个名称空间是否互通
+
+结论：可以看到两个名称空间内的子接口 (***sub-interface***) 通过其父接口 (***parent-interface***) 可以达到互通。子接口与父接口之间的不互通。**IPVLAN L2模式仅限于子接口之间的互通**
+
+```bash
+$ ip netns exec net1 ping 192.168.0.2
+PING 192.168.0.2 (192.168.0.2) 56(84) bytes of data.
+64 bytes from 192.168.0.2: icmp_seq=1 ttl=64 time=0.285 ms
+64 bytes from 192.168.0.2: icmp_seq=2 ttl=64 time=0.077 ms
+^C
+--- 192.168.0.2 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1027ms
+rtt min/avg/max/mdev = 0.077/0.181/0.285/0.104 ms
+
+$ ip netns exec net2 ping 192.168.0.1
+PING 192.168.0.1 (192.168.0.1) 56(84) bytes of data.
+64 bytes from 192.168.0.1: icmp_seq=1 ttl=64 time=0.051 ms
+64 bytes from 192.168.0.1: icmp_seq=2 ttl=64 time=0.059 ms
+^C
+--- 192.168.0.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1056ms
+rtt min/avg/max/mdev = 0.051/0.055/0.059/0.004 ms
+```
+
+遇到问题
+
+- **RTNETLINK answers: Operation not supported**： CentOS 7默认内核版本为3.10 IPVLAN 3.19开始支持，推荐内核为4.2+
+- 子接口ping父接口不通，源MAC与目标MAC是一致，而mac接口是mac地址与接口绑定，因为三个接口的mac地址都相同，此时区分不了是哪个接口。
+- ping公网地址不通，查看路由表中没有对外的路由，手动添加即可 
+  ```bash
+  ip netns exec net1 route -n
+  ip netns exec net1 route add -net 0.0.0.0/0 gw 10.0.0.2
+  ```
+
+- IPVLAN L2模式中，父接口是可以没有IP地址的。不影响子接口的使用
+
+清除所有网络名称空间
+
+```bash
+for n in $(ip netns list|awk '{print $1}');do ip netns del $n;done
+```
+
+### 实验三：IPVLAN L3
+
+先创建两个用做测试的 network namespace
+
+```bash
+ip netns add net3
+ip netns add net4
+```
+
+创建出 IPVLAN 的虚拟网卡接口，创建 IPVLAN 虚拟接口的命令和 MACVLAN 格式相同：
+
+```bash
+ip link add ipvl01 link ens33 type ipvlan mode l3
+ip link add ipvl02 link ens33 type ipvlan mode l3
+```
+
+把 IPVLAN 接口放到前面创建好的 namespace 中
+
+```bash
+ip link set ipvl01 netns net3
+ip link set ipvl02 netns net4
+# 给对应设备设置IP地址
+ip netns exec net3 ifconfig ipvl01 192.168.10.1/24 up
+ip netns exec net4 ifconfig ipvl02 192.168.20.1/24 up
+# 设置对应的路由
+ip netns exec net4 route add -net 192.168.10.0/24 dev ipvl02
+ip netns exec net3 route add -net 192.168.20.0/24 dev ipvl01
+```
+
+结果是可以通的
+
+```bash
+$ ip netns exec net3 ping 192.168.20.1
+PING 192.168.20.1 (192.168.20.1) 56(84) bytes of data.
+64 bytes from 192.168.20.1: icmp_seq=1 ttl=64 time=0.026 ms
+64 bytes from 192.168.20.1: icmp_seq=2 ttl=64 time=0.119 ms
+^C
+--- 192.168.20.1 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1028ms
+rtt min/avg/max/mdev = 0.026/0.072/0.119/0.046 ms
+```
+
+### 实验四：MACVLAN
+
+创建两个名称空间
+
+```bash
+ip netns add net1
+ip netns add net2
+```
+
+创建两个 MACVLAN 接口
+
+```bash
+ip link add link eth0 name macv1 type macvlan mode bridge
+ip link add link eth0 name macv2 type macvlan mode bridge
+## 持久化创建
+echo "ip link add eth0 eth0.1 address 52:54:00:cc:ee:aa link enp0s31f6 type macvlan" > /sbin/ifup-pre-local2
+```
+
+把 MACVLAN 接口放到前面创建好的 namespace 中
+
+```bash
+ip link set macv1 netns net1
+ip link set macv2 netns net2
+# 给对应设备设置IP地址
+ip netns exec net1 ifconfig ipvl01 192.168.10.1/24 up
+ip netns exec net2 ifconfig ipvl02 192.168.20.1/24 up
+# 设置对应的路由
+ip netns exec net1 route add -net 192.168.10.0/24 dev ipvl02
+ip netns exec net2 route add -net 192.168.20.0/24 dev ipvl01
+```
+
+可以看到两个网卡的MAC地址是不同的
+
+```bash
+$ ip netns exec net2 ifconfig
+macv2: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.1  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::a830:c9ff:fe9a:7c33  prefixlen 64  scopeid 0x20<link>
+        ether aa:30:c9:9a:7c:33  txqueuelen 1000  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 7  bytes 586 (586.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+$ ip netns exec net1 ifconfig
+macv1: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.10.1  netmask 255.255.255.0  broadcast 192.168.10.255
+        inet6 fe80::d448:c5ff:fec7:76a3  prefixlen 64  scopeid 0x20<link>
+        ether d6:48:c5:c7:76:a3  txqueuelen 1000  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 8  bytes 656 (656.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+```
+
+
+
+> **Reference**
+>
+> <sup id="1">[1]</sup> [man veth](https://man7.org/linux/man-pages/man4/veth.4.html)
+>
+> <sup id="2">[2]</sup> [macvlan](https://hicu.be/bridge-vs-macvlan)
+>
+> <sup id="3">[3]</sup> [how to configure macvlan interface for getting the IP?](https://superuser.com/questions/1113812/how-to-configure-macvlan-interface-for-getting-the-ip)
+>
+> <sup id="4">[4]</sup> [distribution switch](https://community.fs.com/blog/how-to-choose-the-right-distribution-switch.html)
+>
+> <sup id="5">[5]</sup> [why vxlan is needed](https://nwktimes.blogspot.com/2018/02/vxlan-part-i-why-vxlan-is-needed.html)
+>
+> <sup id="4">[4]</sup> [distribution switch]()
+
