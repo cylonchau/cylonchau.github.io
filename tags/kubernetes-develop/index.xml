@@ -25,21 +25,16 @@ Edge TRIGGERING:
 信号的干扰 通常情况下，两者是没有区别的，但在大规模分布式网络环境中，有很多因素的影响下，任何都是不可靠的，在这种情况下会改变了我们对事件信号的感知。
 如图所示，图为Level Trigger与Edge trigger 的信号发生模拟，在理想情况下，两者间并没有什么不同。]]></description>
 </item><item>
-    <title>Admission webhook</title>
-    <link>https://cylonchau.github.io/ch3.7-admission-webhook.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
+    <title>基于Prometheus的Kubernetes网络调度器</title>
+    <link>https://cylonchau.github.io/ch4.3-custom-scheduler.html</link>
+    <pubDate>Tue, 20 Sep 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch3.7-admission-webhook.html</guid>
-    <description><![CDATA[[toc]
-BACKGROUND admission controllers的特点：
-可定制性：准入功能可针对不同的场景进行调整。 可预防性：审计则是为了检测问题，而准入控制器可以预防问题发生 可扩展性：在kubernetes自有的验证机制外，增加了另外的防线，弥补了RBAC仅能对资源提供安全保证。 下图，显示了用户操作资源的流程，可以看出 admission controllers 作用是在通过身份验证资源持久化之前起到拦截作用。在准入控制器的加入会使kubernetes增加了更高级的安全功能。
-图：Kubernetes API 请求的请求处理步骤图 Source：https://kubernetes.io/blog/2019/03/21/a-guide-to-kubernetes-admission-controllers/ 这里找到一个大佬博客画的图，通过两张图可以很清晰的了解到admission webhook流程，与官方给出的不一样的地方在于，这里清楚地定位了kubernetes admission webhook 处于准入控制中，RBAC之后，push 之前。
-图：Kubernetes API 请求的请求处理步骤图（详细） Source：https://www.armosec.io/blog/kubernetes-admission-controller/ 两种控制器有什么区别？ 根据官方提供的说法是
-Mutating controllers may modify related objects to the requests they admit; validating controllers may not
-从结构图中也可以看出，validating 是在持久化之前，而 Mutating 是在结构验证前，根据这些特性我们可以使用 Mutating 修改这个资源对象内容（如增加验证的信息），在 validating 中验证是否合法。
-composition of admission controllers kubernetes中的 admission controllers 由两部分组成：
-内置在APIServer中的准入控制器 build-in li.st 特殊的控制器；也是内置在APIServer中，但提供一些自定义的功能 MutatingAdmission ValidatingAdmission Mutating 控制器可以修改他们处理的资源对象，Validating 控制器不会。当在任何一个阶段中的任何控制器拒绝这个了请求，则会立即拒绝整个请求，并将错误返回。
-admission webhook 由于准入控制器是内置在 kube-apiserver 中的，这种情况下就限制了admission controller的可扩展性。在这种背景下，kubernetes提供了一种可扩展的准入控制器 extensible admission controllers，这种行为叫做动态准入控制 Dynamic Admission Control，而提供这个功能的就是 admission webhook 。]]></description>
+    <guid>https://cylonchau.github.io/ch4.3-custom-scheduler.html</guid>
+    <description><![CDATA[Overview 本文将深入讲解 如何扩展 Kubernetes scheduler 中各个扩展点如何使用，与扩展scheduler的原理，这些是作为扩展 scheduler 的所需的知识点。最后会完成一个实验，基于网络流量的调度器。
+kubernetes调度配置 kubernetes集群中允许运行多个不同的 scheduler ，也可以为Pod指定不同的调度器进行调度。在一般的Kubernetes调度教程中并没有提到这点，这也就是说，对于亲和性，污点等策略实际上并没有完全的使用kubernetes调度功能，在之前的文章中提到的一些调度插件，如基于端口占用的调度 NodePorts 等策略一般情况下是没有使用到的，本章节就是对这部分内容进行讲解，这也是作为扩展调度器的一个基础。
+Scheduler Configuration [1] kube-scheduler 提供了配置文件的资源，作为给 kube-scheduler 的配置文件，启动时通过 --onfig= 来指定文件。目前各个kubernetes版本中使用的 KubeSchedulerConfiguration 为，
+1.21 之前版本使用 v1beta1 1.22 版本使用 v1beta2 ，但保留了 v1beta1 1.23, 1.24, 1.25 版本使用 v1beta3 ，但保留了 v1beta2，删除了 v1beta1 下面是一个简单的 kubeSchedulerConfiguration 示例，其中 kubeconfig 与启动参数 --kubeconfig 是相同的功效。而 kubeSchedulerConfiguration 与其他组件的配置文件类似，如 kubeletConfiguration 都是作为服务启动的配置文件。
+1 2 3 4 apiVersion: kubescheduler.config.k8s.io/v1beta1 kind: KubeSchedulerConfiguration clientConnection: kubeconfig: /etc/srv/kubernetes/kube-scheduler/kubeconfig Notes: --kubeconfig 与 --config 是不可以同时指定的，指定了 --config 则其他参数自然失效 [2]]]></description>
 </item><item>
     <title>client-go</title>
     <link>https://cylonchau.github.io/ch2.1-client-go.html</link>
