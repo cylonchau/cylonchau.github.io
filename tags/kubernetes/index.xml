@@ -3,7 +3,21 @@
         <title>kubernetes - 标签 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/tags/kubernetes.html</link>
         <description>kubernetes - 标签 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Tue, 29 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+    <title>Understanding Kubernetes - 理解Kubernetes的驱逐机制</title>
+    <link>https://cylonchau.github.io/kubernetes-eviction.html</link>
+    <pubDate>Tue, 29 Nov 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/kubernetes-eviction.html</guid>
+    <description><![CDATA[驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。
+Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
+抢占驱逐 (Preemption and Eviction) [1] 节点压力驱逐 (Node-pressure) [2] 污点驱逐 (Taints) [3] 使用API发起驱逐 (API-initiated) [4] 排出Node上的Pod (drain) [5] 被 controller-manager 驱逐 抢占和优先级 抢占是指当节点资源不足以运行新添加的Pod时，kube-scheduler 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 kube-proxy 被驱逐的场景
+节点压力驱逐 节点压力驱逐是指，Pod所在节点的资源，如CPU, 内存, inode等，这些资源被分为可压缩资源CPU (compressible resources) 与不可压缩资源 (incompressible resources) 磁盘IO, 内存等，当不可压缩资源不足时，Pod会被驱逐。对于此类问题的驱逐 是每个计算节点的 kubelet 通过捕获 cAdvisor 指标来监控节点的资源使用情况。
+被 controller-manager 驱逐 kube-controller-manager 会定期检查节点的状态，如节点处于 NotReady 超过一定时间，或Pod部署长时间失败，这些Pod由控制平面 controller-manager 创建新的Pod已替换存在问题的Pod
+通过API发起驱逐 Kubernetes为用户提供了驱逐的API，用户可以通过调用API来实现自定义的驱逐。
+对于 1.22 以上版本，可以通过API policy/v1 进行驱逐
+1 2 3 4 5 6 7 8 9 10 11 curl -v \ -H &#39;Content-type: application/json&#39; \ https://your-cluster-api-endpoint.]]></description>
+</item><item>
     <title>Understanding kubernetes 4A - Auditing</title>
     <link>https://cylonchau.github.io/kubernetes-auditing.html</link>
     <pubDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</pubDate>
@@ -145,30 +159,5 @@ sidecar容器 sidecar容器内部运行着 pilot-agent 与 envoy
 Pilot-agent：基于kubernetesAPI资源对象为envoy初始化可用的bootstrap配置进行启动，在运行后管理envoy运行状态，如配置变更，出错重启等。
 envoy：数据平面的执行层，由 pilot-agent 所启动的，从xDS API动态获取配置信息。Envoy并通过流量拦截机制处理入栈及出栈的流量。
 envoy的listener 在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 DestnationRule VirtualService Gateway等资源提供的配置，生成对应的Envoy配置。]]></description>
-</item><item>
-    <title>istio命令</title>
-    <link>https://cylonchau.github.io/istioctl%E5%91%BD%E4%BB%A4.html</link>
-    <pubDate>Thu, 20 Aug 2020 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/istioctl%E5%91%BD%E4%BB%A4.html</guid>
-    <description><![CDATA[[toc]
-显示配置文件中的差异 istioctl profile diff default demo
-显示对应配置的profile istioctl profile dump demo
-显示可用的配置 istioctl profile list
-安装指定配置的istio istioctl install --set profile=demo
-生成配置清单 istioctl manifest generate
-istioctl验证安装: istioctl manifest generate --set profile=demo |istioctl verify-install -
-istio的非侵入式流量治理
-流量治理是一个非常宽泛的话题，例如：
-◎ 动态修改服务间访问的负载均衡策略，比如根据某个请求特征做会话保持；
-◎ 同一个服务有两个版本在线，将一部分流量切到某个版本上；
-◎ 对服务进行保护，例如限制并发连接数、限制请求数、隔离故障服务实例等；
-◎ 动态修改服务中的内容，或者模拟一个服务运行故障等。
-在Istio中实现这些服务治理功能时无须修改任何应用的代码。较之微服务的SDK方式，Istio以一种更轻便、透明的方式向用户提供了这些功能。用户可以用自己喜欢的任意语言和框架进行开发，专注于自己的业务，完全不用嵌入任何治理逻辑。只要应用运行在Istio的基础设施上，就可以使用这些治理能力。 一句话总结 Istio 流量治理的目标：以基础设施的方式提供给用户非侵入的流量治理能力，用户只需 关注自己的业务逻辑开发，无须关注服务访问管理。
-istio服务架构 在istio1.8中，istio的分为 envoy （数据平面） 、istiod （控制平面） 、addons（管理插件） 及 istioctl （命令行工具，用于安装、配置、诊断分析等操作）组成。
-Pilot Pilot是Istio控制平面流量管理的核心组件，管理和配置部署在Istio服务网格中的所有Envoy代理实例。
-pilot-discovery为envoy sidecar提供服务发现，用于路由及流量的管理。通过kubernetes CRD资源获取网格的配置信息将其转换为xDS接口的标准数据格式后，通过gRPC分发至相关的envoy sidecar
-Pilot组件包含工作在控制平面中的 pilot-discovery 和工作与数据平面的pilot-agent 与Envoy(istio-proxy)
-pilot-discovery主要完成如下功能：]]></description>
 </item></channel>
 </rss>

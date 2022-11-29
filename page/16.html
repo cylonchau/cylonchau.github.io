@@ -77,6 +77,20 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/go-tcp-handshake.html">在Go语言中阐述TCP握手</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-10-02 00:00:00">2019-10-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go.html"><i class="far fa-folder fa-fw"></i>go</a>&nbsp;<a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div><div class="content">TCP的三次握手 所谓三次握手 Three-Way Handshake 是指建立一个TCP连接时，需要客户端和服务端总共发送3个包以确认连接的建立。好比两个人在打电话：
+当连接被建立或被终止，交换的报文段只包含TCP头部，而没有数据。
+tcp报文头部结构 序号：seq序号，占32位，用来标识从TCP源端向目的端发送的字节流，发起方发送数据时对此进行标记。 确认序号：ack序号，占32位，只有ACK标志位为1时，确认序号字段才有效，确认方ack=发起方seq+1，两端配对。 标志位 ACK：确认序号有效。 FIN：释放一个连接。 RST：重置连接。 SYN：发起一个新连接。 PSH：接收方应该尽快将这个报文交给应用层。 URG：紧急指针（urgent pointer）有效。 第一次握手：客户端要向服务端发起连接请求，首先客户端随机生成一个起始序列号ISN(比如是100)，那客户端向服务端发送的报文段包含SYN标志位(也就是SYN=1)，序列号seq=100。
+第二次握手：服务端收到客户端发过来的报文后，发现SYN=1，知道这是一个连接请求，于是将客户端的起始序列号100存起来，并且随机生成一个服务端的起始序列号(比如是300)。然后给客户端回复一段报文，回复报文包含SYN和ACK标志(也就是SYN=1,ACK=1)、序列号seq=300、确认号ack=101(客户端发过来的序列号+1)。
+第三次握手：客户端收到服务端的回复后发现ACK=1并且ack=101,于是知道服务端已经收到了序列号为100的那段报文；同时发现SYN=1，知道了服务端同意了这次连接，于是就将服务端的序列号300给存下来。然后客户端再回复一段报文给服务端，报文包含ACK标志位(ACK=1)、ack=301(服务端序列号+1)、seq=101(第一次握手时发送报文是占据一个序列号的，所以这次seq就从101开始，需要注意的是不携带数据的ACK报文是不占据序列号的，所以后面第一次正式发送数据时seq还是101)。当服务端收到报文后发现ACK=1并且ack=301，就知道客户端收到序列号为300的报文了，就这样客户端和服务端通过TCP建立了连接。
+四次挥手 比如客户端初始化的序列号ISA=100，服务端初始化的序列号ISA=300。TCP连接成功后客户端总共发送了1000个字节的数据，服务端在客户端发FIN报文前总共回复了2000个字节的数据。
+第一次挥手：当客户端的数据都传输完成后，客户端向服务端发出连接释放报文(当然数据没发完时也可以发送连接释放报文并停止发送数据)，释放连接报文包含FIN标志位(FIN=1)、序列号seq=1101(100+1+1000，其中的1是建立连接时占的一个序列号)。需要注意的是客户端发出FIN报文段后只是不能发数据了，但是还可以正常收数据；另外FIN报文段即使不携带数据也要占据一个序列号。
+第二次挥手：服务端收到客户端发的FIN报文后给客户端回复确认报文，确认报文包含ACK标志位(ACK=1)、确认号ack=1102(客户端FIN报文序列号1101+1)、序列号seq=2300(300+2000)。此时服务端处于关闭等待状态，而不是立马给客户端发FIN报文，这个状态还要持续一段时间，因为服务端可能还有数据没发完。
+第三次挥手：服务端将最后数据(比如50个字节)发送完毕后就向客户端发出连接释放报文，报文包含FIN和ACK标志位(FIN=1,ACK=1)、确认号和第二次挥手一样ack=1102、序列号seq=2350(2300+50)。
+第四次挥手：客户端收到服务端发的FIN报文后，向服务端发出确认报文，确认报文包含ACK标志位(ACK=1)、确认号ack=2351、序列号seq=1102。注意客户端发出确认报文后不是立马释放TCP连接，而是要经过2MSL(最长报文段寿命的2倍时长)后才释放TCP连接。而服务端一旦收到客户端发出的确认报文就会立马释放TCP连接，所以服务端结束TCP连接的时间要比客户端早一些。</div><div class="post-footer">
+        <a href="/go-tcp-handshake.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/golang.html">golang</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/go-regular-expression.html">正则表达式在go中使用</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-10-02 00:00:00">2019-10-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go.html"><i class="far fa-folder fa-fw"></i>go</a>&nbsp;<a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div><div class="content">正则表达式是一种进行模式匹配和文本操纵的复杂而又强大的工具。虽然正则表达式比纯粹的文本匹配效率低，但是它却更灵活。按照它的语法规则，随需构造出的匹配模式就能够从原始文本中筛选出几乎任何你想要得到的字符组合。
 Go语言通过regexp（regular expression）标准包为正则表达式提供了官方支持，包名采用regular expression的每个单词的前三个首字母组成。
@@ -175,17 +189,6 @@ schema overview
 1 $ ldapsearch -x -b &#34;dc=test,dc=com&#34; -H ldap://10.0.0.3 使用管理员账户进行搜索 使用管理员帐户进行搜索，必须使用backend配置的 RootDN 并在命令行使用 “-D” 选项 和 “-W” ，如果要使用非交互式认证，使用选项 “-w”
 1 $ ldapsearch -x -b &lt;search_base&gt; -H &lt;ldap_host&gt; -D &lt;bind_dn&gt; -W 例如，上章在安装时配置了RootDN：“ cn=admin,dc=test,dc=com ”。如果要使用此帐户执行搜索，可以使用命令</div><div class="post-footer">
         <a href="/ch02-commandline.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch01-install.html">ch1 understanding openldap - install</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-08-25 00:00:00">2019-08-25 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">[toc]
-生产服务器硬件配置需求 ldap服务对系统环境的要求不高，一般在生产场景，ldap服务应该最少是两台，这样某一台物理服务器岩机才不会因单点问题影响生产业务故障，对于硬件要求，本质上openldap使用硬件资源并不大，网上有两个帖子提出了openldap的硬件需求：
-2003年openldap官网留言，我想安装一个 LDAP 服务器来验证邮件服务器的用户，目前有200个用户需要多少内存和CPU？[1] 1GHZ PIII/512MB 足以 运行于Ubuntu LXC 之上的openldap，用户150,000，sladp进程常驻内存为200-300MB，mdb数据库文件大小为377MB，10 并发平均响应时间为 9-11 毫秒 [13] 操作系统：Centos7/8 64bit。
-操 作 系 统 其 它 CentOS-7.6 当前很稳定且免费的Linux版本。 网卡及IP资源
-名 称 接 口 IP 用途 ldap主服务器01 eth0 10.0.0.17 外部管理IP，用于WAN数据转发。 eth1 10.0.0.17 备用管理IP，用于LAN内数据转发。 ldap从服务器02 eth0 10.0.0.8 管理IP，用于LAN数据转发。 eth1 10.0.0.18 外部管理IP，用于WAN数据转发。 Tips：内外网IP分配可采用最后8位相同的方式，这样使于管理。
-openldap master服务安装 CentOS/Redhat 安装OpenLDAP组件
-1 2 3 4 5 6 yum install -y \ openldap \ openldap-servers \ openldap-clients \ openldap-devel \ compat-openldap Ubuntu18.</div><div class="post-footer">
-        <a href="/ch01-install.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">

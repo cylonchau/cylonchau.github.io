@@ -3,7 +3,21 @@
         <title>kubernetes - 分类 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/categories/kubernetes.html</link>
         <description>kubernetes - 分类 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/categories/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Tue, 29 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/categories/kubernetes.html" rel="self" type="application/rss+xml" /><item>
+    <title>Understanding Kubernetes - 理解Kubernetes的驱逐机制</title>
+    <link>https://cylonchau.github.io/kubernetes-eviction.html</link>
+    <pubDate>Tue, 29 Nov 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/kubernetes-eviction.html</guid>
+    <description><![CDATA[驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。
+Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
+抢占驱逐 (Preemption and Eviction) [1] 节点压力驱逐 (Node-pressure) [2] 污点驱逐 (Taints) [3] 使用API发起驱逐 (API-initiated) [4] 排出Node上的Pod (drain) [5] 被 controller-manager 驱逐 抢占和优先级 抢占是指当节点资源不足以运行新添加的Pod时，kube-scheduler 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 kube-proxy 被驱逐的场景
+节点压力驱逐 节点压力驱逐是指，Pod所在节点的资源，如CPU, 内存, inode等，这些资源被分为可压缩资源CPU (compressible resources) 与不可压缩资源 (incompressible resources) 磁盘IO, 内存等，当不可压缩资源不足时，Pod会被驱逐。对于此类问题的驱逐 是每个计算节点的 kubelet 通过捕获 cAdvisor 指标来监控节点的资源使用情况。
+被 controller-manager 驱逐 kube-controller-manager 会定期检查节点的状态，如节点处于 NotReady 超过一定时间，或Pod部署长时间失败，这些Pod由控制平面 controller-manager 创建新的Pod已替换存在问题的Pod
+通过API发起驱逐 Kubernetes为用户提供了驱逐的API，用户可以通过调用API来实现自定义的驱逐。
+对于 1.22 以上版本，可以通过API policy/v1 进行驱逐
+1 2 3 4 5 6 7 8 9 10 11 curl -v \ -H &#39;Content-type: application/json&#39; \ https://your-cluster-api-endpoint.]]></description>
+</item><item>
     <title>Understanding kubernetes 4A - Auditing</title>
     <link>https://cylonchau.github.io/kubernetes-auditing.html</link>
     <pubDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</pubDate>
@@ -146,23 +160,5 @@ Nginx Ingress Controller，Kubernetes默认推荐的Ingress，弊端①最终配
 作为一个 modern edge router ，traefik拥有与envoy相似的特性
 基于go语言研发，目的是为了简化开发人员的配置和维护 tcp/udp支持 http L7支持 GRPC支持 服务发现和动态配置 front/ edge prory支持 可观测性 流量管理 &hellip; traefik 术语 要了解trafik，首先需要先了解一下 有关trafik中的一些术语。
 EntryPoints 入口点，是可以被下游客户端连接的命名网络位置，类似于envoy 的listener和nginx的listen services 服务，负载均衡，上游主机接收来自traefik的连接和请求并返回响应。 类似于nginx upstream envoy的clusters Providers 提供者，提供配置文件的后端，如file，kubernetes，consul，redis，etcd等，可使traefik自动更新 routers 路由器，承上启下，分析请求，将下游主机的请求处理转入到services middlewares: 中间件，在将下游主机的请求转入到services时进行的流量调整 在Kubernetes中使用traefik网关作为Ingress Traefik于2019年9月发布2.]]></description>
-</item><item>
-    <title>Kubernetes Service</title>
-    <link>https://cylonchau.github.io/kubernetes-service.html</link>
-    <pubDate>Fri, 28 Sep 2018 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/kubernetes-service.html</guid>
-    <description><![CDATA[在Kubernetes集群中，Pod是有生命周期的，为了能够给对应的客户端提供一个固定访问端点，因此在客户端与服务端（Pod之间）添加了一个固定中间层，这个中间层被称之为Service。Service的工作严重依赖于在Kubernetes集群之上，部署的附件Kubernetes DNS服务。较新版本使用的coreDNS，1.11之前使用的KubeDNS。
-service的名称解析是强依赖于DNS附件的。因此在部署完Kubernetes后，需要部署CoreDNS或KubeDNS。 Kubernetes要想向客户端提供网络功能，依赖于第三方方案，在较新版本中，可通过CNI容器网络插件标准接口，来接入任何遵循插件标准的第三方方案。 Service从一定程度上来说，在每个节点之上都工作有一个组件Kube-proxy，Kube-proxy将始终监视apiserver当中，有关service资源的变动状态。此过程是通过Kubernetes中固有的请求方法watch来实现的。一旦有service资源的内容发生变动，kube-proxy都将其转换为当前节点之上的能够实现service资源调度至特定Pod之上的规则。
-service实现方式 在Kubernetes中service的实现方式有三种模型。
-userspace 用户空间，可以理解为，用户的请求。 1.1之前包括1.1使用此模型。 用户的请求到达当前节点的内核空间的iptables规则（service规则），由service转发至本地监听的某个套接字上的用户空间的kube-proxy，kube-proxy在处理完再转发给service，最终代理至service相关联的各个Pod，实现调度。
-iptables 1.10- 客户端IP请求时，直接请求serviceIP，IP为本地内核空间中的service规则所截取，并直接调度至相关Pod。service工作在内核空间，由iptables直接调度。
-ipvs 1.11默认使用，如IPVS没有激活，默认降级为iptables 客户端请求到达内核空间后，直接由ipvs规则直接调度至Pod网络地址范围内的相关Pod资源。
-使用清单创建service资源 SVC中的kubernetes service是集群中各Pod需要与Kubernetes集群apiserver联系时需要通过此svc地址联系。这个地址是集群内的apiserver服务地址。
-service类型 ClusterIP 默认值，表示分配集群IP地址，仅用于集群内通信。自动分配地址，如需固定，需要指定相应地址，在创建后无法修改。当使用ClusterIP时，只有两个端口有用，port与targetPort
-NodePort 接入集群外部流量，默认分配的端口是30000~32767
-LoadBalancer 表示将Kubernetes部署在虚拟机上，虚拟机是工作在云环境中，云环境支持lbaas（负载均衡及服务的一键调用）。
-ExternaName 表示将集群外部服务引用到集群内部中来，在集群内部直接使用。
-1 2 3 4 5 6 7 8 9 10 11 12 spec: ports: # 将哪个端口与后端容器端口建立关联关系。 - port # service对外提供服务的端口 name 指明port的名称 targetPort # 容器的端口 nodePort # 只有类型为NodePort时，才有必要用节点端口，否则此选项是无用的。 protocol 协议，默认TCP seletcor 关联到哪些Pod资源上 app: redis run: redis clusterIP: # clusterIP可以动态分贝可以不配置 type: ClusterIP 1 2 3 4 5 6 7 8 9 10 11 12 13 apiVersion: v1 kind: Service metadata: name: redis namespace: default spec: selector: run: redis clusterIP: 10.]]></description>
 </item></channel>
 </rss>
