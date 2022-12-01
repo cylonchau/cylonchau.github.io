@@ -3,69 +3,22 @@
         <title>kubernetes develop - 标签 - Cylon&#39;s Collection</title>
         <link>https://cylonchau.github.io/tags/kubernetes-develop.html</link>
         <description>kubernetes develop - 标签 - Cylon&#39;s Collection</description>
-        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Wed, 28 Sep 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes-develop.html" rel="self" type="application/rss+xml" /><item>
-    <title>kubernetes listwatch机制原理</title>
-    <link>https://cylonchau.github.io/ch2.4-listwatch-mechanism.html</link>
-    <pubDate>Wed, 28 Sep 2022 00:00:00 &#43;0000</pubDate>
+        <generator>Hugo -- gohugo.io</generator><lastBuildDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://cylonchau.github.io/tags/kubernetes-develop.html" rel="self" type="application/rss+xml" /><item>
+    <title>Understanding kubernetes 4A - Auditing</title>
+    <link>https://cylonchau.github.io/kubernetes-auditing.html</link>
+    <pubDate>Thu, 24 Nov 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch2.4-listwatch-mechanism.html</guid>
-    <description><![CDATA[overview kubernetes的设计里面大致上分为3部分：
-API驱动型的特点 (API-driven) 控制循环（control loops）与 条件触发 （Level Trigger） API的可延伸性 而正因为这些设计特性，才使得kubernetes工作非常稳定。
-什么是Level Trigger与 Edge trigger 看到网上有资料是这么解释两个属于的：
-条件触发(level-trigger，也被称为水平触发)LT指： 只要满足条件，就触发一个事件(只要有数据没有被获取，就不断通知)。
-边缘触发(edge-trigger)ET: 每当状态变化时，触发一个事件。
-通过查询了一些资料，实际上也不明白这些究竟属于哪门科学中的理论，但是具体解释起来看的很明白。
-LEVEL TRIGGERING：当电流有两个级别，VH 和 VL。代表了两个触发事件的级别。如果将VH 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为LEVEL TRIGGERING，每当遇到VH 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。
-Edge TRIGGERING:
-如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（Edge TRIGGERING:）。
-如果需要打开LED灯，则当时钟从VL转换到VH时才会亮起，而不是一家处在对应的时钟线上，仅仅是在过渡时亮起。
-为什么kubernetes使用Level Trigger而不使用Edge trigger 如图所述，两种不同的设计模式，随着时间形状进行相应，当系统在由高转低，或由低转高时，系统处在关闭或者不可控的异常状态下，应如何触发对应的事件呢。
-换一种方式来来解释，比如说通过 加法运算，如下，i=3，当给I+4作为一个操作触发事件。
-1 2 3 4 5 # let i=3 # let i+=4 # let i # echo $i 7 当为Edge trigger时操作的情况下，将看到 i+4 ,而在 level trigger 时看到的是 i=7。这里将会从``i+4` 一直到下一个信号的触发。
-信号的干扰 通常情况下，两者是没有区别的，但在大规模分布式网络环境中，有很多因素的影响下，任何都是不可靠的，在这种情况下会改变了我们对事件信号的感知。
-如图所示，图为Level Trigger与Edge trigger 的信号发生模拟，在理想情况下，两者间并没有什么不同。]]></description>
-</item><item>
-    <title>基于Prometheus的Kubernetes网络调度器</title>
-    <link>https://cylonchau.github.io/ch4.3-custom-scheduler.html</link>
-    <pubDate>Tue, 20 Sep 2022 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch4.3-custom-scheduler.html</guid>
-    <description><![CDATA[Overview 本文将深入讲解 如何扩展 Kubernetes scheduler 中各个扩展点如何使用，与扩展scheduler的原理，这些是作为扩展 scheduler 的所需的知识点。最后会完成一个实验，基于网络流量的调度器。
-kubernetes调度配置 kubernetes集群中允许运行多个不同的 scheduler ，也可以为Pod指定不同的调度器进行调度。在一般的Kubernetes调度教程中并没有提到这点，这也就是说，对于亲和性，污点等策略实际上并没有完全的使用kubernetes调度功能，在之前的文章中提到的一些调度插件，如基于端口占用的调度 NodePorts 等策略一般情况下是没有使用到的，本章节就是对这部分内容进行讲解，这也是作为扩展调度器的一个基础。
-Scheduler Configuration [1] kube-scheduler 提供了配置文件的资源，作为给 kube-scheduler 的配置文件，启动时通过 --onfig= 来指定文件。目前各个kubernetes版本中使用的 KubeSchedulerConfiguration 为，
-1.21 之前版本使用 v1beta1 1.22 版本使用 v1beta2 ，但保留了 v1beta1 1.23, 1.24, 1.25 版本使用 v1beta3 ，但保留了 v1beta2，删除了 v1beta1 下面是一个简单的 kubeSchedulerConfiguration 示例，其中 kubeconfig 与启动参数 --kubeconfig 是相同的功效。而 kubeSchedulerConfiguration 与其他组件的配置文件类似，如 kubeletConfiguration 都是作为服务启动的配置文件。
-1 2 3 4 apiVersion: kubescheduler.config.k8s.io/v1beta1 kind: KubeSchedulerConfiguration clientConnection: kubeconfig: /etc/srv/kubernetes/kube-scheduler/kubeconfig Notes: --kubeconfig 与 --config 是不可以同时指定的，指定了 --config 则其他参数自然失效 [2]]]></description>
-</item><item>
-    <title>client-go</title>
-    <link>https://cylonchau.github.io/ch2.1-client-go.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch2.1-client-go.html</guid>
-    <description><![CDATA[[toc]
-Prepare Introduction 从2016年8月起，Kubernetes官方提取了与Kubernetes相关的核心源代码，形成了一个独立的项目，即client-go，作为官方提供的go客户端。Kubernetes的部分代码也是基于这个项目的。
-client-go 是kubernetes中广义的客户端基础库，在Kubernetes各个组件中或多或少都有使用其功能。。也就是说，client-go可以在kubernetes集群中添加、删除和查询资源对象（包括deployment、service、pod、ns等）。
-在了解client-go前，还需要掌握一些概念
-在客户端验证 API 使用证书和使用令牌，来验证客户端 kubernetes集群的访问模式 使用证书和令牌来验证客户端 在访问apiserver时，会对访问者进行鉴权，因为是https请求，在请求时是需要ca的，也可以使用 -k 使用insecure模式
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 $ curl --cacert /etc/kubernetes/pki/ca.crt https://10.0.0.4:6443/version \{ &#34;major&#34;: &#34;1&#34;, &#34;minor&#34;: &#34;18+&#34;, &#34;gitVersion&#34;: &#34;v1.18.20-dirty&#34;, &#34;gitCommit&#34;: &#34;1f3e19b7beb1cc0110255668c4238ed63dadb7ad&#34;, &#34;gitTreeState&#34;: &#34;dirty&#34;, &#34;buildDate&#34;: &#34;2022-05-17T12:45:14Z&#34;, &#34;goVersion&#34;: &#34;go1.16.15&#34;, &#34;compiler&#34;: &#34;gc&#34;, &#34;platform&#34;: &#34;linux/amd64&#34; } $ curl -k https://10.]]></description>
-</item><item>
-    <title>client-go controller</title>
-    <link>https://cylonchau.github.io/ch3.1-controller.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch3.1-controller.html</guid>
-    <description><![CDATA[[toc]
-Overview 根据Kuberneter文档对Controller的描述，Controller在kubernetes中是负责协调的组件，根据设计模式可知，controller会不断的你的对象（如Pod）从当前状态与期望状态同步的一个过程。当然Controller会监听你的实际状态与期望状态。
-Writing Controllers 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 package main import ( &#34;flag&#34; &#34;fmt&#34; &#34;os&#34; &#34;time&#34; v1 &#34;k8s.]]></description>
-</item><item>
-    <title>client-go informer</title>
-    <link>https://cylonchau.github.io/ch2.2-informer.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
-    <author>作者</author>
-    <guid>https://cylonchau.github.io/ch2.2-informer.html</guid>
-    <description><![CDATA[之前了解了client-go中的架构设计，也就是 tools/cache 下面的一些概念，那么下面将对informer进行分析
-Controller 在client-go informer架构中存在一个 controller ，这个不是 Kubernetes 中的Controller组件；而是在 tools/cache 中的一个概念，controller 位于 informer 之下，Reflector 之上。code
-Config 从严格意义上来讲，controller 是作为一个 sharedInformer 使用，通过接受一个 Config ，而 Reflector 则作为 controller 的 slot。Config 则包含了这个 controller 里所有的设置。
-1 2 3 4 5 6 7 8 9 type Config struct { Queue // DeltaFIFO ListerWatcher // 用于list watch的 Process ProcessFunc // 定义如何从DeltaFIFO中弹出数据后处理的操作 ObjectType runtime.Object // Controller处理的对象数据，实际上就是kubernetes中的资源 FullResyncPeriod time.Duration // 全量同步的周期 ShouldResync ShouldResyncFunc // Reflector通过该标记来确定是否应该重新同步 RetryOnError bool } controller 然后 controller 又为 reflertor 的上层]]></description>
+    <guid>https://cylonchau.github.io/kubernetes-auditing.html</guid>
+    <description><![CDATA[Overview 本文是关于Kubernetes 4A解析的第四章
+深入理解Kubernetes 4A - Authentication源码解析 深入理解Kubernetes 4A - Authorization源码解析 深入理解Kubernetes 4A - Admission Control源码解析 深入理解Kubernetes 4A - Audit源码解析 所有关于Kubernetes 4A四部分代码上传至仓库 github.com/cylonchau/hello-k8s-4A
+审计是信息系统中非常重要的一部分，Kubernetes 1.11中也增加了审计 (Auditing) 功能，通过审计功能获得 deployment, ns,等资源操作的事件。
+objective：
+从设计角度了解Auditing在kubernets中是如何实现的 了解kubernetes auditing webhook 完成实验，通过webhook来收集审计日志 如有错别字或理解错误地方请多多担待，代码是以1.24进行整理，实验是以1.19环境进行，差别不大。
+Kubernetes Auditing 根据Kubernetes官方描述审计在kubernetes中是有控制平面 kube-apiserver 中产生的一个事件，记录了集群中所操作的资源，审计围绕下列几个维度来记录事件的：
+发生了什么 发生的事件 谁触发的 发生动作的对象 在哪里检查到动作的 从哪触发的 处理行为是什么 审计生命周期开始于组件 kube-apiserver 准入控制阶段，在每个阶段内都会产生审计事件并经过预处理后写入后端，目前后端包含webhook与日志文件。
+审计日志功能增加了 kube-apiserver 的内存消耗，因为会为每个请求存储了审计所需的上下文。内存的消耗取决于审计日志配置 [1]。
+审计事件设计 审计的schema不同于资源API的设计，没有 metav1.ObjectMeta 属性，Event是一个事件的结构体，Policy是事件配置，属于kubernetes资源，在代码 k8s.io/apiserver/pkg/apis/audit/types.go 可以看到
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 type Event struct { metav1.]]></description>
 </item><item>
     <title>client-go queue</title>
     <link>https://cylonchau.github.io/ch2.3-queue.html</link>
@@ -77,56 +30,98 @@ Config 从严格意义上来讲，controller 是作为一个 sharedInformer 使�
 Inferface Interface作为所有队列的一个抽象定义
 1 2 3 4 5 6 7 8 type Interface interface { Add(item interface{}) Len() int Get() (item interface{}, shutdown bool) Done(item interface{}) ShutDown() ShuttingDown() bool } Implementation 1 2 3 4 5 6 7 8 9 10 11 12 13 type Type struct { // 一个work queue queue []t // queue用slice做存储 dirty set // 脏位，定义了需要处理的元素，类似于操作系统，表示已修改但为写入 processing set // 当前正在处理的元素集合 cond *sync.]]></description>
 </item><item>
-    <title>code-generator</title>
-    <link>https://cylonchau.github.io/ch3.3-code-generator.html</link>
+    <title>client-go架构 - 什么是informer</title>
+    <link>https://cylonchau.github.io/ch2.2-informer.html</link>
     <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch3.3-code-generator.html</guid>
-    <description><![CDATA[[toc]
-Overview Kubernetes中提供了多种自定义控制器的方式：
-code-generator kubebuilder Operator Controller 作为CRD的核心，这里将解释如何使用 code-generator 来创建自定义的控制器，作为文章的案例，将完成一个 Firewalld Port 规则的控制器作为描述，通过 Kubernetes 规则来生成对应节点上的 iptables规则。
-Prerequisites CRD 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 apiVersion: apiextensions.k8s.io/v1 kind: CustomResourceDefinition metadata: name: ports.firewalld.fedoraproject.org spec: group: firewalld.fedoraproject.org scope: Namespaced names: plural: ports singular: port kind: PortRule shortNames: - fp versions: - name: v1 served: true storage: true schema: openAPIV3Schema: type: object properties: spec: type: object properties: name: type: string port: type: integer host: type: string isPermanent: type: boolean code-generator 需要预先下载 code-generator 。因为这个工具不是必需要求的。]]></description>
+    <guid>https://cylonchau.github.io/ch2.2-informer.html</guid>
+    <description><![CDATA[之前了解了client-go中的架构设计，也就是 tools/cache 下面的一些概念，那么下面将对informer进行分析
+Controller 在client-go informer架构中存在一个 controller ，这个不是 Kubernetes 中的Controller组件；而是在 tools/cache 中的一个概念，controller 位于 informer 之下，Reflector 之上。code
+Config 从严格意义上来讲，controller 是作为一个 sharedInformer 使用，通过接受一个 Config ，而 Reflector 则作为 controller 的 slot。Config 则包含了这个 controller 里所有的设置。
+1 2 3 4 5 6 7 8 9 type Config struct { Queue // DeltaFIFO ListerWatcher // 用于list watch的 Process ProcessFunc // 定义如何从DeltaFIFO中弹出数据后处理的操作 ObjectType runtime.Object // Controller处理的对象数据，实际上就是kubernetes中的资源 FullResyncPeriod time.Duration // 全量同步的周期 ShouldResync ShouldResyncFunc // Reflector通过该标记来确定是否应该重新同步 RetryOnError bool } controller 然后 controller 又为 reflertor 的上层]]></description>
 </item><item>
-    <title>controller-runtime</title>
-    <link>https://cylonchau.github.io/ch3.4-controller-runtime.html</link>
+    <title>Kubernetes组件核心 - client-go</title>
+    <link>https://cylonchau.github.io/ch2.1-client-go.html</link>
     <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch3.4-controller-runtime.html</guid>
+    <guid>https://cylonchau.github.io/ch2.1-client-go.html</guid>
     <description><![CDATA[[toc]
-Overview controller-runtime 是 Kubernetes 社区提供可供快速搭建一套 实现了controller 功能的工具，无需自行实现Controller的功能了；在 Kubebuilder 与 Operator SDK 也是使用 controller-runtime 。本文将对 controller-runtime 的工作原理以及在不同场景下的使用方式进行简要的总结和介绍。
-controller-runtime structure controller-runtime 主要组成是需要用户创建的 Manager 和 Reconciler 以及 Controller Runtime 自己启动的 Cache 和 Controller 。
-Manager：是用户在初始化时创建的，用于启动 Controller Runtime 组件 Reconciler：是用户需要提供来处理自己的业务逻辑的组件（即在通过 code-generator 生成的api-like而实现的controller中的业务处理部分）。 Cache：一个缓存，用来建立 Informer 到 ApiServer 的连接来监听资源并将被监听的对象推送到queue中。 Controller： 一方面向 Informer 注册 eventHandler，另一方面从队列中获取数据。controller 将从队列中获取数据并执行用户自定义的 Reconciler 功能。 图：controller-runtime structure 图：controller-runtime flowchart 由图可知，Controller会向 Informer 注册一些列eventHandler；然后Cache启动Informer（informer属于cache包中），与ApiServer建立监听；当Informer检测到资源变化时，将对象加入queue，Controller 将元素取出并在用户端执行 Reconciler。
-Controller引入 我们从 controller-rumtime项目的 example 进行引入看下，整个架构都是如何实现的。
-可以看到 example 下的实际上实现了一个 reconciler 的结构体，实现了 Reconciler 抽象和 Client 结构体]]></description>
+Prepare Introduction 从2016年8月起，Kubernetes官方提取了与Kubernetes相关的核心源代码，形成了一个独立的项目，即client-go，作为官方提供的go客户端。Kubernetes的部分代码也是基于这个项目的。
+client-go 是kubernetes中广义的客户端基础库，在Kubernetes各个组件中或多或少都有使用其功能。。也就是说，client-go可以在kubernetes集群中添加、删除和查询资源对象（包括deployment、service、pod、ns等）。
+在了解client-go前，还需要掌握一些概念
+在客户端验证 API 使用证书和使用令牌，来验证客户端 kubernetes集群的访问模式 使用证书和令牌来验证客户端 在访问apiserver时，会对访问者进行鉴权，因为是https请求，在请求时是需要ca的，也可以使用 -k 使用insecure模式
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 $ curl --cacert /etc/kubernetes/pki/ca.crt https://10.0.0.4:6443/version \{ &#34;major&#34;: &#34;1&#34;, &#34;minor&#34;: &#34;18+&#34;, &#34;gitVersion&#34;: &#34;v1.18.20-dirty&#34;, &#34;gitCommit&#34;: &#34;1f3e19b7beb1cc0110255668c4238ed63dadb7ad&#34;, &#34;gitTreeState&#34;: &#34;dirty&#34;, &#34;buildDate&#34;: &#34;2022-05-17T12:45:14Z&#34;, &#34;goVersion&#34;: &#34;go1.16.15&#34;, &#34;compiler&#34;: &#34;gc&#34;, &#34;platform&#34;: &#34;linux/amd64&#34; } $ curl -k https://10.]]></description>
 </item><item>
-    <title>k8s开发环境准备</title>
-    <link>https://cylonchau.github.io/ch0-k8s-env-perpare.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
+    <title>基于Prometheus的Kubernetes网络调度器</title>
+    <link>https://cylonchau.github.io/ch4.3-custom-scheduler.html</link>
+    <pubDate>Mon, 08 Aug 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch0-k8s-env-perpare.html</guid>
-    <description><![CDATA[下载源码 根据kubernetes github 方式可以
-1 2 3 4 5 mkdir -p $GOPATH/src/k8s.io cd $GOPATH/src/k8s.io git clone https://github.com/kubernetes/kubernetes cd kubernetes make 如果有需要可以切换到对应的版本进行学习或者修改，一般kubernetes版本为对应tag
-1 2 3 git fetch origin [远程tag名] git checkout [远程tag名] git branch 配置goland kubernetes本身是支持gomod的，但源码这里提供了所有的依赖在staging/src/k8s.io/ 目录下，可以将此目录内的文件复制到 vendor下。
-对于 k8s.io/kubernetes/pkg/ 发红的（找不到依赖的），可以将手动创建一个目录在 vendor/k8s.io/kubernetes/ 将克隆下来的根目录 pkg 复制到刚才的目录下。
-goland中，此时不推荐使用go mod模式了，这里goland一定要配置GOPATH的模式。对应的GOPATH加入 {project}/vender即可。 这里可以添加到 goland中 project GOPATH里。]]></description>
+    <guid>https://cylonchau.github.io/ch4.3-custom-scheduler.html</guid>
+    <description><![CDATA[Overview 本文将深入讲解 如何扩展 Kubernetes scheduler 中各个扩展点如何使用，与扩展scheduler的原理，这些是作为扩展 scheduler 的所需的知识点。最后会完成一个实验，基于网络流量的调度器。
+kubernetes调度配置 kubernetes集群中允许运行多个不同的 scheduler ，也可以为Pod指定不同的调度器进行调度。在一般的Kubernetes调度教程中并没有提到这点，这也就是说，对于亲和性，污点等策略实际上并没有完全的使用kubernetes调度功能，在之前的文章中提到的一些调度插件，如基于端口占用的调度 NodePorts 等策略一般情况下是没有使用到的，本章节就是对这部分内容进行讲解，这也是作为扩展调度器的一个基础。
+Scheduler Configuration [1] kube-scheduler 提供了配置文件的资源，作为给 kube-scheduler 的配置文件，启动时通过 --onfig= 来指定文件。目前各个kubernetes版本中使用的 KubeSchedulerConfiguration 为，
+1.21 之前版本使用 v1beta1 1.22 版本使用 v1beta2 ，但保留了 v1beta1 1.23, 1.24, 1.25 版本使用 v1beta3 ，但保留了 v1beta2，删除了 v1beta1 下面是一个简单的 kubeSchedulerConfiguration 示例，其中 kubeconfig 与启动参数 --kubeconfig 是相同的功效。而 kubeSchedulerConfiguration 与其他组件的配置文件类似，如 kubeletConfiguration 都是作为服务启动的配置文件。
+1 2 3 4 apiVersion: kubescheduler.config.k8s.io/v1beta1 kind: KubeSchedulerConfiguration clientConnection: kubeconfig: /etc/srv/kubernetes/kube-scheduler/kubeconfig Notes: --kubeconfig 与 --config 是不可以同时指定的，指定了 --config 则其他参数自然失效 [2]]]></description>
 </item><item>
-    <title>kubernetes API</title>
-    <link>https://cylonchau.github.io/ch1.1-kubernetes-api.html</link>
-    <pubDate>Sun, 28 Aug 2022 00:00:00 &#43;0000</pubDate>
+    <title>如何理解kubernetes调度框架与插件？</title>
+    <link>https://cylonchau.github.io/ch4.2-scheduling-algorithm.html</link>
+    <pubDate>Wed, 27 Jul 2022 00:00:00 &#43;0000</pubDate>
     <author>作者</author>
-    <guid>https://cylonchau.github.io/ch1.1-kubernetes-api.html</guid>
-    <description><![CDATA[[toc]
-APIServer 在kubernetes架构概念层面上，Kubernetes由一些具有不同角色的服务节点组成。而master的控制平面由 Apiserver Controller-manager 和 Scheduler 组成。
-Apiserver 从概念上理解可以分为 api 和 object 的集合，api 可以理解为，处理读写请求来修改相应 object 的组件；而 object 可以表示为 kubernetes 对象，如 Pod， Deployment 等 。
-基于声明式的API 在命令式 API 中，会直接发送要执行的命令，例如：运行、停止 等命令。在声明式API 中，将声明希望系统执行的操作，系统将不断将自身状态朝希望状态改变。
-为什么使用声明式 在分布式系统中，任何组件随时都可能发生故障，当组件故障恢复时，需要明白自己需要做什么。在使用命令式时，出现故障的组件可能在异常时错过调用，并且在恢复时需要其他外部组件进行干预。而声明式仅需要在恢复时确定当前状态以确定他需要做什么。
-External APIs 在kubernetes中，控制平面是透明的，及没有internal APIs。这就意味着Kubernetes组件间使用相同的API交互。这里通过一个例子来说明外部APIs与声明式的关系。
-例如，创建一个Pod对象，Scheduler 会监听 API来完成创建，创建完成后，调度程序不会命令被分配节点启动Pod。而在kubelet端，发现pod具有与自己相同的一些信息时，会监听pod状态。如改变kubelet则修改状态，如果删除掉Pod（对象资源不存在与API中），那么kubelet则将终止他。
-为什么不使用Internal API 使用External API可以使kubernetes组件都使用相同的API，使得kubernetes具有可扩展性和可组合性。对于kubernetes中任何默认组件，如不足满足需求时，都可以更换为使用相同API的组件。
-另外，外部API还可轻松的使用公共API来扩展kubernetes的功能
-API资源 从广义上讲，kubernetes对象可以用任何数据结构来表示，如：资源实例、配置（审计策略）或持久化实体（Pod）；在使用中，常见到的就是对应YAML的资源清单。转换出来就是RESTful地址，那么应该怎么理解这个呢？即，对资源的动作（操作）如图所示。但如果需要了解Kubernetes API需要掌握一些概念才可继续。
-Group 出于对kubernetes扩展性的原因，将资源类型分为了API组进行独立管理，可以通过 kubectl api-resources查看。在代码部分为 vendor/k8s.io/api
-也可以通过 kubectl xxx -v 6 来查看 kubectl 命令进行了那些API调用
-1 2 3 4 5 6 7 8 9 10 11 $ kubectl get pods -v 6 I0513 21:54:33.]]></description>
+    <guid>https://cylonchau.github.io/ch4.2-scheduling-algorithm.html</guid>
+    <description><![CDATA[调度框架 [1] 本文基于 kubernetes 1.24 进行分析
+调度框架（Scheduling Framework）是Kubernetes 的调度器 kube-scheduler 设计的的可插拔架构，将插件（调度算法）嵌入到调度上下文的每个扩展点中，并编译为 kube-scheduler
+在 kube-scheduler 1.22 之后，在 pkg/scheduler/framework/interface.go 中定义了一个 Plugin 的 interface，这个 interface 作为了所有插件的父级。而每个未调度的 Pod，Kubernetes 调度器会根据一组规则尝试在集群中寻找一个节点。
+1 2 3 type Plugin interface { Name() string } 下面会对每个算法是如何实现的进行分析
+在初始化 scheduler 时，会创建一个 profile，profile是关于 scheduler 调度配置相关的定义
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 func New(client clientset.Interface, ... profiles, err := profile.]]></description>
+</item><item>
+    <title>kube-scheduler的调度上下文</title>
+    <link>https://cylonchau.github.io/ch4.1-schedule-workflow.html</link>
+    <pubDate>Thu, 21 Jul 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch4.1-schedule-workflow.html</guid>
+    <description><![CDATA[Scheduler Scheduler 是整个 kube-scheduler 的一个 structure，提供了 kube-scheduler 运行所需的组件。
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 type Scheduler struct { // Cache是一个抽象，会缓存pod的信息，作为scheduler进行查找，操作是基于Pod进行增加 Cache internalcache.Cache // Extenders 算是调度框架中提供的调度插件，会影响kubernetes中的调度策略 Extenders []framework.Extender // NextPod 作为一个函数提供，会阻塞获取下一个ke&#39;diao&#39;du NextPod func() *framework.QueuedPodInfo // Error is called if there is an error. It is passed the pod in // question, and the error Error func(*framework.]]></description>
+</item><item>
+    <title>kubernetes的决策组件 - kube-scheduler原理分析</title>
+    <link>https://cylonchau.github.io/ch4-scheduler.html</link>
+    <pubDate>Mon, 18 Jul 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch4-scheduler.html</guid>
+    <description><![CDATA[Overview [1] kubernetes集群中的调度程序 kube-scheduler 会 watch 未分配节点的新创建的Pod，并未该Pod找到可运行的最佳（特定）节点。那么这些动作或者说这些原理是怎么实现的呢，让我们往下剖析下。
+对于新创建的 pod 或其他未调度的 pod来讲，kube-scheduler 选择一个最佳节点供它们运行。但是，Pod 中的每个容器对资源的要求都不同，每个 Pod 也有不同的要求。因此，需要根据具体的调度要求对现有节点进行过滤。
+在Kubernetes集群中，满足 Pod 调度要求的节点称为可行节点 （ feasible nodes FN） 。如果没有合适的节点，则 pod 将保持未调度状态，直到调度程序能够放置它。也就是说，当我们创建Pod时，如果长期处于 Pending 状态，这个时候应该看你的集群调度器是否因为某些问题没有合适的节点了
+调度器为 Pod 找到 FN 后，然后运行一组函数对 FN 进行评分，并在 FN 中找到得分最高的节点来运行 Pod。
+调度策略在决策时需要考虑的因素包括个人和集体资源需求、硬件/软件/策略约束 （constraints）、亲和性 (affinity) 和反亲和性（ anti-affinity ）规范、数据局部性、工作负载间干扰等。
+如何为pod选择节点？ kube-scheduler 为pod选择节点会分位两部：
+过滤 (Filtering) 打分 (Scoring) 过滤也被称为预选 （Predicates），该步骤会找到可调度的节点集，然后通过是否满足特定资源的请求，例如通过 PodFitsResources 过滤器检查候选节点是否有足够的资源来满足 Pod 资源的请求。这个步骤完成后会得到一个包含合适的节点的列表（通常为多个），如果列表为空，则Pod不可调度。
+打分也被称为优选（Priorities），在该步骤中，会对上一个步骤的输出进行打分，Scheduer 通过打分的规则为每个通过 Filtering 步骤的节点计算出一个分数。
+完成上述两个步骤之后，kube-scheduler 会将Pod分配给分数最高的 Node，如果存在多个相同分数的节点，会随机选择一个。
+kubernetes的调度策略 Kubernetes 1.21之前版本可以在代码 kubernetes\pkg\scheduler\algorithmprovider\registry.go 中看到对应的注册模式，在1.22 scheduler 更换了其路径，对于registry文件更换到了kubernetes\pkg\scheduler\framework\plugins\registry.go ；对于kubernetes官方说法为，调度策略是用于“预选” (Predicates )或 过滤（filtering ） 和 用于 优选（Priorities）或 评分 (scoring)的]]></description>
+</item><item>
+    <title>Understanding Kubernetes 4A - Admission Control</title>
+    <link>https://cylonchau.github.io/ch3.7-admission-webhook.html</link>
+    <pubDate>Mon, 11 Jul 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch3.7-admission-webhook.html</guid>
+    <description><![CDATA[本文是关于Kubernetes 4A解析的第三章
+深入理解Kubernetes 4A - Authentication源码解析 深入理解Kubernetes 4A - Authorization源码解析 深入理解Kubernetes 4A - Admission Control源码解析 深入理解Kubernetes 4A - Audit源码解析 所有关于Kubernetes 4A部分代码上传至仓库 github.com/cylonchau/hello-k8s-4A
+如有错别字或理解错误地方请多多担待，代码是以1.24进行整理，实验是以1.19环境进行，差别不大
+BACKGROUND admission controllers的特点：
+可定制性：准入功能可针对不同的场景进行调整。 可预防性：审计则是为了检测问题，而准入控制器可以预防问题发生 可扩展性：在kubernetes自有的验证机制外，增加了另外的防线，弥补了RBAC仅能对资源提供安全保证。 下图，显示了用户操作资源的流程，可以看出 admission controllers 作用是在通过身份验证资源持久化之前起到拦截作用。在准入控制器的加入会使kubernetes增加了更高级的安全功能。
+图：Kubernetes API 请求的请求处理步骤图 Source：https://kubernetes.io/blog/2019/03/21/a-guide-to-kubernetes-admission-controllers/ 这里找到一个大佬博客画的图，通过两张图可以很清晰的了解到admission webhook流程，与官方给出的不一样的地方在于，这里清楚地定位了kubernetes admission webhook 处于准入控制中，RBAC之后，push 之前。
+图：Kubernetes API 请求的请求处理步骤图（详细） Source：https://www.armosec.io/blog/kubernetes-admission-controller/ 两种控制器有什么区别？ 根据官方提供的说法是
+Mutating controllers may modify related objects to the requests they admit; validating controllers may not
+从结构图中也可以看出，validating 是在持久化之前，而 Mutating 是在结构验证前，根据这些特性我们可以使用 Mutating 修改这个资源对象内容（如增加验证的信息），在 validating 中验证是否合法。]]></description>
+</item><item>
+    <title>利用kubernetes中的leader选举机制自定义HA应用</title>
+    <link>https://cylonchau.github.io/ch3.6-leader-election-eg.html</link>
+    <pubDate>Wed, 29 Jun 2022 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://cylonchau.github.io/ch3.6-leader-election-eg.html</guid>
+    <description><![CDATA[Backgroud 前一章中，对kubernetes的选举原理进行了深度剖析，下面就通过一个example来实现一个，利用kubernetes提供的选举机制完成的高可用应用。
+对于此章需要提前对一些概念有所了解后才可以继续看下去
+leader election mechanism RBCA Pod runtime mechanism Implementation 代码实现 如果仅仅是使用Kubernetes中的锁，实现的代码也只有几行而已。
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 package main import ( &#34;context&#34; &#34;flag&#34; &#34;fmt&#34; &#34;os&#34; &#34;os/signal&#34; &#34;syscall&#34; &#34;time&#34; metav1 &#34;k8s.]]></description>
 </item></channel>
 </rss>

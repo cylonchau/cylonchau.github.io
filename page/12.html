@@ -77,6 +77,49 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html">istio流量治理</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2020-08-20 00:00:00">2020-08-20 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/taffic-management.html"><i class="far fa-folder fa-fw"></i>taffic management</a></span></div><div class="content">[toc]
+sidecar 介绍 在istio的流量管理等功能，都需要通过下发的配置应用到应用运行环境执行后生效，负责执行配置规则的组件在service mesh中承载应用代理的实体被称为side-car
+Istio对流量策略管理等功能无须对应用程序做变动，
+这种对应用服务完全非侵入的方式完全依赖于Side-car，应用的流量有Sidecar拦截并进行认证、鉴权、策略执行等治理功能。在Kubernetes平台中，Side-car容器于应用容器在同一个Pod中并共享网络名词控件，因此Side-car容易可以通过iptables规则拦截进出流量进行管理。
+sidecar的注入 sidecar是service mesh无侵入式架构的应用模式，在使用sidecar部署服务网格时，无需再每个应用节点运行服务代理，但是需要在每个应用程序中部署一个sidecar容器，来接管所有进出流量。
+Sidecar会将额外容器注入到 Pod 模板中。Istio中的数据平面组件所需的容器有：
+istio-init 用于设置容器的iptables规则，目的是为了接管进出流量。在应用容器前启动并运行完成其生命周期，多个init容器按顺序依次完成。 istio-proxy 基于envoy的sidecar的代理。 sidecar被注入的方式 手动注入，使用 istioctl 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 istio-sidecar-injector 和的 istio 两个 Configmap 对象中获取配置。 refer-istio-sidecar-injector
+自动注入，在部署应用是，istio自动将sidecar注入到pod。这是istio推荐的方法，Istio在基于Kubernetes平台之上，需要在部署应用之前，对要标记部署应用程序的名称空间标记 kubectl label namespace default istio-injection=enabled 这个操作是对名称空间级别生效的。而后所部署的Pod中会注入sidecar执行上面sidecar容器的操作。
+istio injector 注入原理 Sidecar Injector是Istio中实现自动注入Sidecar的组件，它是以Kubernetes准入控制器 AdmissionController 的形式运行的。Admission Controller 的基本工作原理是拦截Kube-apiserver的请求，在对象持久化之前、认证鉴权之后进行拦截。
+Admission Controller有两种：一种是内置的，另一种是用户自定义的。
+Kubernetes允许用户以Webhook的方式自定义准入控制器，Sidecar Injector就是这样一种特殊的MutatingAdmissionWebhook。
+Sidecar Injector只在创建Pod时进行Sidecar容器注入，在Pod的创建请求到达 Kube-apiserver 后，首先进行认证鉴权，然后在准入控制阶段，Kube-apiserver以REST的方式同步调用Sidecar Injector Webhook服务进行init与istio-proxy容器的注入，最后将Pod对象持久化存储到etcd中。
+sidecar容器 sidecar容器内部运行着 pilot-agent 与 envoy
+Pilot-agent：基于kubernetesAPI资源对象为envoy初始化可用的bootstrap配置进行启动，在运行后管理envoy运行状态，如配置变更，出错重启等。
+envoy：数据平面的执行层，由 pilot-agent 所启动的，从xDS API动态获取配置信息。Envoy并通过流量拦截机制处理入栈及出栈的流量。
+envoy的listener 在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 DestnationRule VirtualService Gateway等资源提供的配置，生成对应的Envoy配置。</div><div class="post-footer">
+        <a href="/istio-sidecar%E6%B5%81%E9%87%8F%E6%B2%BB%E7%90%86.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes.html">kubernetes</a>,&nbsp;<a href="/tags/istio.html">istio</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/istioctl%E5%91%BD%E4%BB%A4.html">istio命令</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2020-08-20 00:00:00">2020-08-20 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/taffic-management.html"><i class="far fa-folder fa-fw"></i>taffic management</a></span></div><div class="content">[toc]
+显示配置文件中的差异 istioctl profile diff default demo
+显示对应配置的profile istioctl profile dump demo
+显示可用的配置 istioctl profile list
+安装指定配置的istio istioctl install --set profile=demo
+生成配置清单 istioctl manifest generate
+istioctl验证安装: istioctl manifest generate --set profile=demo |istioctl verify-install -
+istio的非侵入式流量治理
+流量治理是一个非常宽泛的话题，例如：
+◎ 动态修改服务间访问的负载均衡策略，比如根据某个请求特征做会话保持；
+◎ 同一个服务有两个版本在线，将一部分流量切到某个版本上；
+◎ 对服务进行保护，例如限制并发连接数、限制请求数、隔离故障服务实例等；
+◎ 动态修改服务中的内容，或者模拟一个服务运行故障等。
+在Istio中实现这些服务治理功能时无须修改任何应用的代码。较之微服务的SDK方式，Istio以一种更轻便、透明的方式向用户提供了这些功能。用户可以用自己喜欢的任意语言和框架进行开发，专注于自己的业务，完全不用嵌入任何治理逻辑。只要应用运行在Istio的基础设施上，就可以使用这些治理能力。 一句话总结 Istio 流量治理的目标：以基础设施的方式提供给用户非侵入的流量治理能力，用户只需 关注自己的业务逻辑开发，无须关注服务访问管理。
+istio服务架构 在istio1.8中，istio的分为 envoy （数据平面） 、istiod （控制平面） 、addons（管理插件） 及 istioctl （命令行工具，用于安装、配置、诊断分析等操作）组成。
+Pilot Pilot是Istio控制平面流量管理的核心组件，管理和配置部署在Istio服务网格中的所有Envoy代理实例。
+pilot-discovery为envoy sidecar提供服务发现，用于路由及流量的管理。通过kubernetes CRD资源获取网格的配置信息将其转换为xDS接口的标准数据格式后，通过gRPC分发至相关的envoy sidecar
+Pilot组件包含工作在控制平面中的 pilot-discovery 和工作与数据平面的pilot-agent 与Envoy(istio-proxy)
+pilot-discovery主要完成如下功能：</div><div class="post-footer">
+        <a href="/istioctl%E5%91%BD%E4%BB%A4.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes.html">kubernetes</a>,&nbsp;<a href="/tags/istio.html">istio</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/update-openssh-in-centos6.html">CentOS 6.8升级OpenSSH7.7p</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2020-08-02 00:00:00">2020-08-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/openssl.html"><i class="far fa-folder fa-fw"></i>openssl</a></span></div><div class="content">近期因centos 6.x 默认openssh扫描存在大量漏洞，基于安全考虑，需要将openssh_5.3p1升级为最新版，网上查了很多教程，发现openssh存在大量依赖，不解决依赖问题很难保证其他服务政策。而openssl又被大量程序依赖。实在是头疼。最后发现一个不破坏各种依赖又可以完美升级的方案
 注：curl wget yum等依赖openssl gitlab依赖openssh因卸载openssh与openssl编译安装导致各种依赖程序被破坏，虽然最后升级成功，但是wget curl 和代码库被破坏。
@@ -195,50 +238,6 @@ http://hi.baidu.com/adriannet/item/8d488889b3d7c859850fab5f.
 方法2：利用第一个文件认证的思路，去LDAP查询，还可以和本地文件比较。</div><div class="post-footer">
         <a href="/openvpn-identifiy-authentication.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/openvpn.html">openvpn</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/openvpn-introduction.html">openvpn introduction</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-11-18 00:00:00">2019-11-18 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/vpn.html"><i class="far fa-folder fa-fw"></i>vpn</a></span></div><div class="content">[toc]
-1 VPN概述 VPN(全称Virtual Private Network)虚拟专用网络，是依靠ISP和其他的NSP，在公共网络中建立专用的数据通信网络的技术，可以为企业与企业之间或者个人与企业之间提供安全的数据传输隧道服务。在VPN中任意两点之间的连接并没有传统专网所需的端到端的物理链路，而是利用公共网络资源动态组成的，可以理解为通过私有的隧道技术在公共数据网络上模拟出来的和专网有同样功能的点到点的专线技术，所谓虚拟是指不需要去拉实际的长途物理线路，而是借用了公共Internet网络实现。
-vpn直观的形象图：
-VPN Server/Client <---------------------------------> VPN Server/Client1.1 VPN的作用 VPN功能可以帮助公司里的远程用户(出差，家里)、公司的分支机构、商业合作伙伴及供应商等公司和自己的公司内部网络之间建立可信的安全连接或者是局域网连接，确保数据的加密安全传输和业务访问，对至运维工程师来说，还可以连接不同的机房为局域网，处理相关的业务流。我们可以通过一张网络逻辑图来描述VPN的作用。
-图：openvpn架构Source：https://www.slideteam.net/vpn-tunnel-architecture-connecting-corporate-and-branch-office.html
-1.2 VPN的分类 我们根据VPN的常见企业应用，将VPN分为以下4类应用
-1.2.1 远程访问VPN服务 即通过个人电脑远程拨号到企业办公网络。
-一般为企业内部员工出差、休假或特殊情况下在远离办公室的时候，又有需求访问公司的内部网络获取相关资源，就可以通过VPN拨号到公司内部.此时远程拨号的员工和办公室内的员工以及其他拨号的员工之间都相当于一个局域网络内。例如:访问内部的域控制器，文件服务器，OA系统，ERP, HTTP服务，内网聊天工具等局域网服务应用。
-对于运维人且就是需要个人电脑远程拨号到企业网站IDC机房，远程维护内网服务器（一般无外网IP）。
-此点是技术人员特别是运维人且在工作中会经常用这个方法维护大量的机房内无外网的服务器及网络设备。
-1.2.2 企业内部网络之间VPN服务 在公司的分支机构的局域网和公司总部LAN之间的VPN连接。通过公网Internet建立VPN将公司在各地的分支机构的LAN连接到公司总部的LAN。例如:各大超市之间业务结算等。
-这是由于地域的原因而产生的VPN的需求，通过VPN让不同地域内的机器可以互相访问，就好像是一个局域网一样。例如：办公室互联协同办公，机房互联数据同步及业务访问等。
-1.2.3 互联网公司多IDC机房之间VPN服务 此处是运维架构人员需要考虑的问题。不同机房之间业务管理和业务访问，数据流动。
-1.2.4 企业外部VPN服务 在供应商、合作伙伴的LAN和本公司的LAN之间建立的VPN服务。
-1.2.5 访问外国网站 翻墙的应用
-1.3 常贝隧道协议介绍 1.3.1 PPTP 点对点隧道协议(PPTP)是由包括微软和3Com等公司组成的PPTP论坛开发的一种点对点隧道协议，基于拨号使用的PPP协议，使用PAP或CHAP之类的加密算法，或者使用Microsoft的点对点加密算法MPPE。其通过跨越基于TCP/IP的数据网络创建VPN。实现了从远程客户端到专用企业服务器之间数据的安全传输。PPTP支持通过公共网络(例如Internet)建立按需的、多协议的、虚拟专用网络。PPTP允许加密IP通讯，然后在要跨越公司IP网络或公共IP网络(如Internet)发送的IP头中对其进行封装。典型的linux平台的开源软件为pptp。
-PPTP属于点对点方式的应用，比较适合远程的企业用户拨号到企业进行办公等的应用。
-1.3.2 L2TP L2TP第2层隧道协议(L2TP)是IETF基于L2F (Cisco的第二层转发协议)开发的PPTP的后续版本。是一种工业标准Internet隧道协议，其可以为跨越面向数据包的媒体发送点到点协议(PPP)框架提供封装。PPTP和L2TP都使用PPP协议对数据进行封装，然后添加附加包头用于数据在互联网络上的传输。PPTP只能在两端点间建立单一隧道。L2TP支持在两端点间使用多隧道，用户可以针对不同的服务质量创建不同的隧道。L2TP可以提供隧道验证，而PPTP则不支持隧道验证。但是当L2TP或PPTP 与 IPSEC 共同使用时，可以由IPSEC提供隧道验证，不需要在第2层协议上验证隧道使用L2TP。PPTP要求互联 网络为IP网络。L2TP只要求隧道媒介提供面向数据包的点对点的连接，L2TP可以在IP(使用UDP)，帧中继永久虚拟电路(PVCs)，X.25虚拟电路(VCs)或ATM VCs网络上使用。
-L2TP (Layer 2 Tunneling Protocol)
-在计算机网络中，第2层隧道协议（L2TP）是一种隧道协议，用于支持虚拟专用网络（VPN）或作为ISP提供服务的一部分。它本身不提供任何加密或机密性。相反，它依靠它在隧道内传递的加密协议来提供隐私。
-由于L2TP协议缺乏固有的机密性，因此通常与IPsec一起实施。这被称为L2TP / IPsec，并在IETF RFC 3193中进行了标准化。
-Reference
-L2TP
-1.3.3 IPSec IP安全协议(IPSec: IP Security)实际上是一套协议包而不是一个独立的协议。从1995年开始IPSec的研究以来，IETF IPSec工作组在它的主页上发布了几十个Internet草案文献和12个RFC文件。其中，比较重要的有RFC2409 IKE(互连网密钥交换)、RFC2401 IPSec协议、RFC2402 AH验证包头、RFC2406 ESP加密数据等文件。</div><div class="post-footer">
-        <a href="/openvpn-introduction.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/openvpn.html">openvpn</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html">prometheus golang_client开发Exporter</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-11-02 00:00:00">2019-11-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ops.html"><i class="far fa-folder fa-fw"></i>ops</a>&nbsp;<a href="/categories/prometheus.html"><i class="far fa-folder fa-fw"></i>prometheus</a></span></div><div class="content">exporter是一个独立运行的采集程序，其中的功能需要有这三部分
-自身是HTTP服务器，可以相应从外部发过来的HTTP GET请求。 自身需要运行在后台，并可以定期触发抓取本地的监控数据。 返回给prometheus_server的内容是要符合prometheus规定的metrics类型的key-Value promethes监控中对于采集过来的数据统一称为metrice数据
-Metrics，为某个系统某个服务做监控、做统计，就需要用到Metrics.
-metrics是一种对采样数掘的总称（metrics并不代表某一种具体的数据格式是一种对于度星计算单位的抽象）
-metrics的几种主要的类型
-METRIC TYPES prometheus客户端库提供4中metric类型
-counter 计数器，累加指标 gauge 测量指标 summary 概略 histogram 直方图 counter Counter计数器，累加的指标数据，随时间逐步增加，如程序运行次数、运行错误发生总数。如网卡流量，代表持续增加的数据包或者传输字节的累加值
-比如对用户访问量的采样数据
-我们的产品被用户访问一次就是1过了10分钟后积累到100
-过一天后累积到20000
-一周后积累到100000-150000
-1 2 3 4 5 6 7 8 test = prometheus.NewSummaryVec( prometheus.SummaryOpts{ Name: &#34;zhangsan&#34;, Help: &#34;username&#34;, Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001}, }, []string{&#34;service&#34;}, ) 1 2 3 4 5 6 7 # HELP zhangsan username # TYPE zhangsan summary zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.5&#34;} 0.4933459627210085 zhangsan{service=&#34;aaa&#34;,quantile=&#34;0.9&#34;} 0.</div><div class="post-footer">
-        <a href="/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/prometheus.html">prometheus</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
