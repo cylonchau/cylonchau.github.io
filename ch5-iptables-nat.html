@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch5 配置网关及服务器地址映射 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ch5 配置网关及服务器地址映射" />
+<meta property="og:description" content="1 办公室路由网关架构图 对应实际企业办公上网场景逻辑图
+2.实验环境配置需求前期准备 2.1 服务器网关B需要准备如下条件 物理条件是具备上网卡，建议eth0外网地址（这里是192.168.1.5,gw 192.168.1.2），ech1内网地址（这里是172.168.1.10，内网卡不配GW。 确保服务器网关B要可以上网（B上网才能代理别的机器上网）。可以通过ping baidu.com或外网IP测试。 内核文件/etc/sysctl.conf里开启转发功能。在服务器网关B192.168.1.5机器上开启路由转发功能。编辑/etc/sysctl.conf修改内容为net.ipv4.ip_forward = 1，然后执行sysctl -p使修改生效 iptables的filter表的FORWARD链允许转发 不要filter防火墙功能，共享上网，因此最好暂停防火墙测试/etc/init.d/tables stop 2.2 加载iptables内核模块 配置网关需要iptables的nat表，PREROUTING，POSTROUTING。
+(1)载入iptables内核模块，执行并放入rc.local
+1 2 3 4 5 6 7 modprobe ip_tables \ modprobe iptable_filter \ modprobe iptable_nat \ modprobe ip_conntrack \ modprobe ip_conntrack_ftp \ modprobe ip_nat_ftp \ modprobe ipt_state 1 2 3 [root@Lnmp_01 ~]# lsmod|egrep ^ip iptable_nat 6051 0 iptable_filter 2793 0 2.3 局域网的机器： 局域网的机器有一块网卡即可，确保局域网的机器C，默认网关这只了网关服务器B的eth1内网卡IP（172.168l.1.10）。把主机C的gateway设置为B的内网卡192的网卡ip即172.168l.1.10。 检查手段： 分别ping网关服务器B的内外网卡IP，都应该是通的就对了. 出公网检查除了PING网站域名外，也要ping下外网ip，排除DNS故障。不通 ping 10.0.0.254网关也是不通的。 如上，请准备两台虚拟机B和C，其中B要有双网卡。B的内网卡的网段和C的网段一样。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch5-iptables-nat.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-10-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2016-10-22T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch5 配置网关及服务器地址映射"/>
+<meta name="twitter:description" content="1 办公室路由网关架构图 对应实际企业办公上网场景逻辑图
+2.实验环境配置需求前期准备 2.1 服务器网关B需要准备如下条件 物理条件是具备上网卡，建议eth0外网地址（这里是192.168.1.5,gw 192.168.1.2），ech1内网地址（这里是172.168.1.10，内网卡不配GW。 确保服务器网关B要可以上网（B上网才能代理别的机器上网）。可以通过ping baidu.com或外网IP测试。 内核文件/etc/sysctl.conf里开启转发功能。在服务器网关B192.168.1.5机器上开启路由转发功能。编辑/etc/sysctl.conf修改内容为net.ipv4.ip_forward = 1，然后执行sysctl -p使修改生效 iptables的filter表的FORWARD链允许转发 不要filter防火墙功能，共享上网，因此最好暂停防火墙测试/etc/init.d/tables stop 2.2 加载iptables内核模块 配置网关需要iptables的nat表，PREROUTING，POSTROUTING。
+(1)载入iptables内核模块，执行并放入rc.local
+1 2 3 4 5 6 7 modprobe ip_tables \ modprobe iptable_filter \ modprobe iptable_nat \ modprobe ip_conntrack \ modprobe ip_conntrack_ftp \ modprobe ip_nat_ftp \ modprobe ipt_state 1 2 3 [root@Lnmp_01 ~]# lsmod|egrep ^ip iptable_nat 6051 0 iptable_filter 2793 0 2.3 局域网的机器： 局域网的机器有一块网卡即可，确保局域网的机器C，默认网关这只了网关服务器B的eth1内网卡IP（172.168l.1.10）。把主机C的gateway设置为B的内网卡192的网卡ip即172.168l.1.10。 检查手段： 分别ping网关服务器B的内外网卡IP，都应该是通的就对了. 出公网检查除了PING网站域名外，也要ping下外网ip，排除DNS故障。不通 ping 10.0.0.254网关也是不通的。 如上，请准备两台虚拟机B和C，其中B要有双网卡。B的内网卡的网段和C的网段一样。"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch5-iptables-nat.html" /><link rel="prev" href="https://cylonchau.github.io/ch6-iptables-application.html" /><link rel="next" href="https://cylonchau.github.io/ch4-iptables-maintain.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch5 配置网关及服务器地址映射",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch5-iptables-nat.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "Linux, iptables","wordcount":  657 ,
+        "url": "https:\/\/cylonchau.github.io\/ch5-iptables-nat.html","datePublished": "2016-10-22T00:00:00+00:00","dateModified": "2016-10-22T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">ch5 配置网关及服务器地址映射</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/iptables.html"><i class="far fa-folder fa-fw"></i>iptables</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-10-22 00:00:00">2016-10-22 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 657 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#1-办公室路由网关架构图">1 办公室路由网关架构图</a></li>
+        <li><a href="#2实验环境配置需求前期准备">2.实验环境配置需求前期准备</a>
+          <ul>
+            <li><a href="#21-服务器网关b需要准备如下条件">2.1 服务器网关B需要准备如下条件</a></li>
+            <li><a href="#22-加载iptables内核模块">2.2 加载iptables内核模块</a></li>
+            <li><a href="#23-局域网的机器">2.3 局域网的机器：</a></li>
+          </ul>
+        </li>
+        <li><a href="#3-先做一些测试记录">3 先做一些测试记录</a></li>
+        <li><a href="#4-根据逻辑图实现如下要求">4 根据逻辑图实现如下要求</a>
+          <ul>
+            <li><a href="#41-局域网共享上网项目案例">4.1 局域网共享上网项目案例</a></li>
+            <li><a href="#42-把外部ip地址及端口映射到内部服务器地址及端口和贡献上网环境一样">4.2 把外部IP地址及端口映射到内部服务器地址及端口（和贡献上网环境一样）</a></li>
+            <li><a href="#ssh转发实验">ssh转发实验</a></li>
+            <li><a href="#43-实现192段外网ip和172段内网ip一对一映射">4.3 实现192段外网IP和172段内网IP一对一映射</a></li>
+            <li><a href="#44-实现192段机器和10段机器互相访问">4.4 实现192段机器和10段机器互相访问</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h3 id="1-办公室路由网关架构图">1 办公室路由网关架构图</h3>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002730248.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002730248.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002730248.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002730248.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002730248.png"
+        title="image-20221025002730248" /></p>
+<p>对应实际企业办公上网场景逻辑图</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002851351.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002851351.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002851351.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002851351.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20221025002851351.png"
+        title="image-20221025002851351" /></p>
+<h3 id="2实验环境配置需求前期准备">2.实验环境配置需求前期准备</h3>
+<h4 id="21-服务器网关b需要准备如下条件">2.1 服务器网关B需要准备如下条件</h4>
+<blockquote>
+<blockquote>
+<ol>
+<li>物理条件是具备上网卡，建议eth0外网地址（这里是192.168.1.5,gw 192.168.1.2），ech1内网地址（这里是172.168.1.10，<font style="background:#bafe01;" size=2>内网卡不配GW</font >。</li>
+<li>确保服务器网关B要可以上网（B上网才能代理别的机器上网）。可以通过ping baidu.com或外网IP测试。</li>
+<li>内核文件/etc/sysctl.conf里开启转发功能。在服务器网关B192.168.1.5机器上开启路由转发功能。编辑/etc/sysctl.conf修改内容为net.ipv4.ip_forward = 1，然后执行sysctl -p使修改生效</li>
+<li>iptables的filter表的FORWARD链允许转发</li>
+<li>不要filter防火墙功能，共享上网，因此最好暂停防火墙测试/etc/init.d/tables stop</li>
+</ol>
+</blockquote>
+</blockquote>
+<h4 id="22-加载iptables内核模块">2.2 加载iptables内核模块</h4>
+<p>配置网关需要iptables的nat表，PREROUTING，POSTROUTING。</p>
+<p><em><strong>(1)载入iptables内核模块，执行并放入rc.local</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">modprobe ip_tables <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe iptable_filter <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe iptable_nat <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe ip_conntrack <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe ip_conntrack_ftp <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe ip_nat_ftp <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>modprobe ipt_state
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>root@Lnmp_01 ~<span class="o">]</span><span class="c1"># lsmod|egrep ^ip </span>
+</span></span><span class="line"><span class="cl">iptable_nat             <span class="m">6051</span>  <span class="m">0</span> 
+</span></span><span class="line"><span class="cl">iptable_filter          <span class="m">2793</span>  <span class="m">0</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="23-局域网的机器">2.3 局域网的机器：</h4>
+<blockquote>
+<blockquote>
+<ol>
+<li>局域网的机器有一块网卡即可，确保局域网的机器C，默认网关这只了网关服务器B的eth1内网卡IP（172.168l.1.10）。把主机C的gateway设置为B的内网卡192的网卡ip即172.168l.1.10。</li>
+<li>检查手段：</li>
+<li>分别ping网关服务器B的内外网卡IP，都应该是通的就对了.</li>
+<li>出公网检查除了PING网站域名外，也要ping下外网ip，排除DNS故障。不通</li>
+<li>ping 10.0.0.254网关也是不通的。</li>
+</ol>
+</blockquote>
+</blockquote>
+<p>如上，请准备两台虚拟机B和C，其中B要有双网卡。B的内网卡的网段和C的网段一样。</p>
+<p><em><strong>网关B：假设192.168.1.0/24为外部IP，172.168.1.0/24为内部IP</strong></em></p>
+<p>eth0:192.168.1.5   IPADDR=192.168.1.5</p>
+<p>gw:192.168.1.2	GATEWAY=192.168.1.2</p>
+<p>eth1 	eth1:172.168.1.10</p>
+<p><font style="background:#bafe01;" size=2>gw：不配</font></p>
+<p>内部服务器C：</p>
+<p>eth0：172.168.1.11 	IPADDR=172.168.1.11</p>
+<p>gw：172.168.1.10（网关B的内网卡IP）		GATEWAY=172.168.1.10</p>
+<p>准备结果：</p>
+<p><strong>B网关服务器配置</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ifconfig
+</span></span><span class="line"><span class="cl">eth0      Link encap:Ethernet  HWaddr 00:0C:29:31:E5:AF  
+</span></span><span class="line"><span class="cl">          inet addr:192.168.1.4  Bcast:192.168.1.255  Mask:255.255.255.0
+</span></span><span class="line"><span class="cl"> 		......
+</span></span><span class="line"><span class="cl">eth1      Link encap:Ethernet  HWaddr 00:0C:29:31:E5:B9  
+</span></span><span class="line"><span class="cl">          inet addr:172.168.1.10  Bcast:172.168.1.255  Mask:255.255.255.0
+</span></span><span class="line"><span class="cl"><span class="c1"># 路由</span>
+</span></span><span class="line"><span class="cl">$ route -n
+</span></span><span class="line"><span class="cl">Kernel IP routing table
+</span></span><span class="line"><span class="cl">Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+</span></span><span class="line"><span class="cl">192.168.1.0     0.0.0.0         255.255.255.0   U     <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span><span class="line"><span class="cl">172.168.1.0     0.0.0.0         255.255.255.0   U     <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> eth1
+</span></span><span class="line"><span class="cl">169.254.0.0     0.0.0.0         255.255.0.0     U     <span class="m">1002</span>   <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span><span class="line"><span class="cl">169.254.0.0     0.0.0.0         255.255.0.0     U     <span class="m">1003</span>   <span class="m">0</span>        <span class="m">0</span> eth1
+</span></span><span class="line"><span class="cl">0.0.0.0         192.168.1.2     0.0.0.0         UG    <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>C为内网PC或者服务器</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ifconfig
+</span></span><span class="line"><span class="cl">eth0      Link encap:Ethernet  HWaddr 00:0C:29:BE:2D:75  
+</span></span><span class="line"><span class="cl">          inet addr:172.168.1.11  Bcast:172.168.1.255  Mask:255.255.255.0
+</span></span><span class="line"><span class="cl">....
+</span></span><span class="line"><span class="cl">$ route -n
+</span></span><span class="line"><span class="cl">Kernel IP routing table
+</span></span><span class="line"><span class="cl">Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+</span></span><span class="line"><span class="cl">172.168.1.0     0.0.0.0         255.255.255.0   U     <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span><span class="line"><span class="cl">169.254.0.0     0.0.0.0         255.255.0.0     U     <span class="m">1002</span>   <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span><span class="line"><span class="cl">0.0.0.0         172.168.1.10    0.0.0.0         UG    <span class="m">0</span>      <span class="m">0</span>        <span class="m">0</span> eth0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="3-先做一些测试记录">3 先做一些测试记录</h3>
+<p>1.登陆C主机172.168.1.11看是否能访问外部页面（配好DNS）。如ping <a href="https://www.baidu.com" target="_blank" rel="noopener noreffer">www.baidu.com</a>。正确结果：当前情况不通 lamp为10 lnmp为11</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ping www.baidu.com
+</span></span><span class="line"><span class="cl">^C
+</span></span><span class="line"><span class="cl">$ ping 61.105.221.1
+</span></span><span class="line"><span class="cl">PING 61.105.221.1 <span class="o">(</span>61.105.221.1<span class="o">)</span> 56<span class="o">(</span>84<span class="o">)</span> bytes of data.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>   2.在笔记本上分别测试telnet 172.168.1.10 22看是否能连通、结果:当前情况通。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ telnet 172.168.1.10 <span class="m">80</span>
+</span></span><span class="line"><span class="cl">Trying 172.168.1.10...
+</span></span><span class="line"><span class="cl">Connected to 172.168.1.10.
+</span></span><span class="line"><span class="cl">Escape character is <span class="s1">&#39;^]&#39;</span>.	
+</span></span><span class="line"><span class="cl">$  telnet 172.168.1.10 <span class="m">80</span>
+</span></span><span class="line"><span class="cl">Trying 172.168.1.10...
+</span></span><span class="line"><span class="cl">Connected to 172.168.1.10.
+</span></span><span class="line"><span class="cl">Escape character is <span class="s1">&#39;^]&#39;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol start="3">
+<li>在笔记本上分别测试ping 172.168.1.11看是否能连通。结果当前情况通。</li>
+<li>测试登陆172.168.1.10看是否能访问外部页面。如ping <a href="https://www.baidu.com" target="_blank" rel="noopener noreffer">www.baidu.com</a>结果当前情况通。</li>
+<li>在笔记本上分别测试telnet C主机 172.168.1.11 22 结果当前情况不通。</li>
+<li>在笔记本上分别测试ping 172.168.1.11看是否能连通。结果当前情况不通。</li>
+</ol>
+<h3 id="4-根据逻辑图实现如下要求">4 根据逻辑图实现如下要求</h3>
+<h4 id="41-局域网共享上网项目案例">4.1 局域网共享上网项目案例</h4>
+<p>1.实现c可经过b，通过A上因特网。
+解答：提示2:注意主机防火墙功能的影响，可以尝试在GW上先/etc/init.d/iptables stop后在加命令</p>
+<p>2.实际处理的局域网共享上网NAT命令
+局域网共享的两条命令方法：</p>
+<p><em><strong>方法1：适合于有固定ip外网地址的：</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A POSTROUTING -s 172.168.1.0/24 -o eth0 -j SNAT --to-source 192.168.1.4
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<ol>
+<li>-s 172.168.1.0/24办公室或IDC、内网网段。</li>
+<li>-o eth0 为网关的外网卡接口。</li>
+<li>-j SNAT &ndash;to-source 192.168.1.4是网关外网卡IP地址。</li>
+</ol>
+</blockquote>
+<p><strong>方法2：适合变化外网地址（ADSL）</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A POSTROUTING -s 172.168.1.0/24 -j MASQUERADE
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>测试结果</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ping www.baidu.com
+</span></span><span class="line"><span class="cl">PING www.a.shifen.com <span class="o">(</span>58.217.200.112<span class="o">)</span> 56<span class="o">(</span>84<span class="o">)</span> bytes of data.
+</span></span><span class="line"><span class="cl"><span class="m">64</span> bytes from 58.217.200.112: <span class="nv">icmp_seq</span><span class="o">=</span><span class="m">1</span> <span class="nv">ttl</span><span class="o">=</span><span class="m">127</span> <span class="nv">time</span><span class="o">=</span>32.1 ms
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ iptables -t nat -nL
+</span></span><span class="line"><span class="cl">Chain PREROUTING <span class="o">(</span>policy ACCEPT<span class="o">)</span>
+</span></span><span class="line"><span class="cl">target     prot opt <span class="nb">source</span>               destination         
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Chain POSTROUTING <span class="o">(</span>policy ACCEPT<span class="o">)</span>
+</span></span><span class="line"><span class="cl">target     prot opt <span class="nb">source</span>               destination         
+</span></span><span class="line"><span class="cl">SNAT       all  --  172.168.1.0/24       0.0.0.0/0           to:192.168.1.4 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>为什么要用POSTROUTING？</strong></p>
+<p>企业共享上网：</p>
+<p>1.办公网共享上网（网关要有外网IP，否则用路由（zebra））</p>
+<p>2.IDC内网机器上网</p>
+<p><em><strong>企业上网到底需要不需要linux网关？</strong></em></p>
+<p>解答：</p>
+<ol>
+<li>如果企业里有企业级路由器的情况下，可以不需要上网网关。使用网关只是解决路由器无法解决的需求（例如：上网行为，IP及端口的映射，网关杀毒）。</li>
+<li>IDC机房，大厦有固定IP的宽带，直接用网关解决上网及控制问题。</li>
+</ol>
+<h4 id="42-把外部ip地址及端口映射到内部服务器地址及端口和贡献上网环境一样">4.2 把外部IP地址及端口映射到内部服务器地址及端口（和贡献上网环境一样）</h4>
+<p>在10段主机可以通过访问192.168.1.4:80，即可访问到192.168.1.8:9000 提供的web服务。也可SSH（192.168.1.4:222 &ndash;&gt; 192.168.1.8:52113）&lt;== PREROUTING</p>
+<p><strong>C配置WEB服务器</strong></p>
+<p>解答：</p>
+<p>⑴ 在172.168.1.10开启http服务监听9000端口，然后在网关服务器B可以访问</p>
+<p>⑵ 具体转换命令：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A PREROUTING -d 192.168.1.5 -p tcp --dport <span class="m">9000</span> -j DNAT --to-destination 172.168.1.11:80
+</span></span><span class="line"><span class="cl"><span class="c1"># DNAT：目的地址转换，将将本地内部的地址映射到互联网地址</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>测试结果</strong></p>
+<p><em>清空NAT表的规则。</em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -F
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这个时候访问83的9000端口是不能访问的</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A PREROUTING -d 192.168.2.83 -p tcp --dport <span class="m">9000</span> -j DNAT --to-destination 172.168.1.11:80
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里看到访问192.168.1.5的9000端口就会映射到内网172.168.1.11的80上。</p>
+<h4 id="ssh转发实验">ssh转发实验</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 网关A IP 192.168.2.83 内网IP 172.168.1.10</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@Lnmp_01 ~<span class="o">]</span><span class="c1"># ifconfig</span>
+</span></span><span class="line"><span class="cl">eth0      Link encap:Ethernet  HWaddr 00:0C:29:AF:21:4F  
+</span></span><span class="line"><span class="cl">          inet addr:192.168.2.83  Bcast:192.168.2.255  Mask:255.255.255.0
+</span></span><span class="line"><span class="cl">eth1      Link encap:Ethernet  HWaddr 00:50:56:20:37:C2  
+</span></span><span class="line"><span class="cl">          inet addr:172.168.1.10  Bcast:172.168.1.255  Mask:255.255.255.0
+</span></span><span class="line"><span class="cl"><span class="c1"># 在网关上设置转发</span>
+</span></span><span class="line"><span class="cl">iptables -t nat -I PREROUTING  -p tcp -m tcp --dport <span class="m">9020</span> -j DNAT --to-destination 172.168.1.11:52113
+</span></span><span class="line"><span class="cl"><span class="c1"># 用外网访问网关外网IP</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@MariaDB-Test ~<span class="o">]</span><span class="c1"># ssh -p 9020 192.168.2.83</span>
+</span></span><span class="line"><span class="cl">.....
+</span></span><span class="line"><span class="cl">root@192.168.2.83<span class="err">&#39;</span>s password: 
+</span></span><span class="line"><span class="cl">Last login: Mon Dec <span class="m">12</span> 22:24:58 <span class="m">2016</span> from 192.168.2.84
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@Lamp_01 ~<span class="o">]</span><span class="c1"># ifconfig</span>
+</span></span><span class="line"><span class="cl">          inet addr:172.168.1.11  Bcast:172.168.1.255  Mask:255.255.255.0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>强调：有个网友说网关服务需要开启80服务，但不需要对外服务？</p>
+<p>测试结果：网关开启httpd:80后。</p>
+<p>此时，来自80端口的请求转发依然会转发到后端的服务器。但是iptables nat规则删除后，此时就到达了http服务的80端口所以显示的是默认页面。</p>
+<p><strong>企业应用场景：</strong></p>
+<ol>
+<li>把访问外网IP及读研口的请求映射到内网某个服务器及端口（企业内部）。</li>
+<li>硬件防火墙，把访问LVS/nginx外网VIP及80端口的请求映射到IDC负载均衡器内部IP及端口上（IDC机房的操作）</li>
+</ol>
+<p><strong>iptables企业常用案例：</strong></p>
+<ol>
+<li>lnux主机防火墙（表FILTER INPUT链）</li>
+<li>局域网机器共享上网（表：NAT POSTROUTING链）</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A POSTROUTING -s 172.168.1.0/24 -o eth0 -j SNAT --to-source 192.168.1.5
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol start="3">
+<li>外部地址和端口，映射为内部地址和端口（表：NAT PREROUTING）</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">iptables -t nat -A PREROUTING -d 192.168.1.5 -p tcp --dport <span class="m">80</span> -j DNAT --to-destination 172.168.1.11:9000
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="43-实现192段外网ip和172段内网ip一对一映射">4.3 实现192段外网IP和172段内网IP一对一映射</h4>
+<p>网关IP：eth0:192.168.1.5 ech1:172.168.1.10</p>
+<p>首先在路由网关上绑定接口外网ip，可以是别名的方式。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 访问外网IP就映射到0.8</span>
+</span></span><span class="line"><span class="cl">-A PREROUTING -d 124.42.34.112 -j DNAT --to-destination 10.0.0.8
+</span></span><span class="line"><span class="cl"><span class="c1"># 出网时候改回去</span>
+</span></span><span class="line"><span class="cl">-A POSTROUTING -s 10.0.0.8 -j SNAT --to-destination 124.42.34.112
+</span></span><span class="line"><span class="cl"><span class="c1"># 当局域网使用外网IP访问这台机器，会出现问题，只要是局域网访问这个地址，冲定向到网关，防止可能环路</span>
+</span></span><span class="line"><span class="cl">-A POSTROUTING -s 10.0.0.0/255.255.240.0 -d 124.42.34.112 -j SNAT --to-source 10.0.0.254
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="44-实现192段机器和10段机器互相访问">4.4 实现192段机器和10段机器互相访问</h4>
+<p><a href="http://v.youku.com/v_show/id_XNTAyMjAwMzI0.html" target="_blank" rel="noopener noreffer">http://v.youku.com/v_show/id_XNTAyMjAwMzI0.html</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2016-10-22 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-title="ch5 配置网关及服务器地址映射" data-hashtags="Linux,iptables"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-hashtag="Linux"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-title="ch5 配置网关及服务器地址映射" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch5-iptables-nat.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-title="ch5 配置网关及服务器地址映射"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-title="ch5 配置网关及服务器地址映射"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch5-iptables-nat.html" data-title="ch5 配置网关及服务器地址映射"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/linux.html">linux</a>,&nbsp;<a href="/tags/iptables.html">iptables</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch6-iptables-application.html" class="prev" rel="prev" title="ch6 iptables生产应用场景"><i class="fas fa-angle-left fa-fw"></i>ch6 iptables生产应用场景</a>
+            <a href="/ch4-iptables-maintain.html" class="next" rel="next" title="ch4 生产环境如何维护iptables">ch4 生产环境如何维护iptables<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-10-22T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch5 配置网关及服务器地址映射"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

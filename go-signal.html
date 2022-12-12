@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>go中的signal - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="go中的signal" />
+<meta property="og:description" content="什么是信号 在计算机科学中，信号是Unix、类Unix以及其他POSIX兼容的操作系统中进程间通讯的一种有限制的方式。它是一种异步的通知机制，用来提醒进程一个事件已经发生。
+当一个信号发送给一个进程，操作系统中断了进程正常的控制流程，如果进程定义了对信号的处理，此时，程序将进入捕获到的信号对应的处理函数，否则执行默认的处理函数。
+Linux中信号的介绍 在Linux系统共定义了64种信号，分为两大类：实时信号与非实时信号，1-31为非实时，32-64种为实时信号。
+非实时信号： 也称为不可靠信号，为早期Linux所支持的信号，不支持排队，信号可能会丢失, 比如发送多次相同的信号, 进程只能收到一次. 信号值取值区间为1~31； 实时信号： 也称为可靠信号，支持排队, 信号不会丢失, 发多少次, 就可以收到多少次. 信号值取值区间为32~64 Linux操作系统中，在终端上执行 kill -l 便可看到系统定义的所有信号
+信号表 POSIX.1-1990标准信号 此表参考自：POSIX信号
+信号 值 动作 说明 SIGHUP 1 Term 终端控制进程结束(终端连接断开) SIGINT 2 Term 用户发送INTR字符(Ctrl&#43;C)触发 SIGQUIT 3 Core 用户发送QUIT字符(Ctrl&#43;/)触发 SIGILL 4 Core 非法指令(程序错误、试图执行数据段、栈溢出等) SIGABRT 6 Core 调用abort函数触发 SIGFPE 8 Core 算术运行错误(浮点运算错误、除数为零等) SIGKILL 9 Term 无条件结束程序(不能被捕获、阻塞或忽略) SIGSEGV 11 Core 无效内存引用(试图访问不属于自己的内存空间、对只读内存空间进行写操作) SIGPIPE 13 Term 消息管道损坏(FIFO/Socket通信时，管道未打开而进行写操作) SIGALRM 14 Term 时钟定时信号 SIGTERM 15 Term 结束程序(可以被捕获、阻塞或忽略) SIGUSR1 30,10,16 Term 用户保留 SIGUSR2 31,12,17 Term 用户保留 SIGCHLD 20,17,18 Ign 子进程结束(由父进程接收) SIGCONT 19,18,25 Cont 继续执行已经停止的进程(不能被阻塞) SIGSTOP 17,19,23 Stop 停止进程(不能被捕获、阻塞或忽略) SIGTSTP 18,20,24 Stop 停止进程(可以被捕获、阻塞或忽略) SIGTTIN 21,21,26 Stop 后台程序从终端中读取数据时触发 SIGTTOU 22,22,27 Stop 后台程序向终端中写数据时触发 更多的信号说明请查阅man7" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/go-signal.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-10-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2019-10-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="go中的signal"/>
+<meta name="twitter:description" content="什么是信号 在计算机科学中，信号是Unix、类Unix以及其他POSIX兼容的操作系统中进程间通讯的一种有限制的方式。它是一种异步的通知机制，用来提醒进程一个事件已经发生。
+当一个信号发送给一个进程，操作系统中断了进程正常的控制流程，如果进程定义了对信号的处理，此时，程序将进入捕获到的信号对应的处理函数，否则执行默认的处理函数。
+Linux中信号的介绍 在Linux系统共定义了64种信号，分为两大类：实时信号与非实时信号，1-31为非实时，32-64种为实时信号。
+非实时信号： 也称为不可靠信号，为早期Linux所支持的信号，不支持排队，信号可能会丢失, 比如发送多次相同的信号, 进程只能收到一次. 信号值取值区间为1~31； 实时信号： 也称为可靠信号，支持排队, 信号不会丢失, 发多少次, 就可以收到多少次. 信号值取值区间为32~64 Linux操作系统中，在终端上执行 kill -l 便可看到系统定义的所有信号
+信号表 POSIX.1-1990标准信号 此表参考自：POSIX信号
+信号 值 动作 说明 SIGHUP 1 Term 终端控制进程结束(终端连接断开) SIGINT 2 Term 用户发送INTR字符(Ctrl&#43;C)触发 SIGQUIT 3 Core 用户发送QUIT字符(Ctrl&#43;/)触发 SIGILL 4 Core 非法指令(程序错误、试图执行数据段、栈溢出等) SIGABRT 6 Core 调用abort函数触发 SIGFPE 8 Core 算术运行错误(浮点运算错误、除数为零等) SIGKILL 9 Term 无条件结束程序(不能被捕获、阻塞或忽略) SIGSEGV 11 Core 无效内存引用(试图访问不属于自己的内存空间、对只读内存空间进行写操作) SIGPIPE 13 Term 消息管道损坏(FIFO/Socket通信时，管道未打开而进行写操作) SIGALRM 14 Term 时钟定时信号 SIGTERM 15 Term 结束程序(可以被捕获、阻塞或忽略) SIGUSR1 30,10,16 Term 用户保留 SIGUSR2 31,12,17 Term 用户保留 SIGCHLD 20,17,18 Ign 子进程结束(由父进程接收) SIGCONT 19,18,25 Cont 继续执行已经停止的进程(不能被阻塞) SIGSTOP 17,19,23 Stop 停止进程(不能被捕获、阻塞或忽略) SIGTSTP 18,20,24 Stop 停止进程(可以被捕获、阻塞或忽略) SIGTTIN 21,21,26 Stop 后台程序从终端中读取数据时触发 SIGTTOU 22,22,27 Stop 后台程序向终端中写数据时触发 更多的信号说明请查阅man7"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/go-signal.html" /><link rel="prev" href="https://cylonchau.github.io/jenkins-pipeline.html" /><link rel="next" href="https://cylonchau.github.io/go-arithmetic.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "go中的signal",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/go-signal.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "golang","wordcount":  431 ,
+        "url": "https:\/\/cylonchau.github.io\/go-signal.html","datePublished": "2019-10-02T00:00:00+00:00","dateModified": "2019-10-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">go中的signal</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go.html"><i class="far fa-folder fa-fw"></i>go</a>&nbsp;<a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-10-02 00:00:00">2019-10-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 431 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#什么是信号">什么是信号</a></li>
+    <li><a href="#linux中信号的介绍">Linux中信号的介绍</a>
+      <ul>
+        <li><a href="#信号表">信号表</a>
+          <ul>
+            <li><a href="#posix1-1990标准信号">POSIX.1-1990标准信号</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#信号的产生">信号的产生</a></li>
+    <li><a href="#发送的信号">发送的信号</a></li>
+    <li><a href="#信号的处理">信号的处理</a>
+      <ul>
+        <li><a href="#信号处理方式">信号处理方式</a></li>
+      </ul>
+    </li>
+    <li><a href="#linux信号命令">Linux信号命令</a>
+      <ul>
+        <li><a href="#kill">kill</a></li>
+        <li><a href="#killall">killall</a></li>
+        <li><a href="#pkill">PKILL</a></li>
+      </ul>
+    </li>
+    <li><a href="#go语言中的signal的使用">Go语言中的Signal的使用</a></li>
+    <li><a href="#在go语言中的signal的处理">在Go语言中的Signal的处理</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="什么是信号">什么是信号</h2>
+<p>在计算机科学中，信号是Unix、类Unix以及其他POSIX兼容的操作系统中进程间通讯的一种有限制的方式。它是一种异步的通知机制，用来提醒进程一个事件已经发生。</p>
+<p>当一个信号发送给一个进程，操作系统中断了进程正常的控制流程，如果进程定义了对信号的处理，此时，程序将进入捕获到的信号对应的处理函数，否则执行默认的处理函数。</p>
+<h2 id="linux中信号的介绍">Linux中信号的介绍</h2>
+<p>在Linux系统共定义了64种信号，分为两大类：<strong>实时信号</strong>与<strong>非实时信号</strong>，1-31为非实时，32-64种为实时信号。</p>
+<blockquote>
+<ul>
+<li>非实时信号： 也称为不可靠信号，为早期Linux所支持的信号，不支持排队，信号可能会丢失, 比如发送多次相同的信号, 进程只能收到一次. 信号值取值区间为1~31；</li>
+<li>实时信号： 也称为可靠信号，支持排队, 信号不会丢失, 发多少次, 就可以收到多少次. 信号值取值区间为32~64</li>
+</ul>
+</blockquote>
+<p>Linux操作系统中，在终端上执行 <code>kill -l</code> 便可看到系统定义的所有信号</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201025201542398-333856774.png" /></p>
+<h3 id="信号表">信号表</h3>
+<h4 id="posix1-1990标准信号">POSIX.1-1990标准信号</h4>
+<p>此表参考自：<a href="https://dsa.cs.tsinghua.edu.cn/oj/static/unix_signal.html" target="_blank" rel="noopener noreffer">POSIX信号</a></p>
+<table>
+<thead>
+<tr>
+<th>信号</th>
+<th>值</th>
+<th>动作</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SIGHUP</td>
+<td>1</td>
+<td>Term</td>
+<td>终端控制进程结束(终端连接断开)</td>
+</tr>
+<tr>
+<td>SIGINT</td>
+<td>2</td>
+<td>Term</td>
+<td>用户发送INTR字符(Ctrl+C)触发</td>
+</tr>
+<tr>
+<td>SIGQUIT</td>
+<td>3</td>
+<td>Core</td>
+<td>用户发送QUIT字符(Ctrl+/)触发</td>
+</tr>
+<tr>
+<td>SIGILL</td>
+<td>4</td>
+<td>Core</td>
+<td>非法指令(程序错误、试图执行数据段、栈溢出等)</td>
+</tr>
+<tr>
+<td>SIGABRT</td>
+<td>6</td>
+<td>Core</td>
+<td>调用abort函数触发</td>
+</tr>
+<tr>
+<td>SIGFPE</td>
+<td>8</td>
+<td>Core</td>
+<td>算术运行错误(浮点运算错误、除数为零等)</td>
+</tr>
+<tr>
+<td>SIGKILL</td>
+<td>9</td>
+<td>Term</td>
+<td>无条件结束程序(不能被捕获、阻塞或忽略)</td>
+</tr>
+<tr>
+<td>SIGSEGV</td>
+<td>11</td>
+<td>Core</td>
+<td>无效内存引用(试图访问不属于自己的内存空间、对只读内存空间进行写操作)</td>
+</tr>
+<tr>
+<td>SIGPIPE</td>
+<td>13</td>
+<td>Term</td>
+<td>消息管道损坏(FIFO/Socket通信时，管道未打开而进行写操作)</td>
+</tr>
+<tr>
+<td>SIGALRM</td>
+<td>14</td>
+<td>Term</td>
+<td>时钟定时信号</td>
+</tr>
+<tr>
+<td>SIGTERM</td>
+<td>15</td>
+<td>Term</td>
+<td>结束程序(可以被捕获、阻塞或忽略)</td>
+</tr>
+<tr>
+<td>SIGUSR1</td>
+<td>30,10,16</td>
+<td>Term</td>
+<td>用户保留</td>
+</tr>
+<tr>
+<td>SIGUSR2</td>
+<td>31,12,17</td>
+<td>Term</td>
+<td>用户保留</td>
+</tr>
+<tr>
+<td>SIGCHLD</td>
+<td>20,17,18</td>
+<td>Ign</td>
+<td>子进程结束(由父进程接收)</td>
+</tr>
+<tr>
+<td>SIGCONT</td>
+<td>19,18,25</td>
+<td>Cont</td>
+<td>继续执行已经停止的进程(不能被阻塞)</td>
+</tr>
+<tr>
+<td>SIGSTOP</td>
+<td>17,19,23</td>
+<td>Stop</td>
+<td>停止进程(不能被捕获、阻塞或忽略)</td>
+</tr>
+<tr>
+<td>SIGTSTP</td>
+<td>18,20,24</td>
+<td>Stop</td>
+<td>停止进程(可以被捕获、阻塞或忽略)</td>
+</tr>
+<tr>
+<td>SIGTTIN</td>
+<td>21,21,26</td>
+<td>Stop</td>
+<td>后台程序从终端中读取数据时触发</td>
+</tr>
+<tr>
+<td>SIGTTOU</td>
+<td>22,22,27</td>
+<td>Stop</td>
+<td>后台程序向终端中写数据时触发</td>
+</tr>
+</tbody>
+</table>
+<p>更多的信号说明请查阅<a href="https://www.man7.org/linux/man-pages/man7/signal.7.html" target="_blank" rel="noopener noreffer">man7</a></p>
+<p>此表的操作为每个信号的默认配置，如下所示</p>
+<table>
+<thead>
+<tr>
+<th>动作</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Term</td>
+<td>默认操作是，终止进程。</td>
+</tr>
+<tr>
+<td>Ign</td>
+<td>默认操作是，忽略信号。</td>
+</tr>
+<tr>
+<td>Core</td>
+<td>默认操作是，终止该进程并核心转储</td>
+</tr>
+<tr>
+<td>Stop</td>
+<td>默认操作是，停止进程。</td>
+</tr>
+<tr>
+<td>Cont</td>
+<td>默认操作是，如果当前已停止，则继续该进程。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="信号的产生">信号的产生</h2>
+<p>信号是事件发生时对进程的通知机制。信号中断与硬件中断的相似之处在于打断了程序执行的正常流程。</p>
+<p>信号事件的来源分为软件信号和硬件信号：</p>
+<ul>
+<li>硬件信号： <strong>用户输入</strong>：比如在终端上按下组合键ctrl+C，产生SIGINT信号；<strong>硬件异常</strong>：CPU检测到内存非法访问等异常，通知内核生成相应信号，并发送给发生事件的进程；</li>
+<li>软件信号： <strong>通过系统调用</strong>： 如，发送signal信号：<code>kill</code>，<code>raise</code>等。</li>
+</ul>
+<h2 id="发送的信号">发送的信号</h2>
+<ul>
+<li><code>Ctrl-C</code> 发送 INT signal (SIGINT)，通常导致进程结束</li>
+<li><code>Ctrl-Z</code> 发送 TSTP signal (SIGTSTP); 通常导致进程挂起(suspend)</li>
+<li><code>Ctrl-\</code> 发送 QUIT signal (SIGQUIT); 通常导致进程结束 和 dump core.</li>
+</ul>
+<h2 id="信号的处理">信号的处理</h2>
+<p>内核处理进程收到的signal是在当前进程的上下文，故进程必须是Running状态。当进程唤醒或者调度后获取CPU，则会从内核态转到用户态时检测是否有signal等待处理，处理完，进程会把相应的未决信号从链表中去掉。</p>
+<p>signal信号处理时机： 内核 ==&gt; 信号处理 ==&gt; 用户</p>
+<blockquote>
+<ol>
+<li>内核态：在内核态，signal信号不起作用；</li>
+<li>signal信号处理: 在用户态，signal所有未被屏蔽的信号都处理完毕；当屏蔽信号，取消屏蔽时，会在下一次内核转用户态的过程中执行；</li>
+</ol>
+</blockquote>
+<h3 id="信号处理方式">信号处理方式</h3>
+<p>进程对信号的处理方式有3种：</p>
+<ul>
+<li>默认 接收到信号后按默认的行为处理该信号。 这种方式为多数应用采取的处理方式。</li>
+<li>自定义处理 用自定义的信号处理函数来执行特定的动作</li>
+<li>忽略忽略信号 接收到信号后不做任何反应。</li>
+</ul>
+<p>对信号的处理动作：</p>
+<ul>
+<li>Term： 中止进程</li>
+<li>Ign： 忽略信号</li>
+<li>Core： 中止进程并保存内存信息</li>
+<li>Stop： 停止进程</li>
+<li>Cont： 继续运行进程</li>
+</ul>
+<h2 id="linux信号命令">Linux信号命令</h2>
+<h3 id="kill">kill</h3>
+<p>kill命令用来终止指定的进程, 对于一个后台进程就须用kill命令来终止，我们就需要先使用ps/pidof/pstree/top等工具获取进程PID，然后使用kill命令来杀掉该进程。</p>
+<blockquote>
+<p><strong>命令格式</strong>
+<code>kill[参数] [进程id]</code></p>
+</blockquote>
+<blockquote>
+<p><strong>命令参数</strong>
+<code>-l</code>  信号，若果不加信号的编号参数，则使用“-l”参数会列出全部的信号名称
+<code>-a</code>  当处理当前进程时，不限制命令名和进程号的对应关系
+<code>-p</code>  指定kill 命令只打印相关进程的进程号，而不发送任何信号
+<code>-s</code>  指定发送信号
+<code>-u</code>  指定用户</p>
+</blockquote>
+<h3 id="killall">killall</h3>
+<p>Linux系统中的<code>killall</code>用于杀死指定名字的进程（kill processes by name）。我们可以使用kill命令杀死指定进程PID的进程，如果要找到我们需要杀死的进程，我们还需要在之前使用ps等命令再配合grep来查找进程，而killall把这两个过程合二为一，是一个很好用的命令。</p>
+<blockquote>
+<p><strong>命令格式</strong>
+<code>killall[参数] [进程名]</code></p>
+</blockquote>
+<blockquote>
+<p><strong>命令参数</strong>
+<code>-I</code>  忽略小写
+<code>-a</code>  当处理当前进程时，不限制命令名和进程号的对应关系
+<code>-i</code>  交互模式，杀死进程前先询问用户
+<code>-s</code>  发送指定的信号
+<code>-w</code>  等待进程死亡
+<code>-e</code>  要求匹配进程名称</p>
+</blockquote>
+<h3 id="pkill">PKILL</h3>
+<p><code>pkill</code> 与 <code>killall</code> 使用方法类似，用于杀死指定名称的进程</p>
+<h2 id="go语言中的signal的使用">Go语言中的Signal的使用</h2>
+<p>在Go语言中，处理信号仅需要3个步骤即可完成对信号的处理</p>
+<ul>
+<li>信号的接收： <code>signalChan := make(chan os.Signal,1)</code></li>
+<li>信号的监听捕获： <code>signal.Notify(signalChan)</code></li>
+<li>信号的触发： <code>signal := &lt;-signalChan</code></li>
+</ul>
+<p>注意事项：</p>
+<ul>
+<li><code>SIGKILL kill -9</code>和<code>SIGSTOP kill -19</code> 信号可能不会被Notify方法捕获，因此无法处理这些信号。</li>
+<li>如果在Notify方法中没有指定信号作为参数，那么该方法将捕获所有的信号。</li>
+</ul>
+<h2 id="在go语言中的signal的处理">在Go语言中的Signal的处理</h2>
+<p>在某些场景下，如，在大量并发及，批量处理未完成时，此时需要在Go程序中处理Signal信号，比如收到SIGTERM信号后优雅的关闭程序。</p>
+<blockquote>
+<p>实例：在一个计算场景下，有5个goroutine在处理业务，当收到 <code>kill -15</code>时计算完成后退出程序， <code>kill -4</code>不做处理。</p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;os&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;os/signal&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;sync&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;syscall&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">exitProcess</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;等待进程完成&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;进程退出&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">process</span><span class="p">(</span><span class="nx">n</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">i</span> <span class="o">:=</span> <span class="nx">n</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;process&#34;</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="s">&#34;:&#34;</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">100</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">break</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">i</span><span class="o">++</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;process&#34;</span><span class="p">,</span> <span class="nx">n</span><span class="p">,</span> <span class="s">&#34;finnshed&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">signals</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Signal</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">done</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">bool</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">signal</span><span class="p">.</span><span class="nf">Notify</span><span class="p">(</span><span class="nx">signals</span><span class="p">,</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGILL</span><span class="p">,</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGTERM</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">signal</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">signals</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">switch</span> <span class="nx">signal</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">case</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGTERM</span><span class="p">,</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGQUIT</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;kill -15 进程退出&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">exitProcess</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">			<span class="k">case</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGILL</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;kill -4&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">done</span> <span class="o">&lt;-</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">n</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">n</span> <span class="p">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">n</span><span class="o">++</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">go</span> <span class="nf">process</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;waiting signal...&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;exiting&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>收到kill -4 信号打印kill -4</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026001747221-1942598103.png" /></p>
+<p>收到kill -15 信号后，带程序处理完成后退出</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002133354-425851540.png" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/1380340-20201026002146639-515404564.png" /></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2019-10-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/go-signal.html" data-title="go中的signal" data-hashtags="golang"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/go-signal.html" data-hashtag="golang"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/go-signal.html" data-title="go中的signal" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/go-signal.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/go-signal.html" data-title="go中的signal"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/go-signal.html" data-title="go中的signal"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/go-signal.html" data-title="go中的signal"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/golang.html">golang</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/jenkins-pipeline.html" class="prev" rel="prev" title="jenkins pipline demo"><i class="fas fa-angle-left fa-fw"></i>jenkins pipline demo</a>
+            <a href="/go-arithmetic.html" class="next" rel="next" title="go运算符">go运算符<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2019-10-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"go中的signal"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>syslog - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="syslog" />
+<meta property="og:description" content="[TOC]
+1 rsyslog介绍 syslog守护进程，内部有两个进程，syslogd主要负责用户空间的用户进程记录日志；klog负责内核所发生的各种时间记录日志。两者合并后形成syslog。
+rsyslog是syslog下一代升级产品，依然有syslogd klogd提供服务。
+rsyslog可以开通远程机制监听在某个套接字上，其他任何主机所产生的日志信息由本机的rsyslog收集起来，收集完后不负责记录，而是建立一个tcp或udp连接发送给专门的日志服务器，由专门的日志服务器负责记录。默认情况下是明文的。
+1.1 rsyslog特性 多线程。 支持UDP,TCP协议，基于ssl tls加密完成远程日志传输。支持RELP协议 实现将日志存储到MySQL PGSQL等关系型数据库中。 强大的过滤器，可实现过滤日志信息中任何部分，支持自定义输出格式。 2 日志格式 事件产生的事件 主机 进程pid 事件
+1 2 3 Jun 6 23:36:58 Lamp-02 NET[1838]: /etc/sysconfig/network-scripts/ifup-post: updated /etc/resolv.conf Jun 6 23:46:15 Lamp-02 yum[1963]: Updated: mysql-libs-5.1.73-8.el6_8.x86_64 Jun 6 23:46:16 Lamp-02 yum[1963]: Installed: mysql-5.1.73-8.el6_8.x86_64 有些日志记录二进制日志/var/log/wtmp /var/log/btmp
+last：/var/log/wtmp 当前系统中成功登陆的日志 lastb：/var/log/btmp 当前系统中失败的登陆尝试 lastlog：显示当前系统每一个用户最近一次登陆时间
+2.1 日志等级 日志级别：事件的关键性程度
+lev	|说明
+lev 说明 none 不记录 debug 调试信息 info 正常信息，仅是一些基本信息说明 notice 比info还需要注意的一些信息内容 warning,warn 警告信息，可能有些问题，但是还不至于影响到某个服务运作的信息 err,error 一些重大的错误信息 crit 临界状态，比error还要严重的错误信息，橙色警报 alert 红色警报，已经很有问题的等级，比crit还要严重 emerg,panic 疼痛等级，意指系统已经要宕机的状态！很严重的错误信息 2." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/syslog.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-04-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2016-04-21T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="syslog"/>
+<meta name="twitter:description" content="[TOC]
+1 rsyslog介绍 syslog守护进程，内部有两个进程，syslogd主要负责用户空间的用户进程记录日志；klog负责内核所发生的各种时间记录日志。两者合并后形成syslog。
+rsyslog是syslog下一代升级产品，依然有syslogd klogd提供服务。
+rsyslog可以开通远程机制监听在某个套接字上，其他任何主机所产生的日志信息由本机的rsyslog收集起来，收集完后不负责记录，而是建立一个tcp或udp连接发送给专门的日志服务器，由专门的日志服务器负责记录。默认情况下是明文的。
+1.1 rsyslog特性 多线程。 支持UDP,TCP协议，基于ssl tls加密完成远程日志传输。支持RELP协议 实现将日志存储到MySQL PGSQL等关系型数据库中。 强大的过滤器，可实现过滤日志信息中任何部分，支持自定义输出格式。 2 日志格式 事件产生的事件 主机 进程pid 事件
+1 2 3 Jun 6 23:36:58 Lamp-02 NET[1838]: /etc/sysconfig/network-scripts/ifup-post: updated /etc/resolv.conf Jun 6 23:46:15 Lamp-02 yum[1963]: Updated: mysql-libs-5.1.73-8.el6_8.x86_64 Jun 6 23:46:16 Lamp-02 yum[1963]: Installed: mysql-5.1.73-8.el6_8.x86_64 有些日志记录二进制日志/var/log/wtmp /var/log/btmp
+last：/var/log/wtmp 当前系统中成功登陆的日志 lastb：/var/log/btmp 当前系统中失败的登陆尝试 lastlog：显示当前系统每一个用户最近一次登陆时间
+2.1 日志等级 日志级别：事件的关键性程度
+lev	|说明
+lev 说明 none 不记录 debug 调试信息 info 正常信息，仅是一些基本信息说明 notice 比info还需要注意的一些信息内容 warning,warn 警告信息，可能有些问题，但是还不至于影响到某个服务运作的信息 err,error 一些重大的错误信息 crit 临界状态，比error还要严重的错误信息，橙色警报 alert 红色警报，已经很有问题的等级，比crit还要严重 emerg,panic 疼痛等级，意指系统已经要宕机的状态！很严重的错误信息 2."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/syslog.html" /><link rel="prev" href="https://cylonchau.github.io/systemd.html" /><link rel="next" href="https://cylonchau.github.io/lvs--keepalived.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "syslog",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/syslog.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "syslog","wordcount":  439 ,
+        "url": "https:\/\/cylonchau.github.io\/syslog.html","datePublished": "2016-04-21T00:00:00+00:00","dateModified": "2016-04-21T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">syslog</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/linux.html"><i class="far fa-folder fa-fw"></i>linux</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-04-21 00:00:00">2016-04-21 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 439 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#1-rsyslog介绍">1 rsyslog介绍</a>
+      <ul>
+        <li><a href="#11-rsyslog特性">1.1 rsyslog特性</a></li>
+      </ul>
+    </li>
+    <li><a href="#2-日志格式">2 日志格式</a>
+      <ul>
+        <li><a href="#21-日志等级">2.1 日志等级</a></li>
+        <li><a href="#22-设施类型">2.2 设施类型</a></li>
+        <li><a href="#23-通配机制">2.3 通配机制</a></li>
+        <li><a href="#24-日志的输出位置">2.4 日志的输出位置</a></li>
+      </ul>
+    </li>
+    <li><a href="#3-rsyslog配置文件详解">3 rsyslog配置文件详解</a>
+      <ul>
+        <li><a href="#31-常用参数">3.1 常用参数</a></li>
+      </ul>
+    </li>
+    <li><a href="#4-rsyslog案例">4 rsyslog案例</a>
+      <ul>
+        <li><a href="#41-设置ssh日志为其他设施">4.1 设置ssh日志为其他设施</a>
+          <ul>
+            <li><a href="#411-修改ssh配置文件">4.1.1 修改ssh配置文件</a></li>
+            <li><a href="#412-修改rsyslog配置文件">4.1.2 修改rsyslog配置文件</a></li>
+          </ul>
+        </li>
+        <li><a href="#42-将日志记录到远程服务器">4.2 将日志记录到远程服务器</a></li>
+        <li><a href="#43-基于mysql存储日志">4.3 基于MySQL存储日志</a>
+          <ul>
+            <li><a href="#431-安装rsyslog程序包">4.3.1 安装rsyslog程序包</a></li>
+            <li><a href="#432-配置服务器端参数">4.3.2 配置服务器端参数</a></li>
+            <li><a href="#433-导入数据库并授权">4.3.3 导入数据库并授权</a></li>
+            <li><a href="#434-安装loganalyzer">4.3.4 安装loganalyzer</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p>[TOC]</p>
+<h2 id="1-rsyslog介绍">1 rsyslog介绍</h2>
+<p>syslog守护进程，内部有两个进程，syslogd主要负责用户空间的用户进程记录日志；klog负责内核所发生的各种时间记录日志。两者合并后形成syslog。</p>
+<p>rsyslog是syslog下一代升级产品，依然有syslogd klogd提供服务。</p>
+<p>rsyslog可以开通远程机制监听在某个套接字上，其他任何主机所产生的日志信息由本机的rsyslog收集起来，收集完后不负责记录，而是建立一个tcp或udp连接发送给专门的日志服务器，由专门的日志服务器负责记录。默认情况下是明文的。</p>
+<h3 id="11-rsyslog特性">1.1 rsyslog特性</h3>
+<ol>
+<li>多线程。</li>
+<li>支持UDP,TCP协议，基于ssl tls加密完成远程日志传输。支持RELP协议</li>
+<li>实现将日志存储到MySQL PGSQL等关系型数据库中。</li>
+<li>强大的过滤器，可实现过滤日志信息中任何部分，支持自定义输出格式。</li>
+</ol>
+<h2 id="2-日志格式">2 日志格式</h2>
+<p>事件产生的事件  主机  进程pid  事件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Jun  <span class="m">6</span> 23:36:58 Lamp-02 NET<span class="o">[</span>1838<span class="o">]</span>: /etc/sysconfig/network-scripts/ifup-post: updated /etc/resolv.conf
+</span></span><span class="line"><span class="cl">Jun  <span class="m">6</span> 23:46:15 Lamp-02 yum<span class="o">[</span>1963<span class="o">]</span>: Updated: mysql-libs-5.1.73-8.el6_8.x86_64
+</span></span><span class="line"><span class="cl">Jun  <span class="m">6</span> 23:46:16 Lamp-02 yum<span class="o">[</span>1963<span class="o">]</span>: Installed: mysql-5.1.73-8.el6_8.x86_64
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>有些日志记录二进制日志/var/log/wtmp /var/log/btmp</p>
+<p>last：<code>/var/log/wtmp</code> 当前系统中成功登陆的日志
+lastb：<code>/var/log/btmp</code> 当前系统中失败的登陆尝试
+lastlog：显示当前系统每一个用户最近一次登陆时间</p>
+<h3 id="21-日志等级">2.1 日志等级</h3>
+<p>日志级别：事件的关键性程度</p>
+<p>lev	|说明</p>
+<table>
+<thead>
+<tr>
+<th>lev</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>none</td>
+<td>不记录</td>
+</tr>
+<tr>
+<td>debug</td>
+<td>调试信息</td>
+</tr>
+<tr>
+<td>info</td>
+<td>正常信息，仅是一些基本信息说明</td>
+</tr>
+<tr>
+<td>notice</td>
+<td>比info还需要注意的一些信息内容</td>
+</tr>
+<tr>
+<td>warning,warn</td>
+<td>警告信息，可能有些问题，但是还不至于影响到某个服务运作的信息</td>
+</tr>
+<tr>
+<td>err,error</td>
+<td>一些重大的错误信息</td>
+</tr>
+<tr>
+<td>crit</td>
+<td>临界状态，比error还要严重的错误信息，橙色警报</td>
+</tr>
+<tr>
+<td>alert</td>
+<td>红色警报，已经很有问题的等级，比crit还要严重</td>
+</tr>
+<tr>
+<td>emerg,panic</td>
+<td>疼痛等级，意指系统已经要宕机的状态！很严重的错误信息</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-设施类型">2.2 设施类型</h3>
+<p>facility：把某一类具有相同特性的由各个应用程序所产生的日志数据流归类到用一个数据收集管道中，这个收集管道称之为facility。</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>auth(authpriv)</td>
+<td>与认证有关的机制，例如login ssh su等需要账号密码</td>
+</tr>
+<tr>
+<td>cron</td>
+<td>例行性工作调度cron/at等生成信息日志的地方</td>
+</tr>
+<tr>
+<td>daemon</td>
+<td>与各个daemon有关的信息。</td>
+</tr>
+<tr>
+<td>kern</td>
+<td>内核产生信息地方</td>
+</tr>
+<tr>
+<td>lpr</td>
+<td>打印相关信息</td>
+</tr>
+<tr>
+<td>mail</td>
+<td>邮件收发有关的信息</td>
+</tr>
+<tr>
+<td>news</td>
+<td>新闻组服务器有关信息</td>
+</tr>
+<tr>
+<td>syslog</td>
+<td>自身产生日志</td>
+</tr>
+<tr>
+<td>user</td>
+<td>用户</td>
+</tr>
+<tr>
+<td>security</td>
+<td>与安全相关信息</td>
+</tr>
+<tr>
+<td>local0-local7</td>
+<td>用户自定义8个设置</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-通配机制">2.3 通配机制</h3>
+<table>
+<thead>
+<tr>
+<th>通配符</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>.</td>
+<td>代表【比后面还要高的等级（含该等级）都被记录下来】 例如：mail.info代表只要是mail信息，而且该信息等级高于info（含info）时，就会被记录下来。</td>
+</tr>
+<tr>
+<td>.=</td>
+<td>代表所需要的等级就是后面接的等级而已，其他的不要。例如：main.=info代表的只要是mail信息，而且该信息等于info级别，就会被记录下来。</td>
+</tr>
+<tr>
+<td>.!</td>
+<td>代表不等于（取反），亦是除了该等级外的其他等级都记录。</td>
+</tr>
+<tr>
+<td>*</td>
+<td>所有；例如：*.info代表所有设施的info级别</td>
+</tr>
+<tr>
+<td>none</td>
+<td>不记录</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24-日志的输出位置">2.4 日志的输出位置</h3>
+<table>
+<thead>
+<tr>
+<th>位置</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文件</td>
+<td>/var/log/messages</td>
+</tr>
+<tr>
+<td>打印机或其他设备</td>
+<td>/dev/lp0这个打印机装置</td>
+</tr>
+<tr>
+<td>使用者名称</td>
+<td>显示给用户，*代表目前在线所有的人</td>
+</tr>
+<tr>
+<td>远程主机</td>
+<td>@10.0.0.2 远程日志服务器，@代表udp协议，@@代表tcp协议</td>
+</tr>
+<tr>
+<td>管道</td>
+<td>|command</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ rpm -ql rsyslog
+</span></span><span class="line"><span class="cl">/etc/logrotate.d/syslog
+</span></span><span class="line"><span class="cl">/etc/pki/rsyslog
+</span></span><span class="line"><span class="cl">/etc/rsyslog.conf &lt;<span class="o">==</span>配置文件
+</span></span><span class="line"><span class="cl">/etc/rsyslog.d
+</span></span><span class="line"><span class="cl">/etc/sysconfig/rsyslog
+</span></span><span class="line"><span class="cl">/usr/bin/rsyslog-recover-qi.pl
+</span></span><span class="line"><span class="cl">/usr/lib/systemd/system/rsyslog.service &lt;<span class="o">==</span>单元文件
+</span></span><span class="line"><span class="cl">/usr/lib64/rsyslog
+</span></span><span class="line"><span class="cl">/usr/lib64/rsyslog/imdiag.so &lt;<span class="o">==</span>收集日志接受日志流输入时的输入过滤工具
+</span></span><span class="line"><span class="cl">/usr/lib64/rsyslog/omjournal.so &lt;<span class="o">==</span>
+</span></span><span class="line"><span class="cl">/var/lib/rsyslog
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="3-rsyslog配置文件详解">3 rsyslog配置文件详解</h2>
+<p>rsyslog配置文件分为3个模块，<font style="background:#fee904;" size=3> 每段的配置必须严格写在#### xxx ####位置内</font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ grep <span class="s1">&#39;##&#39;</span> /etc/rsyslog.conf
+</span></span><span class="line"><span class="cl"><span class="c1">#### MODULES ####   #&lt;==加载的模块</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#### GLOBAL DIRECTIVES ####  #&lt;==定义日志格式默认模板</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#### RULES ####  #&lt;==转发规则</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># ### begin forwarding rule ###</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># ### end of the forwarding rule ###</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="31-常用参数">3.1 常用参数</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">$ModLoad</span> imklog <span class="c1">#&lt;==加载模块</span>
+</span></span><span class="line"><span class="cl">mail.*  -/var/log/maillog <span class="c1">#&lt;==将mail所有类型的日志异步写入maillog文件中</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="4-rsyslog案例">4 rsyslog案例</h2>
+<h3 id="41-设置ssh日志为其他设施">4.1 设置ssh日志为其他设施</h3>
+<h4 id="411-修改ssh配置文件">4.1.1 修改ssh配置文件</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1">#SyslogFacility AUTHPRIV</span>
+</span></span><span class="line"><span class="cl">SyslogFacility local1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="412-修改rsyslog配置文件">4.1.2 修改rsyslog配置文件</h4>
+<p>将ssh日志写入到ssh.log中</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">local1.*    -/var/log/ssh.log
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>使用ssh登陆查看日志生成结果</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ cat /var/log/ssh.log
+</span></span><span class="line"><span class="cl">Jun  <span class="m">7</span> 00:15:17 Lamp-02 sshd<span class="o">[</span>2966<span class="o">]</span>: Accepted password <span class="k">for</span> root from 192.168.2.1 port <span class="m">57670</span> ssh2
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="42-将日志记录到远程服务器">4.2 将日志记录到远程服务器</h3>
+<p>在客户端配置</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">*.info<span class="p">;</span>mail.none<span class="p">;</span>authpriv.none<span class="p">;</span>cron.none<span class="p">;</span>local0.none<span class="p">;</span>          @192.168.2.82
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>服务端开启配置</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">$ModLoad</span> imudp
+</span></span><span class="line"><span class="cl"><span class="nv">$UDPServerRun</span> <span class="m">514</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>查看服务端的日志记录情况</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ cat /var/log/messages
+</span></span><span class="line"><span class="cl">Jun  <span class="m">2</span> 05:47:59 lnmp yum<span class="o">[</span>128171<span class="o">]</span>: Updated: httpd-tools-2.4.6-45.el7.centos.4.x86_64
+</span></span><span class="line"><span class="cl">Jun  <span class="m">2</span> 05:48:03 lnmp yum<span class="o">[</span>128171<span class="o">]</span>: Updated: httpd-2.4.6-45.el7.centos.4.x86_64
+</span></span><span class="line"><span class="cl">Jun  <span class="m">2</span> 05:48:03 lnmp systemd: Reloading.
+</span></span><span class="line"><span class="cl">Jun  <span class="m">2</span> 05:48:04 lnmp systemd: Configuration file /usr/lib/systemd/system/auditd.service is marked world-inaccessible. This has no effect as configuration data is accessible via APIs without restrictions. Proceeding anyway.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="43-基于mysql存储日志">4.3 基于MySQL存储日志</h3>
+<p>将日志存储到数据库中需要加载相对应的模块</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">rsyslog.x86_64                5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-gnutls.x86_64        	5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-gssapi.x86_64        	5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-mysql.x86_64         	5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-pgsql.x86_64          5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-relp.x86_64           5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">rsyslog-snmp.x86_64           5.8.10-10.el6_6 base
+</span></span><span class="line"><span class="cl">...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="431-安装rsyslog程序包">4.3.1 安装rsyslog程序包</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ rpm -ql rsyslog-mysql
+</span></span><span class="line"><span class="cl">/lib64/rsyslog/ommysql.so
+</span></span><span class="line"><span class="cl">/usr/share/doc/rsyslog-mysql-5.8.10
+</span></span><span class="line"><span class="cl">/usr/share/doc/rsyslog-mysql-5.8.10/createDB.sql
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="432-配置服务器端参数">4.3.2 配置服务器端参数</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">$Modload</span> ommysql
+</span></span><span class="line"><span class="cl">*.info<span class="p">;</span>mail.none<span class="p">;</span>authpriv.none<span class="p">;</span>cron.none :ommysql:localhost,Syslog,syslog,111
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="433-导入数据库并授权">4.3.3 导入数据库并授权</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="n">mysql</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="k">share</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">rsyslog</span><span class="o">-</span><span class="n">mysql</span><span class="o">-</span><span class="mi">5</span><span class="p">.</span><span class="mi">8</span><span class="p">.</span><span class="mi">10</span><span class="o">/</span><span class="k">createDB</span><span class="p">.</span><span class="k">sql</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="k">grant</span><span class="w"> </span><span class="k">all</span><span class="w"> </span><span class="k">privileges</span><span class="w"> </span><span class="k">on</span><span class="w"> </span><span class="n">syslog</span><span class="p">.</span><span class="o">*</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">syslog</span><span class="o">@</span><span class="s1">&#39;localhost&#39;</span><span class="w"> </span><span class="n">identified</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="s1">&#39;111&#39;</span><span class="p">;</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>查看结果</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="n">mysql</span><span class="o">&gt;</span><span class="w"> </span><span class="k">select</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">systemevents</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="o">+</span><span class="c1">----------+
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="o">|</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="o">+</span><span class="c1">----------+
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="o">|</span><span class="w">        </span><span class="mi">3</span><span class="w"> </span><span class="o">|</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="o">+</span><span class="c1">----------+
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="mi">1</span><span class="w"> </span><span class="k">row</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">set</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="p">.</span><span class="mi">00</span><span class="w"> </span><span class="n">sec</span><span class="p">)</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="434-安装loganalyzer">4.3.4 安装loganalyzer</h4>
+<p>下载loganalyzer：http://loganalyzer.adiscon.com/downloads/</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sh configure.sh
+</span></span><span class="line"><span class="cl">sh secure.sh
+</span></span><span class="line"><span class="cl">chmod <span class="m">666</span> config.php
+</span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2016-04-21 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/syslog.html" data-title="syslog" data-hashtags="syslog"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/syslog.html" data-hashtag="syslog"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/syslog.html" data-title="syslog" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/syslog.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/syslog.html" data-title="syslog"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/syslog.html" data-title="syslog"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/syslog.html" data-title="syslog"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/syslog.html">syslog</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/systemd.html" class="prev" rel="prev" title="systemd"><i class="fas fa-angle-left fa-fw"></i>systemd</a>
+            <a href="/lvs--keepalived.html" class="next" rel="next" title="lvs &#43; keepalived集群架构">lvs &#43; keepalived集群架构<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-04-21T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"syslog"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

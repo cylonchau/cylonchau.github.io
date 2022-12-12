@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>naive bayes - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="naive bayes" />
+<meta property="og:description" content="什么是naive bayes 朴素贝叶斯 naive bayes，是一种概率类的机器学习算法，主要用于解决分类问题
+为什么被称为朴素贝叶斯？
+为什么被称为朴素，难道仅仅是因为贝叶斯很天真吗？实际上是因为，朴素贝叶斯会假设数据属性之间具有很强的的独立性。即该模型中的所有属性彼此之间都是独立的，改变一个属性的值，不会直接影响或改变算法中其他的属性的值
+贝叶斯定理 了解朴素贝叶斯之前，需要掌握一些概念才可继续
+条件概率 Conditional probability：在另一个事件已经发生的情况下，另外一个时间发生的概率。如，==在多云天气，下雨的概率是多少？== 这是一个条件概率 联合概率 Joint Probability：计算两个或多个事件同时发生的可能性 边界概率 Marginal Probability：事件发生的概率，与另一个变量的结果无关 比例 Proportionality 贝叶斯定理 Bayes&#39; Theorem：概率的公式；贝叶斯定律是指根据可能与事件的先验概率描述了事件的后验概率 边界概率 边界概率是指事件发生的概率，可以认为是无条件概率。不以另一个事件为条件；用公式表示为 $P(X)$ 如：抽到的牌是红色的概率是 $P(red) = 0.5$ ；
+联合概率 联合概率是指两个事件在同一时间点发生的可能性，公式可以表示为 $P(A \cap B)$
+A 和 B 是两个不同的事件相同相交，$P(A \and B)$ $P(A,B)$ = A 和 B 的联合概率
+概率用于处理事件或现象发生的可能性。它被量化为介于 0 和 1 之间的数字，其中 0 表示不可能发生的机会，1 表示事件的一定结果。
+如，从一副牌中抽到一张红牌的概率是 $\frac{1}{2}$。这意味着抽到红色和抽到黑色的概率相同；因为一副牌中有52张牌，其中 26 张是红色的，26 张是黑色的，所以抽到一张红牌与抽到一张黑牌的概率是 50%。
+而联合概率是对测量同时发生的两个事件，只能应用于可能同时发生多个情况。例如，从一副52张牌扑克中，拿起一张既是红色又是6的牌的联合概率是 $P(6\cap red) = \frac{2}{52} = \frac{1}{26}$ ；这个是怎么得到的呢？因为抽到红色的概率为50%，而一副牌中有两个红色6（红桃6，方片6），而6和红色是两个独立的概率，那么计算公式就为：$P(6 \cap red) = P(6) \times P(red) = \frac{4}{52} \times \frac{26}{52} = \frac{1}{26}$" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/naive-bayes.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-06-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-06-01T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="naive bayes"/>
+<meta name="twitter:description" content="什么是naive bayes 朴素贝叶斯 naive bayes，是一种概率类的机器学习算法，主要用于解决分类问题
+为什么被称为朴素贝叶斯？
+为什么被称为朴素，难道仅仅是因为贝叶斯很天真吗？实际上是因为，朴素贝叶斯会假设数据属性之间具有很强的的独立性。即该模型中的所有属性彼此之间都是独立的，改变一个属性的值，不会直接影响或改变算法中其他的属性的值
+贝叶斯定理 了解朴素贝叶斯之前，需要掌握一些概念才可继续
+条件概率 Conditional probability：在另一个事件已经发生的情况下，另外一个时间发生的概率。如，==在多云天气，下雨的概率是多少？== 这是一个条件概率 联合概率 Joint Probability：计算两个或多个事件同时发生的可能性 边界概率 Marginal Probability：事件发生的概率，与另一个变量的结果无关 比例 Proportionality 贝叶斯定理 Bayes&#39; Theorem：概率的公式；贝叶斯定律是指根据可能与事件的先验概率描述了事件的后验概率 边界概率 边界概率是指事件发生的概率，可以认为是无条件概率。不以另一个事件为条件；用公式表示为 $P(X)$ 如：抽到的牌是红色的概率是 $P(red) = 0.5$ ；
+联合概率 联合概率是指两个事件在同一时间点发生的可能性，公式可以表示为 $P(A \cap B)$
+A 和 B 是两个不同的事件相同相交，$P(A \and B)$ $P(A,B)$ = A 和 B 的联合概率
+概率用于处理事件或现象发生的可能性。它被量化为介于 0 和 1 之间的数字，其中 0 表示不可能发生的机会，1 表示事件的一定结果。
+如，从一副牌中抽到一张红牌的概率是 $\frac{1}{2}$。这意味着抽到红色和抽到黑色的概率相同；因为一副牌中有52张牌，其中 26 张是红色的，26 张是黑色的，所以抽到一张红牌与抽到一张黑牌的概率是 50%。
+而联合概率是对测量同时发生的两个事件，只能应用于可能同时发生多个情况。例如，从一副52张牌扑克中，拿起一张既是红色又是6的牌的联合概率是 $P(6\cap red) = \frac{2}{52} = \frac{1}{26}$ ；这个是怎么得到的呢？因为抽到红色的概率为50%，而一副牌中有两个红色6（红桃6，方片6），而6和红色是两个独立的概率，那么计算公式就为：$P(6 \cap red) = P(6) \times P(red) = \frac{4}{52} \times \frac{26}{52} = \frac{1}{26}$"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/naive-bayes.html" /><link rel="prev" href="https://cylonchau.github.io/ch1.1-kubernetes-api.html" /><link rel="next" href="https://cylonchau.github.io/logistic-regression.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "naive bayes",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/naive-bayes.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "MachineLearning, algorithm, CS","wordcount":  3108 ,
+        "url": "https:\/\/cylonchau.github.io\/naive-bayes.html","datePublished": "2022-06-01T00:00:00+00:00","dateModified": "2022-06-01T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">naive bayes</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/algorithm.html"><i class="far fa-folder fa-fw"></i>algorithm</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-06-01 00:00:00">2022-06-01 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3108 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 15 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#什么是naive-bayes">什么是naive bayes</a></li>
+    <li><a href="#贝叶斯定理">贝叶斯定理</a>
+      <ul>
+        <li><a href="#边界概率">边界概率</a></li>
+        <li><a href="#联合概率">联合概率</a></li>
+        <li><a href="#条件概率">条件概率</a>
+          <ul>
+            <li><a href="#通过例子了解条件概率">通过例子了解条件概率</a></li>
+            <li><a href="#联合概率和条件概率的区别">联合概率和条件概率的区别</a></li>
+          </ul>
+        </li>
+        <li><a href="#贝叶斯定理-1">贝叶斯定理</a>
+          <ul>
+            <li><a href="#后验概率和先验概率">后验概率和先验概率</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#朴素贝叶斯算法">朴素贝叶斯算法</a>
+      <ul>
+        <li><a href="#伯努利">伯努利</a></li>
+        <li><a href="#多项式">多项式</a></li>
+      </ul>
+    </li>
+    <li><a href="#朴素贝叶斯实现">朴素贝叶斯实现</a>
+      <ul>
+        <li><a href="#分类">分类</a></li>
+        <li><a href="#数据集汇总">数据集汇总</a></li>
+        <li><a href="#根据类别汇总数据">根据类别汇总数据</a></li>
+        <li><a href="#高斯分布函数">高斯分布函数</a></li>
+        <li><a href="#分类概率">分类概率</a></li>
+      </ul>
+    </li>
+    <li><a href="#鸢尾花iris分类">鸢尾花(Iris)分类</a>
+      <ul>
+        <li><a href="#实现开始">实现开始</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="什么是naive-bayes">什么是naive bayes</h2>
+<p>朴素贝叶斯 <code>naive bayes</code>，是一种概率类的机器学习算法，主要用于解决分类问题</p>
+<p><strong>为什么被称为朴素贝叶斯？</strong></p>
+<p>为什么被称为朴素，难道仅仅是因为贝叶斯很天真吗？实际上是因为，朴素贝叶斯会假设数据属性之间具有很强的的独立性。即该模型中的所有属性彼此之间都是独立的，改变一个属性的值，不会直接影响或改变算法中其他的属性的值</p>
+<h2 id="贝叶斯定理">贝叶斯定理</h2>
+<p>了解朴素贝叶斯之前，需要掌握一些概念才可继续</p>
+<ul>
+<li><strong>条件概率</strong> <code>Conditional probability</code>：在另一个事件已经发生的情况下，另外一个时间发生的概率。如，==在多云天气，下雨的概率是多少？== 这是一个条件概率</li>
+<li><strong>联合概率</strong> <code>Joint Probability</code>：计算两个或多个事件同时发生的可能性</li>
+<li><strong>边界概率</strong> <code>Marginal Probability</code>：事件发生的概率，与另一个变量的结果无关</li>
+<li><strong>比例</strong> <code>Proportionality</code></li>
+<li><strong>贝叶斯定理</strong> <code>Bayes' Theorem</code>：概率的公式；贝叶斯定律是指根据可能与事件的先验概率描述了事件的后验概率</li>
+</ul>
+<h3 id="边界概率">边界概率</h3>
+<p>边界概率是指事件发生的概率，可以认为是无条件概率。不以另一个事件为条件；用公式表示为 $P(X)$ 如：抽到的牌是红色的概率是 $P(red) = 0.5$ ；</p>
+<h3 id="联合概率">联合概率</h3>
+<p>联合概率是指两个事件在同一时间点发生的可能性，公式可以表示为 $P(A \cap B)$</p>
+<p><strong>A</strong> 和 <strong>B</strong> 是两个不同的事件相同相交，$P(A \and B)$   $P(A,B)$ = <strong>A</strong> 和 <strong>B</strong> 的联合概率</p>
+<p>概率用于处理事件或现象发生的可能性。它被量化为介于 0 和 1 之间的数字，其中 0 表示不可能发生的机会，1 表示事件的一定结果。</p>
+<p>如，从一副牌中抽到一张红牌的概率是 $\frac{1}{2}$。这意味着抽到红色和抽到黑色的概率相同；因为一副牌中有52张牌，其中 26 张是红色的，26 张是黑色的，所以抽到一张红牌与抽到一张黑牌的概率是 50%。</p>
+<p>而联合概率是对测量同时发生的两个事件，只能应用于可能同时发生多个情况。例如，从一副52张牌扑克中，拿起一张既是红色又是6的牌的联合概率是 $P(6\cap red) = \frac{2}{52} = \frac{1}{26}$ ；这个是怎么得到的呢？因为抽到红色的概率为50%，而一副牌中有两个红色6（红桃6，方片6），而<strong>6</strong>和<strong>红色</strong>是两个独立的概率，那么计算公式就为：$P(6 \cap red) = P(6) \times P(red) = \frac{4}{52} \times \frac{26}{52} = \frac{1}{26}$</p>
+<p>在联合概率中 $ \cap $ 称为交集，是事件 <strong>A</strong> 与 事件 <strong>B</strong> 发生的概率的相交点，通过图来表示为：两个圆的相交点，即6和红色牌共同的部分</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220501235937229.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220501235937229.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220501235937229.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220501235937229.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220501235937229.png"
+        title="image-20220501235937229" /></p>
+<h3 id="条件概率">条件概率</h3>
+<p>条件概率是指事件发生的可能性，基于先有事件的结果的发生乘后续事件概率来计算的，例如，申请大学的通过率为80%，宿舍仅提供给60%学生使用，那么这个人被大学录取并提供宿舍的概率是多少？</p>
+<p>$P(accept\ and\ get\ dorm) = P(Accept|Dorm) = P(Accept) \times P(Dorm) = 0.8 \times 0.6 = 0.48$</p>
+<p>条件概率将会考虑两个事件之间的关系，例如你被大学录取的概率， 以及为你提供宿舍的概率；<strong>条件概率中的关键点</strong>：</p>
+<ul>
+<li>另一个事件发生的情况下，这件事发生的几率</li>
+<li>表示为，给定 <strong>B</strong> 的概率 <strong>A</strong> 发生的概率，用公式表示为：$P(A|B)$，其中 <strong>A</strong> 取决于 <strong>B</strong> 发生的概率</li>
+</ul>
+<h4 id="通过例子了解条件概率">通过例子了解条件概率</h4>
+<p>上述大致上了解到了：<strong>条件概率取决于先前的结果</strong>，那么通过几个例子来熟悉条件概率</p>
+<p><strong>例1</strong>：袋子里有红色，蓝色，绿色三颗玻璃球，每种被拿到的概率相等，那么摸到蓝色之后再摸到红色的条件概率是多少？</p>
+<ul>
+<li>这里需要先得到摸到蓝色的概率：$P(Blue) = \frac{1}{3}$ 因为只有三种可能性</li>
+<li>现在还剩下两颗玻璃球 红色和蓝色，那么摸到红色的概率为：$P(Red) = \frac{1}{2}$ 因为只有两种可能性</li>
+<li>那么已经摸到蓝色在摸到红色的概率为 $P(Red|Blue) = \frac{1}{3} \times \frac{1}{2} = \frac{1}{6}$</li>
+</ul>
+<p><strong>例2</strong>：色子摇出5的概率为 $\frac{1}{6}$ 那么在结果是奇数里摇出5 那么可能就是 $\frac{1}{3}$，而这个<strong>奇数</strong>就是另外的一个条件，因为只有3个奇数，其中一个是5，那么在奇数中，抛出5的概率就是 $\frac{1}{3}$。</p>
+<p>通过上述信息可知，<strong>B</strong> 作为附带条件修饰 <strong>A</strong> 发生的概率，称为给定 <strong>B</strong> ，<strong>A</strong> 发生的条件，用$P(A|B)$ 表示。那么可以的出：</p>
+<ul>
+<li>给定A，B发生的概率为，A和B的发生概率排除掉A的概率，即</li>
+<li>$P(B|A) = \frac{P(A \cap B)}{P(A)} $</li>
+</ul>
+<h4 id="联合概率和条件概率的区别">联合概率和条件概率的区别</h4>
+<p><strong>条件概率</strong>是一个事件在另一个事件发生的情况下的概率：$P(X\ given\ Y)$  公式为： $P(X∣Y)$；即一个事件发生的概率取决于另一事件的发生；如：从一副牌中，假设你抽到一张红牌，那么抽到6的概率是 $\frac{1}{13}$；因为26张红牌中仅有两张为6，用公式表示：$P(6|red) = \frac{2}{26}$</p>
+<p><strong>联合概率</strong>仅考虑两个事件发生的可能性，对比与条件概率可用于计算联合概率：$P(X \cap Y) = P(X|Y) \times P(Y)$</p>
+<p>通过合并上述例子得到，同时抽到6和红色的概率为：$\frac{1}{26}$</p>
+<h3 id="贝叶斯定理-1">贝叶斯定理</h3>
+<p>贝叶斯定理是确定条件概率的数学公式。贝叶斯定理依赖于先验概率分布以计算后验概率。</p>
+<h4 id="后验概率和先验概率">后验概率和先验概率</h4>
+<ul>
+<li>先验概率 <code>prior probability</code>：在收集新数据之前发送事件的概率</li>
+<li>后验概率 <code>posterior probability</code>：得到新的数据来修正之前事件发生的概率；换句话说是<strong>后验概率是在事件 B 已经发生的情况下，事件 A 发生的概率</strong>。</li>
+</ul>
+<p>例，从一副52 张牌中抽取一张牌，那么这张牌是K的概率是 $\frac{4}{52}$ , 因为一副牌中有4张K；假设抽中的牌是一张人物牌，那么抽到是K的概率则是 $\frac{4}{12}$；因为一副牌中有12张人物牌。那么贝叶斯定理的公式为：</p>
+<ul>
+<li>$P(A|B) = \frac{P(A \cap B)}{P(B)}$，$P(B|A) = \frac{P(B \cap A)}{P(A)}$
+<ul>
+<li>$P(A \cap B)$，$P(B \cap A)$ A和B同时发生和B和A同时发生时相等的</li>
+<li>$P(B \cap A) = P(B|A) \times P(A)$</li>
+<li>$P(A \cap B) = P(A|B) \times P(B)$</li>
+</ul>
+</li>
+<li>那么根据上面的公式，已知 $P(A \cap B) = P(B \cap A)$ 可推导出公式：
+<ul>
+<li>因为 $P(B \cap A) = P(A \cap B)$ ，那么 $P(B|A) \times P(A) = P(A|B) \times P(B)$</li>
+<li>那么吧 $P(A)$ 放置等式右边即 $P(B|A) = \frac{P(A|B) \times P(B)}{P(A)}$</li>
+</ul>
+</li>
+<li>那么最终  <code>Formula for Bayes</code> 为  $P(B|A) = \frac{P(A|B) \times P(B)}{P(A)}$</li>
+</ul>
+<p>其中：</p>
+<ul>
+<li>
+<p>$P(A)$：<strong>A</strong> 的边界概率</p>
+</li>
+<li>
+<p>$P(B)$：<strong>B</strong> 的边界概率</p>
+</li>
+<li>
+<p>$P(A|B)$ ：条件概率，已知 <strong>B</strong>，<strong>A</strong> 的概率</p>
+</li>
+<li>
+<p>$P(B|A)$ ：条件概率，已知 <strong>A</strong>，<strong>B</strong> 的概率</p>
+</li>
+<li>
+<p>$P(B \cap A)$：联合概率 <strong>B</strong> 与 <strong>A</strong> 同时发生的概率</p>
+</li>
+</ul>
+<p>一个简单的概率问题可能会问：茅台股价下跌的概率是多少？条件概率通过询问这个问题更进一步：鉴于A股平均指数下跌，茅台股价下跌的概率是多少？ 给定 B 已经发生的条件下 A 的概率可以表示为：</p>
+<p>$P(Mao|AS) = \frac{P(Mao \cap AS)}{P(AS)}$</p>
+<p>$P(Mao \cap AS)$ 是 A 和 B 同时发生的概率，与 A 发生的情况下 B 也发生的概率 乘 A 发生的概率相等表示为： $P(Mao) \times P(AS|Mao)$；这两个表达式相等，也就是贝叶斯定理，可以表示为：</p>
+<ul>
+<li>如果， $P(Mao \cap AS) = P(Mao) \times P(AS|Mao)$</li>
+<li>那么， $P(Mao|AS) = \frac{P(Mao) \times P(AS|Mao)}{P(AS)}$</li>
+</ul>
+<p>$P(Mao)$ 和 $P(AS)$ 分别为茅台和A股的下跌概率，彼此间没有关系</p>
+<p>一般情况下，都是以 <strong>x</strong> （输入） <strong>y</strong> （输出） 在函数中，假设 $x=AS$ , $y=MAO$ 那么替代到公式中就 $P(Y|X) = \frac{P(X|Y) \times P(Y)}{P(X)}$</p>
+<h2 id="朴素贝叶斯算法">朴素贝叶斯算法</h2>
+<p>朴素贝叶斯不是一个的算法，而是一组算法，所有这些算法都基于一个共同的原则，即每一对被分类的特征必须相互独立。朴素贝叶斯是一个基本的贝叶斯称呼，包含三种算法的集合：多项式 <code>Multinomial</code>、 伯努利 <code>Bernoulli</code>、高斯 <code>Gaussian</code>。</p>
+<h3 id="伯努利">伯努利</h3>
+<p>伯努利朴素贝叶斯，又叫做二项式，只接受二进制值，简而言之，在伯努利中必须计算每个值的二进制出现特征，即一个单词是与否出现在文档中。</p>
+<p>通俗地来说，伯努利有两个互斥的结果：$$NB=\begin{cases}
+P(X=1)\ = \ q\
+P(X=0)\ = \ 1-q\
+\end{cases}
+$$ ，在伯努利中，可以有多个特征，但每个特征都假设为是二进制的变量，因此，需要将样本表示为二进制向量。</p>
+<p>那么扩展出的公式为：$P(A|B) = \frac{P(B|A) \times P(A)}{P(A) \times P(B|A) + P(not A) \times P(B|not A)}$</p>
+<p><strong>例子</strong>：假设COVID-19测试并不准确，有**95%**几率在感染时测试出阳性（敏感性），这就意味着如果有人并未感染的概率是相同的（特异性）；问：如果Jeovanna检测为阳性，那么他感染COVID-19的概率是多少？</p>
+<blockquote>
+<p>敏感性和特异性是医学用语；敏感性，病人测出阳性的比例，特异性，非病人测试阴性的比例</p>
+</blockquote>
+<p>一般情况下没有更多的信息来确定Jeovanna是否感染，如驻留场所，是否发烧，丧失味觉等。就需要更多的信息来计算Jeovanna感染率，比如预估Jeovanna感染率为1%，这1%就是先验概率。</p>
+<p>此时有100000人的测试样本，预计1000人感染（先验1%），那么就是99000为感染，又因为测试具有 95% 的敏感性和 95% 的特异性，这代表了 1000的95% 和 99000的5% 是阳性。整理一个表格</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Has COVID-19</th>
+<th>Do not Has COVID-19</th>
+<th>count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>阳性</td>
+<td>950</td>
+<td>4950</td>
+<td>5900</td>
+</tr>
+<tr>
+<td>阴性</td>
+<td>50</td>
+<td>94050</td>
+<td>94100</td>
+</tr>
+</tbody>
+</table>
+<p>那么可以看出，阳性的人并感染COVID-19的概率是，$\frac{950}{5900} = 16%$ ；那么也就是Jeovanna有16%几率是感染 COVID-19。</p>
+<p>此时将先验概率设置为16%，那么爱丽丝得COVID-19的可能性为：</p>
+<blockquote>
+<p>$P(B|A)$ ：在95%成功率情况下又获得了阳性</p>
+<p>$P(A)$：阳性的检测成功率</p>
+<p>已知，$P(B|A) = 0.16$ ，$P(A) = 0.95$</p>
+<p>$P(A|B) = \frac{P(B|A) \times P(A)}{P(A) \times P(B|A) + P(not A) \times P(B|not A)}  = \frac{0.16\times0.95}{0.95\times 0.16 + (1-0.95)\times(1-0.16)}= \frac{0.152}{0.194} = 0.7835 = 78.35%$</p>
+</blockquote>
+<p>那么就可以得知，在阳性情况下感染COVID-19的情况下，再去检测会有78%几率阳性</p>
+<h3 id="多项式">多项式</h3>
+<p>多项式朴素贝叶斯是基于多项分布的朴素叶贝斯，用来处理文本，计算 $d$ 在 $c$ 中的概率计算如下：</p>
+<p>$P(c|d) \ \propto P(c) \prod_{i=1}^n\ P(t_k|c)$</p>
+<p>通俗来说就是二项式的一个变种，是计算多个不同的实例</p>
+<p>$P(t_k|c)$ 是 $t_k$ 的 条件概率，发生在数据集 $c$ 中，$P(t_k|c)$ 解释为 $t_k$ 有多少证据表明 $c$ 是正确的；$P(c)$ 是先验条件 $t1..\ t2..\ t3..\ tn_d$ 中的标记 $d$，它们是我们用于分类的词汇表的一部分，$n_d$ 是 标记 $d$ 的数量。</p>
+<p>例如：&ldquo;Peking and Taipei join the WTO&rdquo;，$&lt;Peking,\ Taipei,\ join,\ WTO&gt;$ ,那么 $n_d = 4$</p>
+<p>那么可以简化为，</p>
+<p>$P(c=x|d=c_k) = P(c^1=x^1..,\ c^2=x^2..,\ c^n=x^n|d=c_k) = \prod_{i=1}^n(c^i|d)x^i + (1-P(c^i|d))	(1-x^i)$</p>
+<p>$\prod_{i=1}^n$ 连乘积，即从下标起乘到上标</p>
+<h2 id="朴素贝叶斯实现">朴素贝叶斯实现</h2>
+<p>首先将朴素贝叶斯为 5 个部分：</p>
+<ul>
+<li>分类</li>
+<li>数据集汇总</li>
+<li>按类别汇总数据</li>
+<li>高斯密度函数</li>
+<li>分类概率</li>
+</ul>
+<h3 id="分类">分类</h3>
+<p>根据数据所属的类别来计算数据的概率，即所谓的基本率。</p>
+<p>先创建一个字典对象，其中每个键都是类值，然后添加所有记录的列表作为字典中的值。</p>
+<p>假设每行中的最后一列是类型。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 按类拆分数据集，返回结构是一个词典</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">		<span class="n">vector</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="n">class_value</span> <span class="o">=</span> <span class="n">vector</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># dataset最后一行是类别</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="p">(</span><span class="n">class_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">			<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">separated</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>准备一些数据集</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">X1				X2						Class
+</span></span><span class="line"><span class="cl">3.393533211		2.331273381				0
+</span></span><span class="line"><span class="cl">3.110073483		1.781539638				0
+</span></span><span class="line"><span class="cl">7.423436942		4.696522875				1
+</span></span><span class="line"><span class="cl">1.343808831		3.368360954				0
+</span></span><span class="line"><span class="cl">3.582294042		4.67917911				0
+</span></span><span class="line"><span class="cl">9.172168622		2.511101045				1
+</span></span><span class="line"><span class="cl">7.792783481		3.424088941				1
+</span></span><span class="line"><span class="cl">2.280362439		2.866990263				0
+</span></span><span class="line"><span class="cl">5.745051997		3.533989803				1
+</span></span><span class="line"><span class="cl">7.939820817		0.791637231				1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>测试分类函数的功能</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">		<span class="n">vector</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="n">class_value</span> <span class="o">=</span> <span class="n">vector</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="p">(</span><span class="n">class_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">			<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">separated</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 测试数据集</span>
+</span></span><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">3.393533211</span><span class="p">,</span><span class="mf">2.331273381</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.110073483</span><span class="p">,</span><span class="mf">1.781539638</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">1.343808831</span><span class="p">,</span><span class="mf">3.368360954</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">7.423436942</span><span class="p">,</span><span class="mf">4.696522875</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.582294042</span><span class="p">,</span><span class="mf">4.67917911</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">9.172168622</span><span class="p">,</span><span class="mf">2.511101045</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.792783481</span><span class="p">,</span><span class="mf">3.424088941</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">2.280362439</span><span class="p">,</span><span class="mf">2.866990263</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">5.745051997</span><span class="p">,</span><span class="mf">3.533989803</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.939820817</span><span class="p">,</span><span class="mf">0.791637231</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">	<span class="nb">print</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">[</span><span class="n">label</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>可以看到分类是成功的</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220503215102264.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220503215102264.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220503215102264.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220503215102264.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220503215102264.png"
+        title="image-20220503215102264" /></p>
+<h3 id="数据集汇总">数据集汇总</h3>
+<p>现在需要对给出数据集的两个数据进行统计，如何对指定数据集做概率计算？需要以下几步</p>
+<p>计算数据集两个数据的平均值和标准差</p>
+<p>平均值为： $\frac{sum(x)}{n} \times count(x)$ ；其中 $x$ 为正在查找值的列表</p>
+<p>mean函数用于计算平均值</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>样本标准差的计算方式为平均值的平均差。公式可以为 <code> sqrt((sum i to N (x_i – mean(x))^2) / N-1)</code></p>
+<p>函数用来计算</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># Calculate the standard deviation of a list of numbers</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span> <span class="c1"># 平均值</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>还需要对每个数据的每一列计算平均值和标准偏差统计量。通过将每列的所有值收集到一个列表中并计算该列表的平均值和标准差。计算完成后，将统计信息收集到数据汇总的列表或元组中。然后，对数据集中的每一列重复此操作并返回统计元组列表。</p>
+<p>下面是 数据汇总的函数 <code>summarise_dataset()</code>用来统计每列列表的平均值和标准差</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算平均数</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span> <span class="c1"># 标准差</span>
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span> <span class="c1"># 计算平均值</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 计算所有的平方</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 数据汇总</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">summaries</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mean</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="n">stdev</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">column</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">dataset</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">del</span><span class="p">(</span><span class="n">summaries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># 因为分类不需要所以。删除掉分类哪行</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># Test summarizing a dataset</span>
+</span></span><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">3.393533211</span><span class="p">,</span><span class="mf">2.331273381</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.110073483</span><span class="p">,</span><span class="mf">1.781539638</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">1.343808831</span><span class="p">,</span><span class="mf">3.368360954</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.582294042</span><span class="p">,</span><span class="mf">4.67917911</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">2.280362439</span><span class="p">,</span><span class="mf">2.866990263</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.423436942</span><span class="p">,</span><span class="mf">4.696522875</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">5.745051997</span><span class="p">,</span><span class="mf">3.533989803</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">9.172168622</span><span class="p">,</span><span class="mf">2.511101045</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.792783481</span><span class="p">,</span><span class="mf">3.424088941</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.939820817</span><span class="p">,</span><span class="mf">0.791637231</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="n">summary</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里使用的是<code>zip()</code> 函数，将每列作为提供的参数。使用 * 作为位置函数，运将数据集传递给 <code>zip()</code> ，这个运算会将每一行的分割为单独列表。然后<code>zip()</code> 遍历每一行的每个元素，返回一列作为数字列表。</p>
+<p>然后计算每列中的平均数、标准差和行数。删掉不需要的列（第三列类别列的平均数，标准差和行数）</p>
+<p>可以看到</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[
+</span></span><span class="line"><span class="cl">(5.178333386499999, 2.7665845055177263, 10), 
+</span></span><span class="line"><span class="cl">(2.9984683241, 1.218556343617447, 10)
+</span></span><span class="line"><span class="cl">]
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="根据类别汇总数据">根据类别汇总数据</h3>
+<p><code>separate_by_class()</code> 是将数据分成行，现在要编写一个 <code>summarise_dataset()</code>；是先计算每列的统计汇总信息，然后在按照子集分类（X1，X2）</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 按类拆分数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">separated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这是完整的代码</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算平均数</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span> <span class="c1"># 标准差</span>
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span> <span class="c1"># 计算平均值</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 计算所有的平方</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 数据汇总</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">summaries</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mean</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="n">stdev</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">column</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">dataset</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">del</span><span class="p">(</span><span class="n">summaries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># 因为分类不需要所以。删除掉分类哪行</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 按类进行数据汇总</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">separated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 测试数据集</span>
+</span></span><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">3.393533211</span><span class="p">,</span><span class="mf">2.331273381</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.110073483</span><span class="p">,</span><span class="mf">1.781539638</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">1.343808831</span><span class="p">,</span><span class="mf">3.368360954</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.582294042</span><span class="p">,</span><span class="mf">4.67917911</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">2.280362439</span><span class="p">,</span><span class="mf">2.866990263</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.423436942</span><span class="p">,</span><span class="mf">4.696522875</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">5.745051997</span><span class="p">,</span><span class="mf">3.533989803</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">9.172168622</span><span class="p">,</span><span class="mf">2.511101045</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.792783481</span><span class="p">,</span><span class="mf">3.424088941</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.939820817</span><span class="p">,</span><span class="mf">0.791637231</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="n">summary</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">	<span class="nb">print</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">[</span><span class="n">label</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">print</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>按照分类，对每列计算平均值和标准差</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504174107364.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504174107364.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504174107364.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504174107364.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504174107364.png"
+        title="image-20220504174107364" /></p>
+<h3 id="高斯分布函数">高斯分布函数</h3>
+<p>高斯分布 <code>Gaussian distribution</code> 可以用两个数字来概括，高斯分布是具有对称的钟形的分布，所以中心右侧是左侧的镜像，曲线下的面积代表概率，曲线总面积之和等于1。</p>
+<p>高斯分布中的大多数连续数据值倾向于围绕均值聚集，值离均值越远，那么它发生的可能性就越小。接近但从未完全贴合x 轴。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg"
+        title="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/bell-curve.jpg" /></p>
+<p>高斯分布由均值和标准差两个参数决定的，任何点 (x) 都可以通过公式 $z = \frac{x-mean}{standard\ deviation}$ 来计算</p>
+<blockquote>
+<p>Reference</p>
+<p><a href="https://www.simplypsychology.org/normal-distribution.html" target="_blank" rel="noopener noreffer">normal distribution</a></p>
+</blockquote>
+<p>通过这一点，就可以知道就可以计算出给定的概率，公式为：</p>
+<p>$P({x_i}|Y) = \frac{1}{\sqrt2\pi\sigma_y^2}exp(-(\frac{(x_i-\mu_y)^2}{2\sigma_y^2})$</p>
+<p>其中，$\sigma$ 为标准差，$\mu$ 为平均值，那么转换为可读懂的公式为：</p>
+<p>$f(x) = \frac{1}{\sqrt{(2 \times pi )}\times sigma} \times exp(-(\frac{(x-mean)^2}{(2 \times sigma)^2}))$</p>
+<p>其中，<code>sigma</code>是  <code>x</code> 的标准差，<code>mean</code>  是 <code>x</code> 的平均值，PI是 就是 $\pi$ <code>math.pi</code> 的值。</p>
+<p>那么在转换成python中的代码为：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">PI</span><span class="p">)</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">)</span> <span class="o">*</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">^</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">^</span><span class="mi">2</span><span class="p">)))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>那么用python实现一个函数，来实现高斯公式</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 计算高斯分布的函数，需要三个参数，x 平均值，标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">calculate_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">exponent</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">stdev</span><span class="o">**</span><span class="mi">2</span> <span class="p">)))</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">stdev</span><span class="p">))</span> <span class="o">*</span> <span class="n">exponent</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里通过函数测试三个数据，<code>(0,1,1)</code>， <code>(1,1,1)</code>，<code>(2,1,1)</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">exp</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算高斯分布的函数，需要三个参数，x 平均值，标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">calculate_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">exponent</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">stdev</span><span class="o">**</span><span class="mi">2</span> <span class="p">)))</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">stdev</span><span class="p">))</span> <span class="o">*</span> <span class="n">exponent</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">calculate_probability</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">calculate_probability</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">calculate_probability</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504220553349.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504220553349.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504220553349.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504220553349.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220504220553349.png"
+        title="image-20220504220553349" /></p>
+<p>这里可以看到结果，<code>(1,1,1)</code> 的概率最可能（三个值中趋于钟形顶部）</p>
+<h3 id="分类概率">分类概率</h3>
+<p>到这里，可以尝试通过测试数据来统计新数据的概率，这里每个类别的概率都是单独计算的，这里将简化概率计算公式 $P(class|data) = P(data|class) \times P(class)$；这是一个常见的简化，这将意味着将结果为最大值的类的计算作为预测结果。因为通常对预测感兴趣，而不是概率</p>
+<p>对于上述例子，有两个变量，这里以 <code>class=0</code> 的类别来说明，公式为：</p>
+<p>$P(class=0|X1,X2) = P(X1|class=0) \times P(X2|class=0) \times P(class=0)$</p>
+<p>编写一个聚合函数，将上述四个步骤汇总处理，</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># Example of calculating class probabilities</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">exp</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 拆分数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">separated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">vector</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">class_value</span> <span class="o">=</span> <span class="n">vector</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">class_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">        <span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">separated</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">separated</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算平均数</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span> 
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span>  <span class="c1"># 计算平均值</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 标准差</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 数据汇总</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mean</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="n">stdev</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">column</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">dataset</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">	<span class="k">del</span><span class="p">(</span><span class="n">summaries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 按类进行数据汇总</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">separated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算高斯分布的函数，需要三个参数，x 平均值，标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">calculate_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">exponent</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">stdev</span><span class="o">**</span><span class="mi">2</span> <span class="p">)))</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">stdev</span><span class="p">))</span> <span class="o">*</span> <span class="n">exponent</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算每个分类的概率</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 计算所有分类的个数</span>
+</span></span><span class="line"><span class="cl">    <span class="n">total_rows</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">summaries</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">summaries</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">    <span class="n">probabilities</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">class_summaries</span> <span class="ow">in</span> <span class="n">summaries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 计算分类的概率，如这个分类在总分类里概率多少</span>
+</span></span><span class="line"><span class="cl">        <span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">total_rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">class_summaries</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">class_summaries</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">*=</span> <span class="n">calculate_probability</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">probabilities</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 测试数据集</span>
+</span></span><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[</span><span class="mf">3.393533211</span><span class="p">,</span><span class="mf">2.331273381</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.110073483</span><span class="p">,</span><span class="mf">1.781539638</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">1.343808831</span><span class="p">,</span><span class="mf">3.368360954</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">3.582294042</span><span class="p">,</span><span class="mf">4.67917911</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">2.280362439</span><span class="p">,</span><span class="mf">2.866990263</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.423436942</span><span class="p">,</span><span class="mf">4.696522875</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">5.745051997</span><span class="p">,</span><span class="mf">3.533989803</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">9.172168622</span><span class="p">,</span><span class="mf">2.511101045</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.792783481</span><span class="p">,</span><span class="mf">3.424088941</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">	<span class="p">[</span><span class="mf">7.939820817</span><span class="p">,</span><span class="mf">0.791637231</span><span class="p">,</span><span class="mi">1</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="n">summaries</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">probabilities</span> <span class="o">=</span> <span class="n">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">probabilities</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220505233319199.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220505233319199.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220505233319199.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220505233319199.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220505233319199.png"
+        title="image-20220505233319199" /></p>
+<p>由结果可以得知，<code>dataset[0]</code> <strong>X1</strong> 的概率（0.0503）要大于 <strong>X2</strong> 的概率（0.0001），所以可以正确的判断出 <code>dataset[0]</code> 属于 <strong>X1</strong> 分类</p>
+<h2 id="鸢尾花iris分类">鸢尾花(Iris)分类</h2>
+<p>鸢尾花分类，是模式识别中非常出名的一种数据库，需要先将数据下载：</p>
+<ul>
+<li>
+<p><a href="https://raw.githubusercontent.com/jbrownlee/Datasets/master/iris.names" target="_blank" rel="noopener noreffer">关于Iris-databases数据集的说明</a></p>
+</li>
+<li>
+<p><a href="https://raw.githubusercontent.com/jbrownlee/Datasets/master/iris.csv" target="_blank" rel="noopener noreffer">iris dataset</a></p>
+</li>
+</ul>
+<h3 id="实现开始">实现开始</h3>
+<p>实验是根据上述实验的步骤，将朴素贝叶斯算法应用在鸢尾花数据集中，鸢尾花数据集的实验也是需要相同的步骤，只不过对于数据集中的数据还需要一些其他的步骤，大致可分为以下几种操作：</p>
+<ul>
+<li>数据的预处理
+<ul>
+<li>从文件中读取数据</li>
+<li>将数据类型转换为可用于上面实验的类型（<code>float</code>）</li>
+<li>将真实分类转换为数字 <code>int</code></li>
+</ul>
+</li>
+<li>分类</li>
+<li>数据集汇总</li>
+<li>按类别汇总数据</li>
+<li>高斯密度函数</li>
+<li>分类概率</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span><span class="lnt">119
+</span><span class="lnt">120
+</span><span class="lnt">121
+</span><span class="lnt">122
+</span><span class="lnt">123
+</span><span class="lnt">124
+</span><span class="lnt">125
+</span><span class="lnt">126
+</span><span class="lnt">127
+</span><span class="lnt">128
+</span><span class="lnt">129
+</span><span class="lnt">130
+</span><span class="lnt">131
+</span><span class="lnt">132
+</span><span class="lnt">133
+</span><span class="lnt">134
+</span><span class="lnt">135
+</span><span class="lnt">136
+</span><span class="lnt">137
+</span><span class="lnt">138
+</span><span class="lnt">139
+</span><span class="lnt">140
+</span><span class="lnt">141
+</span><span class="lnt">142
+</span><span class="lnt">143
+</span><span class="lnt">144
+</span><span class="lnt">145
+</span><span class="lnt">146
+</span><span class="lnt">147
+</span><span class="lnt">148
+</span><span class="lnt">149
+</span><span class="lnt">150
+</span><span class="lnt">151
+</span><span class="lnt">152
+</span><span class="lnt">153
+</span><span class="lnt">154
+</span><span class="lnt">155
+</span><span class="lnt">156
+</span><span class="lnt">157
+</span><span class="lnt">158
+</span><span class="lnt">159
+</span><span class="lnt">160
+</span><span class="lnt">161
+</span><span class="lnt">162
+</span><span class="lnt">163
+</span><span class="lnt">164
+</span><span class="lnt">165
+</span><span class="lnt">166
+</span><span class="lnt">167
+</span><span class="lnt">168
+</span><span class="lnt">169
+</span><span class="lnt">170
+</span><span class="lnt">171
+</span><span class="lnt">172
+</span><span class="lnt">173
+</span><span class="lnt">174
+</span><span class="lnt">175
+</span><span class="lnt">176
+</span><span class="lnt">177
+</span><span class="lnt">178
+</span><span class="lnt">179
+</span><span class="lnt">180
+</span><span class="lnt">181
+</span><span class="lnt">182
+</span><span class="lnt">183
+</span><span class="lnt">184
+</span><span class="lnt">185
+</span><span class="lnt">186
+</span><span class="lnt">187
+</span><span class="lnt">188
+</span><span class="lnt">189
+</span><span class="lnt">190
+</span><span class="lnt">191
+</span><span class="lnt">192
+</span><span class="lnt">193
+</span><span class="lnt">194
+</span><span class="lnt">195
+</span><span class="lnt">196
+</span><span class="lnt">197
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">reader</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">seed</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randrange</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">exp</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 读取数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">load_csv</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">		<span class="n">csv_reader</span> <span class="o">=</span> <span class="n">reader</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv_reader</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">			<span class="n">dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">dataset</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将每行的数字转换为float</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">str_column_to_float</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将真实分类转换为数字，按照下标</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">str_column_to_int</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :param dataset: list, 数据集
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :param column: string，是为类型的列要传入
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s1">    &#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 通过循环拿到所有分类</span>
+</span></span><span class="line"><span class="cl">    <span class="n">class_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 对分类型去重</span>
+</span></span><span class="line"><span class="cl">    <span class="n">unique</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">class_values</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">lookup</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 拿到分类值的key 下标</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">lookup</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># 已对应的下标进行替换</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">lookup</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将数据的一部分作为训练数据</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cross_validation_split</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset_split</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset_copy</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">fold_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_folds</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">		<span class="n">fold</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">fold_size</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">index</span> <span class="o">=</span> <span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset_copy</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">			<span class="n">fold</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dataset_copy</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">		<span class="n">dataset_split</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">dataset_split</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算准确度</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">accuracy_metric</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">predicted</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">correct</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="n">actual</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">predicted</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">correct</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">correct</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">))</span> <span class="o">*</span> <span class="mf">100.0</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 对算法数据进行评估</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">evaluate_algorithm</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param dataset:list, 原始数据集
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param algorithm:function，算法函数
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param n_folds:int，取多少数据作为训练集
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param args:options ，参数
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">folds</span> <span class="o">=</span> <span class="n">cross_validation_split</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">scores</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">fold</span> <span class="ow">in</span> <span class="n">folds</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 合并成一个数组</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="p">[])</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">test_set</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fold</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">row_copy</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">test_set</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_copy</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">row_copy</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># 将最后一个类型字段设置为None</span>
+</span></span><span class="line"><span class="cl">        <span class="n">predicted</span> <span class="o">=</span> <span class="n">algorithm</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 真实的类型</span>
+</span></span><span class="line"><span class="cl">        <span class="n">actual</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fold</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 精确的分数，即这一组数据正确率</span>
+</span></span><span class="line"><span class="cl">        <span class="n">accuracy</span> <span class="o">=</span> <span class="n">accuracy_metric</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">predicted</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">accuracy</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">scores</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 按照分类拆分</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">		<span class="n">vector</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="n">class_value</span> <span class="o">=</span> <span class="n">vector</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="p">(</span><span class="n">class_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">			<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">separated</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算这一系列的平均值</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算一系列数字的标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算数据集中每列的平均值 标准差 长度</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mean</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="n">stdev</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">column</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">dataset</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">	<span class="k">del</span><span class="p">(</span><span class="n">summaries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 按照分类划分数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">separated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算x的高斯概率</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">calculate_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param x:float, 计算这个值的高斯概率
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param mean:float，x的平均值
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param stdev:float，x的标准差
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">exponent</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">stdev</span><span class="o">**</span><span class="mi">2</span> <span class="p">)))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">stdev</span><span class="p">))</span> <span class="o">*</span> <span class="n">exponent</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算每行的概率</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 计算所有分类的个数</span>
+</span></span><span class="line"><span class="cl">	<span class="n">total_rows</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">summaries</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">summaries</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">	<span class="n">probabilities</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">class_summaries</span> <span class="ow">in</span> <span class="n">summaries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 计算分类的概率，如这个分类在总分类里概率多少</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 公式中的P(class)</span>
+</span></span><span class="line"><span class="cl">		<span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">total_rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 通过公式  P(X1|class=0) * P(X2|class=0) * P(class=0) 计算高斯概率</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">class_summaries</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">			<span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">class_summaries</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">			<span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">*=</span> <span class="n">calculate_probability</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">probabilities</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 通过计算出来的值，预测该花属于哪个品种，取高斯概率最大的值</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">probabilities</span> <span class="o">=</span> <span class="n">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">best_label</span><span class="p">,</span> <span class="n">best_prob</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">probability</span> <span class="ow">in</span> <span class="n">probabilities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="n">best_label</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">probability</span> <span class="o">&gt;</span> <span class="n">best_prob</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">best_prob</span> <span class="o">=</span> <span class="n">probability</span>
+</span></span><span class="line"><span class="cl">			<span class="n">best_label</span> <span class="o">=</span> <span class="n">class_value</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">best_label</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># Naive Bayes Algorithm</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">naive_bayes</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">test</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 训练数据按照类分类排序</span>
+</span></span><span class="line"><span class="cl">    <span class="n">summarize</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">predictions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">test</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output</span> <span class="o">=</span> <span class="n">predict</span><span class="p">(</span><span class="n">summarize</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">predictions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 测试</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;iris.csv&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">dataset</span> <span class="o">=</span> <span class="n">load_csv</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 转换数值为float</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">str_column_to_float</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 将类型转换为数字</span>
+</span></span><span class="line"><span class="cl">    <span class="n">str_column_to_int</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># 将数据分位测试数据和训练数据，folds为多少数据为训练数据</span>
+</span></span><span class="line"><span class="cl">    <span class="n">n_folds</span> <span class="o">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl">    <span class="n">scores</span> <span class="o">=</span> <span class="n">evaluate_algorithm</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">naive_bayes</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Scores: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">scores</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Mean Accuracy: </span><span class="si">%.3f%%</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">))))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506190801092.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506190801092.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506190801092.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506190801092.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506190801092.png"
+        title="image-20220506190801092" /></p>
+<p>可以看到运行结果，对鸢尾花数据集的预测正确率，平均为95.333%</p>
+<p>现在对 <code>main</code> 部分进行修改，使用全部数据集作为训练，新增记录作为预测</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 按照整个数据集分类</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 新加一行预测数据</span>
+</span></span><span class="line"><span class="cl"><span class="n">row</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.3</span><span class="p">,</span><span class="mf">3.9</span><span class="p">,</span><span class="mf">3.2</span><span class="p">,</span><span class="mf">2.3</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 根据训练集进行对数据预测</span>
+</span></span><span class="line"><span class="cl"><span class="n">label</span> <span class="o">=</span> <span class="n">predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Data=</span><span class="si">%s</span><span class="s1">, Predicted: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>完整修改过的代码如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span><span class="lnt">119
+</span><span class="lnt">120
+</span><span class="lnt">121
+</span><span class="lnt">122
+</span><span class="lnt">123
+</span><span class="lnt">124
+</span><span class="lnt">125
+</span><span class="lnt">126
+</span><span class="lnt">127
+</span><span class="lnt">128
+</span><span class="lnt">129
+</span><span class="lnt">130
+</span><span class="lnt">131
+</span><span class="lnt">132
+</span><span class="lnt">133
+</span><span class="lnt">134
+</span><span class="lnt">135
+</span><span class="lnt">136
+</span><span class="lnt">137
+</span><span class="lnt">138
+</span><span class="lnt">139
+</span><span class="lnt">140
+</span><span class="lnt">141
+</span><span class="lnt">142
+</span><span class="lnt">143
+</span><span class="lnt">144
+</span><span class="lnt">145
+</span><span class="lnt">146
+</span><span class="lnt">147
+</span><span class="lnt">148
+</span><span class="lnt">149
+</span><span class="lnt">150
+</span><span class="lnt">151
+</span><span class="lnt">152
+</span><span class="lnt">153
+</span><span class="lnt">154
+</span><span class="lnt">155
+</span><span class="lnt">156
+</span><span class="lnt">157
+</span><span class="lnt">158
+</span><span class="lnt">159
+</span><span class="lnt">160
+</span><span class="lnt">161
+</span><span class="lnt">162
+</span><span class="lnt">163
+</span><span class="lnt">164
+</span><span class="lnt">165
+</span><span class="lnt">166
+</span><span class="lnt">167
+</span><span class="lnt">168
+</span><span class="lnt">169
+</span><span class="lnt">170
+</span><span class="lnt">171
+</span><span class="lnt">172
+</span><span class="lnt">173
+</span><span class="lnt">174
+</span><span class="lnt">175
+</span><span class="lnt">176
+</span><span class="lnt">177
+</span><span class="lnt">178
+</span><span class="lnt">179
+</span><span class="lnt">180
+</span><span class="lnt">181
+</span><span class="lnt">182
+</span><span class="lnt">183
+</span><span class="lnt">184
+</span><span class="lnt">185
+</span><span class="lnt">186
+</span><span class="lnt">187
+</span><span class="lnt">188
+</span><span class="lnt">189
+</span><span class="lnt">190
+</span><span class="lnt">191
+</span><span class="lnt">192
+</span><span class="lnt">193
+</span><span class="lnt">194
+</span><span class="lnt">195
+</span><span class="lnt">196
+</span><span class="lnt">197
+</span><span class="lnt">198
+</span><span class="lnt">199
+</span><span class="lnt">200
+</span><span class="lnt">201
+</span><span class="lnt">202
+</span><span class="lnt">203
+</span><span class="lnt">204
+</span><span class="lnt">205
+</span><span class="lnt">206
+</span><span class="lnt">207
+</span><span class="lnt">208
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">csv</span> <span class="kn">import</span> <span class="n">reader</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">seed</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">random</span> <span class="kn">import</span> <span class="n">randrange</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">sqrt</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">exp</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 读取数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">load_csv</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">		<span class="n">csv_reader</span> <span class="o">=</span> <span class="n">reader</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv_reader</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">			<span class="n">dataset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">dataset</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将每行的数字转换为float</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">str_column_to_float</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将真实分类转换为数字，按照下标</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">str_column_to_int</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :param dataset: list, 数据集
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :param column: string，是为类型的列要传入
+</span></span></span><span class="line"><span class="cl"><span class="s1">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s1">    &#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 通过循环拿到所有分类</span>
+</span></span><span class="line"><span class="cl">    <span class="n">class_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 对分类型去重</span>
+</span></span><span class="line"><span class="cl">    <span class="n">unique</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">class_values</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">lookup</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 拿到分类值的key 下标</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">lookup</span><span class="p">[</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># 增加一行，来显示下标和真实名称对应的数据</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">lookup</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># 已对应的下标进行替换</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">lookup</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">lookup</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将数据的一部分作为训练数据</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cross_validation_split</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset_split</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="n">dataset_copy</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">fold_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_folds</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">		<span class="n">fold</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">fold_size</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">index</span> <span class="o">=</span> <span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset_copy</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">			<span class="n">fold</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dataset_copy</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">index</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">		<span class="n">dataset_split</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">dataset_split</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算准确度</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">accuracy_metric</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">predicted</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">correct</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="n">actual</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">predicted</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">correct</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">correct</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">))</span> <span class="o">*</span> <span class="mf">100.0</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 对算法数据进行评估</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">evaluate_algorithm</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param dataset:list, 原始数据集
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param algorithm:function，算法函数
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param n_folds:int，取多少数据作为训练集
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param args:options ，参数
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">folds</span> <span class="o">=</span> <span class="n">cross_validation_split</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">n_folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">scores</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">fold</span> <span class="ow">in</span> <span class="n">folds</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">folds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fold</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 合并成一个数组</span>
+</span></span><span class="line"><span class="cl">        <span class="n">train_set</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="p">[])</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">test_set</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fold</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">row_copy</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">test_set</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_copy</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">row_copy</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># 将最后一个类型字段设置为None</span>
+</span></span><span class="line"><span class="cl">        <span class="n">predicted</span> <span class="o">=</span> <span class="n">algorithm</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 真实的类型</span>
+</span></span><span class="line"><span class="cl">        <span class="n">actual</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">fold</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 精确的分数，即这一组数据正确率</span>
+</span></span><span class="line"><span class="cl">        <span class="n">accuracy</span> <span class="o">=</span> <span class="n">accuracy_metric</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">predicted</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">accuracy</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">scores</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 按照分类拆分</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param dataset:list, 按分类好的列表
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :return: dict, 每个分类的每列（属性）的平均值，标准差，个数
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">separated</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">vector</span> <span class="o">=</span> <span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">class_value</span> <span class="o">=</span> <span class="n">vector</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">class_value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">separated</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">separated</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">separated</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算这一系列的平均值</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算一系列数字的标准差</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">stdev</span><span class="p">(</span><span class="n">numbers</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">avg</span> <span class="o">=</span> <span class="n">mean</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">variance</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([(</span><span class="n">x</span><span class="o">-</span><span class="n">avg</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">numbers</span><span class="p">])</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">numbers</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算数据集中每列的平均值 标准差 长度</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_dataset</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">summaries</span> <span class="o">=</span> <span class="p">[(</span><span class="n">mean</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="n">stdev</span><span class="p">(</span><span class="n">column</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">column</span><span class="p">))</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">dataset</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">	<span class="k">del</span><span class="p">(</span><span class="n">summaries</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 按照分类划分数据集</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">separated</span> <span class="o">=</span> <span class="n">separate_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">summaries</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">separated</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summarize_dataset</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">summaries</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算x的高斯概率</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">calculate_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param x:float, 计算这个值的高斯概率
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param mean:float，x的平均值
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :param stdev:float，x的标准差
+</span></span></span><span class="line"><span class="cl"><span class="s2">    :return: None
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">exponent</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">stdev</span><span class="o">**</span><span class="mi">2</span> <span class="p">)))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">stdev</span><span class="p">))</span> <span class="o">*</span> <span class="n">exponent</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 计算每行的概率</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 计算所有分类的个数</span>
+</span></span><span class="line"><span class="cl">    <span class="n">total_rows</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">summaries</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">summaries</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">    <span class="n">probabilities</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">class_summaries</span> <span class="ow">in</span> <span class="n">summaries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 计算分类的概率，如这个分类在总分类里概率多少</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 公式中的P(class)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">=</span> <span class="n">summaries</span><span class="p">[</span><span class="n">class_value</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">total_rows</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># 通过公式  P(X1|class=0) * P(X2|class=0) * P(class=0) 计算高斯概率</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">class_summaries</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">class_summaries</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="n">probabilities</span><span class="p">[</span><span class="n">class_value</span><span class="p">]</span> <span class="o">*=</span> <span class="n">calculate_probability</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">mean</span><span class="p">,</span> <span class="n">stdev</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">probabilities</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 通过计算出来的值，预测该花属于哪个品种，取高斯概率最大的值</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">	<span class="n">probabilities</span> <span class="o">=</span> <span class="n">converge_probabilities</span><span class="p">(</span><span class="n">summaries</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="n">best_label</span><span class="p">,</span> <span class="n">best_prob</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="n">class_value</span><span class="p">,</span> <span class="n">probability</span> <span class="ow">in</span> <span class="n">probabilities</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="n">best_label</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">probability</span> <span class="o">&gt;</span> <span class="n">best_prob</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="n">best_prob</span> <span class="o">=</span> <span class="n">probability</span>
+</span></span><span class="line"><span class="cl">			<span class="n">best_label</span> <span class="o">=</span> <span class="n">class_value</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="n">best_label</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># Naive Bayes Algorithm</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">naive_bayes</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">test</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 训练数据按照类分类排序</span>
+</span></span><span class="line"><span class="cl">    <span class="n">summarize</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">predictions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">test</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output</span> <span class="o">=</span> <span class="n">predict</span><span class="p">(</span><span class="n">summarize</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">predictions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl"><span class="c1"># 测试</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;iris.csv&#39;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">dataset</span> <span class="o">=</span> <span class="n">load_csv</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 转换数值为float</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">str_column_to_float</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 将类型转换为数字</span>
+</span></span><span class="line"><span class="cl">    <span class="n">str_column_to_int</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># 按照整个数据集分类</span>
+</span></span><span class="line"><span class="cl">    <span class="n">model</span> <span class="o">=</span> <span class="n">summarize_by_class</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 新加一行预测数据</span>
+</span></span><span class="line"><span class="cl">    <span class="n">row</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.3</span><span class="p">,</span><span class="mf">3.9</span><span class="p">,</span><span class="mf">3.2</span><span class="p">,</span><span class="mf">2.3</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># 根据训练集进行对数据预测</span>
+</span></span><span class="line"><span class="cl">    <span class="n">label</span> <span class="o">=</span> <span class="n">predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Data=</span><span class="si">%s</span><span class="s1">, Predicted: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">label</span><span class="p">))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193631974.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193631974.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193631974.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193631974.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193631974.png"
+        title="image-20220506193631974" /></p>
+<p>可以看到对数据集 <code>[5.3,3.9,3.2,2.3]</code> 预测为 <code>versicolor</code>，那将属性修改为，<code>[2.3,0.9,0.2,1.3]</code> 预测结果为 <code>setosa</code></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193805325.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193805325.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193805325.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193805325.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506193805325.png"
+        title="image-20220506193805325" /></p>
+<blockquote>
+<p>Reference</p>
+<p><a href="https://iq.opengenus.org/gaussian-naive-bayes/" target="_blank" rel="noopener noreffer">gaussian naive bayes</a></p>
+<p><a href="https://www.varsity.co.uk/science/21149" target="_blank" rel="noopener noreffer">Naive Bayes Example</a></p>
+<p><a href="https://www.omnicalculator.com/statistics/bayes-theorem" target="_blank" rel="noopener noreffer">caculator naive bayes</a></p>
+<p><a href="https://towardsdatascience.com/a-mathematical-explanation-of-naive-bayes-in-5-minutes-44adebcdb5f8" target="_blank" rel="noopener noreffer">五分钟了解朴素贝叶斯</a></p>
+<p><a href="https://www.investopedia.com/terms/j/jointprobability.asp" target="_blank" rel="noopener noreffer">Joint Probability</a></p>
+<p><a href="https://www.investopedia.com/terms/c/conditional_probability.asp" target="_blank" rel="noopener noreffer">Conditional Probability</a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-06-01 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/naive-bayes.html" data-title="naive bayes" data-hashtags="MachineLearning,algorithm,CS"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/naive-bayes.html" data-hashtag="MachineLearning"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/naive-bayes.html" data-title="naive bayes" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/naive-bayes.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/naive-bayes.html" data-title="naive bayes"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/naive-bayes.html" data-title="naive bayes"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/naive-bayes.html" data-title="naive bayes"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/machinelearning.html">MachineLearning</a>,&nbsp;<a href="/tags/algorithm.html">algorithm</a>,&nbsp;<a href="/tags/cs.html">CS</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch1.1-kubernetes-api.html" class="prev" rel="prev" title="理解kubernetes API"><i class="fas fa-angle-left fa-fw"></i>理解kubernetes API</a>
+            <a href="/logistic-regression.html" class="next" rel="next" title="Logistic Regression">Logistic Regression<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-06-01T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"naive bayes"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

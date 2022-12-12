@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>firewalld - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="firewalld" />
+<meta property="og:description" content="[toc]
+1 firewalld的配置文件 以xml格式为主
+1 2 /etc/firewalld/ /usr/lib/firewalld/ 使用时的规则是这样的：当需要一个文件时firewalld会首先到第一个目录中查找，如果找到直接使用，否则会继续到第二个目录中查找。
+1.1 配置文件结构 firewalld的配置文件主要有两个文件和三个目录
+文件：firewalld.conf、lockdown-whitelist.xml
+目录：zone services icmptypes
+1.2 firewalld.conf firewalld的主配置文件，不过非常简单，只有五个配置项
+defaultzone：默认使用的zone默认public
+minimalmark：标记最小值
+cleanUpOnExit：退出当前firewalld后是否清除防火墙规则，默认值为yes;
+zones
+保存zone配置文件
+services
+保存service配置文件
+icmptypes
+保存和icmp类型相关的配置文件
+2 firewall操作 2.1 查看firewalld状态 1 2 3 4 5 6 7 $ firewall-cmd --state not running $ systemctl start firewalld $ firewall-cmd --state running 2.2 不改变状态的条件下重新加载防火墙 1 firewall-cmd --reload 获取支持的区域列表
+1 firewall-cmd --get-zone 获得所有支持的服务
+1 2 $ firewall-cmd --get-services RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxypmwebapi pmwebapis pop3s postgresql proxy-dhcp radius redis rpc-bind samba samba-client smtp ssh telnet tftp tftp-clienttransmission-client vnc-server wbem-https 获取所有支持的ICMP类型" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/firewalld.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-03-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2017-03-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="firewalld"/>
+<meta name="twitter:description" content="[toc]
+1 firewalld的配置文件 以xml格式为主
+1 2 /etc/firewalld/ /usr/lib/firewalld/ 使用时的规则是这样的：当需要一个文件时firewalld会首先到第一个目录中查找，如果找到直接使用，否则会继续到第二个目录中查找。
+1.1 配置文件结构 firewalld的配置文件主要有两个文件和三个目录
+文件：firewalld.conf、lockdown-whitelist.xml
+目录：zone services icmptypes
+1.2 firewalld.conf firewalld的主配置文件，不过非常简单，只有五个配置项
+defaultzone：默认使用的zone默认public
+minimalmark：标记最小值
+cleanUpOnExit：退出当前firewalld后是否清除防火墙规则，默认值为yes;
+zones
+保存zone配置文件
+services
+保存service配置文件
+icmptypes
+保存和icmp类型相关的配置文件
+2 firewall操作 2.1 查看firewalld状态 1 2 3 4 5 6 7 $ firewall-cmd --state not running $ systemctl start firewalld $ firewall-cmd --state running 2.2 不改变状态的条件下重新加载防火墙 1 firewall-cmd --reload 获取支持的区域列表
+1 firewall-cmd --get-zone 获得所有支持的服务
+1 2 $ firewall-cmd --get-services RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxypmwebapi pmwebapis pop3s postgresql proxy-dhcp radius redis rpc-bind samba samba-client smtp ssh telnet tftp tftp-clienttransmission-client vnc-server wbem-https 获取所有支持的ICMP类型"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/firewalld.html" /><link rel="prev" href="https://cylonchau.github.io/ch1-iptables-introduction.html" /><link rel="next" href="https://cylonchau.github.io/rsync.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "firewalld",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/firewalld.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "iptables","wordcount":  484 ,
+        "url": "https:\/\/cylonchau.github.io\/firewalld.html","datePublished": "2017-03-02T00:00:00+00:00","dateModified": "2017-03-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">firewalld</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/iptables.html"><i class="far fa-folder fa-fw"></i>iptables</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-03-02 00:00:00">2017-03-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 484 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#1-firewalld的配置文件">1 firewalld的配置文件</a>
+          <ul>
+            <li><a href="#11-配置文件结构">1.1 配置文件结构</a></li>
+            <li><a href="#12-firewalldconf">1.2 firewalld.conf</a></li>
+          </ul>
+        </li>
+        <li><a href="#2-firewall操作">2 firewall操作</a>
+          <ul>
+            <li><a href="#21-查看firewalld状态">2.1 查看firewalld状态</a></li>
+            <li><a href="#22-不改变状态的条件下重新加载防火墙">2.2 不改变状态的条件下重新加载防火墙</a></li>
+          </ul>
+        </li>
+        <li><a href="#3-firewall-cmd的基础操作">3 firewall-cmd的基础操作</a>
+          <ul>
+            <li><a href="#31-设置并获得默认区域">3.1 设置并获得默认区域</a></li>
+            <li><a href="#32-在不改变条件下重载防火墙">3.2 在不改变条件下重载防火墙</a></li>
+            <li><a href="#33-获得活动区域">3.3 获得活动区域</a></li>
+            <li><a href="#34-禁止掉ssh服务">3.4 禁止掉ssh服务</a></li>
+            <li><a href="#35-允许某个服务生效">3.5 允许某个服务生效</a></li>
+            <li><a href="#36-允许某个服务在一个时间段内生效">3.6 允许某个服务在一个时间段内生效</a></li>
+            <li><a href="#37-查询某个区域是否开启某项服务">3.7 查询某个区域是否开启某项服务</a></li>
+            <li><a href="#38-启动区域端口协议组合">3.8 启动区域端口协议组合</a></li>
+            <li><a href="#39-禁用端口和协议组合">3.9 禁用端口和协议组合</a></li>
+            <li><a href="#310-启动ip伪装功能">3.10 启动IP伪装功能</a></li>
+            <li><a href="#311-禁用ip伪装">3.11 禁用ip伪装</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p>[toc]</p>
+<h3 id="1-firewalld的配置文件">1 firewalld的配置文件</h3>
+<p>以xml格式为主</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/etc/firewalld/
+</span></span><span class="line"><span class="cl">/usr/lib/firewalld/
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>使用时的规则是这样的：当需要一个文件时firewalld会首先到第一个目录中查找，如果找到直接使用，否则会继续到第二个目录中查找。</p>
+<h4 id="11-配置文件结构">1.1 配置文件结构</h4>
+<p>firewalld的配置文件主要有两个文件和三个目录</p>
+<p>文件：firewalld.conf、lockdown-whitelist.xml</p>
+<p>目录：zone services icmptypes</p>
+<h4 id="12-firewalldconf">1.2 firewalld.conf</h4>
+<p>firewalld的主配置文件，不过非常简单，只有五个配置项</p>
+<p>defaultzone：默认使用的zone默认public</p>
+<p>minimalmark：标记最小值</p>
+<p>cleanUpOnExit：退出当前firewalld后是否清除防火墙规则，默认值为yes;</p>
+<p>zones</p>
+<p>保存zone配置文件</p>
+<p>services</p>
+<p>保存service配置文件</p>
+<p>icmptypes</p>
+<p>保存和icmp类型相关的配置文件</p>
+<h3 id="2-firewall操作">2 firewall操作</h3>
+<h4 id="21-查看firewalld状态">2.1 查看firewalld状态</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --state
+</span></span><span class="line"><span class="cl">not running
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ systemctl start firewalld
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ firewall-cmd --state
+</span></span><span class="line"><span class="cl">running
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="22-不改变状态的条件下重新加载防火墙">2.2 不改变状态的条件下重新加载防火墙</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd --reload
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>获取支持的区域列表</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd --get-zone
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>获得所有支持的服务</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --get-services
+</span></span><span class="line"><span class="cl">RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxypmwebapi pmwebapis pop3s postgresql proxy-dhcp radius redis rpc-bind samba samba-client smtp ssh telnet tftp tftp-clienttransmission-client vnc-server wbem-https
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>获取所有支持的ICMP类型</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --get-icmptypes
+</span></span><span class="line"><span class="cl">destination-unreachable echo-reply echo-request parameter-problem redirect router-advertisement router-solicitation source-quench time-exceeded
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="3-firewall-cmd的基础操作">3 firewall-cmd的基础操作</h3>
+<h4 id="31-设置并获得默认区域">3.1 设置并获得默认区域</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --set-default-zone<span class="o">=</span>public
+</span></span><span class="line"><span class="cl">success
+</span></span><span class="line"><span class="cl">$ firewall-cmd --get-default-zone
+</span></span><span class="line"><span class="cl">public
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="32-在不改变条件下重载防火墙">3.2 在不改变条件下重载防火墙</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --reload
+</span></span><span class="line"><span class="cl">success
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>获得所有支持区域</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --get-services
+</span></span><span class="line"><span class="cl">RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxypmwebapi pmwebapis pop3s postgresql proxy-dhcp radius redis rpc-bind samba samba-client smtp ssh telnet tftp tftp-clienttransmission-client vnc-server wbem-https
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>列出全部启用区域的信息</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --list-all-zones
+</span></span><span class="line"><span class="cl">block
+</span></span><span class="line"><span class="cl">  interfaces:
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services:
+</span></span><span class="line"><span class="cl">  ports:
+</span></span><span class="line"><span class="cl">  masquerade: no
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dmz
+</span></span><span class="line"><span class="cl">  interfaces:
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services: ssh
+</span></span><span class="line"><span class="cl">  ports:
+</span></span><span class="line"><span class="cl">  masquerade: no
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="33-获得活动区域">3.3 获得活动区域</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --get-active-zones
+</span></span><span class="line"><span class="cl">public
+</span></span><span class="line"><span class="cl">  interfaces: eth0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="34-禁止掉ssh服务">3.4 禁止掉ssh服务</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd --zone<span class="o">=</span>public --remove-service<span class="o">=</span>ssh
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="35-允许某个服务生效">3.5 允许某个服务生效</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd --zone<span class="o">=</span>public --add-service<span class="o">=</span>ssh
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>永久添加  <code>--permanent </code></p>
+<h4 id="36-允许某个服务在一个时间段内生效">3.6 允许某个服务在一个时间段内生效</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --add-service<span class="o">=</span>ssh --timeout<span class="o">=</span><span class="m">60</span>
+</span></span><span class="line"><span class="cl">success
+</span></span><span class="line"><span class="cl">$ firewall-cmd --list-all
+</span></span><span class="line"><span class="cl">drop <span class="o">(</span>default, active<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  interfaces: eth0
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services: ssh
+</span></span><span class="line"><span class="cl">  ports:
+</span></span><span class="line"><span class="cl">  masquerade: yes
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --list-all
+</span></span><span class="line"><span class="cl">drop <span class="o">(</span>default, active<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  interfaces: eth0
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services:
+</span></span><span class="line"><span class="cl">  ports:
+</span></span><span class="line"><span class="cl">  masquerade: yes
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="37-查询某个区域是否开启某项服务">3.7 查询某个区域是否开启某项服务</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --query-service<span class="o">=</span>ssh
+</span></span><span class="line"><span class="cl">no
+</span></span><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>home --query-service<span class="o">=</span>ssh
+</span></span><span class="line"><span class="cl">yes
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="38-启动区域端口协议组合">3.8 启动区域端口协议组合</h4>
+<p>此举将启用端口和协议的组合。端口可以是一个单独的端口 或者是一个端口范围 - 。协议可以是 tcp 或udp。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --add-port<span class="o">=</span>80/tcp
+</span></span><span class="line"><span class="cl">success
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --add-port<span class="o">=</span>10000-20000/tcp
+</span></span><span class="line"><span class="cl">success
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --list-all
+</span></span><span class="line"><span class="cl">public
+</span></span><span class="line"><span class="cl">  interfaces:
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services: dhcpv6-client
+</span></span><span class="line"><span class="cl">  ports: 80/tcp 10000-20000/tcp
+</span></span><span class="line"><span class="cl">  masquerade: yes
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="39-禁用端口和协议组合">3.9 禁用端口和协议组合</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">success
+</span></span><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --list-all
+</span></span><span class="line"><span class="cl">public
+</span></span><span class="line"><span class="cl">  interfaces:
+</span></span><span class="line"><span class="cl">  sources:
+</span></span><span class="line"><span class="cl">  services: dhcpv6-client
+</span></span><span class="line"><span class="cl">  ports: 80/tcp
+</span></span><span class="line"><span class="cl">  masquerade: yes
+</span></span><span class="line"><span class="cl">  forward-ports:
+</span></span><span class="line"><span class="cl">  icmp-blocks:
+</span></span><span class="line"><span class="cl">  rich rules:
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="310-启动ip伪装功能">3.10 启动IP伪装功能</h4>
+<p>此举启用区域的伪装功能。私有网络的地址将被隐藏并映射到一个公有IP。这是地址转换的一种形式，常用于路由。由于内核的限制，伪装功能仅可用于IPv4。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --add-masquerade --zone<span class="o">=</span>home
+</span></span><span class="line"><span class="cl">success
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="311-禁用ip伪装">3.11 禁用ip伪装</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd -- -masquerade --zone<span class="o">=</span>home
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在区域中启用端口转发或映射</p>
+<p>语法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">firewall-cmd <span class="o">[</span>--zone<span class="o">=]</span> --add-forward-port<span class="o">=</span><span class="nv">port</span><span class="o">=[</span>-<span class="o">]</span>:proto<span class="o">=</span> <span class="o">{</span> :toport<span class="o">=[</span>-<span class="o">]</span> <span class="p">|</span> :toaddr<span class="o">=</span><span class="p">|</span> :toport<span class="o">=[</span>-<span class="o">]</span>:toaddr<span class="o">=}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --add-forward-port<span class="o">=</span><span class="nv">port</span><span class="o">=</span>9999:proto<span class="o">=</span>tcp:toaddr<span class="o">=</span>192.168.2.82:toport<span class="o">=</span><span class="m">80</span>
+</span></span><span class="line"><span class="cl">success
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="http://www.sa-log.com/282.html" target="_blank" rel="noopener noreffer">http://www.sa-log.com/282.html</a></p>
+<p><a href="http://www.fedora.hk/linux/yumwei/show_15.html" target="_blank" rel="noopener noreffer">http://www.fedora.hk/linux/yumwei/show_15.html</a></p>
+<p><a href="https://yq.aliyun.com/ziliao/94786" target="_blank" rel="noopener noreffer">https://yq.aliyun.com/ziliao/94786</a></p>
+<p>启用区域的ICMP阻塞功能</p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2017-03-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/firewalld.html" data-title="firewalld" data-hashtags="iptables"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/firewalld.html" data-hashtag="iptables"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/firewalld.html" data-title="firewalld" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/firewalld.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/firewalld.html" data-title="firewalld"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/firewalld.html" data-title="firewalld"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/firewalld.html" data-title="firewalld"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/iptables.html">iptables</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch1-iptables-introduction.html" class="prev" rel="prev" title="ch1 iptables介绍"><i class="fas fa-angle-left fa-fw"></i>ch1 iptables介绍</a>
+            <a href="/rsync.html" class="next" rel="next" title="同步工具rsync使用示例">同步工具rsync使用示例<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-03-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"firewalld"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch9 Synchronization - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ch9 Synchronization" />
+<meta property="og:description" content="Background 多进程作为现代操作系统的重要特性，交互则会引起同时对共享资源的访问，当这些资源访问不正确会出现冲突或产生不适当的输出（冲突、死锁、饥饿）；而在同步的基础上，进程被分为以下两种类型：
+独立进程 Independent Process 不和其他进程共享资源或状态 确定性，输入状态确定结果 可重现，能够重现起始条件，I/O 调度的顺序不重要 协作进程 Cooperative Process； 多进程共享资源或状态 不确定性 probabilistic 不可重现 不确定性和不可重现意味着bug可能是间歇性发生的
+Cooperation 进程的互相影响，即进程间的合作（相互或破坏）；最简单的例子就是两个进程使用同一个文件，一个进程读，一个进程写。读进程的结果会被写进程所影响。
+进程需要合作的原因：
+资源共享：多个进程访问相同的数据 一台电脑，多个用户 一个银行存款余额,多台ATM机 嵌入式系统（机器人手臂和收的协调） 计算加速： I/O 和 CPU计算可重叠 多处理器 - 将任务分解为子任务并分布在不同的进程中，它通常可以更快地运行（也需要多个可共享的 CPU） 模块化：复杂的任务组织成单独的子任务，让不同的进程运行 大程序分成小程序 是系统易于扩展 程序可以调用函数fork()来创建一个新的进程
+操作系统需要分配一个新的并且唯一的进程ID 因此在内核中,这个系统调用会运行 new_pid = next_pid&#43;&#43;; 翻译成机器指令: Load next_pid Reg1 STORE Reg1 new_pid INC Reg1 STORE Reg1 next_pid 假设两个进程并发执行
+如果next_pid等于100, 那么其中一个进程得到的ID应该是100, 另一个进程的ID应该是101, next_pid应该增加到102 可能在INC前进行了上下文切换, 最终导致两个进程的pid都是100,而next_pid也是101 无论多个线程的指令序列怎样交替执行,程序都必须正常工作
+多线程程序具有不确定性和不可重现的特点 不经过专门设计,调试难度很高 不确定性要求并行程序的正确性
+先思考清楚问题，把程序的行为设计清楚 切忌给予着手编写代码，碰到问题再调试 Race Condition 竞态条件是由操作系统软件中的同步错误。出现在进程试图同时执行两个或多个操作时，这是一种不希望出现的情况。
+怎么样避免竞态?" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch9-synchronization.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-04-25T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-04-25T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch9 Synchronization"/>
+<meta name="twitter:description" content="Background 多进程作为现代操作系统的重要特性，交互则会引起同时对共享资源的访问，当这些资源访问不正确会出现冲突或产生不适当的输出（冲突、死锁、饥饿）；而在同步的基础上，进程被分为以下两种类型：
+独立进程 Independent Process 不和其他进程共享资源或状态 确定性，输入状态确定结果 可重现，能够重现起始条件，I/O 调度的顺序不重要 协作进程 Cooperative Process； 多进程共享资源或状态 不确定性 probabilistic 不可重现 不确定性和不可重现意味着bug可能是间歇性发生的
+Cooperation 进程的互相影响，即进程间的合作（相互或破坏）；最简单的例子就是两个进程使用同一个文件，一个进程读，一个进程写。读进程的结果会被写进程所影响。
+进程需要合作的原因：
+资源共享：多个进程访问相同的数据 一台电脑，多个用户 一个银行存款余额,多台ATM机 嵌入式系统（机器人手臂和收的协调） 计算加速： I/O 和 CPU计算可重叠 多处理器 - 将任务分解为子任务并分布在不同的进程中，它通常可以更快地运行（也需要多个可共享的 CPU） 模块化：复杂的任务组织成单独的子任务，让不同的进程运行 大程序分成小程序 是系统易于扩展 程序可以调用函数fork()来创建一个新的进程
+操作系统需要分配一个新的并且唯一的进程ID 因此在内核中,这个系统调用会运行 new_pid = next_pid&#43;&#43;; 翻译成机器指令: Load next_pid Reg1 STORE Reg1 new_pid INC Reg1 STORE Reg1 next_pid 假设两个进程并发执行
+如果next_pid等于100, 那么其中一个进程得到的ID应该是100, 另一个进程的ID应该是101, next_pid应该增加到102 可能在INC前进行了上下文切换, 最终导致两个进程的pid都是100,而next_pid也是101 无论多个线程的指令序列怎样交替执行,程序都必须正常工作
+多线程程序具有不确定性和不可重现的特点 不经过专门设计,调试难度很高 不确定性要求并行程序的正确性
+先思考清楚问题，把程序的行为设计清楚 切忌给予着手编写代码，碰到问题再调试 Race Condition 竞态条件是由操作系统软件中的同步错误。出现在进程试图同时执行两个或多个操作时，这是一种不希望出现的情况。
+怎么样避免竞态?"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch9-synchronization.html" /><link rel="prev" href="https://cylonchau.github.io/go-colly.html" /><link rel="next" href="https://cylonchau.github.io/ch8-cpu-scheduling-algorithms.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch9 Synchronization",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch9-synchronization.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "OS, CS","wordcount":  1414 ,
+        "url": "https:\/\/cylonchau.github.io\/ch9-synchronization.html","datePublished": "2022-04-25T00:00:00+00:00","dateModified": "2022-04-25T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">ch9 Synchronization</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/operation-system.html"><i class="far fa-folder fa-fw"></i>operation system</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-04-25 00:00:00">2022-04-25 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1414 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 7 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#background">Background</a>
+      <ul>
+        <li><a href="#cooperation">Cooperation</a></li>
+      </ul>
+    </li>
+    <li><a href="#race-condition">Race Condition</a>
+      <ul>
+        <li><a href="#忙等待">忙等待</a></li>
+      </ul>
+    </li>
+    <li><a href="#禁用硬件中断">禁用硬件中断</a></li>
+    <li><a href="#软件解决方案">软件解决方案</a>
+      <ul>
+        <li><a href="#peterson">Peterson</a></li>
+        <li><a href="#dekker">Dekker</a></li>
+        <li><a href="#bakery">bakery</a></li>
+      </ul>
+    </li>
+    <li><a href="#更高级抽象">更高级抽象</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="background">Background</h2>
+<p>多进程作为现代操作系统的重要特性，交互则会引起同时对共享资源的访问，当这些资源访问不正确会出现冲突或产生不适当的输出（冲突、死锁、饥饿）；而在同步的基础上，进程被分为以下两种类型：</p>
+<ul>
+<li>独立进程 <strong>Independent Process</strong>
+<ul>
+<li>不和其他进程共享资源或状态</li>
+<li>确定性，输入状态确定结果</li>
+<li>可重现，能够重现起始条件，I/O</li>
+<li>调度的顺序不重要</li>
+</ul>
+</li>
+<li>协作进程 <strong>Cooperative Process</strong>；
+<ul>
+<li>多进程共享资源或状态</li>
+<li>不确定性 <code>probabilistic</code></li>
+<li>不可重现</li>
+</ul>
+</li>
+</ul>
+<p>不确定性和不可重现意味着bug可能是间歇性发生的</p>
+<h3 id="cooperation">Cooperation</h3>
+<p>进程的互相影响，即进程间的合作（相互或破坏）；最简单的例子就是两个进程使用同一个文件，一个进程读，一个进程写。读进程的结果会被写进程所影响。</p>
+<p>进程需要合作的原因：</p>
+<ul>
+<li>资源共享：多个进程访问相同的数据
+<ul>
+<li>一台电脑，多个用户</li>
+<li>一个银行存款余额,多台ATM机</li>
+<li>嵌入式系统（机器人手臂和收的协调）</li>
+</ul>
+</li>
+<li>计算加速：
+<ul>
+<li>I/O 和 CPU计算可重叠</li>
+<li>多处理器 - 将任务分解为子任务并分布在不同的进程中，它通常可以更快地运行（也需要多个可共享的 CPU）</li>
+</ul>
+</li>
+<li>模块化：复杂的任务组织成单独的子任务，让不同的进程运行
+<ul>
+<li>大程序分成小程序</li>
+<li>是系统易于扩展</li>
+</ul>
+</li>
+</ul>
+<p>程序可以调用函数fork()来创建一个新的进程</p>
+<ul>
+<li>操作系统需要分配一个新的并且唯一的进程ID</li>
+<li>因此在内核中,这个系统调用会运行 <code>new_pid = next_pid++</code>;</li>
+<li>翻译成机器指令:
+<ul>
+<li><code>Load next_pid Reg1</code></li>
+<li><code>STORE Reg1 new_pid</code></li>
+<li><code>INC Reg1</code></li>
+<li><code>STORE Reg1 next_pid</code></li>
+</ul>
+</li>
+</ul>
+<p>假设两个进程并发执行</p>
+<ul>
+<li>如果next_pid等于100, 那么其中一个进程得到的ID应该是100, 另一个进程的ID应该是101, next_pid应该增加到102</li>
+<li>可能在INC前进行了上下文切换, 最终导致两个进程的pid都是100,而next_pid也是101</li>
+</ul>
+<p>无论多个线程的指令序列怎样交替执行,程序都必须正常工作</p>
+<ul>
+<li>多线程程序具有不确定性和不可重现的特点</li>
+<li>不经过专门设计,调试难度很高</li>
+</ul>
+<p>不确定性要求并行程序的正确性</p>
+<ul>
+<li>先思考清楚问题，把程序的行为设计清楚</li>
+<li>切忌给予着手编写代码，碰到问题再调试</li>
+</ul>
+<h2 id="race-condition">Race Condition</h2>
+<p><strong>竞态条件</strong>是由操作系统软件中的同步错误。出现在进程试图同时执行两个或多个操作时，这是一种不希望出现的情况。</p>
+<p>怎么样避免竞态?</p>
+<p>Atomic Operator(原子操作)</p>
+<p>原子操作是指一次不存在任何终端或者失败的执行</p>
+<ul>
+<li>该执行成功结束</li>
+<li>或者根本没有执行</li>
+<li>并且不应发生任何部分执行的状态</li>
+</ul>
+<p>假设设计一个程序，A和B两个进程互相竞争，一个进程使counter+1，另外一个进程使counter-1</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* produce an item in next produced */</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="p">(</span><span class="n">counter</span> <span class="o">==</span> <span class="n">BUFFER_SIZE</span><span class="p">)</span> <span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* do nothing */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">buffer</span><span class="p">[</span><span class="n">in</span><span class="p">]</span> <span class="o">=</span> <span class="n">next_produced</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">in</span> <span class="o">=</span> <span class="p">(</span><span class="n">in</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">BUFFER_SIZE</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">counter</span><span class="o">++</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="p">(</span><span class="n">counter</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">;</span> <span class="cm">/* do nothing */</span>
+</span></span><span class="line"><span class="cl">    <span class="n">next_consumed</span> <span class="o">=</span> <span class="n">buffer</span><span class="p">[</span><span class="n">out</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">out</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">BUFFER_SIZE</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">counter</span><span class="o">--</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="cm">/* consume the item in next consumed */</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>P1和P2指令的执行顺序不同，产生的结果也不同。可能存在P1执行完或P2先执行完，也可能永远执行不完</p>
+<ul>
+<li>临界区：程序中试图访问共享资源并可能导致竞态条件的区域称为临界区 <code>Critical Section</code></li>
+<li>互斥 <strong>Mutual Exclusion</strong>：如果一个进程在临界区并访问共享资源，则不允许临界区有其他进程处于临界区并访问共享资源。</li>
+<li>死锁 <strong>Deadlock</strong>：两个或两个以上进程，互相等待完成特定任务，而最终没法将自身任务进行下去</li>
+<li>有界等待 <strong>Bounded Waiting</strong>：在一个进程发出进入其临界区的请求后，在该进程的请求被批准之前，有多少个进程可以进入临界区是有限制的。因此，达到限制后，必须有授予权限的进程才能进入其临界区。此条件的目的是确保每个进程都有机会进入其临界区，从而没有进程永远饥饿。</li>
+<li>饥饿 <strong>Starvation</strong>：一个可执行的进程，长期被调度器忽略，以至于虽然处于可执行状态却不被执行。</li>
+<li>无忙等待</li>
+</ul>
+<h3 id="忙等待">忙等待</h3>
+<p><code>busy-waiting</code>：忙等待是指，进程在继续执行之前等待并不断的检查要满足的条件，例如说循环、锁；一般情况下忙等待分为两种</p>
+<ul>
+<li>消耗处理器的同时不断检查要满足的条件</li>
+<li>不消耗处理器，当满足条件时，会被唤醒</li>
+</ul>
+<p>在一些操作系统中，忙等待很低效，循环会浪费CPU资源。但通常情况下，解决忙等待的方法就是延迟；例如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">while z is still in use do
+</span></span><span class="line"><span class="cl">	sleep(900)
+</span></span><span class="line"><span class="cl">end
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>另外一种方式就是信号量的阻塞进程，即处于忙碌等待状态的进程被阻塞并放置在不消耗资源的等待队列中。一旦满足条件，该过程将重新启动并放置在就绪队列中。</p>
+<blockquote>
+<p>Reference
+<a href="https://cps.cse.uconn.edu/wp-content/uploads/sites/2687/2019/10/ch5.pdf" target="_blank" rel="noopener noreffer">synchronization</a></p>
+<p><a href="https://www.gatevidyalay.com/process-synchronization-race-condition-in-os/" target="_blank" rel="noopener noreffer">race condition</a></p>
+<p><a href="https://www.baeldung.com/cs/os-busy-waiting" target="_blank" rel="noopener noreffer">busy waiting</a></p>
+</blockquote>
+<h2 id="禁用硬件中断">禁用硬件中断</h2>
+<p>如何保障临界区操作是原子的，只要不发生上下文切换，那么操作就是原子的，即禁用硬件中断 <code>disable interupt instruction</code> DI instruction</p>
+<ol>
+<li>进入临界区禁用中断</li>
+<li>操作临界区代码</li>
+<li>离开临界区启用中断</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">class Lock { int value = FREE; }
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Lock::Acquire() {
+</span></span><span class="line"><span class="cl">    Disable interrupts; # 禁用中断
+</span></span><span class="line"><span class="cl">    while (value != FREE) { # 等待锁
+</span></span><span class="line"><span class="cl">        Enable interrupts;  
+</span></span><span class="line"><span class="cl">        Disable interrupts;
+</span></span><span class="line"><span class="cl">    }
+</span></span><span class="line"><span class="cl">    value = BUSY; 
+</span></span><span class="line"><span class="cl">    Enable interrupts; 
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Lock::Release() {
+</span></span><span class="line"><span class="cl">    Disable interrupts;
+</span></span><span class="line"><span class="cl">    value = FREE; # 解锁
+</span></span><span class="line"><span class="cl">    Enable interrupts; # 启用中断
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>缺点</strong>：</p>
+<ul>
+<li>
+<p>一旦中断被禁用，线程就无法被停止</p>
+<ul>
+<li>整个系统都会为你停下来</li>
+<li>可能导致其他线程处于饥饿状态</li>
+</ul>
+</li>
+<li>
+<p>要是临界区可以任意长怎么办？</p>
+<ul>
+<li>无法限制响应中断所需的时间(可能存在硬件影响)</li>
+</ul>
+</li>
+<li>
+<p>要小心使用，适合于较小的操作</p>
+</li>
+</ul>
+<h2 id="软件解决方案">软件解决方案</h2>
+<p>屏蔽硬件中断简单有效，但受制于临界区执行时间，影响整个系统的效率。</p>
+<h3 id="peterson">Peterson</h3>
+<p>一个满足两个进程进程P<sub>i</sub> 和 P<sub>j</sub> 之间互斥的经典的基于软件的解决方法(1981年)，Peterson算法；Peterson 算法是基于双进程的互斥访问，需要两个锁：</p>
+<ul>
+<li>一个使用  flag，是一个布尔数组</li>
+<li>另外一个使用 turn 的int锁</li>
+</ul>
+<p>而这两个锁都有可能出现死锁的情况：如</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">int turn = 0
+</span></span><span class="line"><span class="cl">turn = j
+</span></span><span class="line"><span class="cl">do {
+</span></span><span class="line"><span class="cl">	while( turn != i);
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">    Critical Section
+</span></span><span class="line"><span class="cl">    turn = j;
+</span></span><span class="line"><span class="cl">    remainder section	
+</span></span><span class="line"><span class="cl">} while(1)
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>另外一个进程</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">int turn = 0
+</span></span><span class="line"><span class="cl">turn = i
+</span></span><span class="line"><span class="cl">do {
+</span></span><span class="line"><span class="cl">	while( turn != j);
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">    Critical Section
+</span></span><span class="line"><span class="cl">    turn = i;
+</span></span><span class="line"><span class="cl">    remainder section	
+</span></span><span class="line"><span class="cl">} while(1)
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>满足了互斥，没满足progress（想进入临界区的进程），最终只有一个进程可以进入，无法进行流转。</p>
+<p>Peterson 算法基于两个锁的临界区问题的解决方案：</p>
+<ul>
+<li>一个使用  flag，是一个布尔数组；<code>boolean flag[i]</code> 初始化为false，即没有进程有兴趣进入临界区</li>
+<li>另外一个使用 turn 的int锁；进入临界区的进程</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">trun</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">boolean</span> <span class="n">flag</span><span class="p">[];</span>
+</span></span><span class="line"><span class="cl"><span class="k">do</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span> <span class="c1">// 此时i想进入临界区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="n">turn</span>  <span class="o">=</span> <span class="n">j</span>  <span class="c1">// 但是当前是i
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">while</span><span class="p">(</span><span class="n">flag</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&amp;&amp;</span> <span class="n">turn</span>  <span class="o">==</span><span class="n">j</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    	<span class="n">critical</span> <span class="n">section</span>
+</span></span><span class="line"><span class="cl">    <span class="n">flag</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    	<span class="n">remander</span> <span class="n">section</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>Peterson 算法可以解决上述单锁的问题：</p>
+<ul>
+<li>互斥是有保证：任何时候仅有一个进程可以访问临界区</li>
+<li>进程有保证：不会阻止临界区外其他进程进入临界区</li>
+</ul>
+<p>Peterson 算法的缺点：</p>
+<ul>
+<li>忙等待</li>
+<li>仅限于两个进程</li>
+</ul>
+<h3 id="dekker">Dekker</h3>
+<p>Dekker是另外一种临界区解决方法，Dekker从第五版才完整满足了所有的条件；dekker算法类似于Peterson 算法；下面是算法的实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;math/rand&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">thread1wantstoenter</span> <span class="p">=</span> <span class="kc">false</span> <span class="c1">// 进程是否在执行
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">thread2wantstoenter</span> <span class="p">=</span> <span class="kc">false</span> <span class="c1">// 进程是否在执行
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">favouredthread</span> <span class="kt">int</span> <span class="c1">// 进入临界区的进程
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">cs</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="nf">thread1</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="nf">thread2</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="o">*</span> <span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">thread1</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d Start execute\n&#34;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;get a lock, %d \n&#34;</span><span class="p">,</span> <span class="nx">cs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">thread1wantstoenter</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">thread2wantstoenter</span> <span class="o">==</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;1 get a lock, thread %d also executing.\n&#34;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">favouredthread</span> <span class="o">==</span> <span class="mi">2</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;current cs thread is %d also executing.\n&#34;</span><span class="p">,</span> <span class="nx">favouredthread</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">thread1wantstoenter</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">				<span class="k">for</span> <span class="nx">favouredthread</span> <span class="o">==</span> <span class="mi">2</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="c1">// 忙等待，一直等到当前临界区进程不为对方
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">thread1wantstoenter</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;not get lock, begin update cs1.\n&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">cs</span> <span class="p">=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Intn</span><span class="p">(</span><span class="mi">1000</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">favouredthread</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">thread1wantstoenter</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d has completed\n&#34;</span><span class="p">,</span> <span class="nx">favouredthread</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;cs value with update %d \n&#34;</span><span class="p">,</span> <span class="nx">cs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">thread2</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d Start execute\n&#34;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;get a lock, %d \n&#34;</span><span class="p">,</span> <span class="nx">cs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">thread2wantstoenter</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">thread1wantstoenter</span> <span class="o">==</span> <span class="kc">true</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;2 get a lock, thread %d also executing.\n&#34;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">favouredthread</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;current cs thread is %d also executing.\n&#34;</span><span class="p">,</span> <span class="nx">favouredthread</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">thread2wantstoenter</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">				<span class="k">for</span> <span class="nx">favouredthread</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="c1">// 忙等待，一直等到当前临界区进程不为对方
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">thread2wantstoenter</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;not get lock, begin update cs2.\n&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">cs</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">favouredthread</span> <span class="p">=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Intn</span><span class="p">(</span><span class="mi">1000</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// 退出，标记着线程2已完成，
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">thread2wantstoenter</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d has completed\n&#34;</span><span class="p">,</span> <span class="nx">favouredthread</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;cs value with update %d \n&#34;</span><span class="p">,</span> <span class="nx">cs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>整个for部分是一个锁，如果其他进程没有占用临界区，则可以进入临界区；这样第一个 for保证了<strong>互斥</strong>，在两个进程都没有被标记时，至少有一个进程可以进入，这样保证了<strong>progess</strong>。</p>
+<p>再假设，<strong>thread1</strong>永远卡在<code>thread2wantstoenter == true</code>；最终thread2会退出<code>favouredthread = 1</code>；这样的话不存在死锁，最终会脱离循环，脱离后会将自己设置为true <code>thread1wantstoenter = true</code>；这样的话，只要对方（<strong>thread2</strong>）为false了，即结束临界区访问；那么下一次循环将退出锁部分，并且可已访问临界区</p>
+<p>如果不对 <code>favouredthread == counterpart</code> 进行判断，那么就会出现饥饿现象。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220412232216377.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220412232216377.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220412232216377.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220412232216377.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220412232216377.png"
+        title="image-20220412232216377" /></p>
+<blockquote>
+<p>Reference</p>
+<p><a href="https://www.tutorialspoint.com/dekker-s-algorithm-in-operating-system" target="_blank" rel="noopener noreffer">dekker algorithm</a></p>
+<p><a href="https://en.wikipedia.org/wiki/Dekker%27s_algorithm" target="_blank" rel="noopener noreffer">wikipedia</a></p>
+</blockquote>
+<h3 id="bakery">bakery</h3>
+<p>bakery算法是针对N个进程互斥提出的解决方法之一；</p>
+<ul>
+<li>每当有进程进入临界区时，会被分配一个数</li>
+<li>拥有最小数的进程会被选入临界区；</li>
+<li>如果进程P<sub>i</sub> 和 P<sub>j</sub> 被分配相同的数，并且 $i&lt;j$，那么进程P<sub>i</sub> 首先进入临界区，进程编号 i j不会重复
+<ul>
+<li>定义操作符号 &lt;
+<ul>
+<li>判断 $(a,b) &lt; (c,d)$；当 $a&lt;c$即 $(a,b)&lt;(c,d)$; 如果 $a=c$，那么则判断b和d</li>
+<li>定义操作函数 <code>max()</code></li>
+<li>$max(a_0,\ &hellip;,\ a_{n-1})$，是整个序列 $(a_0,\ &hellip;,\ a_{n-1})$ 中的一个数 <code>k</code>，使 $k &gt; a_i$；</li>
+<li><code>for i=0,... n-1</code></li>
+</ul>
+</li>
+<li>定义共享数据
+<ul>
+<li><code>boolean choosing[n]</code></li>
+<li><code>int number[n]</code></li>
+<li>初始值分别为false和0</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>数的分配以递增顺序产生 1 2 3 4 5&hellip;.</li>
+</ul>
+<p>需要满足的条件，当一个线程想要进入临界区时，它必须确保它具有最小的数字，但是还需：</p>
+<ul>
+<li>线程状态不为真，即已经完成选号，在进程数组中，并且状态为false</li>
+<li>如果线程编号相同，那么最小id的可以进入，即 id和index比谁小 id是当前的id，index是列表中其他的线程</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;math&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;math/rand&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">choosing</span> <span class="p">[]</span><span class="kt">bool</span>
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">number</span> <span class="p">[]</span><span class="kt">int</span>
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">cs</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">thread</span><span class="p">(</span><span class="nx">id</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">maximum</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Intn</span><span class="p">(</span><span class="mi">500</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 19-25 线程i开始选择号码，为maximum+1
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">choosing</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">maximum</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">number</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">maximum</span> <span class="p">=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nf">Max</span><span class="p">(</span><span class="nb">float64</span><span class="p">(</span><span class="nx">maximum</span><span class="p">),</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">i</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">number</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">=</span> <span class="nx">maximum</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">choosing</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">number</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">i</span> <span class="o">!=</span> <span class="nx">id</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// 此时进程j进入临界区但没有选号完成则i进行忙等待等待选号完成
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">for</span> <span class="nx">choosing</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="c1">// 忙等待
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d busy-waiting 1. \n&#34;</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// 当一个线程想要进入临界区时，必须确保它具有最小的数字（优先级最高）
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="c1">// 当前线程 必须为最小，即number[id] &gt; number[i]需要忙等待
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="c1">// 如果线程获得相同编号 ，id低的可以抢先 即 (number[id] == number[i] &amp;&amp; id &gt; i) 需要阻塞
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">for</span> <span class="nx">number</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">number</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">&gt;</span> <span class="nx">number</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">||</span> <span class="p">(</span><span class="nx">number</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="o">==</span> <span class="nx">number</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="o">&amp;&amp;</span> <span class="nx">id</span> <span class="p">&gt;</span> <span class="nx">i</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="c1">// 忙等待
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;thread %d busy-waiting 2.\n&#34;</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 即所有的id全部等于0就是没有其他进程抢占。就可以进入临界区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 临界区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;critical section used by thread %d \n&#34;</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">cs</span> <span class="p">=</span> <span class="nx">id</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;critical section has been modified to %d \n&#34;</span><span class="p">,</span> <span class="nx">cs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// 退出临界区
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Intn</span><span class="p">(</span><span class="mi">100</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">number</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">number</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">choosing</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">bool</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">n</span> <span class="o">:=</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">n</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">;</span> <span class="nx">n</span><span class="o">++</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">number</span><span class="p">[</span><span class="nx">n</span><span class="p">]</span> <span class="p">=</span> <span class="nx">n</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">choosing</span><span class="p">[</span><span class="nx">n</span><span class="p">]</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">		<span class="k">go</span> <span class="nf">thread</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="o">*</span> <span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>python的实现</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">threading</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">random</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">BakeryAlgorithm</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">#  declaration and initial values of global variables</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># ticket for threads in line, n - number of threads</span>
+</span></span><span class="line"><span class="cl">    <span class="n">tickets</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># True when thread entering in line</span>
+</span></span><span class="line"><span class="cl">    <span class="n">entering</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">lock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">entering</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">        <span class="n">maximum</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">ticket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">maximum</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">maximum</span><span class="p">,</span> <span class="n">ticket</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">maximum</span><span class="o">+</span><span class="mi">1</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">entering</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">                <span class="c1"># Wait until thread j receives its number:</span>
+</span></span><span class="line"><span class="cl">                <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">entering</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">                    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;waiting </span><span class="si">%d</span><span class="s2">&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">                <span class="c1"># Wait until all threads with smaller numbers or with the samenumber, but with higher priority, finish their work:</span>
+</span></span><span class="line"><span class="cl">                <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">==</span><span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">&gt;</span><span class="n">i</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">                    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;waiting </span><span class="si">%d</span><span class="s2"> 2&#34;</span> <span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1"># The critical section goes here...</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;critical section used by process</span><span class="si">{</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">#exit section</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">tickets</span><span class="p">[</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Running all the 5 processes using thread module and  passing process index as args since Thread supports args and kwargs argument only</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t1</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,))</span> 
+</span></span><span class="line"><span class="cl">        <span class="n">t2</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span> 
+</span></span><span class="line"><span class="cl">        <span class="n">t3</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,))</span> 
+</span></span><span class="line"><span class="cl">        <span class="n">t4</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,))</span> 
+</span></span><span class="line"><span class="cl">        <span class="n">t5</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">,</span> <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="mi">4</span><span class="p">,))</span> 
+</span></span><span class="line"><span class="cl">        <span class="n">t1</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t2</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t3</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t4</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t5</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&#34;__main__&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">b</span> <span class="o">=</span> <span class="n">BakeryAlgorithm</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">b</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220413171749388.png"
+        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220413171749388.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220413171749388.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220413171749388.png 2x"
+        data-sizes="auto"
+        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220413171749388.png"
+        title="image-20220413171749388" /></p>
+<ul>
+<li>互斥：有没有可能2个以上进程同时进临界区
+<ul>
+<li>最小的id才可进入临界区</li>
+<li>如果多个id拿到同样最小号，那么他们的进程id也不一样，进程id最小的可以进入临界区</li>
+<li>上述保证了互斥</li>
+</ul>
+</li>
+<li>有界等待：等待的进程不超过$n-1$；可以保证每个进程都能进入临界区</li>
+<li>progress：想进入临界区的进程，不想进入的number=0也会被驱逐</li>
+</ul>
+<blockquote>
+<p>Reference</p>
+<p><a href="https://cppsecrets.com/users/120612197115104981111171149751485164103109971051084699111109/Python-Implementation-of-Bakery-Algorithm.php" target="_blank" rel="noopener noreffer">Python Implementation of Bakery Algorithm</a></p>
+<p><a href="https://www.geeksforgeeks.org/bakery-algorithm-in-process-synchronization/" target="_blank" rel="noopener noreffer">bakery algorithm</a></p>
+</blockquote>
+<h2 id="更高级抽象">更高级抽象</h2>
+<p>硬件提供了一些原语</p>
+<ul>
+<li>像中断禁用, 原子操作指令等</li>
+<li>大多数现代体系结构都这样</li>
+</ul>
+<p>操作系统提供更高级的编程抽象来简化并行编程</p>
+<ul>
+<li>例如，锁，信号量</li>
+<li>从硬件原语中构建</li>
+</ul>
+<p>锁是一个抽象的数据结构</p>
+<ul>
+<li>一个二进制状态(锁定,解锁),两种方法</li>
+<li><code>Lock::Acquire()</code> 锁被释放前一直等待,然后得到锁</li>
+<li><code>Lock::Release()</code> 锁释放,唤醒任何等待的进程</li>
+</ul>
+<p>使用锁来编写临界区</p>
+<ul>
+<li>
+<p>前面的例子变得简单起来:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">lock_next_pid-&gt;Acquire();
+</span></span><span class="line"><span class="cl">new_pid = next_pid++;
+</span></span><span class="line"><span class="cl">lock_next_pid-&gt;Release();
+</span></span></code></pre></td></tr></table>
+</div>
+</div></li>
+</ul>
+<p>大多数现代体系结构都提供特殊的原子操作指令</p>
+<ul>
+<li>通过特殊的内存访问电路</li>
+<li>针对单处理器和多处理器</li>
+</ul>
+<p>Test-and-Set 测试和置位</p>
+<ul>
+<li>从内存中读取值</li>
+<li>测试该值是否为1(然后返回真或假)</li>
+<li>内存值设置为1</li>
+</ul>
+<p>交换</p>
+<ul>
+<li>交换内存中的两个值</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">bool TestandSet(bool *target){
+</span></span><span class="line"><span class="cl">		bool rv = *target;
+</span></span><span class="line"><span class="cl">		*target = true;
+</span></span><span class="line"><span class="cl">		return rv;
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">void Exchange(bool *a, bool *b){
+</span></span><span class="line"><span class="cl">		bool tmp = *a;
+</span></span><span class="line"><span class="cl">		*a = *b;
+</span></span><span class="line"><span class="cl">		*b = tmp;
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>
+<p>总结</p>
+<p>锁是更高等级的编程抽象</p>
+<ul>
+<li>互斥可以使用锁来实现</li>
+<li>通常需要一定等级的硬件支持</li>
+</ul>
+<p>常用的三种实现方法</p>
+<ul>
+<li>禁用中断(仅限于单处理器)</li>
+<li>软件方法(复杂)</li>
+<li>原子操作指令(单处理器或多处理器均可)</li>
+</ul>
+<p>可选的实现内容:</p>
+<ul>
+<li>有忙等待</li>
+<li>无忙等待</li>
+</ul>
+</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-04-25 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-title="ch9 Synchronization" data-hashtags="OS,CS"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-hashtag="OS"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-title="ch9 Synchronization" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch9-synchronization.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-title="ch9 Synchronization"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-title="ch9 Synchronization"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch9-synchronization.html" data-title="ch9 Synchronization"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/os.html">OS</a>,&nbsp;<a href="/tags/cs.html">CS</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/go-colly.html" class="prev" rel="prev" title="go colly"><i class="fas fa-angle-left fa-fw"></i>go colly</a>
+            <a href="/ch8-cpu-scheduling-algorithms.html" class="next" rel="next" title="ch8 CPU Scheduling Algorithms">ch8 CPU Scheduling Algorithms<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-04-25T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch9 Synchronization"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
