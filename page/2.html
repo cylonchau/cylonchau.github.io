@@ -77,6 +77,37 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/network-unit-in-osi.html">为什么网络是分层的</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-10-28 00:00:00">2022-10-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/network.html"><i class="far fa-folder fa-fw"></i>network</a>&nbsp;<a href="/categories/kubernetes-network.html"><i class="far fa-folder fa-fw"></i>kubernetes network</a></span></div><div class="content">Overview [1] 协议数据单元 Protocol Data Unit (PDU) 是应用于OSI模型中的数据结构，在OSI模型中每一层都会被添加一个header，tailer进行封装，header, tailer加原始报文的组合就是PDU。
+在每层中，PDU的名称都是不同的，这也是很多人的疑问，一会数据报文称为数据包，一会数据报文成为数据帧，该文介绍网络中的单元，以了解之间的区别
+物理层 物理层数据的呈现方式是以 “位” (bit) 为单位的，即0 1，在该层中数据以二进制形式进行传输
+数据链路层 [2] 到达数据链路层，实际上可以说进入了TCP/IP栈对底层，而该层的单位为 ”帧“ (frame)，该层中，MAC地址会被封装到数据包中，比如以太网帧，PPP帧都是指该层的数据包
+该层中数据帧包含：
+源MAC 目的MAC 数据，由网络层给出的 数据的总长度 校验序列 网络层 [3] 在网络层中协议数据单元被称为数据 “包&quot; (package) ，是网络间节点通讯的基本单位。该层中IP地址会被封装到数据包内。
+该层中数据包包含：
+标头：源IP，目的IP，协议，数据包编号，帮助数据包匹配网络的位 playload：数据包的主体 标尾：包含几个位，用于告知已到达数据包的末尾与错误检查（循环冗余检查 (CRC)） 图：数据包组成 Source：https://computer.howstuffworks.com/question525.htm
+例如一个电子邮件，假设电子邮件大小尾3500bit，发送时使用1024的固定大小数据包进行发送，那么每个数据包标头为 96bits，标尾为 32bit，剩余 896bits 将用于实际的数据大小。这里为3500bits，会被分为4个数据包，前三个数据包为 896bits，最后一个数据包大小为 812bits。接收端会根据包编号进行解包重组
+传输层 Segment 在传输层TCP协议的协议数据单元被称为 ”段“ (Segment) ，上面讲到，IP数据包会以固定大小的数据包进行发送，如果超出大小的会被划分为多个数据包，每个数据包的碎片就被称之为Segment。
+数据包分割通常会发生在该层，当发生下列场景时会需要分段
+数据包大于网络支持的最大传输单元 (MTU) 网络不可靠，将数据包分为更小的包 datagram [4] 在传输层UDP协议的协议数据单元被称为 ”数据报“ (datagram) ，datagram是一种逐层增加的设计，用于无连接通讯
+下图是一个UDP数据报被封装位一个IP数据包：IPv4字段值位17 表示udp协议
+图：udp的IP包 Source：https://notes.shichao.io/tcpv1/ch10
+对于udp数据报的组成包含header与playload，udp的header大小为固定的8字节
+源端口：可选 目的端口：识别接收信息的进程 Length：udp header + udp playload的长度，最小值为8 checksum：与lenght一样其实是多余的，因为第三层包含了这两个信息 图：udp数据报组成 Source：https://notes.</div><div class="post-footer">
+        <a href="/network-unit-in-osi.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/network.html">network</a>,&nbsp;<a href="/tags/kubernetes-network.html">kubernetes network</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch04-ebpf.html">what is eBPF</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-10-02 00:00:00">2022-10-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ebpf.html"><i class="far fa-folder fa-fw"></i>eBPF</a>&nbsp;<a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">eBPF介绍 eBPF是 Extended Berkeley Packet Filter，主要是用于包过滤的。为什么叫*** Berkeley Packet Filter*** 是因为论文出自 Lawrence Berkeley Laboratory（相对的论文可以参考 [1]）。“E&quot; 是使BPF不仅仅是包过滤。
+eBPF 目前提供的功能不仅仅是包过滤，它是一个允许用户在操作系统内核加载自定义程序的框架，来自于 ”What Is eBPF?“
+eBPF is a framework that allows users to load and run custom programs within the kernel of the operating system. That means it can extend or even modify the way the kernel behaves. [2]
+eBPF验证器
+对于如果想改变Linux内核功能需要合并代码到内核或者编写内核模块。前者需要被社区接受，这需要很长一个周期；而后者可以很好的扩展内核功能，但都存在一个问题 ”==安全运行==“
+”安全运行“ 问题包含”漏洞“和“崩溃”，考虑到这些，eBPF为安全运行提供了一个非常不同的方法：eBPF verifier ，eBPF verifier 将确保应用只能够在安全情况下被运行。
+eBPF verifier 保证了 eBPF 程序运行的 ”安全“ 和 ”验证“</div><div class="post-footer">
+        <a href="/ch04-ebpf.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-network.html">kubernetes network</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a>,&nbsp;<a href="/tags/ebpf.html">eBPF</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/ch00-ide.html">ch0 ide</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-09-28 00:00:00">2022-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div><div class="content">Visual Studio使用 离线安装包 在页面 [4] 下载安装引导命令，下载完成后使用命令（对于C++来说）
 1 vs_Professional.exe --layout ‪1111 --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --lang en-US zh-CN 随后会触发下载，等待下载完成后，在 --layout 指定的目录上点击 vs_setup 开始离线安装。
@@ -160,23 +191,6 @@ struct是关键字，structureName定义的新数据类型，variable{}是作为
 1 2 3 4 5 6 7 8 9 10 11 12 13 struct student { char name[20]; int roll; char gender; } stu1,stu2; // 结构体名称可以省略 struct { char name[20]; int roll; char gender; } stu1,stu2; 赋值 在声明结构体后，student结构体只是自定义数据结构，要使用还需要进行初始化，或者赋值</div><div class="post-footer">
         <a href="/ch07-composite-type.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/c.html">C</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch08-file-handling.html">ch08 file handling</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-09-28 00:00:00">2022-09-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/programming.html"><i class="far fa-folder fa-fw"></i>Programming</a></span></div><div class="content">[toc]
-文件类型 文件是指以字节的形式存储的数据源，使用C语言将文件数据以输出输出的形式处理叫做文件处理。
-文件在C语言中以两种形式存在：
-文本文件：文本文件是简单的文件类型，这些文件内容以 ASCII 字符格式存储信息。 二进制文件：二进制文件以 0 和 1 的二进制格式存储数据，不是人类可读的文件 文件指针 文件指针 (FILE) 是一种数据类型，是被定义在 stdio.h 中的一种结构体，包含了文件的一些信息
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 typedef struct { // fill/empty level of buffer int level; // File status flags unsigned flags; // File descripter char fd; // ungetc char if no buffer unsigned char hold; // buffer size int bsize; // data transfer buffer unsigned char *buffer; // Current active pointer unsigned char *curp; //Temporary file indicator unsigned istemp; //Used for validity checking short token; } FILE; // This is FILE object 文件指针通常被用于处理正在访问的文件，fopen() 是用于打开文件并返回文件的 FILE 指针，而后通过文件只恨进行I/O操作。fopen() 会发生下列事件：</div><div class="post-footer">
-        <a href="/ch08-file-handling.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/c.html">C</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch2.3-queue.html">client-go queue</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-08-28 00:00:00">2022-08-28 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a>&nbsp;<a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">[toc]
-通用队列 在kubernetes中，使用go的channel无法满足kubernetes的应用场景，如延迟、限速等；在kubernetes中存在三种队列通用队列 common queue ，延迟队列 delaying queue，和限速队列 rate limiters queue
-Inferface Interface作为所有队列的一个抽象定义
-1 2 3 4 5 6 7 8 type Interface interface { Add(item interface{}) Len() int Get() (item interface{}, shutdown bool) Done(item interface{}) ShutDown() ShuttingDown() bool } Implementation 1 2 3 4 5 6 7 8 9 10 11 12 13 type Type struct { // 一个work queue queue []t // queue用slice做存储 dirty set // 脏位，定义了需要处理的元素，类似于操作系统，表示已修改但为写入 processing set // 当前正在处理的元素集合 cond *sync.</div><div class="post-footer">
-        <a href="/ch2.3-queue.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>

@@ -77,6 +77,33 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch4-scheduler.html">kubernetes的决策组件 - kube-scheduler原理分析</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-07-18 00:00:00">2022-07-18 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a>&nbsp;<a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div><div class="content">Overview [1] kubernetes集群中的调度程序 kube-scheduler 会 watch 未分配节点的新创建的Pod，并未该Pod找到可运行的最佳（特定）节点。那么这些动作或者说这些原理是怎么实现的呢，让我们往下剖析下。
+对于新创建的 pod 或其他未调度的 pod来讲，kube-scheduler 选择一个最佳节点供它们运行。但是，Pod 中的每个容器对资源的要求都不同，每个 Pod 也有不同的要求。因此，需要根据具体的调度要求对现有节点进行过滤。
+在Kubernetes集群中，满足 Pod 调度要求的节点称为可行节点 （ feasible nodes FN） 。如果没有合适的节点，则 pod 将保持未调度状态，直到调度程序能够放置它。也就是说，当我们创建Pod时，如果长期处于 Pending 状态，这个时候应该看你的集群调度器是否因为某些问题没有合适的节点了
+调度器为 Pod 找到 FN 后，然后运行一组函数对 FN 进行评分，并在 FN 中找到得分最高的节点来运行 Pod。
+调度策略在决策时需要考虑的因素包括个人和集体资源需求、硬件/软件/策略约束 （constraints）、亲和性 (affinity) 和反亲和性（ anti-affinity ）规范、数据局部性、工作负载间干扰等。
+如何为pod选择节点？ kube-scheduler 为pod选择节点会分位两部：
+过滤 (Filtering) 打分 (Scoring) 过滤也被称为预选 （Predicates），该步骤会找到可调度的节点集，然后通过是否满足特定资源的请求，例如通过 PodFitsResources 过滤器检查候选节点是否有足够的资源来满足 Pod 资源的请求。这个步骤完成后会得到一个包含合适的节点的列表（通常为多个），如果列表为空，则Pod不可调度。
+打分也被称为优选（Priorities），在该步骤中，会对上一个步骤的输出进行打分，Scheduer 通过打分的规则为每个通过 Filtering 步骤的节点计算出一个分数。
+完成上述两个步骤之后，kube-scheduler 会将Pod分配给分数最高的 Node，如果存在多个相同分数的节点，会随机选择一个。
+kubernetes的调度策略 Kubernetes 1.21之前版本可以在代码 kubernetes\pkg\scheduler\algorithmprovider\registry.go 中看到对应的注册模式，在1.22 scheduler 更换了其路径，对于registry文件更换到了kubernetes\pkg\scheduler\framework\plugins\registry.go ；对于kubernetes官方说法为，调度策略是用于“预选” (Predicates )或 过滤（filtering ） 和 用于 优选（Priorities）或 评分 (scoring)的</div><div class="post-footer">
+        <a href="/ch4-scheduler.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch3.7-admission-webhook.html">Understanding Kubernetes 4A - Admission Control</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-07-11 00:00:00">2022-07-11 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a>&nbsp;<a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div><div class="content">本文是关于Kubernetes 4A解析的第三章
+深入理解Kubernetes 4A - Authentication源码解析 深入理解Kubernetes 4A - Authorization源码解析 深入理解Kubernetes 4A - Admission Control源码解析 深入理解Kubernetes 4A - Audit源码解析 所有关于Kubernetes 4A部分代码上传至仓库 github.com/cylonchau/hello-k8s-4A
+如有错别字或理解错误地方请多多担待，代码是以1.24进行整理，实验是以1.19环境进行，差别不大
+BACKGROUND admission controllers的特点：
+可定制性：准入功能可针对不同的场景进行调整。 可预防性：审计则是为了检测问题，而准入控制器可以预防问题发生 可扩展性：在kubernetes自有的验证机制外，增加了另外的防线，弥补了RBAC仅能对资源提供安全保证。 下图，显示了用户操作资源的流程，可以看出 admission controllers 作用是在通过身份验证资源持久化之前起到拦截作用。在准入控制器的加入会使kubernetes增加了更高级的安全功能。
+图：Kubernetes API 请求的请求处理步骤图 Source：https://kubernetes.io/blog/2019/03/21/a-guide-to-kubernetes-admission-controllers/ 这里找到一个大佬博客画的图，通过两张图可以很清晰的了解到admission webhook流程，与官方给出的不一样的地方在于，这里清楚地定位了kubernetes admission webhook 处于准入控制中，RBAC之后，push 之前。
+图：Kubernetes API 请求的请求处理步骤图（详细） Source：https://www.armosec.io/blog/kubernetes-admission-controller/ 两种控制器有什么区别？ 根据官方提供的说法是
+Mutating controllers may modify related objects to the requests they admit; validating controllers may not
+从结构图中也可以看出，validating 是在持久化之前，而 Mutating 是在结构验证前，根据这些特性我们可以使用 Mutating 修改这个资源对象内容（如增加验证的信息），在 validating 中验证是否合法。</div><div class="post-footer">
+        <a href="/ch3.7-admission-webhook.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/opentracing-nginx.html">使nginx支持分布式追踪</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-07-02 00:00:00">2022-07-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ops.html"><i class="far fa-folder fa-fw"></i>ops</a></span></div><div class="content">[toc]
 Background NGINX 是一个通用且流行的应用程序。也是最流行的 Web 服务器，它可用于提供静态文件内容，但也通常与其他服务一起用作分布式系统中的组件，在其中它用作反向代理、负载均衡 或 API 网关。
@@ -152,24 +179,6 @@ Kubernetes 1.7 之后增加了对 CRD 自定义资源二次开发能力来扩展
 创建 CRD 前提条件： Kubernetes 服务器版本必须不低于版本 1.</div><div class="post-footer">
         <a href="/ch3.2-kubernetes-crd.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kubernetes-develop.html">kubernetes develop</a>,&nbsp;<a href="/tags/kubernetes.html">kubernetes</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch02.1-network-basics.html">OSI模型与IP协议</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-06-18 00:00:00">2022-06-18 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/network.html"><i class="far fa-folder fa-fw"></i>network</a></span></div><div class="content">OSI Model OSI 七层网络模型如下（由下到上）：
-应用层 Application layer ：直接接触用户数据的层。软件应用程序依靠应用层发起通信。这里的应用值得是协议而不是客户端软件；应用层协议包括 HTTP, SMTP, FTP, DNS,Telnet, etc.. 表示层 Presentation layer：表示层充当角色为网络数据转换器，负责完成数据转换，加密和压缩 会话层 Session layer：负责建立、管理和终止两个设备之间的通信 传输层 Transport layer：负责两个设备间的端到端通信。包括从会话层提取数据，将数据分解为多个区块（称为数据段）；传输层协议包括，TCP, UDP 网络层 Network layer：负责管理网络地址，定位设备，决定路由，通俗来讲是负责*&ldquo;不同&rdquo;*网络之间的传输，也就是路由功能；网络层协议包括 IP,ARP,ICMP；代表设备 3 layer swtich, router, firewall。相应就代表对应网络协议也是三层的，如RIP, OSPF, BGP 数据链路层 Data link layer：数据链路层负责*&ldquo;同一&rdquo;*网络上设备之间的数据传输；该层协议包括 Ethernet, PPP(Point-to-Point Protocol)；代表设备 Switch,Bridges，同样的MAC地址也是该层的 物理层 Physical layer：该层表示参与数据传输的物理设备，如网线，同时还负责将数据转换为位流，也就是由 1 和 0 构成的字符串。 图：OSI七层模型 Source：https://www.cloudflare.com/zh-cn/learning/ddos/glossary/open-systems-interconnection-model-osi/ MAC MAC地址介绍 MAC (Media Access Control) 地址用来定义网络设备的位置，由48比特长，12位的16进制组成，其中从左到右，0-23bit为厂商想IETF等机构申请用来标识厂商的代码OUI Organizationally-Unique Identifier，24-47bit由厂商自行分配，是厂商制造所有网卡的唯一编号。如00-50-56-C0-00-08
-MAC地址类型 MAC地址分为三种类型：
-物理MAC地址：Mac地址唯一的标识了以太网的一个终端，该地址为全球唯一的硬件地址。 广播(broadcast) MAC地址：每个比特都是 1 的 MAC 地址。广播 MAC 地址是组播 MAC 地址的一个特例。11111111-11111111-11111111-11111111-11111111-11111111 16进制表示为 FF-FF-FF-FF-FF-FF。 组播(multicast) MAC地址：第一个字节的最低位是 1 的 MAC 地址。二进制表示为 xxxxxxx1-xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx ；16进制表示为01-00-00-00-00-00。如 a5-a9-a6-aa-5a-a6 这个mac地址的第一个字节的最低位 16进制a5 转换为二进制为10100101 最后一位为1就是组播MAC地址。 单播 (unicast) MAC 地址：第一个字节的最低位是 0 的 MAC 地址 xxxxxxx0-xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx。 静态MAC地址 由用户通过命令配置的静态转发的MAC地址，静态MAC地址和动态MAC地址的功能不同，静态地址一旦被加入，该地址在删除之前将一直有效，不受最大老化时间的限制</div><div class="post-footer">
-        <a href="/ch02.1-network-basics.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/network.html">network</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/decision-tree.html">decision tree</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2022-06-01 00:00:00">2022-06-01 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/algorithm.html"><i class="far fa-folder fa-fw"></i>algorithm</a></span></div><div class="content">熵和基尼指数 信息增益 信息增益 information gain 是用于训练决策树的指标。具体来说，是指这些指标衡量拆分的质量。通俗来说是通过根据随机变量的给定值拆分数据集来衡量熵。
-通过描述一个事件是否&quot;惊讶&quot;，通常低概率事件更令人惊讶，因此具有更大的信息量。而具有相同可能性的事件的概率分布更&quot;惊讶&quot;并且具有更大的熵。
-定义：熵 entropy是一组例子中杂质、无序或不确定性的度量。熵控制决策树如何决定拆分数据。它实际上影响了决策树如何绘制边界。
-熵 熵的计算公式为：$E=-\sum^i_{i=1}(p_i\times\log_2(p_i))$ ；$P_i$ 是类别 $i$ 的概率。我们来举一个例子来更好地理解熵及其计算。假设有一个由三种颜色组成的数据集，红色、紫色和黄色。如果我们的集合中有一个红色、三个紫色和四个黄色的观测值，我们的方程变为：$E=-(p_r \times \log_2(p_r) + p_p \times \log_2(p_p) + p_y \times \log_2(p_y)$
-其中 $p_r$ 、$p_p$ 和 $p_y$ 分别是选择红色、紫色和黄色的概率。假设 $p_r=\frac{1}{8}$，$p_p=\frac{3}{8}$ ，$p_y=\frac{4}{8}$ 现在等式变为变为：
-$E=-(\frac{1}{8} \times \log_2(\frac{1}{8}) + \frac{3}{8} \times \log_2(\frac{3}{8}) + \frac{4}{8} \times \log_2(\frac{4}{8}))$ $0.125 \times log_2(0.125) + 0.375 \times log_2(0.375) + 0.5 \times log_2(0.375)$ $0.125 \times -3 + 0.375 \times -1.415 + 0.5 \times -1 = -0.375+-0.425 +-0.5 = 1.</div><div class="post-footer">
-        <a href="/decision-tree.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/machinelearning.html">MachineLearning</a>,&nbsp;<a href="/tags/algorithm.html">algorithm</a>,&nbsp;<a href="/tags/cs.html">CS</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
