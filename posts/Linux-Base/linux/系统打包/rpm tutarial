@@ -1,0 +1,583 @@
+---
+title: "RPM打包"
+author: "cylon"           
+date: 2016-06-21
+tags:              
+  - "Linux"
+  - "RPM"
+categories:   
+  - "Linux"
+keywords: 
+  - "Linux"
+  - "RPM"
+---
+
+## 1 rpmbuild概述
+
+RPM全称是 Red Hat Package Manager（Red Hat包管理器）。几乎所有的 Linux 发行版本都使用这种形式的软件包管理安装、更新和卸载软件。对于最终用户来说，使用RPM所提供的功能来维护系统是比较容易和轻松的。安装、卸载和升级RPM软件包只需一条命令就可以搞定。RPM维护了一个所有已安装的软件包和文件的数据库，可以让用户进行查询和验证工作。在软件包升级过程中，RPM会对配置文件进行特别处理，绝对不会丢失以往的定制信息。对于程序员RPM可以让我们连同软件的源代码打包成源代码和二进制软件包供最终用户使用。
+
+一般而言制作一个RPM包包含以下几个步骤
+
+- 计划你想要建立什么
+- 收集软件包
+- 根据需要修补软件
+- 计划升级旧有的包
+- 创建可重现的软件构建
+- 概述任何依赖关系
+- 构建rpm
+- 测试rpm（能否安装、升级）
+
+RPM capability 能力
+运行或安装需要依赖于其他的RPM包本身或所提供的文件为基础的现象被称之为依赖关系。但在制作RPM包时，依赖关系有两类`编译依赖`与`安装依赖`。
+
+- 自身名字所包含的意义
+- 它提供的文件也有可能被其他软件所依赖，文件本身也能识别成一种能力
+
+编译依赖和安装依赖
+
+
+每一个RPM包都提供一种能够完成任务的功能，此种能力很可能被其他RPM所依赖，此能力大多数情况下和RPM名字是相同的。
+
+制作RPM包的纲要有如下四部
+
+- 设定RPM包制作的目录结构（制作车间）
+- 将原材料（源码包、配置文件、补丁包）放置规划好的目录当中。
+- 创建spec文件，指挥如何使用原材料将其制作成rpm包。
+- 编译源代码生成rpm包
+
+在一个特定的目录中提供如下5个子目录 redhat上默认在`/usr/src/reahat `
+
+- `BUILD` 源代码解压以后放置的位置，仅需提供目录。
+- `RPMS`  放置制作完成后的RPM包
+- `SOURCES` 原材料放置目录（配置文件、源码包、补丁包）
+- `SPECS` 放置spec文件（纲领性文件）的。
+- `SRPMS` SRC rpm包存放位置
+
+## 2 SPEC文件介绍
+
+制作RPM软件包的关键在于编写SPEC软件包描述文件。要想制作一个rpm软件包就必须写一个软件包描述文件（SPEC）。这个文件中包含了软件包的诸多信息，如软件包的名字、版本、类别、说明摘要、创建时要执行什么指令、安装时要执行什么操作、以及软件包所要包含的文件列表等等。
+### 2.1 SPEC参数解释
+#### 2.1.1 文件头部分
+| 参数      | 详解                                                         |
+| --------- | ------------------------------------------------------------ |
+| Name      | 软件的名称，<font color="#f8070d" size=3>构成RPM文件的文件名构成之一</font> |
+| Version   | 软件的版本号，<font color="#f8070d" size=3>构成RPM文件的文件名构成之一</font> |
+| Release   | 该版本打包的次数说明，<font color="#f8070d" size=3>构成RPM文件的文件名构成之一</font> |
+| Group     | 软件开发团体名称                                             |
+| Source    | 软件的来源，可以是URl或者文件。可以有多个，如：<br>Source: php-5.3.29.tar.gz<br>Source1:php.ini<br>Source2:php-fpm |
+| Patch     | 作为软件的补丁。                                             |
+| BuildRoot | 设置编译时，临时存放中间文件的路径。                         |
+| License   | 软件授权模式。一般使用GPL。                                  |
+| Requires  | 这个软件的依赖程序。                                         |
+
+#### 2.1.2 description
+软件的尖端说明。<font style="background:#fee904;" size=2>这个是必须的</font>。`rpm -qi software name`显示的基础说明。
+#### 2.1.3 prep
+prepare的简写，此段的意思为，尚未进行设置或安装之前，你要编译完成的PRM帮你事先做的事情。一般情况有如下事项：
+1. 进行软件的补丁相关工作。
+2. 寻找软件需要的目录是否存在。
+3. 事先创建软件所需要的目录，或事先进行的任务。
+4. 备份可能会替换的文件。
+```bash
+id nginx || useradd nginx -s /sbin/nologin -M
+%setup -q
+```
+
+#### 2.1.4 setup
+此选项类似于解压之类的工作，常用选项如下表所示：
+
+| 参数                | 说明                                              |
+| ------------------- | ------------------------------------------------- |
+| %setup              | 不加任何选项，仅将软件包打开。                    |
+| %setup -n newdir    | 将软件包解压在newdir目录。                        |
+| %setup -c           | 解压缩之前先产生目录。                            |
+| %setup -b num       | 将第num个source文件解压缩。                       |
+| %setup -T           | 不使用default的解压缩操作。                       |
+| %setup -T -b 0      | 将第0个源代码文件解压缩。                         |
+| %setup -c -n newdir | 指定目录名称newdir，并在此目录产生rpm套件。       |
+| %setup -q           | 提取源码到 BUILD 目录; -q 指不显示输出（quietly） |
+
+
+
+#### 2.1.5 build 构建区域
+所要执行的命令为生成软件包服务，如configure、make等操作。
+
+```bash
+./configure
+make -j 4
+```
+#### 2.1.6 install 安装区域
+
+其中的命令在安装软件包时将执行，如make install命令。在spec文件中的make install后面加上`DESTDIR=%{buildroot}`
+DESTDIR是Makefile文件中定义的一个安装路径的变量，根据实际情况修改，<font style="background:#fee904;" size=2> 例如mysql和nginx的是DESTDIR</font>，而<font style="background:#02fa3c;" size=2>php的是INSTALL_ROOT</font>。
+```bash
+%install
+make INSTALL_ROOT=%{buildroot} install  #<==php
+make install DESTDIR=%{buildroot} #<==nginx
+```
+#### 2.1.7 files 打包文件区域
+定义哪些文件将被打包入RPM中，分为三类--说明文档（doc），配置文件（config）及执行程序，还可定义文件存取权限，拥有者及组别。
+
+%defattr (-,root,root) 指定包装文件的属性，分别是(mode,owner,group)，
+
+-表示默认值，对文本文件是0644，可执行文件是0755
+%exclude 列出不想打包到rpm中的文件。
+%dir 来指定空目录
+%config  配置文件
+%doc 文档
+
+```bash
+%files
+%defattr(-,root,root,-)
+/usr/share/php-5.3.29/*
+```
+***
+<font color=#0215cd size=3> **注：这里是在虚拟根目录下进行，千万不要写绝对路径，而应用宏或变量表示相对路径。**</font>
+***
+#### 2.1.8 changelog 修改日志区域
+语法：第一行是：`* 星期 月 日 年 修改人 电子信箱`；其中：星期、月份均用英文形式的前3个字母，用中文会报错。
+接下来的行写的是修改了什么地方，<font color="#f8070d" size=2>**一般以" - "号开始，可写多行。**</font>
+```bash
+* Tue Dec 29 1998 lc <lc.com@gmail.com>
+- minimum spec and patches changes for openssl
+- modified for openssl sources
+```
+附录：
+1. **12个月简写**
+
+| 全称      | 简写 |
+| --------- | ---- |
+| January   | Jan  |
+| February  | Feb  |
+| March     | Ma   |
+| April     | Apr  |
+| May       | -    |
+| June      | -    |
+| July      | -    |
+| August    | Aug  |
+| September | Sept |
+| October   | Oct  |
+| November  | Nov  |
+| December  | Dec  |
+
+2. **一星期7日简写**
+
+| 全称      | 简写 |
+| --------- | ---- |
+| Monday    | Mon  |
+| Tuesday   | Tues |
+| Wednesday | Wed  |
+| Thurday   | Thur |
+| Friday    | Fri  |
+| Saturday  | Sat  |
+| Sunday    | Sun  |
+
+
+
+
+#### 2.1.9 clean 清理区域
+用来清理 build 后的临时文件,主要是怕这些旧的文件影响以后编译。主要是要删除 $RPM_BUILD_ROOT 和运行 make clean 。
+
+#### 2.1.10 Scriptlets
+这些选项可以让你动态的使用 shell 脚本来控制安装和删除，
+
+- %pre    rpm安装前执行的脚本
+- %post   rpm安装后执行的脚本
+- %preun  rpm卸载前执行的脚本
+- %postun rpm卸载后执行的脚本
+***
+%preun在升级的时候会执行， %postun在升级rpm包的时候不会执行
+***
+```bash
+rpm -q --scripts packagename # 查看脚本的信息  SERVER_BIN_DIR	 CLIENT_BIN_DIR
+```
+
+### 2.2 nginx.spec
+
+```bash
+Name: nginx
+Version: 1.13.9
+Release: 1%{?dist}
+Summary: nginx
+Group: nginx
+License: GPL
+URL: http://dangjian.chinamoblie.com
+Packager: nginx
+Vendor: nginx
+Source0: nginx-1.13.9.tar.gz
+Source1: nginx.service
+Requires: openssl-devel,pcre-devel
+BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
+%description 
+nginx
+
+%prep
+id nginx || useradd nginx -s /sbin/nologin -M
+%setup -q
+chmod +x ./configure
+
+%build
+./configure --prefix=/usr/share/nginx \
+--sbin-path=/usr/sbin/nginx \
+--with-stream \
+--conf-path=/etc/nginx/nginx.conf \
+--error-log-path=/data/nginx/log/error.log \
+--pid-path=/data/nginx/run/nginx.pid \
+--lock-path=/data/nginx/lock/nginx.lock \
+--user=nginx --group=nginx \
+--with-http_ssl_module \
+--with-http_stub_status_module \
+--with-http_flv_module \
+--with-http_gzip_static_module \
+--http-log-path=/data/nginx/log/access.log --http-client-body-temp-path=/data/nginx/tmp/client/ \
+--http-proxy-temp-path=/data/nginx/tmp/proxy/ \
+--http-fastcgi-temp-path=/data/nginx/tmp/fcgi/ \
+--http-scgi-temp-path=/data/nginx/tmp/scgi \
+--http-uwsgi-temp-path=/data/nginx/tmp/uwsgi
+
+make
+
+%install
+make install DESTDIR=$RPM_BUILD_ROOT
+%{__install} -p -D %{SOURCE1} %{buildroot}/usr/lib/systemd/system/nginx.service
+%{__mkdir_p} /data/nginx/tmp/{client,uwsgi,scgi,fcgi,proxy}
+
+%files
+%defattr(-,root,root,-)
+%attr(0644,root,root) /usr/share/nginx/*
+%attr(0755,root,root) /usr/sbin/nginx
+%attr(0644,root,root) /etc/nginx/*
+%attr(0744,nginx,nginx) /data/nginx/*
+%attr(0744,root,root) /usr/lib/systemd/system/nginx.service
+
+%clean
+rm -rf $RPM_BUILD_DIR/%{name}-%{version}
+
+%pre
+id nginx || useradd nginx -s /sbin/nologin -M
+
+%preun
+systemctl stop nginx
+
+%postun
+rm -fr /data/nginx/
+userdel nginx
+
+%changelog
+* Sun Aug 24 2015 LC 1.15-1
+- package libiconv-1.15
+```
+
+## 3 rpmbuild使用
+
+| 参数 | 说明                         |
+| ---- | ---------------------------- |
+| -ba  | 既生成src.rpm又生成二进制rpm |
+| -bs  | 只生成src的rpm               |
+| -bb  | 只生二进制的rpm              |
+| -bp  | 执行到pre                    |
+| -bc  | 执行到 build段               |
+| -bi  | 执行install段                |
+| -bl  | 检测有文件没包含             |
+|      |                              |
+
+更多参考：[rpmbuild 中文手册](http://www.jinbuguo.com/redhat/rpmbuild.html)
+> 查看默认宏
+```bash
+ rpmbuild --showrc
+```
+
+## 4 打包php实战
+
+### 4.1 安装php依赖库
+
+
+```sh
+mkdir -pv ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+```
+
+
+php有一个依赖库，在yum源于epel源中都没有需要自己打包`libiconv`
+
+> **编写libiconv的spec文件**
+
+```bash
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+Name: libiconv
+Version: 1.15
+Release: 1%{?dist}
+Summary: liconv
+Group: liconv
+License: GPL
+URL: http://www.test.net
+Packager: test
+Vendor: test
+Source0: libiconv-1.15.tar.gz
+BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
+%description 
+iconv
+
+%prep
+%setup -q
+
+%build
+./configure --prefix=/usr/share/libiconv-1.15 \
+
+make
+
+%install
+make install DESTDIR=%{buildroot}
+
+
+%files
+%defattr(-,root,root,-)
+%attr(0655,root,root) /usr/share/libiconv-1.15/*
+%attr(0755,root,root) /usr/share/libiconv-1.15/bin/*
+
+
+%clean
+rm -rf $RPM_BUILD_DIR/%{name}-%{version}
+
+%post
+ln -sv /usr/share/libiconv-1.15/ /usr/share/libiconv
+
+%changelog
+* Sun Aug 24 2015 LC 1.15-1
+- package libiconv-1.15
+
+```
+### 4.2 打包libiconv遇到的错误
+```bash
+Binary file /root/rpmbuild/BUILDROOT/libiconv-1.15.el7.centos.x86_64/usr/share/libiconv-1.15/bin/iconv matches
+Found '/root/rpmbuild/BUILDROOT/libiconv-1.15-1.el7.centos.x86_64' in installed files; aborting
+error: Bad exit status from /var/tmp/rpm-tmp.6AgqPk (%install)
+
+
+RPM build errors:
+    Bad exit status from /var/tmp/rpm-tmp.6AgqPk (%install)
+```
+**问题原因：**
+在rpm构建过程中，在％install阶段结束时，运行 `/usr/lib/rpm/check-buildroot`脚本以检查构建根目录中的文件。此脚本扫描构建根目录中的所有文件，以获取`${RPM_BUILD_ROOT}`路径的任何引用。
+也就是说libiconv已经编译完成。一般情况下，是可以正常使用的。所以不需要他检查构建根目录。
+
+**解决方法：**
+通过报错信息可以得到如下提示
+```bash
+RPM build errors:
+    Bad exit status from /var/tmp/rpm-tmp.6AgqPk (%install)
+```
+根据保存信息查看文件的执行过程。`/var/tmp/rpm-tmp.6AgqPk`，并发现脚本在执行到`/usr/lib/rpm/check-buildroot`时停止了。也就是说，执行这个脚本检查构建根目录时`$?`不为0
+```bash
+cd 'libiconv-1.15'
+
+make install DESTDIR=/root/rpmbuild/BUILDROOT/libiconv-1.15-1.el7.centos.x86_64
+
+    /usr/lib/rpm/check-buildroot
+```
+查看`/usr/lib/rpm/check-buildroot`脚本，发现只有此段检查才`$?`返回的是1。
+```bash
+test -s "$tmp" && {
+    cat "$tmp"
+    echo "Found '$RPM_BUILD_ROOT' in installed files; aborting"
+    exit 1
+} || :  
+```
+由于压根不知道`$tmp`在哪里传入的。又压根可以不检查构建根目录的。直接在`/usr/lib/rpm/check-buildroot`脚本最前面加上`exit 0`让构建RPM包时跳过此步骤。之后成功完成rpm构建。
+
+**参考文档：**
+[pk's Tech Page: Found '${RPM_BUILD_ROOT}' in installed files; aborting](http://pktechpage.blogspot.com/2015/09/found-rpmbuildroot-in-installed-files.html)
+[c++ - What does /usr/lib/rpm/check-buildroot do? - Stack Overflow](https://stackoverflow.com/questions/35511053/what-does-usr-lib-rpm-check-buildroot-do)
+
+### 4.3 编写spec文件
+
+```bash
+Name: php
+Version: 7.1.17
+Release: 1%{?dist}
+Summary: php
+Group: php
+License: GPL
+URL: http://php.org
+Packager: php
+Vendor: php
+Source0: php-7.1.17.tar.bz2
+Source1: php.ini
+BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
+Requires: libiconv,zlib-devel,libxml2-devel,libjpeg-devel,libjpeg-turbo-devel,freetype-devel,libpng-devel,gd-devel,curl-devel,libxslt-devel,bzip2-devel,gmp-devel,readline-devel,mcrypt,mhash,libmcrypt-devel
+%description 
+php
+
+%prep
+id nginx || useradd nginx -s /sbin/nologin -M
+%setup -q
+
+%build
+./configure \
+--prefix=/usr/share/php-7.1.17 \
+--with-config-file-path=/etc/php/ \
+--exec-prefix=/usr \
+--bindir=/usr/bin \
+--sbindir=/usr/sbin \
+--mandir=/usr/share/man \
+--sysconfdir=/etc/php/ \
+--with-mysqli=mysqlnd \
+--with-iconv-dir=/usr/share/libiconv \
+--with-jpeg-dir \
+--with-png-dir \
+--with-zlib-dir \
+--with-libxml-dir \
+--enable-xml \
+--disable-rpath \
+--enable-safe-mode \
+--enable-bcmath \
+--enable-shmop \
+--enable-sysvsem \
+--enable-inline-optimization \
+--with-curl \
+--enable-mbregex \
+--enable-fpm \
+--enable-mbstring \
+--with-mcrypt \
+--with-gd \
+--enable-gd-native-ttf \
+--with-openssl \
+--with-mhash \
+--enable-pcntl \
+--enable-sockets \
+--with-xmlrpc \
+--enable-zip \
+--enable-soap \
+--enable-short-tags \
+--enable-zend-multibyte \
+--enable-static \
+--with-xsl \
+--with-fpm-user=nginx \
+--with-fpm-group=nginx 
+
+make -j 4
+
+%install
+rm -rf %{buildroot}
+make INSTALL_ROOT=%{buildroot} install
+%{__install} -p -D %{SOURCE1} %{buildroot}/etc/php/php.ini
+
+%files
+%defattr(-,root,root,-)
+/usr/share/php-7.1.17/*
+%attr(0744,root,root) /usr/bin/*
+%attr(0744,root,root) /usr/sbin/*
+/usr/share/man/*
+/etc/php/*
+
+
+%pre
+id nginx || useradd nginx -s /sbin/nologin -M
+
+%post
+cp /etc/php/php-fpm.conf.default /etc/php/php-fpm.conf
+cp /etc/php/php-fpm.d/www.conf.default /etc/php/php-fpm.d/www.conf
+
+%postun
+userdel nginx
+
+%changelog
+* Sun Aug 10 2018 lc zhoushilong
+- package php-7.1.71
+```
+### 4.4 构建PHP RPM包遇到的问题
+
+```bash
+RPM build errors:
+    bogus date in %changelog: Sun Aug 10 2018 lc zhoushilong
+    Explicit %attr() mode not applicaple to symlink: /root/rpmbuild/BUILDROOT/php-7.1.17-1.el7.centos.x86_64/usr/bin/phar
+    Installed (but unpackaged) file(s) found:
+   /.channels/.alias/pear.txt
+   /.channels/.alias/pecl.txt
+   /.channels/.alias/phpdocs.txt
+   /.channels/__uri.reg
+   /.channels/doc.php.net.reg
+   /.channels/pear.php.net.reg
+   /.channels/pecl.php.net.reg
+   /.depdb
+   /.depdblock
+   /.filemap
+   /.lock
+```
+**解决方法如下：**
+> **方法1**
+>
+> 生成的rpm包里有前面在%files里添加的这个文件，如下：
+```bash
+/usr/local/php/.channels
+```
+> **方法二，下面是直接删除的解决办法，实践OK（视具体情况是删除还是添加选一个即可）：**
+```bash
+rm -rf %{buildroot}/{.channels,.depdb,.depdblock,.filemap,.lock} 
+```
+> **方法三, `/usr/lib/rpm/macros` 修改宏**
+```bash
+# 构建根目录中的未打包文件是否应终止构建？
+%_unpackaged_files_terminate_build 1 # 把1改为0只警告
+
+%__check_files   %{_rpmconfigdir}/check-files %{buildroot} # 这一行，把这一行注释掉，然后重新编译
+```
+**`%__check_files`说明：**
+
+Build configuration macros. Script gets packaged file list on input and buildroot as first parameter. Returns list of unpackaged files, i.e. files in $RPM_BUILD_ROOT not packaged. Note: Disable (by commenting out) for legacy compatibility.
+
+构建配置宏。 脚本在输入和buildroot上获取打包文件列表作为第一个参数。 返回未打包文件的列表，即$ RPM_BUILD_ROOT中未打包的文件。 注意：禁用（通过注释掉）旧版兼容性。
+
+
+### 打包报错
+
+
+```sh
++ '%{__debug_install_post}'
+/var/tmp/rpm-tmp.o0N7t4: line 45: fg: no job control
+error: Bad exit status from /var/tmp/rpm-tmp.o0N7t4 (%install)
+
+
+RPM build errors:
+    bogus date in %changelog: Sun Aug 24 2018 YB 1.14.2
+    Bad exit status from /var/tmp/rpm-tmp.o0N7t4 (%install)
+```
+
+解决：使用以下命令禁用check-buildroot
+
+
+```
+%define __arch_install_post %{nil}
+%define __os_install_post %{nil}
+```
+
+关闭调试信息：
+
+
+```
+%global debug_package %{nil}
+```
+
+参考网址 
+
+https://stackoverflow.com/questions/47838041/rpmbuild-how-to-disable-check-buildroot
+
+https://phpor.net/blog/post/5670
+
+
+
+
+**参考文档：**
+
+[[实践OK]rpmbuild报error: Installed (but unpackaged) file(s) found的解决办法](http://jackxiang.com/post/8633/)
+
+[rpmbuild 打包rpm实战](http://www.nongzusa.com/blog/2014/10/14/rpmbuild-da-bao-rpmshi-zhan/)
+
+
+
+## 5 参考文档
+[Creating RPM packages :: Fedora Docs Site](https://docs.fedoraproject.org/en-US/quick-docs/creating-rpm-packages/index.html)
+
+[How to create an RPM package/zh-cn - Fedora Project Wiki](https://fedoraproject.org/wiki/How_to_create_an_RPM_package/zh-cn#.25files_.E5.9F.BA.E7.A1.80)
+
+[Fedora Packaging Guidelines - Fedora Project Wiki](https://fedoraproject.org/wiki/Packaging:Guidelines?rd=Packaging/Guidelines)
