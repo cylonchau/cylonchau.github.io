@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>MySQL主从复制 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="MySQL主从复制" />
+<meta property="og:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。
+文件级别的异机同步方案
+scp/sftp/nc命令可以实现远程数据同步。 搭建ftp/http/svn/nfs服务器，然后在客户端上也可以把数据同步到服务器。 搭建samba文件共享服务，然后在客户端上也可以把数据同步到服务器。 利用rsync/csync2/union等均可以实现数据同步。 提示：union可实现双向同步，csync2可实现多机同步。
+​	以上文件同步方式如果结合定时任务或innotify sersync等功能，可以实现定时以及实时的数据同步。
+扩展思想：文件级别复制也可以利用mysql,mongodb等软件作为容器实现。
+扩展思想：程序向两个服务器同时写数据，双写就是一个同步机制。
+​	特点：简单、方便、效率和文件系统级别要差一些，但是被同步的节点可以提供访问。
+软件的自身同步机制（mysql、oracle、mongdb、ttserver、redis&hellip;..），文件放到数据库，听不到从库，再把文件拿出来。 文件系统级别的异机同步方案
+drbd基于文件系统同步，相当于网络RAID1，可以同步几乎任何业务数据。
+mysql数据的官方推荐drbd同步数据，所有单点服务例如：NFS，MFS(DRBD)，MySQL等度可以用drbd做复制，效率很高，缺点：备机服务不可用。
+数据库同步方案
+自身同步机制：mysql relication，（逻辑的SQL重写）物理复制方法drbd（丛库不提供读写）。 第三方drbd MySQL主从复制概述 MySQL的主从复制方案，和上述文件及文件系统级别同步是类似的，都是数据的传输。只不过MySQL无需借助第三方工具，而是其自带的同步复制功能，另外一点，MySQL的主从复制并不是磁盘上文件直接同步，而是逻辑的binlog日志绒布到本地在应用执行的过程
+MySQL主从复制是一个异步的复制过程（虽然一般情况下感觉是实时的），数据将从一个MySQL数据库（Master）复制到另一个数据库（Slave），在 mater 与 Slave之 间实现整个主从复制的过程是由三个线程参与完成的。其中有两个线程( SQL和IO )在Slave端，另外一个线程（I/O）在Master端。
+要实现MySQL的主从复制，首先必须打开 Master 端的 binlog 记录功能，否则就无法实现。因为整个复制过程实际上就是Slave从Master端获取Binlog日志，然后在Slave上以相同顺序逐自获取 binlog 日志中所记录的各种SQL操作。
+要打开MySQL的binlog记录功能，可能通过在MySQL的配置文件 my.cnf 中的 mysqld 模块( [mysqld] )标识后的参数部分增加 “log-bin” 参数选项来实现，具体信息如下：
+1 2 [mysqld] log-bin = /data/3307/mysql-bin 提示：log-bin需放置在[mysqld]标识后，否则会导致配置复制不成功。
+MySQL数据可支持单向、双向、链式级联等不同场景的复制。在复制过程中，一台服务器充当主服务器（Master），而一个或多个其他的服务器充当从服务器（Slave）。
+复制可以使单向：M==&gt;S，也可以是双向 M&lt;==&gt;M，当然也可以多M环装同步等。
+如果设置了链式级联复制，那么，从（slave）服务器本身除了充当从服务器外，也会同时充当其下面从服务器的主服务器。链式级联复制类似 A==&gt;B==&gt;C==&gt;D 的复制形式。
+下面是MySQL各种同步架构的逻辑图。
+单向主从复制逻辑图，次架构只能在Master端进行数据写入。官方给出Slave最多9，工作中不要超过5
+双向主主同步逻辑图，次架构可以再Master1端或Master2端进行数据写入
+线性级联单向双主同步逻辑图，此架构只能在Master1端进行数据写入
+缺陷：1 ==&gt;3 之间会存在延迟
+环装级联单向多主同步逻辑图，任意一个点都可以写入数据。
+环装级联单向多主多从同步逻辑图，次架构只能在任意一个Master端进行数据写入。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/mysql-replication.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-05-21T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-12T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="MySQL主从复制"/>
+<meta name="twitter:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。
+文件级别的异机同步方案
+scp/sftp/nc命令可以实现远程数据同步。 搭建ftp/http/svn/nfs服务器，然后在客户端上也可以把数据同步到服务器。 搭建samba文件共享服务，然后在客户端上也可以把数据同步到服务器。 利用rsync/csync2/union等均可以实现数据同步。 提示：union可实现双向同步，csync2可实现多机同步。
+​	以上文件同步方式如果结合定时任务或innotify sersync等功能，可以实现定时以及实时的数据同步。
+扩展思想：文件级别复制也可以利用mysql,mongodb等软件作为容器实现。
+扩展思想：程序向两个服务器同时写数据，双写就是一个同步机制。
+​	特点：简单、方便、效率和文件系统级别要差一些，但是被同步的节点可以提供访问。
+软件的自身同步机制（mysql、oracle、mongdb、ttserver、redis&hellip;..），文件放到数据库，听不到从库，再把文件拿出来。 文件系统级别的异机同步方案
+drbd基于文件系统同步，相当于网络RAID1，可以同步几乎任何业务数据。
+mysql数据的官方推荐drbd同步数据，所有单点服务例如：NFS，MFS(DRBD)，MySQL等度可以用drbd做复制，效率很高，缺点：备机服务不可用。
+数据库同步方案
+自身同步机制：mysql relication，（逻辑的SQL重写）物理复制方法drbd（丛库不提供读写）。 第三方drbd MySQL主从复制概述 MySQL的主从复制方案，和上述文件及文件系统级别同步是类似的，都是数据的传输。只不过MySQL无需借助第三方工具，而是其自带的同步复制功能，另外一点，MySQL的主从复制并不是磁盘上文件直接同步，而是逻辑的binlog日志绒布到本地在应用执行的过程
+MySQL主从复制是一个异步的复制过程（虽然一般情况下感觉是实时的），数据将从一个MySQL数据库（Master）复制到另一个数据库（Slave），在 mater 与 Slave之 间实现整个主从复制的过程是由三个线程参与完成的。其中有两个线程( SQL和IO )在Slave端，另外一个线程（I/O）在Master端。
+要实现MySQL的主从复制，首先必须打开 Master 端的 binlog 记录功能，否则就无法实现。因为整个复制过程实际上就是Slave从Master端获取Binlog日志，然后在Slave上以相同顺序逐自获取 binlog 日志中所记录的各种SQL操作。
+要打开MySQL的binlog记录功能，可能通过在MySQL的配置文件 my.cnf 中的 mysqld 模块( [mysqld] )标识后的参数部分增加 “log-bin” 参数选项来实现，具体信息如下：
+1 2 [mysqld] log-bin = /data/3307/mysql-bin 提示：log-bin需放置在[mysqld]标识后，否则会导致配置复制不成功。
+MySQL数据可支持单向、双向、链式级联等不同场景的复制。在复制过程中，一台服务器充当主服务器（Master），而一个或多个其他的服务器充当从服务器（Slave）。
+复制可以使单向：M==&gt;S，也可以是双向 M&lt;==&gt;M，当然也可以多M环装同步等。
+如果设置了链式级联复制，那么，从（slave）服务器本身除了充当从服务器外，也会同时充当其下面从服务器的主服务器。链式级联复制类似 A==&gt;B==&gt;C==&gt;D 的复制形式。
+下面是MySQL各种同步架构的逻辑图。
+单向主从复制逻辑图，次架构只能在Master端进行数据写入。官方给出Slave最多9，工作中不要超过5
+双向主主同步逻辑图，次架构可以再Master1端或Master2端进行数据写入
+线性级联单向双主同步逻辑图，此架构只能在Master1端进行数据写入
+缺陷：1 ==&gt;3 之间会存在延迟
+环装级联单向多主同步逻辑图，任意一个点都可以写入数据。
+环装级联单向多主多从同步逻辑图，次架构只能在任意一个Master端进行数据写入。"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/mysql-replication.html" /><link rel="prev" href="https://cylonchau.github.io/mysql-security.html" /><link rel="next" href="https://cylonchau.github.io/mysql-log.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "MySQL主从复制",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/mysql-replication.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  494 ,
+        "url": "https:\/\/cylonchau.github.io\/mysql-replication.html","datePublished": "2017-05-21T00:00:00+00:00","dateModified": "2022-12-12T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">MySQL主从复制</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-05-21 00:00:00">2017-05-21 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 494 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 3 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#linux文件数据同步方案">Linux文件数据同步方案</a></li>
+    <li><a href="#mysql主从复制概述">MySQL主从复制概述</a>
+      <ul>
+        <li><a href="#mysql主从复制过程原理">MySQL主从复制过程原理</a></li>
+      </ul>
+    </li>
+    <li><a href="#mysql主从复制配置">MySQL主从复制配置</a>
+      <ul>
+        <li><a href="#环境准备">环境准备</a></li>
+        <li><a href="#主库部分配置">主库部分配置</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="linux文件数据同步方案">Linux文件数据同步方案</h2>
+<p>在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。</p>
+<p><font color="#f8070d" size=3><strong>文件级别的异机同步方案</strong></font></p>
+<ul>
+<li>scp/sftp/nc命令可以实现远程数据同步。</li>
+<li>搭建ftp/http/svn/nfs服务器，然后在客户端上也可以把数据同步到服务器。</li>
+<li>搭建samba文件共享服务，然后在客户端上也可以把数据同步到服务器。</li>
+<li>利用rsync/csync2/union等均可以实现数据同步。</li>
+</ul>
+<hr>
+<p><font color="#0215cd" size=3> 提示：union可实现双向同步，csync2可实现多机同步。</font></p>
+<hr>
+<p>​		以上文件同步方式如果结合定时任务或innotify sersync等功能，可以实现定时以及实时的数据同步。</p>
+<ul>
+<li>
+<p>扩展思想：文件级别复制也可以利用mysql,mongodb等软件作为容器实现。</p>
+</li>
+<li>
+<p>扩展思想：程序向两个服务器同时写数据，双写就是一个同步机制。</p>
+</li>
+</ul>
+<p>​		特点：简单、方便、效率和文件系统级别要差一些，但是被同步的节点可以提供访问。</p>
+<ul>
+<li>软件的自身同步机制（mysql、oracle、mongdb、ttserver、redis&hellip;..），文件放到数据库，听不到从库，再把文件拿出来。</li>
+</ul>
+<p><font color="#f8070d" size=3><strong>文件系统级别的异机同步方案</strong></font></p>
+<p><strong>drbd基于文件系统同步，相当于网络RAID1，可以同步几乎任何业务数据。</strong></p>
+<p>mysql数据的官方推荐drbd同步数据，所有单点服务例如：NFS，MFS(DRBD)，MySQL等度可以用drbd做复制，效率很高，缺点：备机服务不可用。</p>
+<p><font color="#f8070d" size=3><strong>数据库同步方案</strong></font></p>
+<ul>
+<li>自身同步机制：mysql relication，（逻辑的SQL重写）物理复制方法drbd（丛库不提供读写）。</li>
+<li>第三方drbd</li>
+</ul>
+<h2 id="mysql主从复制概述">MySQL主从复制概述</h2>
+<p>MySQL的主从复制方案，和上述文件及文件系统级别同步是类似的，都是数据的传输。只不过MySQL无需借助第三方工具，而是其自带的同步复制功能，另外一点，MySQL的主从复制并不是磁盘上文件直接同步，而是逻辑的binlog日志绒布到本地在应用执行的过程</p>
+<p>MySQL主从复制是一个异步的复制过程（虽然一般情况下感觉是实时的），数据将从一个MySQL数据库（Master）复制到另一个数据库（Slave），在 mater 与 Slave之 间实现整个主从复制的过程是由三个线程参与完成的。其中有两个线程( SQL和IO )在Slave端，另外一个线程（I/O）在Master端。</p>
+<p>要实现MySQL的主从复制，首先必须打开 Master 端的 <code>binlog</code> 记录功能，否则就无法实现。因为整个复制过程实际上就是Slave从Master端获取Binlog日志，然后在Slave上以相同顺序逐自获取 <code>binlog</code> 日志中所记录的各种SQL操作。</p>
+<p>要打开MySQL的binlog记录功能，可能通过在MySQL的配置文件 <code>my.cnf</code> 中的 <code>mysqld</code> 模块( [mysqld] )标识后的参数部分增加 “log-bin” 参数选项来实现，具体信息如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>mysqld<span class="o">]</span>
+</span></span><span class="line"><span class="cl">log-bin <span class="o">=</span> /data/3307/mysql-bin
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p>提示：log-bin需放置在[mysqld]标识后，否则会导致配置复制不成功。</p>
+<hr>
+<p>MySQL数据可支持单向、双向、链式级联等不同场景的复制。在复制过程中，一台服务器充当主服务器（Master），而一个或多个其他的服务器充当从服务器（Slave）。</p>
+<p>复制可以使单向：M==&gt;S，也可以是双向 M&lt;==&gt;M，当然也可以多M环装同步等。</p>
+<p>如果设置了链式级联复制，那么，从（slave）服务器本身除了充当从服务器外，也会同时充当其下面从服务器的主服务器。链式级联复制类似 A==&gt;B==&gt;C==&gt;D 的复制形式。</p>
+<p>下面是MySQL各种同步架构的逻辑图。</p>
+<p><font style="background:#ffc104;" size=3>单向主从复制逻辑图</font>，次架构只能在Master端进行数据写入。官方给出Slave最多9，工作中不要超过5</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213174920924.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213174920924.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213174920924.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213174920924.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213174920924.png"
+        title="image-20221213174920924" /></p>
+<p><font style="background:#ffc104;" size=3>双向主主同步逻辑图</font>，次架构可以再Master1端或Master2端进行数据写入</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175252660.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175252660.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175252660.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175252660.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175252660.png"
+        title="image-20221213175252660" /></p>
+<p><font style="background:#ffc104;" size=3>线性级联单向双主同步逻辑图</font>，此架构只能在Master1端进行数据写入</p>
+<p>缺陷：1 ==&gt;3 之间会存在延迟</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175658442.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175658442.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175658442.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175658442.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175658442.png"
+        title="image-20221213175658442" /></p>
+<p><font style="background:#ffc104;" size=3>环装级联单向多主同步逻辑图</font>，任意一个点都可以写入数据。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175758789.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175758789.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175758789.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175758789.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213175758789.png"
+        title="image-20221213175758789" /></p>
+<p><font style="background:#ffc104;" size=3>环装级联单向多主多从同步逻辑图</font>，次架构只能在任意一个Master端进行数据写入。</p>
+<p>应对读比较多的情况，将所有的从做成负载均衡，三个主做负载均衡。如果其中一个主断掉，其从节点就成了旧数据</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180018027.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180018027.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180018027.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180018027.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180018027.png"
+        title="image-20221213180018027" /></p>
+<p><font style="background:#ffc104;" size=3>MySQL官方同步架构图</font></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180057034.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180057034.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180057034.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180057034.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180057034.png"
+        title="image-20221213180057034" /></p>
+<h3 id="mysql主从复制过程原理">MySQL主从复制过程原理</h3>
+<p>下面简单描述下MySQL Replication的复制原理过程</p>
+<ol>
+<li>在 Slave 服务器上执行 <code>start slave</code> 命令开启主从复制开关，主从复制开始进行。</li>
+<li>此时，Slave服务器的 <strong>I/O线程</strong> 会通过在Master上已经授权的复制用户权限请求连接 Master 服务器，并请求从指定 <strong>binlog</strong> 日志文件的指定位置（日志文件名和位置就是在配置主从复制服务时执行change master命令指定的）之后开始发送binlog日志内容。</li>
+<li>Master服务器接受到来自 Slave服务器 <strong>I/O线程</strong> 的请求后，其上负责复制的I/O线程会根据Slave服务器I/O线程请求的信息分批读取指定 Binlog 日志文件指定位置之后的 <strong>Binlog</strong> 日志信息，然后返回给 <strong>Slave</strong> 端的 <strong>I/O线程</strong>。返回的信息中除了 Binlog 日志内容外，还有在Master服务器端记录的新的Binlog文件以及在新的Binlog中的下一个指定更新位置。</li>
+<li>当Slave服务器的 <strong>I/O线程</strong> 发送的日志内容及日志文件及位置后，会将 Binlog日志 内容依次写入到 Slave 端自身的 <strong>Relay Log</strong>（即<strong>中继日志</strong>）(mysql-relay-bin_xxxxx）端新binlog日志时，能告诉master端服务器需要从新Binlog日志的指定文件及位置开始请求新的binlog日志内容</li>
+<li>Slave服务器端的SQL线程会实时地检测本地 <strong>Relay Log</strong> 中 <strong>I/O线程</strong> 新增加的日志内容，然后及时地把 <strong>Relay Log</strong> 文件中的内容解析成SQL语句，并在自身 Slave服务器 上按解析SQL语句的位置顺序执行应用这些SQL语句，并记录当前应用中继日志的文件名及位置点在 **<code>relay-log.info</code>**中。</li>
+</ol>
+<p>经过了上面的过程，就可以确保在Master端和Slave端执行了同样的SQL语句。当复制状态正常的情况下，Master端和Slave端的数据是完全一样的。当然，MySQL的复制机制也有一些特殊情况，具体请参考官方的说明。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180405932.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180405932.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180405932.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180405932.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213180405932.png"
+        title="image-20221213180405932" /></p>
+<center>图：MySQL主从复制基本原理</center><br>
+<p><font color="#f8070d" size=3><strong>MySQL主从复制原理小结</strong>：</font></p>
+<ul>
+<li>主从复制是异步的逻辑SQL语句级的复制。</li>
+<li>复制时，主库有一个I/O线程，从库有两个线程I/O和SQL线程。</li>
+<li>实现主从复制的必要条件是主库要开启记录binlog功能。</li>
+<li>作为复制的所有MySQL节点的server-id都不能相同</li>
+<li>binlog文件只记录对数据库有关的SQL（来自主数据库内容的变更），不记录任何查询（select show）语句。</li>
+</ul>
+<h2 id="mysql主从复制配置">MySQL主从复制配置</h2>
+<h3 id="环境准备">环境准备</h3>
+<p>MySQL主从复制实践对环境的要求比较简单，可以是单机单数据库多实例的环境，也可以是两台服务器，每个机器上独立数据库的环境。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ss -lnt
+</span></span><span class="line"><span class="cl">State  Recv-Q Send-Q      Local Address:Port          Peer Address:Port 
+</span></span><span class="line"><span class="cl">LISTEN     <span class="m">0</span>   <span class="m">128</span>         <span class="se">\*</span>:3306                             	<span class="se">\*</span>:<span class="se">\*</span>     
+</span></span><span class="line"><span class="cl">LISTEN     <span class="m">0</span>      <span class="m">128</span>      <span class="se">\*</span>:3307                             	<span class="se">\*</span>:<span class="se">\*</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>提示：这里把3306实例作为主库，3307实例作为从库，如果根据前面的内容配置了mysql多实例环境，直接开启多实例环境使用即可。</p>
+<p><font color="#f8070d" size=3><strong>定义主从复制需要的服务器角色</strong></font></p>
+<p>主库及从库IP、端口信息：</p>
+<ul>
+<li>master:	192.168.2.110:3306</li>
+<li>slave:	192.168.2.110:3307</li>
+</ul>
+<p>这里的主从复制技术是针对前面的内容以单机数据库多实例环境来讲的。一般情况下，小企业在做常规的主从复制时，主从服务器多数在不同的机器上，并且监听的端口均为默认的3306。虽然不在同一个机器上，但是步骤和过程却是一样的。</p>
+<h3 id="主库部分配置">主库部分配置</h3>
+<p><font color="#f8070d" size=3><strong>设置server-id值并开启binlog功能参数</strong></font></p>
+<p>根据前文介绍的MySQL主从复制原理我们知道，要实现主从复制，关键是要开启binlog日志功能，所以，首先来打开主库的binlog参数。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>mysqld<span class="o">]</span>
+</span></span><span class="line"><span class="cl">server-id<span class="o">=</span>1	<span class="c1"># &lt;=用于同步的每台机器或实例server-id都不能相同			</span>
+</span></span><span class="line"><span class="cl">log-bin<span class="o">=</span>/data/3306/mysql-bin	<span class="c1">#&lt;=该部分可省略</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>提示：</p>
+<ol>
+<li>
+<p>上面的两个参数要放在my.cnf中的 <code>[mysqld]</code> 模块下，否则会出错。</p>
+</li>
+<li>
+<p><code>server-id</code> 的值使用服务器ip地址最后一个小数点后面数字如：19，目的是避免不同机器或实例ID重复（不适合多实例） 0 &lt; server-id &lt; 232-1的自然数</p>
+</li>
+<li>
+<p>要先在 <code>my.cnf</code> 配置文件中查找相关参数，并按要求修改。若不存在再添加参数。切记参数不能重复</p>
+</li>
+<li>
+<p>修改my.cnf配置后需要重启数据库，命令为: <code>/data/3306/mysql restart</code>，要确认真正重启了</p>
+</li>
+</ol>
+<p><font color="#f8070d" size=3><strong>检查配置参数后的结果</strong></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ grep -E <span class="s1">&#39;log-bin|server-id&#39;</span> my.cnf  
+</span></span><span class="line"><span class="cl">log-bin <span class="o">=</span> /data/3306/mysql-bin
+</span></span><span class="line"><span class="cl">server-id <span class="o">=</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color="#f8070d" size=3><strong>登陆数据库检查参数的更改情况（需重启）</strong></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show variables like <span class="s1">&#39;server_id&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Variable_name <span class="p">|</span> Value <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> server_id	    <span class="p">|</span> <span class="m">1</span>     <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">mysql&gt; show variables like <span class="s1">&#39;log_bin&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Variable_name <span class="p">|</span> Value <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> log_bin       <span class="p">|</span> ON    <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+---------------+-------+
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color="#f8070d" size=3><strong>在主库上建立用于主从复制的账号</strong></font></p>
+<p>根据主从复制的原理，从库要想和主库同步，必须有一个可以连接主库的账号，并且这个账号是主库上创建的，权限是允许主库的从库连接并同步数据。</p>
+<p><strong>登陆3306实例猪数据库</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql -uroot -p111 -S /data/3306/mysql.sock
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>建立用于从库复制的账号rep：</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant replication slave on *.* to <span class="s1">&#39;rep&#39;</span>@<span class="s1">&#39;192.168.2.%&#39;</span> identified by <span class="s1">&#39;1234&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># relication slave为mysql同步的必须权限，此处不要授权all</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># *.*表示所有库所有表，也可以指定具体的库和表进行复制，例如shop.test</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># rep@&#39;192.168.2.%&#39;为同步账号。192.168.2.%为授权网段，使用%表示192.168.2.0网段以rep用户访问</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># identified by &#39;1234&#39; 为密码。生产环境要使用复杂密码</span>
+</span></span><span class="line"><span class="cl">mysql&gt; flush privileges<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>检查主库复制账号权限</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show grants <span class="k">for</span> rep@<span class="s1">&#39;192.168.2.%&#39;</span><span class="se">\G</span>
+</span></span><span class="line"><span class="cl">*************************** 1. row ***************************
+</span></span><span class="line"><span class="cl">Grants <span class="k">for</span> rep@192.168.2.%: GRANT REPLICATION SLAVE ON *.* TO <span class="s1">&#39;rep&#39;</span>@<span class="s1">&#39;192.168.2.%&#39;</span> IDENTIFIED BY PASSWORD <span class="s1">&#39;*A4B6157319038724E3560894F7F932C8886EBFCF&#39;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color="#f8070d" size=3><strong>实现对数据库锁表只读</strong></font></p>
+<p><strong>1. 对主数据库锁表只读（当钱窗口不要关闭）的命令：</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">flush table with <span class="nb">read</span> lock<span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 锁表后新建窗口查看mysql此时是不能插入数据的</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p>提示：在引擎不同的情况，这个锁表命令的时间会受下面参数的控制。锁表时，如果草果设置时间不操作会自动解锁。</p>
+<hr>
+<p>默认情况下自动解锁的市场参数值如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show variables like <span class="s1">&#39;%timeout%&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">+----------------------------+----------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Variable_name              <span class="p">|</span> Value    <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+----------------------------+----------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> interactive_timeout        <span class="p">|</span> <span class="m">28800</span>    <span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span> wait_timeout               <span class="p">|</span> <span class="m">28800</span>    <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+----------------------------+----------+
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>2. 锁表后查看主库状态。可通过当前binlog日志文件名和二进制binlog日志偏移量来查看</strong></p>
+<p>注意，show master status;命令显示的信息要记录在案，后面的从库导入全备后，继续和主库复制时就是要从这个位置开始。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show master status<span class="p">;</span>
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> File             <span class="p">|</span> Position <span class="p">|</span> Binlog_Do_DB <span class="p">|</span> Binlog_Ignore_DB <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> mysql-bin.000319 <span class="p">|</span>      <span class="m">331</span> <span class="p">|</span>              <span class="p">|</span>                  <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">mysql -uroot -p111 -S /data/3306/mysql.sock -e <span class="s1">&#39;show master status;&#39;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>3. 锁表后，一定要单开一个新的SSH窗口，导出数据库的所有数据，如果数据量很大( 50GB+ )，并且允许停机，可以停库直接打包数据文件迁移，那样还快些</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysqldump -uroot -p111 <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-S /data/3306/mysql.sock <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--events -A -B<span class="p">|</span>gzip &gt;bak.<span class="sb">`</span>date +%F.sql.gz<span class="sb">`</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>为了确保导出数据期间，数据库没有数据插入，导库完毕可以再检查下主库状态信息。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mysql -uroot -p111 -S /data/3306/mysql.sock -e <span class="s1">&#39;show master status;&#39;</span>                      
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> File             <span class="p">|</span> Position <span class="p">|</span> Binlog_Do_DB <span class="p">|</span> Binlog_Ignore_DB <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> mysql-bin.000319 <span class="p">|</span>      <span class="m">331</span> <span class="p">|</span>              <span class="p">|</span>                  <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------+----------+--------------+------------------+
+</span></span><span class="line"><span class="cl"><span class="c1"># 若无特殊情况，binlog文件及位置点和锁表后导出数据前是一致的，即没有变化的。</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>导出数据后，解锁主库，恢复可写，因为主库还要对外提供服务，不能一直锁定不让用户访问。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">unlock tables<span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 此时新窗口的写入语句会立刻写入数据</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>实际上做从库前，无论主库更新多少数据库，最后从库都可以从上面show master status的位置很快赶上主库的进度的。</p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+<p><font color="#f8070d" size=3><strong>慢查询日志调整</strong></font></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-12 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/mysql-replication.html" data-title="MySQL主从复制" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/mysql-replication.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/mysql-replication.html" data-title="MySQL主从复制" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/mysql-replication.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/mysql-replication.html" data-title="MySQL主从复制"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/mysql-replication.html" data-title="MySQL主从复制"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/mysql-replication.html" data-title="MySQL主从复制"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/mysql-security.html" class="prev" rel="prev" title="MySQL安全相关配置"><i class="fas fa-angle-left fa-fw"></i>MySQL安全相关配置</a>
+            <a href="/mysql-log.html" class="next" rel="next" title="MySQL数据库服务日志">MySQL数据库服务日志<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-05-21T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"MySQL主从复制"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

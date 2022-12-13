@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>haproxy - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="haproxy" />
+<meta property="og:description" content="haproxy 介绍 haproxy是一个开源的、高性能的基于TCP和HTTP应用代理的高可用的、负载均衡服务软件，它支持双机热备、高可用、负载均衡、虚拟主机、基于TCP和HTTP的应用代理、图形界面查看信息等功能。其配置简单、维护方便，而且拥有很好的对服务器节点的健康检查功能(相当于keepalived健康检查)，当其代理的后端服务器出现故障时，haproxy会自动的将该故障服务器摘除，当故障的服务器恢复后，haproxy还会自动将该服务器自动加入进来提供服务。
+LVS/NGINX对比 haproxy 特别适用于那些高负载、访问量很大，但又需要会话保持及七层应用代理的业务应用。haproxy运行在今天的普通的服务器硬件上，几乎不需要进行任何的优化就可以支持数以万计的并发连接。并且它的运行模式使得它可以很简单、轻松、安全的整合到各种己有的网站架构中，同时，haproxy的代理模式，可以使得所有应用服务器不会暴露到公共网络上，即后面的节点服务器不需要公网IP地址。
+从1.3版本起，haproxy软件引入了frontend,backend的功能，frontend (ad规则匹配)可以让运维管理人员根据任意HTTP请求头内容做规则匹配，然后把请求定向到相关的backend(这个是事先定义好的多个server pools，等待前端把请求转过来的服务器组)。通过frontend和backend，我们可以很容易的买现haproxy的各种7层应用代理功能。
+haproxy代理模式 haproxy支持两种主要代理模式：
+1、基于4层的tcp应用代理(例如:可用于邮件服务、内部协议通信服务器、MySQL、HTTPS服务等)。
+2、基于7层的http代理。在4层tcp代理模式下，haproxy仅在客户端和服务器之间进行流量转发。但是在7层http代理模式下，haproxy会分析应用层协议，并且能通过允许、拒绝、交换、增加、修改或者删除请求(request)或者回应(response)里指定内容来控制协议。
+官方网站:www.haproxy.org
+haproxy 解决方案拓扑图 haproxy L4负载均衡应用架构拓扑 haproxy软件的四层tcp应用代理非常优秀，且配置非常简单、方便，比LVS和Nginx的配置要简单很多，首先，配置haproxy不需要在RS端做任何特殊配置 (只要对应服务开启就OK)就可以实现应用代理，其次，haproxy的配置语法和增加虚拟主机功能等也比lvs/nginx简单。并且和商业版的NS (Netscaler)、F5, A10等负载均衡硬件的使用方法和在架构中的位置一模一样。下面是haproxy的Layer4层应用代理的拓扑结构图:
+说明:由于haproxy软件采用的是类NAT模式(本质不同)的应用代理，数据包来去都会经过haproxy，因此，在流量特别大的情况下(门户级别的流量)，其效率和性能不如LVS的DR模式负载均衡。
+在一般的中小型公司，建议采用haproxy做负载均衡，而不要使用LVS或Nginx。为什么强调中小型公司呢?换句话说，千万PV级别以下直接使用haproxy做负载均衡，会让我们负责维护的运维管理人员配置简单、快速、维护方便，出问题好排查。
+haproxy L7负载均衡应用架构拓扑 haproxy软件的最大优势在于其7层的根据URL请求头应用过滤的功能以及sesson会话功能，在门户网站的高并发生产架构中，haproxy软件一般用在4层LVS负载均衡软件的下一层，或者像haproxy官方推荐的也可以挂在硬件负载均衡althon, NS, F5, A10下使用，其表现非常好。从2009年起taobao，京东商城的业务也大面积使用了haproxy作为7层CACHE应用代理。
+安装haproxy 模拟真实环境
+搭建合适的模拟环境是一个人学习能力的重要体现。例如：人类第一次上太空也没有真正的环境，但是想去太空就是要自己动手去搭建逼真的模拟环境。实验多了就是经验，自然就有解除生产环境的机会了。
+名称 接口 IP 用途 MASTER eth0 10.0.0.7 外网管理IP用于WAN数据转发 eth1 172.16.1.7 内网管理IP，用于LAN数据转发 eth2 10.0.10.7 用于服务器间心跳连接（直连） VIP 10.0.0.17 用于提供应用程序A挂载服务 BACKUP eth0 10.0.0.8 外网管理IP，用于WAN数据转发 eth1 172.16.1.8 内网管理IP，用于LAN数据转发 eth2 10.0.10.8 用于服务器间心跳连接（直连） VIP 10.0.0.8 用于提供应用程序B挂载服务 下载安装haproxy 下载地址：http://www.haproxy.org/download/
+文档地址：http://www.haproxy.org/download/1.7/doc/configuration.txt
+编译haproxy 1 2 3 4 make TARGET=linux2628 ARCH=x86_64 # &lt;==64位编译配置 make TARGET=linux2628 ARCH=i386 # &lt;==32位编译配置 make PREFIX=/app/haproxy-1." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/haproxy.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-11-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-11-28T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="haproxy"/>
+<meta name="twitter:description" content="haproxy 介绍 haproxy是一个开源的、高性能的基于TCP和HTTP应用代理的高可用的、负载均衡服务软件，它支持双机热备、高可用、负载均衡、虚拟主机、基于TCP和HTTP的应用代理、图形界面查看信息等功能。其配置简单、维护方便，而且拥有很好的对服务器节点的健康检查功能(相当于keepalived健康检查)，当其代理的后端服务器出现故障时，haproxy会自动的将该故障服务器摘除，当故障的服务器恢复后，haproxy还会自动将该服务器自动加入进来提供服务。
+LVS/NGINX对比 haproxy 特别适用于那些高负载、访问量很大，但又需要会话保持及七层应用代理的业务应用。haproxy运行在今天的普通的服务器硬件上，几乎不需要进行任何的优化就可以支持数以万计的并发连接。并且它的运行模式使得它可以很简单、轻松、安全的整合到各种己有的网站架构中，同时，haproxy的代理模式，可以使得所有应用服务器不会暴露到公共网络上，即后面的节点服务器不需要公网IP地址。
+从1.3版本起，haproxy软件引入了frontend,backend的功能，frontend (ad规则匹配)可以让运维管理人员根据任意HTTP请求头内容做规则匹配，然后把请求定向到相关的backend(这个是事先定义好的多个server pools，等待前端把请求转过来的服务器组)。通过frontend和backend，我们可以很容易的买现haproxy的各种7层应用代理功能。
+haproxy代理模式 haproxy支持两种主要代理模式：
+1、基于4层的tcp应用代理(例如:可用于邮件服务、内部协议通信服务器、MySQL、HTTPS服务等)。
+2、基于7层的http代理。在4层tcp代理模式下，haproxy仅在客户端和服务器之间进行流量转发。但是在7层http代理模式下，haproxy会分析应用层协议，并且能通过允许、拒绝、交换、增加、修改或者删除请求(request)或者回应(response)里指定内容来控制协议。
+官方网站:www.haproxy.org
+haproxy 解决方案拓扑图 haproxy L4负载均衡应用架构拓扑 haproxy软件的四层tcp应用代理非常优秀，且配置非常简单、方便，比LVS和Nginx的配置要简单很多，首先，配置haproxy不需要在RS端做任何特殊配置 (只要对应服务开启就OK)就可以实现应用代理，其次，haproxy的配置语法和增加虚拟主机功能等也比lvs/nginx简单。并且和商业版的NS (Netscaler)、F5, A10等负载均衡硬件的使用方法和在架构中的位置一模一样。下面是haproxy的Layer4层应用代理的拓扑结构图:
+说明:由于haproxy软件采用的是类NAT模式(本质不同)的应用代理，数据包来去都会经过haproxy，因此，在流量特别大的情况下(门户级别的流量)，其效率和性能不如LVS的DR模式负载均衡。
+在一般的中小型公司，建议采用haproxy做负载均衡，而不要使用LVS或Nginx。为什么强调中小型公司呢?换句话说，千万PV级别以下直接使用haproxy做负载均衡，会让我们负责维护的运维管理人员配置简单、快速、维护方便，出问题好排查。
+haproxy L7负载均衡应用架构拓扑 haproxy软件的最大优势在于其7层的根据URL请求头应用过滤的功能以及sesson会话功能，在门户网站的高并发生产架构中，haproxy软件一般用在4层LVS负载均衡软件的下一层，或者像haproxy官方推荐的也可以挂在硬件负载均衡althon, NS, F5, A10下使用，其表现非常好。从2009年起taobao，京东商城的业务也大面积使用了haproxy作为7层CACHE应用代理。
+安装haproxy 模拟真实环境
+搭建合适的模拟环境是一个人学习能力的重要体现。例如：人类第一次上太空也没有真正的环境，但是想去太空就是要自己动手去搭建逼真的模拟环境。实验多了就是经验，自然就有解除生产环境的机会了。
+名称 接口 IP 用途 MASTER eth0 10.0.0.7 外网管理IP用于WAN数据转发 eth1 172.16.1.7 内网管理IP，用于LAN数据转发 eth2 10.0.10.7 用于服务器间心跳连接（直连） VIP 10.0.0.17 用于提供应用程序A挂载服务 BACKUP eth0 10.0.0.8 外网管理IP，用于WAN数据转发 eth1 172.16.1.8 内网管理IP，用于LAN数据转发 eth2 10.0.10.8 用于服务器间心跳连接（直连） VIP 10.0.0.8 用于提供应用程序B挂载服务 下载安装haproxy 下载地址：http://www.haproxy.org/download/
+文档地址：http://www.haproxy.org/download/1.7/doc/configuration.txt
+编译haproxy 1 2 3 4 make TARGET=linux2628 ARCH=x86_64 # &lt;==64位编译配置 make TARGET=linux2628 ARCH=i386 # &lt;==32位编译配置 make PREFIX=/app/haproxy-1."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/haproxy.html" /><link rel="prev" href="https://cylonchau.github.io/mysql-log.html" /><link rel="next" href="https://cylonchau.github.io/jenkins-checkcode.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "haproxy",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/haproxy.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "HA","wordcount":  1501 ,
+        "url": "https:\/\/cylonchau.github.io\/haproxy.html","datePublished": "2017-11-16T00:00:00+00:00","dateModified": "2022-11-28T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">haproxy</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ha.html"><i class="far fa-folder fa-fw"></i>HA</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-11-16 00:00:00">2017-11-16 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1501 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 8 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#haproxy-介绍">haproxy 介绍</a>
+      <ul>
+        <li><a href="#lvsnginx对比">LVS/NGINX对比</a></li>
+        <li><a href="#haproxy代理模式">haproxy代理模式</a></li>
+      </ul>
+    </li>
+    <li><a href="#haproxy-解决方案拓扑图">haproxy 解决方案拓扑图</a>
+      <ul>
+        <li><a href="#haproxy-l4负载均衡应用架构拓扑">haproxy L4负载均衡应用架构拓扑</a></li>
+        <li><a href="#haproxy-l7负载均衡应用架构拓扑">haproxy L7负载均衡应用架构拓扑</a></li>
+      </ul>
+    </li>
+    <li><a href="#安装haproxy">安装haproxy</a>
+      <ul>
+        <li><a href="#下载安装haproxy">下载安装haproxy</a></li>
+        <li><a href="#编译haproxy">编译haproxy</a></li>
+        <li><a href="#配置内核转发功能">配置内核转发功能</a></li>
+        <li><a href="#haproxy启动命令">haproxy启动命令</a></li>
+        <li><a href="#haproxy服务脚本">haproxy服务脚本</a></li>
+      </ul>
+    </li>
+    <li><a href="#haproxy配置文件">haproxy配置文件</a></li>
+    <li><a href="#haproxy日志配置">haproxy日志配置</a></li>
+    <li><a href="#基于权重的轮训round-robin">基于权重的轮训round robin</a></li>
+    <li><a href="#负载模式实验">负载模式实验</a>
+      <ul>
+        <li><a href="#环境准备">环境准备</a></li>
+        <li><a href="#tcp负载模式配置">TCP负载模式配置</a></li>
+        <li><a href="#tcp代理所出现的问题">TCP代理所出现的问题</a>
+          <ul>
+            <li><a href="#tcp模式开启web监控页面出现负载准问题">tcp模式开启web监控页面出现负载准问题</a></li>
+            <li><a href="#代理ssh负载出现如下问题">代理ssh负载出现如下问题</a></li>
+          </ul>
+        </li>
+        <li><a href="#l7代理实验">L7代理实验</a></li>
+      </ul>
+    </li>
+    <li><a href="#acl">ACL</a></li>
+    <li><a href="#web监控界面">web监控界面</a></li>
+    <li><a href="#socat动态操作haproxy">socat动态操作haproxy</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="haproxy-介绍">haproxy 介绍</h2>
+<p>haproxy是一个开源的、高性能的基于TCP和HTTP应用代理的高可用的、负载均衡服务软件，它支持双机热备、高可用、负载均衡、虚拟主机、基于TCP和HTTP的应用代理、图形界面查看信息等功能。其配置简单、维护方便，而且拥有很好的对服务器节点的健康检查功能(相当于keepalived健康检查)，当其代理的后端服务器出现故障时，haproxy会自动的将该故障服务器摘除，当故障的服务器恢复后，haproxy还会自动将该服务器自动加入进来提供服务。</p>
+<h3 id="lvsnginx对比">LVS/NGINX对比</h3>
+<p>haproxy 特别适用于那些高负载、访问量很大，但又需要会话保持及七层应用代理的业务应用。haproxy运行在今天的普通的服务器硬件上，几乎不需要进行任何的优化就可以支持数以万计的并发连接。并且它的运行模式使得它可以很简单、轻松、安全的整合到各种己有的网站架构中，同时，haproxy的代理模式，可以使得所有应用服务器不会暴露到公共网络上，即后面的节点服务器不需要公网IP地址。</p>
+<p>从1.3版本起，haproxy软件引入了frontend,backend的功能，frontend (ad规则匹配)可以让运维管理人员根据任意HTTP请求头内容做规则匹配，然后把请求定向到相关的backend(这个是事先定义好的多个server pools，等待前端把请求转过来的服务器组)。通过frontend和backend，我们可以很容易的买现haproxy的各种7层应用代理功能。</p>
+<h3 id="haproxy代理模式">haproxy代理模式</h3>
+<p>haproxy支持两种主要代理模式：</p>
+<p>1、基于4层的tcp应用代理(例如:可用于邮件服务、内部协议通信服务器、MySQL、HTTPS服务等)。</p>
+<p>2、基于7层的http代理。在4层tcp代理模式下，haproxy仅在客户端和服务器之间进行流量转发。但是在7层http代理模式下，haproxy会分析应用层协议，并且能通过允许、拒绝、交换、增加、修改或者删除请求(request)或者回应(response)里指定内容来控制协议。</p>
+<p>官方网站:www.haproxy.org</p>
+<h2 id="haproxy-解决方案拓扑图">haproxy 解决方案拓扑图</h2>
+<h3 id="haproxy-l4负载均衡应用架构拓扑">haproxy L4负载均衡应用架构拓扑</h3>
+<p>haproxy软件的四层tcp应用代理非常优秀，且配置非常简单、方便，比LVS和Nginx的配置要简单很多，首先，配置haproxy不需要在RS端做任何特殊配置 (只要对应服务开启就OK)就可以实现应用代理，其次，haproxy的配置语法和增加虚拟主机功能等也比lvs/nginx简单。并且和商业版的NS (Netscaler)、F5, A10等负载均衡硬件的使用方法和在架构中的位置一模一样。下面是haproxy的Layer4层应用代理的拓扑结构图:</p>
+<hr>
+<p>说明:由于haproxy软件采用的是类NAT模式(本质不同)的应用代理，数据包来去都会经过haproxy，因此，在流量特别大的情况下(门户级别的流量)，其效率和性能不如LVS的DR模式负载均衡。</p>
+<hr>
+<p>在一般的中小型公司，建议采用haproxy做负载均衡，而不要使用LVS或Nginx。为什么强调中小型公司呢?换句话说，千万PV级别以下直接使用haproxy做负载均衡，会让我们负责维护的运维管理人员配置简单、快速、维护方便，出问题好排查。</p>
+<h3 id="haproxy-l7负载均衡应用架构拓扑">haproxy L7负载均衡应用架构拓扑</h3>
+<p>haproxy软件的最大优势在于其7层的根据URL请求头应用过滤的功能以及sesson会话功能，在门户网站的高并发生产架构中，haproxy软件一般用在4层LVS负载均衡软件的下一层，或者像haproxy官方推荐的也可以挂在硬件负载均衡althon, NS, F5, A10下使用，其表现非常好。从2009年起taobao，京东商城的业务也大面积使用了haproxy作为7层CACHE应用代理。</p>
+<h2 id="安装haproxy">安装haproxy</h2>
+<p>模拟真实环境</p>
+<p>搭建合适的模拟环境是一个人学习能力的重要体现。例如：人类第一次上太空也没有真正的环境，但是想去太空就是要自己动手去搭建逼真的模拟环境。实验多了就是经验，自然就有解除生产环境的机会了。</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>接口</th>
+<th>IP</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><font style="background:#659bfd;" size=3>MASTER</font></td>
+<td>eth0</td>
+<td>10.0.0.7</td>
+<td>外网管理IP用于WAN数据转发</td>
+</tr>
+<tr>
+<td></td>
+<td>eth1</td>
+<td>172.16.1.7</td>
+<td>内网管理IP，用于LAN数据转发</td>
+</tr>
+<tr>
+<td></td>
+<td>eth2</td>
+<td>10.0.10.7</td>
+<td>用于服务器间心跳连接（直连）</td>
+</tr>
+<tr>
+<td>VIP</td>
+<td></td>
+<td>10.0.0.17</td>
+<td>用于提供应用程序A挂载服务</td>
+</tr>
+<tr>
+<td><font style="background:#fee904;" size=3> BACKUP</font></td>
+<td>eth0</td>
+<td>10.0.0.8</td>
+<td>外网管理IP，用于WAN数据转发</td>
+</tr>
+<tr>
+<td></td>
+<td>eth1</td>
+<td>172.16.1.8</td>
+<td>内网管理IP，用于LAN数据转发</td>
+</tr>
+<tr>
+<td></td>
+<td>eth2</td>
+<td>10.0.10.8</td>
+<td>用于服务器间心跳连接（直连）</td>
+</tr>
+<tr>
+<td>VIP</td>
+<td></td>
+<td>10.0.0.8</td>
+<td>用于提供应用程序B挂载服务</td>
+</tr>
+</tbody>
+</table>
+<h3 id="下载安装haproxy">下载安装haproxy</h3>
+<p>下载地址：http://www.haproxy.org/download/</p>
+<p>文档地址：http://www.haproxy.org/download/1.7/doc/configuration.txt</p>
+<h3 id="编译haproxy">编译haproxy</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">make <span class="nv">TARGET</span><span class="o">=</span>linux2628 <span class="nv">ARCH</span><span class="o">=</span>x86_64  <span class="c1"># &lt;==64位编译配置</span>
+</span></span><span class="line"><span class="cl">make <span class="nv">TARGET</span><span class="o">=</span>linux2628 <span class="nv">ARCH</span><span class="o">=</span>i386    <span class="c1"># &lt;==32位编译配置</span>
+</span></span><span class="line"><span class="cl">make <span class="nv">PREFIX</span><span class="o">=</span>/app/haproxy-1.7.5 install 
+</span></span><span class="line"><span class="cl">ln -s /app/haproxy-1.7.5/ /app/haproxy
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="配置内核转发功能">配置内核转发功能</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">net.ipv4_forward<span class="o">=</span><span class="m">1</span>  <span class="c1"># &lt;==基于NAT模式的负载均衡器都需要打开系统转发功能</span>
+</span></span><span class="line"><span class="cl">sysctl -p
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="haproxy启动命令">haproxy启动命令</h3>
+<p>直接运行命令查看帮助</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ /app/haproxy/sbin/haproxy
+</span></span><span class="line"><span class="cl">HA-Proxy version 1.7.5 2017/04/03
+</span></span><span class="line"><span class="cl">Copyright 2000-2017 Willy Tarreau &lt;willy@haproxy.org&gt;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Usage : haproxy <span class="o">[</span>-f &lt;cfgfile<span class="p">|</span>cfgdir&gt;<span class="o">]</span>* <span class="o">[</span> -vdVD <span class="o">]</span> <span class="o">[</span> -n &lt;maxconn&gt; <span class="o">]</span> <span class="o">[</span> -N &lt;maxpconn&gt; <span class="o">]</span>
+</span></span><span class="line"><span class="cl">        <span class="o">[</span> -p &lt;pidfile&gt; <span class="o">]</span> <span class="o">[</span> -m &lt;max megs&gt; <span class="o">]</span> <span class="o">[</span> -C &lt;dir&gt; <span class="o">]</span> <span class="o">[</span>-- &lt;cfgfile&gt;*<span class="o">]</span>
+</span></span><span class="line"><span class="cl">        -v displays version <span class="p">;</span> -vv shows known build options.
+</span></span><span class="line"><span class="cl">        -d enters debug mode <span class="p">;</span> -db only disables background mode.
+</span></span><span class="line"><span class="cl">        -dM<span class="o">[</span>&lt;byte&gt;<span class="o">]</span> poisons memory with &lt;byte&gt; <span class="o">(</span>defaults to 0x50<span class="o">)</span>
+</span></span><span class="line"><span class="cl">...
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>命令选项</p>
+<table>
+<thead>
+<tr>
+<th>选项</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>-D</td>
+<td>以后台守护进程启动服务</td>
+</tr>
+<tr>
+<td>-f</td>
+<td>指定配置文件</td>
+</tr>
+<tr>
+<td>-c</td>
+<td>检查配置文件语法</td>
+</tr>
+<tr>
+<td>-n</td>
+<td>设置最大连接数，一般在配置文件中指定</td>
+</tr>
+<tr>
+<td>-q</td>
+<td>启动时不显示警告</td>
+</tr>
+<tr>
+<td>-m</td>
+<td>限制使用的内存量</td>
+</tr>
+<tr>
+<td>-p</td>
+<td>将pid写入文件</td>
+</tr>
+<tr>
+<td>-sf</td>
+<td>平滑重启</td>
+</tr>
+<tr>
+<td>-st</td>
+<td>强制重启</td>
+</tr>
+</tbody>
+</table>
+<p>注意 <code>-sf</code> 和 <code>-st</code> 重启时需要指定配置文件</p>
+<h3 id="haproxy服务脚本">haproxy服务脚本</h3>
+<p>在下载解压目录中有默认的启动脚本</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ll /root/tools/haproxy-1.7.5/examples/haproxy.init
+</span></span><span class="line"><span class="cl">/root/tools/haproxy-1.7.5/examples/haproxy.init
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>自定义启动脚本</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="cp">#!/bin/sh
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="nv">BASE</span><span class="o">=</span>/app/haproxy
+</span></span><span class="line"><span class="cl"><span class="nv">COMM</span><span class="o">=</span><span class="nv">$BASE</span>/sbin/haproxy
+</span></span><span class="line"><span class="cl"><span class="nv">PIDFILE</span><span class="o">=</span><span class="nv">$BASE</span>/var/run/haproxy.pid
+</span></span><span class="line"><span class="cl"><span class="nv">CONF_FILE</span><span class="o">=</span><span class="nv">$BASE</span>/conf/haproxy.conf1
+</span></span><span class="line"><span class="cl"><span class="k">case</span> <span class="s2">&#34;</span><span class="nv">$1</span><span class="s2">&#34;</span> in
+</span></span><span class="line"><span class="cl">	<span class="s1">&#39;start&#39;</span><span class="p">|</span><span class="s1">&#39;START&#39;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="o">[</span> ! -f <span class="nv">$PIDFILE</span> <span class="o">]</span><span class="p">;</span><span class="k">then</span>
+</span></span><span class="line"><span class="cl">				<span class="nv">$COMM</span> -f <span class="nv">$CONF_FILE</span> -D
+</span></span><span class="line"><span class="cl">		<span class="k">else</span>
+</span></span><span class="line"><span class="cl">				<span class="nb">echo</span> <span class="s1">&#39;haproxy has been started&#39;</span>
+</span></span><span class="line"><span class="cl">		<span class="k">fi</span>
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl">	<span class="s1">&#39;status&#39;</span><span class="p">|</span><span class="s1">&#39;STATUS&#39;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="o">[</span> ! -f <span class="nv">$PIDFILE</span> <span class="o">]</span><span class="p">;</span><span class="k">then</span>
+</span></span><span class="line"><span class="cl">			<span class="nb">echo</span> <span class="s1">&#39;haproxy is not running&#39;</span>
+</span></span><span class="line"><span class="cl">			<span class="nb">exit</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">		<span class="k">fi</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> pid in <span class="k">$(</span>cat <span class="nv">$PIDFILE</span><span class="k">)</span><span class="p">;</span><span class="k">do</span>
+</span></span><span class="line"><span class="cl">			<span class="nb">kill</span> -0 <span class="nv">$pid</span>
+</span></span><span class="line"><span class="cl">			<span class="nv">RETVAL</span><span class="o">=</span><span class="nv">$?</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="o">[</span> <span class="nv">$RETVAL</span> <span class="o">==</span> <span class="m">0</span> <span class="o">]</span><span class="p">;</span><span class="k">then</span>
+</span></span><span class="line"><span class="cl">				<span class="nb">echo</span> <span class="s1">&#39;process &#39;</span><span class="nv">$pid</span> <span class="s1">&#39; not running&#39;</span>
+</span></span><span class="line"><span class="cl">			<span class="k">fi</span>
+</span></span><span class="line"><span class="cl">		<span class="k">done</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">echo</span> <span class="s1">&#39;haproxy is running&#39;</span>
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl">	<span class="s1">&#39;restart&#39;</span><span class="p">|</span><span class="s1">&#39;RESTART&#39;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nv">$COMM</span> -f <span class="nv">$CONF_FILE</span> -sf <span class="k">$(</span>cat <span class="nv">$PIDFILE</span><span class="k">)</span>
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl">	<span class="s1">&#39;stop&#39;</span><span class="p">|</span><span class="s1">&#39;STOP&#39;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">kill</span> <span class="k">$(</span>cat <span class="nv">$PIDFILE</span><span class="k">)</span>
+</span></span><span class="line"><span class="cl">		rm -f <span class="nv">$PIDFILE</span>
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl">	<span class="s1">&#39;check&#39;</span><span class="p">|</span><span class="s1">&#39;CHECK&#39;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nv">$COMM</span> -f <span class="nv">$CONF_FILE</span> -c
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl">	*<span class="o">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">echo</span> <span class="s2">&#34;USAGE </span><span class="nv">$0</span><span class="s2"> start|stop|restart|status|check|&#34;</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">exit</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">		<span class="p">;;</span>
+</span></span><span class="line"><span class="cl"><span class="k">esac</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="haproxy配置文件">haproxy配置文件</h2>
+<p>haproxy 的默认配置文件在下载解压目录下</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/root/tools/haproxy-1.7.5/examples
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>aproxy的配置文件可以分为5部分</p>
+<ul>
+<li>
+<p>global：全局配置参数段，主要用来控制haproxy启动前的进程及系统相关设置。</p>
+</li>
+<li>
+<p>default：配置一些默认参数，如果frontend，backend，listen等段未设置则使用default段配置。</p>
+</li>
+<li>
+<p>listen：</p>
+</li>
+<li>
+<p>frontend：用来匹配接受客户所请求的域名，uri等，并针对不同配置，做不同的请求处理。</p>
+</li>
+<li>
+<p>backend：定义后端服务器集群，以及对后端 服务器的一切权重、队列、连接数等选项的设置。</p>
+</li>
+</ul>
+<p>配置文件示例注释说明</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">global #&lt;==全局配置, 用于设定义全局参数, 属于进程级的配置, 通常与操作系统配置有关
+</span></span><span class="line"><span class="cl">	chroot  /app/haproxy/var/chroot #&lt;==运行路径
+</span></span><span class="line"><span class="cl">	daemon #&lt;==以守护方式运行haproxy
+</span></span><span class="line"><span class="cl">	user    haproxy #&lt;==运行haproxy用户/组, 或者使用关键字uid/gid
+</span></span><span class="line"><span class="cl">    group   haproxy
+</span></span><span class="line"><span class="cl">log		127.0.0.1 local0 debug 
+</span></span><span class="line"><span class="cl"># 全局日志配置指定127.0.0.1:514的syslog服务中local0日志设备。
+</span></span><span class="line"><span class="cl"># 与记录日志的模式[err warning info debug]
+</span></span><span class="line"><span class="cl">    pidfile /app/haproxy/var/run/haproxy.pid
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">maxconn	2000 
+</span></span><span class="line"><span class="cl">#设置每haproxy进程的最大并发连接数, 其等同于命令行选项“-n”; 
+</span></span><span class="line"><span class="cl"># “ulimit -n”自动计算的结果参照此参数设定.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    nbproc  1 #&lt;==启动的haproxy进程数量, 只能用于守护进程模式。应该设置为cup核数
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl"># ulimit-n 655350  
+</span></span><span class="line"><span class="cl"># 设置每进程所能够打开的最大文件描述符数目。
+</span></span><span class="line"><span class="cl"># 默认情况其会自动进行计算, 因此不推荐修改此选项.    
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">  defaults #&lt;==默认配置
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    mode http  #&lt;==默认的模式【tcp:4层； http:7层； health:只返回OK】
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    log global #&lt;==继承全局的日志定义输出
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    #option httplog #&lt;==日志类别, httplog
+</span></span><span class="line"><span class="cl">   
+</span></span><span class="line"><span class="cl">    # 如果后端服务器需要记录客户端真实ip, 需要在HTTP请求中添加”X-Forwarded-For”字段;
+</span></span><span class="line"><span class="cl"># 但haproxy自身的健康检测机制访问后端服务器时, 不应将记录访问日志。
+</span></span><span class="line"><span class="cl"># 可用except来排除127.0.0.0，即haproxy本身.
+</span></span><span class="line"><span class="cl">    #option forwardfor except 127.0.0.0/8
+</span></span><span class="line"><span class="cl">option forwardfor
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">option httpclose 
+</span></span><span class="line"><span class="cl"># 开启http协议中服务器端关闭功能每个请求完毕后主动关闭http通道。
+</span></span><span class="line"><span class="cl"># 使得支持长连接，使得会话可以被重用，使得每一个日志记录都会被记录.
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">    option dontlognull #&lt;==如果产生了一个空连接，那这个空连接的日志将不会记录.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    option redispatch	#&lt;==当与后端服务器的会话失败(服务器故障或其他原因)时, 把会话重新分发到其他健康的服务器上; 当故障服务器恢复时, 会话又被定向到已恢复的服务器上;
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">	retries 3  #&lt;==在判定会话失败时的尝试连接的次数
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    option abortonclose #&lt;==当haproxy负载很高时, 自动结束掉当前队列处理比较久的连接.
+</span></span><span class="line"><span class="cl">   
+</span></span><span class="line"><span class="cl">    timeout http-request 10s #&lt;==默认http请求超时时间
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">    timeout queue 1m	#&lt;==默认队列超时时间, 后端服务器在高负载时, 会将haproxy发来的请求放进一个队列中.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    timeout connect 5s	#&lt;==haproxy与后端服务器连接超时时间.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    timeout client 1m	#&lt;==客户端与haproxy连接后, 数据传输完毕, 不再有数据传输, 即非活动连接的超时时间.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    timeout server 1m	#&lt;==haproxy与后端服务器非活动连接的超时时间.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    timeout http-keep-alive 10s #&lt;==默认新的http请求连接建立的超时时间，时间较短时可以尽快释放出资源，节约资源.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    timeout check 10s	#&lt;==心跳检测超时时间
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    maxconn 2000	#&lt;==最大并发连接数
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    #设置默认的负载均衡方式
+</span></span><span class="line"><span class="cl">    #balance source 
+</span></span><span class="line"><span class="cl">    #balnace leastconn
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  listen admin_status 
+</span></span><span class="line"><span class="cl">  # 统计页面配置, frontend和backend的组合体。
+</span></span><span class="line"><span class="cl">  # 监控组的名称可按需自定义
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    mode http #&lt;==监控运行模式
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    bind 0.0.0.0:80	#&lt;==统计页面访问端口
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    maxconn 10  #&lt;==统计页面默认最大连接数
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    option httplog  #&lt;==#http日志格式
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    stats enable   #&lt;==开启web统计
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    stats hide-version 	#&lt;==隐藏统计页面上的haproxy版本信息
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    stats refresh 30s	#&lt;==监控页面自动刷新时间
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">    stats uri /admin?status #&lt;==统计页面访问url
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">	stats auth admin:111	#&lt;==监控页面的用户和密码:admin, 可设置多个用户名
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    stats realm hellow world #&lt;==统计页面密码框提示文本
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    stats admin if TRUE	#&lt;==手工启动/禁用后端服务器, 可通过web管理节点
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">	#设置haproxy错误页面
+</span></span><span class="line"><span class="cl">    #errorfile 400 /usr/local/haproxy/errorfiles/400.http
+</span></span><span class="line"><span class="cl">    #errorfile 403 /usr/local/haproxy/errorfiles/403.http
+</span></span><span class="line"><span class="cl">    #errorfile 408 /usr/local/haproxy/errorfiles/408.http
+</span></span><span class="line"><span class="cl">    #errorfile 500 /usr/local/haproxy/errorfiles/500.http
+</span></span><span class="line"><span class="cl">    #errorfile 502 /usr/local/haproxy/errorfiles/502.http
+</span></span><span class="line"><span class="cl">    #errorfile 503 /usr/local/haproxy/errorfiles/503.http
+</span></span><span class="line"><span class="cl">    #errorfile 504 /usr/local/haproxy/errorfiles/504.http
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">	option forwardfor #&lt;==将用户的IP转发给监控的IP
+</span></span><span class="line"><span class="cl">	option httpchk HEAD /check.html HTTP/1.0 #&lt;==http的健康检查
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">  frontend  WEB_SITE  #&lt;==vip
+</span></span><span class="line"><span class="cl">	bind    *:80
+</span></span><span class="line"><span class="cl">	mode    http
+</span></span><span class="line"><span class="cl">	log     global
+</span></span><span class="line"><span class="cl">	option  httplog    
+</span></span><span class="line"><span class="cl">	option  httpclose  &lt;== http7层代理专用
+</span></span><span class="line"><span class="cl">	default_backend WWW
+</span></span><span class="line"><span class="cl">  backend WWW #&lt;==real server
+</span></span><span class="line"><span class="cl">	option forwardfor header X-REAL-IP
+</span></span><span class="line"><span class="cl">	option httpchk HEAD / HTTP/1.0  &lt;==检查real server是否存活的方式，[get post head]
+</span></span><span class="line"><span class="cl">	server web1 10.0.0.3:80 check inter 2000 rise 30 fall 15  
+</span></span><span class="line"><span class="cl">	server web2 www.test.com check inter 2000 rise 30 fall 15  
+</span></span><span class="line"><span class="cl"># inter为检查间隔 rise为连续30次检查成功则认为有效的。
+</span></span><span class="line"><span class="cl"># fall为连续15次检查失败则认为宕机
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="haproxy日志配置">haproxy日志配置</h2>
+<p><strong><font color="#f8070d" size=3>CentOS 5.X</font></strong></p>
+<p>编辑/etc/syslog.conf增加如下配置</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">local0.* /app/haproxy/logs/haproxy.log
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong><font color="#f8070d" size=3>CentOS 6 &amp; 7</font></strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">local0.* -/app/haproxy/logs/haproxy.log 
+</span></span><span class="line"><span class="cl"><span class="c1"># 将local0设备的日志定向到haproxy.log因为haproxy使用的local0</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p><font color="#0215cd" size=3> 注：使用了local0设备需要将 local0 在 <code>/var/log/message</code> 里制空，否则会记录双份</font></p>
+<hr>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">*.info<span class="p">;</span>mail.none<span class="p">;</span>authpriv.none<span class="p">;</span>cron.none<span class="p">;</span>local0.none<span class="p">;</span>    /var/log/messages
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>修改/etc/sysconfig/syslog</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1">#-r enables logging from remote machines</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># -x disables DNS lookups on messages recieved with -r</span>
+</span></span><span class="line"><span class="cl"><span class="nv">SYSLOGD_OPTIONS</span><span class="o">=</span><span class="s2">&#34;-m 0 -r -c 2&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>重启后生效</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/etc/init.d/syslog restart  <span class="c1"># &lt;== CentOS 5</span>
+</span></span><span class="line"><span class="cl">/etc/init.d/rsyslog restart <span class="c1"># &lt;== CentOS 6</span>
+</span></span><span class="line"><span class="cl">systemctl restart rsyslog   <span class="c1"># &lt;== CentOS 7</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="http://www.cnblogs.com/aaa103439/p/3537163.html" target="_blank" rel="noopener noreffer">http://www.cnblogs.com/aaa103439/p/3537163.html</a></p>
+<p><a href="http://www.cnblogs.com/MacoLee/p/5853413.html" target="_blank" rel="noopener noreffer">http://www.cnblogs.com/MacoLee/p/5853413.html</a></p>
+<h2 id="基于权重的轮训round-robin">基于权重的轮训round robin</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">server web1 10.0.0.2 check  weight <span class="m">3</span>
+</span></span><span class="line"><span class="cl">server web1 10.0.0.3 check  weight <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> n in <span class="o">{</span>0..20<span class="o">}</span><span class="p">;</span><span class="k">do</span> curl 10.0.02<span class="p">;</span>sleep <span class="m">1</span> <span class="k">done</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>leastconn&ndash;&gt; 类似于 lvs中 的 wlc</p>
+<p>不过这里只考虑活动连接数，即选择活动连接数少的。另外，最好在长连接会话中使用，如sql,ldap</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213234451180.gif"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213234451180.gif, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213234451180.gif 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213234451180.gif 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221213234451180.gif"
+        title="image-20221213234451180" /></p>
+<h2 id="负载模式实验">负载模式实验</h2>
+<h3 id="环境准备">环境准备</h3>
+<table>
+<thead>
+<tr>
+<th>IP</th>
+<th>地位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10.0.0.2</td>
+<td>haproxy</td>
+</tr>
+<tr>
+<td>10.0.0.1</td>
+<td>real server 1</td>
+</tr>
+<tr>
+<td>10.0.0.3</td>
+<td>real server 2</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tcp负载模式配置">TCP负载模式配置</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">frontend  WEB_SITE  <span class="c1">#&lt;==vip</span>
+</span></span><span class="line"><span class="cl">  <span class="nb">bind</span> *:80
+</span></span><span class="line"><span class="cl">  mode    tcp
+</span></span><span class="line"><span class="cl">  log     global
+</span></span><span class="line"><span class="cl">  default_backend WWW
+</span></span><span class="line"><span class="cl">backend WWW <span class="c1">#&lt;==real server</span>
+</span></span><span class="line"><span class="cl">  server web1 10.0.0.3:52113 check inter <span class="m">2000</span> rise <span class="m">3</span> fall <span class="m">5</span>
+</span></span><span class="line"><span class="cl">  server web2 10.0.0.1:52113 check inter <span class="m">2000</span> rise <span class="m">3</span> fall <span class="m">5</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p><font color="#0215cd" size=3> 注意：listen可以看做是frontend与bankend的集合，顾如果使用tcp模式代理的话，不要开启web监控</font></p>
+<hr>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-tcp_2.gif"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-tcp_2.gif, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-tcp_2.gif 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-tcp_2.gif 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-tcp_2.gif"
+        title="image-20221213234451180" /></p>
+<h3 id="tcp代理所出现的问题">TCP代理所出现的问题</h3>
+<h4 id="tcp模式开启web监控页面出现负载准问题">tcp模式开启web监控页面出现负载准问题</h4>
+<p>开启web监控页面的haproxy日志</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2579<span class="o">]</span>: Connect from 192.168.2.1:50820 to 10.0.0.2:80 <span class="o">(</span>WEB_SITE/TCP<span class="o">)</span>
+</span></span><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2579<span class="o">]</span>: Connect from 192.168.2.1:50820 to 10.0.0.2:80 <span class="o">(</span>WEB_SITE/TCP<span class="o">)</span>
+</span></span><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2578<span class="o">]</span>: 192.168.2.1:50821 <span class="o">[</span>19/May/2017:22:41:02.405<span class="o">]</span> admin_status admin_status/&lt;STATS&gt; 0/0/0/0/1 <span class="m">200</span> <span class="m">16975</span> - - LR-- 0/0/0/0/0 0/0 <span class="s2">&#34;GET /admin?status HTTP/1.1&#34;</span>
+</span></span><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2579<span class="o">]</span>: Connect from 192.168.2.1:50822 to 10.0.0.2:80 <span class="o">(</span>WEB_SITE/TCP<span class="o">)</span>
+</span></span><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2579<span class="o">]</span>: Connect from 192.168.2.1:50822 to 10.0.0.2:80 <span class="o">(</span>WEB_SITE/TCP<span class="o">)</span>
+</span></span><span class="line"><span class="cl">May <span class="m">19</span> 22:41:02 127.0.0.1 haproxy<span class="o">[</span>2579<span class="o">]</span>: 192.168.2.1:50823 <span class="o">[</span>19/May/2017:22:41:02.816<span class="o">]</span> admin_status admin_status/&lt;STATS&gt; 0/0/0/0/1 <span class="m">200</span> <span class="m">16996</span> - - LR-- 0/0/0/0/0 0/0 <span class="s2">&#34;GET /admin?status HTTP/1.1&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="代理ssh负载出现如下问题">代理ssh负载出现如下问题</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+</span></span><span class="line"><span class="cl">@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+</span></span><span class="line"><span class="cl">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+</span></span><span class="line"><span class="cl">IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+</span></span><span class="line"><span class="cl">Someone could be eavesdropping on you right now <span class="o">(</span>man-in-the-middle attack<span class="o">)</span>!
+</span></span><span class="line"><span class="cl">It is also possible that a host key has just been changed.
+</span></span><span class="line"><span class="cl">The fingerprint <span class="k">for</span> the RSA key sent by the remote host is
+</span></span><span class="line"><span class="cl">11:f2:f1:05:1e:80:0a:bf:9f:09:20:3f:02:e1:12:b8.
+</span></span><span class="line"><span class="cl">Please contact your system administrator.
+</span></span><span class="line"><span class="cl">Add correct host key in /root/.ssh/known_hosts to get rid of this message.
+</span></span><span class="line"><span class="cl">Offending RSA key in /root/.ssh/known_hosts:1
+</span></span><span class="line"><span class="cl">RSA host key <span class="k">for</span> <span class="o">[</span>10.0.0.2<span class="o">]</span>:80 has changed and you have requested strict checking.
+</span></span><span class="line"><span class="cl">Host key verification failed.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>出现此问题是因为，登陆ssh时使用的是vip，而真正的server是两个，当登陆第一台server时，将指纹保存到vip，当轮训到第二台时，因为已经保存过其他server的指纹了，会提示指纹改变。所以这个不算是问题</p>
+<h3 id="l7代理实验">L7代理实验</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">frontend  WEB_SITE  #&lt;==vip
+</span></span><span class="line"><span class="cl">  bind *:80
+</span></span><span class="line"><span class="cl">  mode    http
+</span></span><span class="line"><span class="cl">  option  httplog
+</span></span><span class="line"><span class="cl">  option  httpclose
+</span></span><span class="line"><span class="cl">  log     global
+</span></span><span class="line"><span class="cl">  default_backend WWW
+</span></span><span class="line"><span class="cl">backend WWW #&lt;==real server
+</span></span><span class="line"><span class="cl">  server web1 10.0.0.3:52113 check inter 2000 rise 3 fall 5
+</span></span><span class="line"><span class="cl">  server web2 10.0.0.1:52113 check inter 2000 rise 3 fall 5
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-http.gif"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-http.gif, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-http.gif 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-http.gif 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-http.gif"
+        title="image-20221213234451180" /></p>
+<h2 id="acl">ACL</h2>
+<p>ACL名称必须由 大小写字母、数字、”-“（破折号）、“_”（下划线）、“.”（点）和 ”:“（冒号）。 ACL名称区分大小写，这意味着 “my_acl” 和 “My_Acl” 是两个不同的ACL。ACL的数量没有强制限制。未使用的不影响性能，他们只是消耗少量的内存。</p>
+<hr>
+<p>注：在http代理模式中uri的请求会被分配到real server的实体路径中</p>
+<hr>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">acl &lt;aclname&gt; &lt;criterion&gt; <span class="o">[</span>flags<span class="o">]</span> <span class="o">[</span>operator<span class="o">]</span> &lt;value&gt; ... 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>参数说明：</p>
+<ul>
+<li>
+<p>&lt;aclname&gt; &lt;==ACL名称；</p>
+</li>
+<li>
+<p>&lt;criterion&gt;：测试标准，即对什么信息发起测试；测试方式可以由 [flags] 指定的标志进行调整；而有些测试标准也可以需要为其在之前指定一个操作符 [operator]；</p>
+</li>
+</ul>
+<p>ACL的flag：</p>
+<ul>
+<li>-i：在匹配所有后续模式时忽略大小写。</li>
+<li>-f：从文件加载模式。</li>
+<li>-m：使用特定的模式匹配方法</li>
+<li>-n：禁止DNS解析</li>
+<li>-M：像地图文件一样加载-f指向的文件。</li>
+<li>&ndash; ：强制结束标志。 当字符串看起来像其中一个标志时很有用。</li>
+<li>-u：强制ACL的唯一ID</li>
+</ul>
+<p>&lt;value&gt;：acl测试条件支持的值有以下四类：</p>
+<ol>
+<li>整数或整数范围：如 1024:65535 表示从 1024~65535；仅支持使用正整数(如果出现类似小数的标识，其为通常为版本测试)，且支持使用的操作符有5个，分别为eq、ge、gt、le和lt；</li>
+<li>字符串：支持使用 “-i” 以忽略字符大小写，支持使用 “\” 进行转义；如果在模式首部出现了-i，可以在其之前使用“–”标志位；</li>
+<li>正则表达式：其机制类同字符串匹配；</li>
+<li>IP地址及网络地址</li>
+</ol>
+<p>常用的测试标准(criteria)</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">be_sess_rate<span class="o">(</span>backend<span class="o">)</span> &lt;integer&gt;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>用于测试指定的backend上会话创建的速率(即每秒创建的会话数)是否满足指定的条件；常用于在指定backend上的会话速率过高时将用户请求转发至另外的backend，或用于阻止攻击行为。</p>
+<p>例如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">acl being_scanned be_sess_rate gt <span class="m">50</span>  <span class="c1"># &lt;==此方案是定义在backend里的</span>
+</span></span><span class="line"><span class="cl">redirect location /error_pages/denied.html <span class="k">if</span> being_scanned
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>sd</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">fe_sess_rate<span class="o">(</span>frontend<span class="o">)</span> &lt;integer&gt;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>用于测试指定的frontend(或当前frontend)上的会话创建速率是否满足指定的条件；</p>
+<p>常用于为frontend指定一个合理的会话创建速率的上限以防止服务被滥用。例如下面的例子限定入站邮件速率不能大于50封/秒，所有在此指定范围之外的请求都将被延时50毫秒。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">frontend mail
+</span></span><span class="line"><span class="cl">    bind :25
+</span></span><span class="line"><span class="cl">    mode tcp
+</span></span><span class="line"><span class="cl">    maxconn 500
+</span></span><span class="line"><span class="cl">    acl too_fast fe_sess_rate ge 50
+</span></span><span class="line"><span class="cl">    tcp-request inspect-delay 50ms
+</span></span><span class="line"><span class="cl">    tcp-request content accept if ! too_fast
+</span></span><span class="line"><span class="cl">    tcp-request content accept if WAIT_END
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>hdr &lt;string&gt;</p>
+<p>用于测试请求报文中的所有首部或指定首部是否满足指定的条件；指定首部时，其名称不区分大小写，且在括号 “()” 中不能有任何多余的空白字符。测试服务器端的响应报文时可以使用 <code>shdr()</code>。例如下面的例子用于测试首部Connection的值是否为close。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl url_bao hdr(Host) -i www.baidu.com
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>method &lt;string&gt;</p>
+<p>测试HTTP请求报文中使用的方法。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">front test
+</span></span><span class="line"><span class="cl">  use_backend front
+</span></span><span class="line"><span class="cl">  acl me method get
+</span></span><span class="line"><span class="cl">  default_backend back
+</span></span><span class="line"><span class="cl">backend front
+</span></span><span class="line"><span class="cl">  server web01 10.0.0.1:8080 check port 8080 inter 5000 fall 5
+</span></span><span class="line"><span class="cl">backend back
+</span></span><span class="line"><span class="cl">  server w1 10.0.0.3:8080 check port 8080 inter 5000 fall 5
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000225672.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000225672.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000225672.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000225672.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000225672.png"
+        title="image-20221214000225672" /></p>
+<p>path_beg &lt;string&gt;</p>
+<p>用于测试请求的URL是否以指定的模式开头。</p>
+<p>下面的例子用于测试URL是否以/static、/images、/javascript或/stylesheets头。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl url_static path_beg -i /static /images /javascript /stylesheets
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>path_end &lt;string&gt;</p>
+<p>用于测试请求的URL是否以指定的模式结尾。</p>
+<p>例如，下面的例子用户测试URL是否以jpg、gif、png、css或js结尾</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl url_static path_end -i .jpg .gif .png .css .js
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>hdr_beg &lt;string&gt;</p>
+<p>用于测试请求报文的指定首部的开头部分是否符合指定的模式。</p>
+<p>例如，下面的例子用记测试请求是否为提供静态内容的主机img、video、download或ftp。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl host_static hdr_beg(host) -i img. video. download. ftp.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>请求uri中包含static</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl timetask_req url_dir -i timetask
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>请求头长度</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">acl cl hdr_cnt(Content-length) eq 0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="web监控界面">web监控界面</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mode http   <span class="c1">#&lt;==监控运行模式</span>
+</span></span><span class="line"><span class="cl"><span class="nb">bind</span> 0.0.0.0:1080	<span class="c1">#&lt;==统计页面访问端口</span>
+</span></span><span class="line"><span class="cl">maxconn <span class="m">10</span>  <span class="c1">#&lt;==统计页面默认最大连接数</span>
+</span></span><span class="line"><span class="cl">option httplog  <span class="c1">#&lt;==#http日志格式</span>
+</span></span><span class="line"><span class="cl">stats <span class="nb">enable</span>   <span class="c1">#&lt;==开启web统计</span>
+</span></span><span class="line"><span class="cl">stats hide-version	<span class="c1">#&lt;==隐藏统计页面上的haproxy版本信息</span>
+</span></span><span class="line"><span class="cl">stats refresh 30s	<span class="c1">#&lt;==监控页面自动刷新时间</span>
+</span></span><span class="line"><span class="cl">stats uri /admin?status <span class="c1">#&lt;==统计页面访问url</span>
+</span></span><span class="line"><span class="cl">stats auth admin:111	<span class="c1">#&lt;==监控页面的用户和密码:admin, 可设置多个用户名</span>
+</span></span><span class="line"><span class="cl">stats realm mCloud<span class="se">\ </span>Haproxy <span class="c1">#&lt;==统计页面密码框提示文本,某些浏览器不适合中文</span>
+</span></span><span class="line"><span class="cl">stats admin <span class="k">if</span> TRUE	<span class="c1">#&lt;==手工启动/禁用后端服务器, 可通过web管理节点</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wps8A90.tmp.jpg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wps8A90.tmp.jpg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wps8A90.tmp.jpg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wps8A90.tmp.jpg 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wps8A90.tmp.jpg"
+        title="img" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000411609.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000411609.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000411609.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000411609.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214000411609.png"
+        title="image-20221214000411609" /></p>
+<h2 id="socat动态操作haproxy">socat动态操作haproxy</h2>
+<p>socat是一个多功能的网络工具软件，名字来由是”Socket CAT”，功能与netcat类似，可以看做netcat的加强版。</p>
+<p><strong>配置haproxy</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">stats socket /app/haproxy/var/run/haproxy.sock mode <span class="m">600</span> level admin
+</span></span><span class="line"><span class="cl">stats timeout 2m
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>安装socat</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install socat -y
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>远程操作haproxy</strong></p>
+<p>socat帮助</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> help<span class="p">|</span>socat stdio /app/haproxy/var/run/haproxy.sock
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>上线测试摘取集群节点</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> disable server back/w1 <span class="p">|</span>socat stdio /app/haproxy/var/run/haproxy.sock
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="nb">enable</span> server back/w1 <span class="p">|</span>socat stdio /app/haproxy/var/run/haproxy.sock
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-socat.gif"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-socat.gif, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-socat.gif 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-socat.gif 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-socat.gif"
+        title="image-20221213234451180" /></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-11-28 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/haproxy.html" data-title="haproxy" data-hashtags="HA"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/haproxy.html" data-hashtag="HA"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/haproxy.html" data-title="haproxy" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/haproxy.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/haproxy.html" data-title="haproxy"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/haproxy.html" data-title="haproxy"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/haproxy.html" data-title="haproxy"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ha.html">HA</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/mysql-log.html" class="prev" rel="prev" title="MySQL数据库服务日志"><i class="fas fa-angle-left fa-fw"></i>MySQL数据库服务日志</a>
+            <a href="/jenkins-checkcode.html" class="next" rel="next" title="jenkins检查代码 如没更新停止构建步骤">jenkins检查代码 如没更新停止构建步骤<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-11-16T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"haproxy"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
