@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>实现和MySQL非交互式对话 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="实现和MySQL非交互式对话" />
+<meta property="og:description" content="利用mysql -e参数查看mysql数据 1 2 3 4 5 6 7 8 $ mysql -uroot -p111 -e &#39;use test;show tables;&#39; &#43;------------------------------&#43; | Tables_in_test | &#43;------------------------------&#43; | 33hao_activity | | 33hao_activity_detail | | 33hao_address | &#43;------------------------------&#43; 利用 mysql -e 参数查看SQL线程执行状态
+1 2 $ mysql -uroot -p111 -e &#39;show processlist;&#39; kill 12; 查看完整的线程状态，此参数才查看慢查询语句是非常有用
+解决方法：
+1 2 3 4 root@localhost [test]&gt;show variables like &#39;%_timeout%&#39;; # 设置 set global wait_timeout=60; set global interactive_timeout=60; 在配置文件里修改 1 2 set global wait_timeout=60; set global interactive_timeout=60; # 此参数设置后wait_timeout自动生效 其他方法 (1) PHP程序中，不适用持久链接，即 mysql_connect 而不是 pconnect（java调整连接池）" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch7-mysql-non-interact.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-05-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-14T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="实现和MySQL非交互式对话"/>
+<meta name="twitter:description" content="利用mysql -e参数查看mysql数据 1 2 3 4 5 6 7 8 $ mysql -uroot -p111 -e &#39;use test;show tables;&#39; &#43;------------------------------&#43; | Tables_in_test | &#43;------------------------------&#43; | 33hao_activity | | 33hao_activity_detail | | 33hao_address | &#43;------------------------------&#43; 利用 mysql -e 参数查看SQL线程执行状态
+1 2 $ mysql -uroot -p111 -e &#39;show processlist;&#39; kill 12; 查看完整的线程状态，此参数才查看慢查询语句是非常有用
+解决方法：
+1 2 3 4 root@localhost [test]&gt;show variables like &#39;%_timeout%&#39;; # 设置 set global wait_timeout=60; set global interactive_timeout=60; 在配置文件里修改 1 2 set global wait_timeout=60; set global interactive_timeout=60; # 此参数设置后wait_timeout自动生效 其他方法 (1) PHP程序中，不适用持久链接，即 mysql_connect 而不是 pconnect（java调整连接池）"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch7-mysql-non-interact.html" /><link rel="prev" href="https://cylonchau.github.io/ch4-mysql-log.html" /><link rel="next" href="https://cylonchau.github.io/ch8-mysql-engine.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "实现和MySQL非交互式对话",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch7-mysql-non-interact.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  300 ,
+        "url": "https:\/\/cylonchau.github.io\/ch7-mysql-non-interact.html","datePublished": "2017-05-22T00:00:00+00:00","dateModified": "2022-12-14T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">实现和MySQL非交互式对话</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-05-22 00:00:00">2017-05-22 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 300 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#利用mysql--e参数查看mysql数据">利用mysql -e参数查看mysql数据</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="利用mysql--e参数查看mysql数据">利用mysql -e参数查看mysql数据</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mysql -uroot -p111 -e <span class="s1">&#39;use test;show tables;&#39;</span>
+</span></span><span class="line"><span class="cl">+------------------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Tables_in_test               <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------------------+
+</span></span><span class="line"><span class="cl"><span class="p">|</span> 33hao_activity               <span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span> 33hao_activity_detail        <span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span> 33hao_address                <span class="p">|</span>
+</span></span><span class="line"><span class="cl">+------------------------------+
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>利用 <code>mysql -e</code> 参数查看SQL线程执行状态</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mysql -uroot -p111 -e <span class="s1">&#39;show processlist;&#39;</span> 
+</span></span><span class="line"><span class="cl"><span class="nb">kill</span> 12<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>查看完整的线程状态，此参数才查看慢查询语句是非常有用</p>
+<p>解决方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">root@localhost <span class="o">[</span>test<span class="o">]</span>&gt;show variables like <span class="s1">&#39;%_timeout%&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 设置</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set</span> global <span class="nv">wait_timeout</span><span class="o">=</span>60<span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set</span> global <span class="nv">interactive_timeout</span><span class="o">=</span>60<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol>
+<li>在配置文件里修改</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">set global wait_timeout=60;
+</span></span><span class="line"><span class="cl">set global interactive_timeout=60; # 此参数设置后wait_timeout自动生效
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol start="2">
+<li>其他方法</li>
+</ol>
+<ul>
+<li>
+<p>(1) PHP程序中，不适用持久链接，即 <code>mysql_connect</code> 而不是 <code>pconnect</code>（java调整连接池）</p>
+</li>
+<li>
+<p>(2) PHP程序执行完毕，应该显示调用 <code>mysql_close()</code></p>
+</li>
+<li>
+<p>(3) 逐步分析MySQL的SQL查询及慢查询日志，找到查询过慢的SQL，优化。</p>
+</li>
+</ul>
+<p>利用mysql -e查看mysql变量及性能状态</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mysql -uroot -p111 -e <span class="s1">&#39;show variables;&#39;</span><span class="p">|</span>head -5
+</span></span><span class="line"><span class="cl">Variable_name   Value
+</span></span><span class="line"><span class="cl">auto_increment_increment        <span class="m">1</span>
+</span></span><span class="line"><span class="cl">auto_increment_offset   <span class="m">1</span>
+</span></span><span class="line"><span class="cl">autocommit      ON
+</span></span><span class="line"><span class="cl">automatic_sp_privileges ON
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>不重启数据库就该数据库参数</p>
+<p><strong>要求：重启后还能生效</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ sed -n <span class="s1">&#39;122p&#39;</span> /etc/my.cnf                   
+</span></span><span class="line"><span class="cl"><span class="nv">key_buffer_size</span> <span class="o">=</span> 16M
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ sed -i <span class="s1">&#39;s#key_buffer_size = 16M#key_buffer_size=32M#g&#39;</span> /etc/my.cnf                           
+</span></span><span class="line"><span class="cl">$ sed -n <span class="s1">&#39;122p&#39;</span> /etc/my.cnf                             
+</span></span><span class="line"><span class="cl"><span class="nv">key_buffer_size</span><span class="o">=</span>32M
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>生产环境常用重要命令小结</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 查看数据库里正在执行的SQL语句，可能无法看完整SQL语句</span>
+</span></span><span class="line"><span class="cl">show processlist<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 查看正在执行的完整SQL语句，完整显示</span>
+</span></span><span class="line"><span class="cl">show full processlist<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 不重启数据库调整数据库参数，直接生效，重启后失效</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set</span> gloables <span class="nv">key_buffer_size</span><span class="o">=</span>1024*1024*32<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 查看数据库的配置参数信息，例如：my.cnf里参数的生效情况。</span>
+</span></span><span class="line"><span class="cl">show variables<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 杀掉SQL线程的命令ID为线程号</span>
+</span></span><span class="line"><span class="cl"><span class="nb">kill</span> id
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 查看当前会话的数据库状态信息</span>
+</span></span><span class="line"><span class="cl">show session status<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 查看整个数据库运行状态信息，很重要，要分析并要做好监控</span>
+</span></span><span class="line"><span class="cl">show global status<span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 显示innodb引擎的性能状态（早期show innodb status）</span>
+</span></span><span class="line"><span class="cl">show engine innodb status<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>计算一天之内：MySQL数据库有多少 insert delect语句，有没有好办法</strong>？</p>
+<ol>
+<li>
+<p>定时任务每天0点，show global status; 按天取出对比。</p>
+</li>
+<li>
+<p>按天分析binlog日志，获取数据库不同语句的频率。</p>
+</li>
+</ol>
+<p>mysqladmin命令</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 修改密码</span>
+</span></span><span class="line"><span class="cl">mysqladmin password <span class="m">111</span>
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 password <span class="m">222</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 查看状态</span>
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 status 
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 extended-status show global status
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 -S /data/3306/mysql.sock -i status
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 刷新日志</span>
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 flush-logs
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 processlist
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 实时跟踪</span>
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 processlist -i <span class="m">1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 关闭mysql</span>
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 -S /data/3306/mysql.sock shutdown
+</span></span><span class="line"><span class="cl">mysqladmin -uroot -p111 -S /data/3306/mysql.sock variables show vaiables
+</span></span></code></pre></td></tr></table>
+</div>
+</div></div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-14 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-title="实现和MySQL非交互式对话" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-title="实现和MySQL非交互式对话" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-title="实现和MySQL非交互式对话"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-title="实现和MySQL非交互式对话"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch7-mysql-non-interact.html" data-title="实现和MySQL非交互式对话"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch4-mysql-log.html" class="prev" rel="prev" title="MySQL数据库服务日志"><i class="fas fa-angle-left fa-fw"></i>MySQL数据库服务日志</a>
+            <a href="/ch8-mysql-engine.html" class="next" rel="next" title="MySQL存储引擎">MySQL存储引擎<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-05-22T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"实现和MySQL非交互式对话"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

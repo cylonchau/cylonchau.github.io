@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>redis数据类型 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="redis数据类型" />
+<meta property="og:description" content="key/value介绍 Redis key值是二进制安全的，这意味着可以用任何二进制序列作为key值，从形如“0foo”的简单字符串到一个JPG文件的内容都可以。空字符串也是有效key值。
+关于key的几条规则：
+太长的键值，例如1024字节的键值，不仅因为消耗内存，而且在数据中查找这类键值的计算成本很高。
+太短的键值，如果你要用 u:1000:pwd来代替user:1000:password，这没有什么问题，但后者更易阅读，并且由此增加的空间消耗相对于key object和value object本身来说很小.当然，没人阻止您一定要用更短的键值节省一丁点空间。
+最好坚持一种模式;。例如：object-type🆔field就是个不错的注意，像这样user:1000:password。我喜欢对多单词的字段名中加上一个点，就像这样：comment.1234.renlv_to
+key建议：object-type🆔field 长度10-20
+value建议：string不要超过2K set sortedset元素不要超过5000
+1 2 3 4 [root@redis ~]# redis-cli set user_list:user_id:5 zhangsan OK [root@redis ~]# redis-cli get user_list:user_id:5 &#34;zhangsan&#34; 通用操作 找到全部给定模式的匹配到的key 1 2 3 4 5 6 7 127.0.0.1:6379&gt; keys * #&lt;==打印全部key 1) &#34;name&#34; 2) &#34;site&#34; 127.0.0.1:6379&gt; keys na[ma]e #&lt;==返回正则匹配到的key 1) &#34;name&#34; 127.0.0.1:6379&gt; keys nam? 1) &#34;name&#34; randomkey返回随机key 1 2 3 4 127.0.0.1:6379&gt; randomkey &#34;name&#34; 127.0.0.1:6379&gt; randomkey &#34;site&#34; exists检查key是否存在 1 2 3 4 127." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/redis-datatype.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-11-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-14T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="redis数据类型"/>
+<meta name="twitter:description" content="key/value介绍 Redis key值是二进制安全的，这意味着可以用任何二进制序列作为key值，从形如“0foo”的简单字符串到一个JPG文件的内容都可以。空字符串也是有效key值。
+关于key的几条规则：
+太长的键值，例如1024字节的键值，不仅因为消耗内存，而且在数据中查找这类键值的计算成本很高。
+太短的键值，如果你要用 u:1000:pwd来代替user:1000:password，这没有什么问题，但后者更易阅读，并且由此增加的空间消耗相对于key object和value object本身来说很小.当然，没人阻止您一定要用更短的键值节省一丁点空间。
+最好坚持一种模式;。例如：object-type🆔field就是个不错的注意，像这样user:1000:password。我喜欢对多单词的字段名中加上一个点，就像这样：comment.1234.renlv_to
+key建议：object-type🆔field 长度10-20
+value建议：string不要超过2K set sortedset元素不要超过5000
+1 2 3 4 [root@redis ~]# redis-cli set user_list:user_id:5 zhangsan OK [root@redis ~]# redis-cli get user_list:user_id:5 &#34;zhangsan&#34; 通用操作 找到全部给定模式的匹配到的key 1 2 3 4 5 6 7 127.0.0.1:6379&gt; keys * #&lt;==打印全部key 1) &#34;name&#34; 2) &#34;site&#34; 127.0.0.1:6379&gt; keys na[ma]e #&lt;==返回正则匹配到的key 1) &#34;name&#34; 127.0.0.1:6379&gt; keys nam? 1) &#34;name&#34; randomkey返回随机key 1 2 3 4 127.0.0.1:6379&gt; randomkey &#34;name&#34; 127.0.0.1:6379&gt; randomkey &#34;site&#34; exists检查key是否存在 1 2 3 4 127."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/redis-datatype.html" /><link rel="prev" href="https://cylonchau.github.io/redis-replication.html" /><link rel="next" href="https://cylonchau.github.io/redis-persist.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "redis数据类型",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/redis-datatype.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  1978 ,
+        "url": "https:\/\/cylonchau.github.io\/redis-datatype.html","datePublished": "2016-11-23T00:00:00+00:00","dateModified": "2022-12-14T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">redis数据类型</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-11-23 00:00:00">2016-11-23 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1978 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 10 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#keyvalue介绍">key/value介绍</a></li>
+    <li><a href="#通用操作">通用操作</a>
+      <ul>
+        <li><a href="#找到全部给定模式的匹配到的key">找到全部给定模式的匹配到的key</a></li>
+        <li><a href="#randomkey返回随机key">randomkey返回随机key</a></li>
+        <li><a href="#exists检查key是否存在">exists检查key是否存在</a></li>
+        <li><a href="#type-查看key类型">type 查看key类型</a></li>
+        <li><a href="#修改key名称">修改key名称</a></li>
+        <li><a href="#将当前数据库的-key-移动到给定的数据库db当中">将当前数据库的 key 移动到给定的数据库db当中</a></li>
+        <li><a href="#dbsize返回当前选择的数据库的key数量">dbsize返回当前选择的数据库的key数量</a></li>
+        <li><a href="#shutdown-同步保存数据到磁盘并结束redis进程">shutdown 同步保存数据到磁盘，并结束Redis进程</a></li>
+        <li><a href="#异步操作redis">异步操作Redis</a></li>
+      </ul>
+    </li>
+    <li><a href="#string字符串类型">String字符串类型</a>
+      <ul>
+        <li><a href="#常规字符串操作">常规字符串操作</a></li>
+        <li><a href="#string类型可以用来存储数字">String类型可以用来存储数字</a></li>
+        <li><a href="#为key设置新值并且返回原值">为key设置新值并且返回原值</a></li>
+        <li><a href="#setbit-getbit-bitcount-binop">setbit getbit bitcount binop</a></li>
+      </ul>
+    </li>
+    <li><a href="#list类型">List类型</a>
+      <ul>
+        <li><a href="#创建list并插入数据">创建list并插入数据</a></li>
+        <li><a href="#list应用场景">list应用场景</a></li>
+        <li><a href="#删除list内元素">删除list内元素</a></li>
+      </ul>
+    </li>
+    <li><a href="#set集合">set集合</a>
+      <ul>
+        <li><a href="#创建并向集合插入新元素">创建并向集合插入新元素</a></li>
+        <li><a href="#删除集合中元素">删除集合中元素</a></li>
+        <li><a href="#查看集合内元素">查看集合内元素</a></li>
+        <li><a href="#移动集合内元素">移动集合内元素</a></li>
+        <li><a href="#集合计算">集合计算</a></li>
+      </ul>
+    </li>
+    <li><a href="#有序集合">有序集合</a>
+      <ul>
+        <li><a href="#添加并查看有序集合">添加并查看有序集合</a></li>
+        <li><a href="#对集合的值排序">对集合的值排序</a></li>
+        <li><a href="#查看集合中的元素个数">查看集合中的元素个数</a></li>
+        <li><a href="#查找集合区间的元素">查找集合区间的元素</a></li>
+        <li><a href="#计算交并集">计算交并集</a></li>
+      </ul>
+    </li>
+    <li><a href="#hash">hash</a>
+      <ul>
+        <li><a href="#设置key中的域与值">设置key中的域与值</a></li>
+        <li><a href="#获得key中的域和值">获得key中的域和值</a></li>
+        <li><a href="#删除key">删除key</a></li>
+        <li><a href="#查看域信息">查看域信息</a></li>
+        <li><a href="#hash的原子操作">hash的原子操作</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="keyvalue介绍">key/value介绍</h2>
+<p>Redis key值是二进制安全的，这意味着可以用任何二进制序列作为key值，从形如“0foo”的简单字符串到一个JPG文件的内容都可以。空字符串也是有效key值。</p>
+<p><em><strong>关于key的几条规则</strong></em>：</p>
+<p>太长的键值，例如1024字节的键值，不仅因为消耗内存，而且在数据中查找这类键值的计算成本很高。</p>
+<p>太短的键值，如果你要用 <font color="#f8070d" size=3><code>u:1000:pwd</code></font>来代替<font color="#f8070d" size=3><code>user:1000:password</code></font>，这没有什么问题，但后者更易阅读，并且由此增加的空间消耗相对于key object和value object本身来说很小.当然，没人阻止您一定要用更短的键值节省一丁点空间。</p>
+<p><font style="background:#bafe01;" size=2>最好坚持一种模式;</font>。例如：<font color="#f8070d" size=2><code>object-type🆔field</code></font>就是个不错的注意，像这样<font color="#f8070d" size=2><code>user:1000:password</code></font>。我喜欢对多单词的字段名中加上一个点，就像这样：<font color="#f8070d" size=2><code>comment.1234.renlv_to</code></font></p>
+<p>key建议：<font color="#f8070d" size=3><code>object-type🆔field</code></font> <font style="background:#bafe01;" size=2>长度10-20</font></p>
+<p>value建议：<font style="background:#bafe01;" size=2>string不要超过2K set sortedset元素不要超过5000</font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>root@redis ~<span class="o">]</span><span class="c1"># redis-cli set user_list:user_id:5 zhangsan</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@redis ~<span class="o">]</span><span class="c1"># redis-cli get user_list:user_id:5</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;zhangsan&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="通用操作">通用操作</h2>
+<h3 id="找到全部给定模式的匹配到的key">找到全部给定模式的匹配到的key</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; keys * <span class="c1">#&lt;==打印全部key</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;name&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;site&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys na<span class="o">[</span>ma<span class="o">]</span>e <span class="c1">#&lt;==返回正则匹配到的key</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;name&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys nam?
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;name&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="randomkey返回随机key">randomkey返回随机key</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; randomkey
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;name&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; randomkey
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;site&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="exists检查key是否存在">exists检查key是否存在</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; exists site
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; exists sites
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="type-查看key类型">type 查看key类型</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">type</span> <span class="nb">set</span>
+</span></span><span class="line"><span class="cl"><span class="nb">set</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">type</span> site
+</span></span><span class="line"><span class="cl">string
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="修改key名称">修改key名称</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rename site web 
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;set&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;web&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;name&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;test&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>renamnx rename not exists,当要修改的新名称存在,会用改名后的覆盖存在的那个key</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> rename_test <span class="nb">test</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> rename_test1 test1
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> tmp tmp
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; rename rename_test tmp
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;tmp&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;rename_test1&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get tmp
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test&#34;</span> <span class="c1">#&lt;==可以看到tmp把rename_test给覆盖了</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="将当前数据库的-key-移动到给定的数据库db当中">将当前数据库的 key 移动到给定的数据库db当中</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="k">select</span> <span class="m">2</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379<span class="o">[</span>2<span class="o">]</span>&gt; keys *
+</span></span><span class="line"><span class="cl"><span class="o">(</span>empty list or <span class="nb">set</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379<span class="o">[</span>2<span class="o">]</span>&gt; <span class="k">select</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; move web <span class="m">2</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="k">select</span> <span class="m">2</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379<span class="o">[</span>2<span class="o">]</span>&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span><span class="s2">&#34;web&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="dbsize返回当前选择的数据库的key数量">dbsize返回当前选择的数据库的key数量</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; dbsize
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="shutdown-同步保存数据到磁盘并结束redis进程">shutdown 同步保存数据到磁盘，并结束Redis进程</h3>
+<p>语法：shutdown [NOSAVE|SAVE]</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">redis-cli shutdown save
+</span></span><span class="line"><span class="cl">12632:M <span class="m">22</span> Apr 16:42:23.492 * Saving the final RDB snapshot before exiting.
+</span></span><span class="line"><span class="cl">12632:M <span class="m">22</span> Apr 16:42:23.528 * DB saved on disk
+</span></span><span class="line"><span class="cl">12632:M <span class="m">22</span> Apr 16:42:23.528 * Removing the pid file.
+</span></span><span class="line"><span class="cl">12632:M <span class="m">22</span> Apr 16:42:23.529 <span class="c1"># Redis is now ready to exit, bye bye...</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="异步操作redis">异步操作Redis</h3>
+<p>bgrewriteaof (异步重写aof日志文件)
+作用减少aof文件大小
+BGSAVE(异步保存数据到磁盘)</p>
+<h2 id="string字符串类型">String字符串类型</h2>
+<p>这是最简单的Redis类型。如果你只用这种类型,Redis就是一个可以持久化的memcached服务器(注:memcache的数据仅保存在内存中,服务器重启后,数据将丢失)。</p>
+<h3 id="常规字符串操作">常规字符串操作</h3>
+<p>在Redis中，常用set设置一对key/value键值，然后用get来获取字符串的值。value值可以是任何类型的字符串(包括二进制数据)，例如你可以在一个键下保存一个jpg图片。但值的长度不能超过1GB。</p>
+<blockquote>
+<p><strong>set：设置一个建的字符串值</strong></p>
+</blockquote>
+<p>语法：set key value [EX seconds] [PX milliseconds] [NX|XX]</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> k1 test🔑123
+</span></span><span class="line"><span class="cl">OK  
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl k1
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> -1 <span class="c1">#&lt;==set默认生命周期为永久有效</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> k1 test_key NX <span class="c1">#&lt;==设置一个key,如果不存在就创建。</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>nil<span class="o">)</span> <span class="c1">#&lt;==因k1存在故没有创建</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> k2 test_key NX
+</span></span><span class="line"><span class="cl">OK	<span class="c1">#&lt;==名为k2的key不存在成功创建</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> k2 <span class="nb">test</span> EX <span class="m">100</span> <span class="c1">#&lt;==设置key的生命周期 px毫秒 ex秒</span>
+</span></span><span class="line"><span class="cl">OK 
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl k2
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">97</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>mset：设置多个key value</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; mset key zhangsan ex <span class="m">100</span> key1 lisi 
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;key1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;ex&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;key&#34;</span> <span class="c1">#&lt;==通过结果可得知 mset不支持判断是否存在与设置生命周期</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>setrange：从指定偏移量开始重写字符串的一部分</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> key test:123
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; setrange key <span class="m">5</span> abc
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">8</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get key
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test:abc&#34;</span>  <span class="c1">#&lt;==不存在的偏移量用\x00填充</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>append：将值附加到key中</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> <span class="nb">test</span> a
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; APPEND <span class="nb">test</span> bc
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get <span class="nb">test</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;abc&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>getrange：Get a substring of the string stored at a key</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> k test:getrange
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; getrange k <span class="m">0</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; getrange k <span class="m">0</span> <span class="m">100</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test:getrange&#34;</span> <span class="c1">#&lt;==如果指定值大于字符串长度返回到字符串结尾处</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; getrange k <span class="m">100</span> <span class="m">1000</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;</span> <span class="c1">#&lt;==如果开始位置大于字符串总长度,返回空字符串</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="string类型可以用来存储数字">String类型可以用来存储数字</h3>
+<p>虽然字符串是Redis的基本值类型,但你仍然能通过它完成一些有趣的操作。例如：原子递增。</p>
+<p>INCR命令将字符串值解析成整型,将其加1,最后将结果保存为新的字符串值,类似的命令有INCRBY, DECR and DECRBYC实际上他们在内部就是同一个命令,只是看上去有点儿不同。</p>
+<p>incr是原子操作意味着什么呢?就是说即使多个客户端对同一个key发出INCR命令,也决不会导致竟争的情况.例如如下情况永远不可能发生:「客户端1和客户端2同时读出“10&quot;,他们俩都对其加到11,然后将新值设置为11。最终的值一定是12,read-increment-set操作完成时,其他客户端不会在同一时间执行任何命令。</p>
+<blockquote>
+<p><strong>incr:将键的整数值递增1</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> num <span class="m">1</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; incr num
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>decr:将键的整数值递减1</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; decr num
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; decr num
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> -1 <span class="c1">#&lt;==与memcached不同的是,redis会被减少为负数</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>incrby:将键增加一个指定定量</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; incrby num <span class="m">10</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">9</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>incrbyfloat: 将键增加一个指定定量的浮点值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; incrbyfloat num 
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;9.1&#34;</span> <span class="c1">#&lt;==操作后值变为浮点型</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; incrby num <span class="m">11</span> 
+</span></span><span class="line"><span class="cl"><span class="o">(</span>error<span class="o">)</span> ERR value is not an integer or out of range <span class="c1">#&lt;==不可以在进行整型原子递增</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="为key设置新值并且返回原值">为key设置新值并且返回原值</h3>
+<p>对字符串,另一个操作是GETSET命令,行如其名:他为key设置新值并且返回原值。这有什么用处呢?例如:你的系统每当有新用户访问时就用INCR命令操作一个Redis key。你希望每小时对这个信息收集一次。你就可以GETSET这个key并给其赋值0并读取原值。</p>
+<blockquote>
+<p><strong>getset：设置key的字符串值，并返回旧值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; getset k1 test:getset:demo
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get k1
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;test:getset:demo&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="setbit-getbit-bitcount-binop">setbit getbit bitcount binop</h3>
+<blockquote>
+<p><strong>这是偏移位上的二进制值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">(</span>error<span class="o">)</span> ERR bit offset is not an integer or out of range
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; setbit s <span class="m">4294967296</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>error<span class="o">)</span> ERR bit offset is not an integer or out of range
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; setbit s <span class="m">4294967295</span> <span class="m">1</span> <span class="c1">#&lt;==最大范围为232-1 512M key的最大值</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>1.46s<span class="o">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="list类型">List类型</h2>
+<p>要说清楚列表数据类型,最好先讲一点儿理论背景,在信息技术界List这个词常常被使用不当.例如&quot;Python Lists&quot;就名不副实(名为Linked Lists),<font style="background:#bafe01;" size=2>但他们实际上是数组</font>(同样的数据类型在Ruby中叫数组)。</p>
+<p>列表就是有<font style="background:#bafe01;" size=2>序元素的序列</font>:10,20,1,2,3就是一个列表。但用数组实现的List和用Linked List实现的List,在属性方面大不相同。</p>
+<p>Redis lists基于Linked Lists实现。这意味着即使在一个list中有数百万个元素,在头部或尾部添加一个元素的操作,其时间复杂度也是常数级别的。用LPUSH命令在十个元素的list头部添加新元素,和在千万元素list头部添加新元素的速度相同。</p>
+<p>那么,坏消息是什么?在数组实现的list中利用索引访问元素的速度极快,而同样的操作在linked list实现的list上没有那么快。</p>
+<p>Redis Lists用linked list实现的原因是:对于数据库系统来说,至关重要的特性是:能非常快的在很大的列表上添加元素.另一个重要因素是,正如你将要看到的:Redis lists能在常数时何取得常数长度。</p>
+<h3 id="创建list并插入数据">创建list并插入数据</h3>
+<p>LPUSH命令可向list的左边(头部)添加一个新元素,而RPUSH命令可向list的右边(尾部)添加一个新元素。最后LRANGE命令可从list中取出一定范围的元素。</p>
+<blockquote>
+<p><strong>lpush:向list头部插入数据，如果list不存在则自动创建</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; lpush list lisi <span class="c1">#&lt;== 头部插入一个数据</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lpush list zhangsan
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>llen:查看list列表元素个数</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; llen list	<span class="c1">#&lt;==获得列表元素个数</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>lrange:查看列表所有元素</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange list <span class="m">0</span> <span class="m">3</span> <span class="c1">#&lt;== 打印列表的1,3元素</span>
+</span></span><span class="line"><span class="cl"> 1<span class="o">)</span> <span class="s2">&#34;zhangsan&#34;</span>
+</span></span><span class="line"><span class="cl"> 2<span class="o">)</span> <span class="s2">&#34;lisi&#34;</span>
+</span></span><span class="line"><span class="cl"> 3<span class="o">)</span> <span class="s2">&#34;test1&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange list <span class="m">0</span> -1#&lt;<span class="o">==</span> 打印列表的所有元素
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p><strong><font color="#0215cd" size=2> <font color="#f8070d" size=2>⚠</font> 注意：RANGE带有两个索引,范围内第一个和最后一个元素。这两个索引都可以负来告知redis从尾部开始计数,因此-1表示最后一个元素,-2表示list中的倒数第二个元素,以此类推。
+</font></strong></p>
+<hr>
+<blockquote>
+<p><strong>lindex:返回指定元素在列表中的下标</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rpush a <span class="m">1</span> <span class="m">2</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lindex a <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lindex a <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>linsert在指定元素前后插入数据</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rpush arr <span class="m">1</span> <span class="m">2</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; linsert arr after <span class="m">2</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">4</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange arr <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="list应用场景">list应用场景</h3>
+<p>正如你可以从上面的例子中猜到的,list可被用来实现聊天系统。还可以作为不同进程间传递消息的队列。关键是,你可以每次都以原先添加的顺序访问数据。这不需要任何SQL ORDER BY操作,将会非常快,也会很容易扩展到百万级别元素的规模。</p>
+<p>例如在评级系统中,比如社会化新闻网站reddit.com,你可以把每个新提交的链接添加到一个list,用LRANGE可简单的对结果分页。</p>
+<p>在博客引擎实现中,你可为每篇日志设置一个list,在该list中推入进博客评论,等等。</p>
+<p>向Redis list压入ID而不是实际的数据,</p>
+<p>在上面的例子里,我们将“对象”(此例中是简单消息)直接压入Redis list,但通常不应这么做,由于对象可能被多次引4:例如在一个lis:中维护其时间顺序,在一个集合中保存它的类别,只要有必要,它还会出现在其他list中,等等。</p>
+<p>让我们回到reddit.com的例子,将用户提交的链接(新闻)添加到list中,有更可靠的方法如下所示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; incr next.news.id
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> new:1:title <span class="s2">&#34;redis is simple&#34;</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> news:1:url <span class="s2">&#34;http://www.baidu.com&#34;</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lpush submitted.news <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>OK我们自增一个key,很容易得到一个独一无二的自增ID,然后通过此ID创建对象入为对象的每个字段设置一个key。最后将新对象的submitted.news lists。</p>
+<blockquote>
+<blockquote>
+<p>rpop 从尾部删除一个元素
+rpush 向尾部插入一个数据
+lpop 从头部删除一个元素</p>
+</blockquote>
+</blockquote>
+<h3 id="删除list内元素">删除list内元素</h3>
+<blockquote>
+<p><strong>lrem:删除count的绝对值个value后结束<font style="background:#bafe01;" size=2> count &gt; 0从头开始删,&lt;0从尾部开始删</font></strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rpush aa a a b c a a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">6</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrem aa <span class="m">1</span> a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; LRANGE aa <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrem aa -2 a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; LRANGE aa <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>ltrim:剪切key对应的链接,切[start,stop]一段,并把该段重新赋给key</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rpush a <span class="m">1</span> <span class="m">2</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ltrim a <span class="m">2</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange a <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;4&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>rpoplpush:将arr尾部的元素弹出到tmp头部</strong></p>
+</blockquote>
+<p>作用：接收返回值,并做业务处理。如果成功,rpop tmp清除任务；如不成功,下次从tmp表里取任务</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; rpoplpush arr tmp
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange arr <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; lrange tmp <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="set集合">set集合</h2>
+<p>Redis集合是未排序的集合,其元素是二进制安全的字符串。sadd命令可以向集合添加一个新元素。和sets相关的操作也有许多,比如检测某个元素是否存在,以及实现交集,并集,差集等等。</p>
+<h3 id="创建并向集合插入新元素">创建并向集合插入新元素</h3>
+<blockquote>
+<p><strong>sadd：向集合内添加一个或多个元素</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd <span class="nb">set</span> a b c d <span class="c1">#&lt;==向集合key中增加元素</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">4</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>smembers：查看集合内所有元素</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers <span class="nb">set</span> <span class="c1">#&lt;==返回集合中的所有元素</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;d&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="删除集合中元素">删除集合中元素</h3>
+<blockquote>
+<p><strong>sadd：从集合内删除一个或多个指定元素</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; srem <span class="nb">set</span> a <span class="c1">#&lt;==删除集合中名为a的元素</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers <span class="nb">set</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;d&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="查看集合内元素">查看集合内元素</h3>
+<blockquote>
+<p><strong>sismember：检查集合中是否存在某个元素</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sismember <span class="nb">set</span> a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sismember <span class="nb">set</span> b
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>srandmember：返回元素中指定个数的随机元素</strong></p>
+</blockquote>
+<p>语法 srandmember key [count]</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; srandmember <span class="nb">set</span>  <span class="m">2</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;d&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>scard返回元素中的个数</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; scard <span class="nb">set</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="移动集合内元素">移动集合内元素</h3>
+<blockquote>
+<p><strong>smove：将source里的member移动到destination集合中</strong></p>
+</blockquote>
+<p>语法：SMOVE source destination member</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl"><span class="o">(</span>empty list or <span class="nb">set</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd <span class="nb">set</span> a b c d e
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smove <span class="nb">set</span> tmp e
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;set&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;tmp&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers tmp
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;e&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers <span class="nb">set</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;a&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;d&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>“b”是这个集合的成员,而“b”不是。集合特别适合表现对象之间的关系。例如<font style="background:#bafe01;" size=2>用Redis集合可以很容易实现标签功能</font>。</p>
+<p>下面是一个简单的方案:对每个想加标签的对象,用一个标签ID集合与之关联,并且对每个已有的标签,一组对象ID与之关联。</p>
+<p>例如假设我们的新闻ID=1000被加了三个tag 1,2,5就可以设置下面两个集合</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd news:1000:tags <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd news:1000:tags <span class="m">2</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd news:1000:tags <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers news:1000:tags
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>而有些看上去并不简单的操作仍然能使用相应的redis命令轻松实现。例如我们也许想获得一份同时拥有标签1,2,10和27的对象列表。这可以用SINTER命令来做,他可以在不同集合之间取出交集。</p>
+<p>tags:1:obj tags:2:obj tags:5:obj tags:27:obj</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers test1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; smembers test4
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;9&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sinter test1 test4
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="集合计算">集合计算</h3>
+<p><em><strong>创建一个集合</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd A <span class="m">1</span> <span class="m">2</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd B <span class="m">1</span> <span class="m">3</span> <span class="m">4</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">4</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sadd C <span class="m">1</span> <span class="m">2</span> <span class="m">6</span> <span class="m">7</span> <span class="m">8</span> <span class="m">9</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">6</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>sinter：取出指定集合内的交集</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sinter A B  <span class="c1">#&lt;==取出A B两个集合中的交集</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span> 
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;4&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; sinter A B C
+</span></span><span class="line"><span class="cl">1<span class="o">)</span><span class="s2">&#34;1&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>sinterstore：将多个集合的交集放入另一个集合内</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sinterstore tmp A B  <span class="c1">#&lt;== 将A B集合中的交集放置在tmp集合中</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)(</span>integer<span class="o">)</span> <span class="m">4</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span>127.0.0.1:6379&gt; smembers tmp
+</span></span><span class="line"><span class="cl">4<span class="o">)</span>1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span>2<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span>3<span class="o">)</span> <span class="s2">&#34;4&#34;</span>
+</span></span><span class="line"><span class="cl">7<span class="o">)</span>4<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>sunion获得多个集合的并集</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sunion A B
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;3&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;4&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;5&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>sdiff获得多个集合的差</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; sdiff A B
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;2&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="有序集合">有序集合</h2>
+<p>集合是使用频率很高的数据类型,但是…对许多问题来说他们也有点儿太不讲顺序了；因此Redis1.2引入了有序集合。他和集合非常相似,也是二进制安全的字符串集合,但是这次带有关联的score,以及一个类似lrange的操作可以返回有序元素,此操作只能作用于有序集合,它就是,zrange命令。</p>
+<p>基本上有序集合从某种程度上说是SQL世界的索引在Redis中的等价物。例如在上面提到的reddit.com例子中,并祥有提到如何根据用户投票和时间因素将新闻组合生成首页。我们将看到有序集合如何解决这个问题,但最好先从更简单的事情开始,阐明这个高级数据类型是如何工作的.让我们添加几个黑客,并将他们的生日作为&quot;score&quot;。</p>
+<h3 id="添加并查看有序集合">添加并查看有序集合</h3>
+<blockquote>
+<p><strong>添加一个或多个成员到一个集合,如果这个成员存在,则更新其排序分数</strong></p>
+</blockquote>
+<p>语法：ZADD key [NX|XX] [CH] [INCR] score member [score member &hellip;]</p>
+<p><em><strong>选项详解</strong></em></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">参数</th>
+<th style="text-align:left">解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">XX</td>
+<td style="text-align:left">仅更新已经存在的元素。不要添加元素。</td>
+</tr>
+<tr>
+<td style="text-align:center">NX</td>
+<td style="text-align:left">不要更新现有的元素。始终添加新元素。</td>
+</tr>
+<tr>
+<td style="text-align:center">CH</td>
+<td style="text-align:left">从添加的新元素的数量修改返回值,改变元素的总数（CH是更改的缩写）。已更改的元素是添加的新元素,已经存在的元素已更新。所以在命令行中指定的具有与过去相同的分数的元素不计算在内。注意：通常,ZADD的返回值仅计算添加的新元素的数量。</td>
+</tr>
+<tr>
+<td style="text-align:center">INCR</td>
+<td style="text-align:left">当指定此选项时,ZADD的行为就像ZINCRBY。在此模式下只能指定一个记分元素对。</td>
+</tr>
+</tbody>
+</table>
+<p><strong>创建一个集合</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zadd hacker <span class="m">1953</span> zhangfei <span class="m">1963</span> zhaoyun <span class="m">1989</span> wangping <span class="m">1992</span> zhugeliang <span class="m">1945</span> liubei
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zadd hacker <span class="m">100</span> zhugeliang
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zrange hacker <span class="m">0</span> -1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;zhugeliang&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;liubei&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;zhaoyun&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;wangping&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>查看某个元素在集合内的位置</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zscore code_lag py
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;4&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>对有序集合采说,按生日排序返回这些数据易如反掌,因为他们已经是有序的。有序集合是通过一个dual-ported数据结构实现的,它包含一个精简的有序列表和一个hash table,因此添加一个元素的时间复杂度是O(log(N))。这还行,但当我们需要访问有序的元素时,Redis不必再做任何事情,它已经是有序的了。</p>
+<h3 id="对集合的值排序">对集合的值排序</h3>
+<blockquote>
+<p><strong>通过索引查看一个有序集合的范围</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrange hacker <span class="m">0</span> -1 withscores  <span class="c1">#&lt;==打印score</span>
+</span></span><span class="line"><span class="cl"> 1<span class="o">)</span> <span class="s2">&#34;liubei&#34;</span>
+</span></span><span class="line"><span class="cl"> 2<span class="o">)</span> <span class="s2">&#34;1945&#34;</span>
+</span></span><span class="line"><span class="cl"> 3<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl"> 4<span class="o">)</span> <span class="s2">&#34;1953&#34;</span>
+</span></span><span class="line"><span class="cl"> 5<span class="o">)</span> <span class="s2">&#34;zhaoyun&#34;</span>
+</span></span><span class="line"><span class="cl"> 6<span class="o">)</span> <span class="s2">&#34;1988&#34;</span>
+</span></span><span class="line"><span class="cl"> 7<span class="o">)</span> <span class="s2">&#34;wangping&#34;</span>
+</span></span><span class="line"><span class="cl"> 8<span class="o">)</span> <span class="s2">&#34;1989&#34;</span>
+</span></span><span class="line"><span class="cl"> 9<span class="o">)</span> <span class="s2">&#34;zhugeliang&#34;</span>
+</span></span><span class="line"><span class="cl">10<span class="o">)</span> <span class="s2">&#34;1992&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>通过指定索引范围查看有序集合列表（倒序）</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrevrange hacker <span class="m">0</span> -1 withscores
+</span></span><span class="line"><span class="cl"> 1<span class="o">)</span> <span class="s2">&#34;zhugeliang&#34;</span>
+</span></span><span class="line"><span class="cl"> 2<span class="o">)</span> <span class="s2">&#34;1992&#34;</span>
+</span></span><span class="line"><span class="cl"> 3<span class="o">)</span> <span class="s2">&#34;wangping&#34;</span>
+</span></span><span class="line"><span class="cl"> 4<span class="o">)</span> <span class="s2">&#34;1989&#34;</span>
+</span></span><span class="line"><span class="cl"> 5<span class="o">)</span> <span class="s2">&#34;zhaoyun&#34;</span>
+</span></span><span class="line"><span class="cl"> 6<span class="o">)</span> <span class="s2">&#34;1988&#34;</span>
+</span></span><span class="line"><span class="cl"> 7<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl"> 8<span class="o">)</span> <span class="s2">&#34;1953&#34;</span>
+</span></span><span class="line"><span class="cl"> 9<span class="o">)</span> <span class="s2">&#34;liubei&#34;</span>
+</span></span><span class="line"><span class="cl">10<span class="o">)</span><span class="s2">&#34;1945&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="查看集合中的元素个数">查看集合中的元素个数</h3>
+<blockquote>
+<p><strong>返回有序集合中元素的个数</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zcard hacker   
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">8</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>返回min,max包括极值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zcount hacker <span class="m">1950</span> <span class="m">2000</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">7</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zcount hacker <span class="o">(</span><span class="m">1950</span> <span class="o">(</span><span class="m">2000</span> <span class="c1">#&lt;==不包括极值的用法</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">4</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="查找集合区间的元素">查找集合区间的元素</h3>
+<p>zrangebysocre：返回有序集合key的分数min与max之间的所有元素（等于min或max）。这些元素被认为是从低到高的顺序排列。min和max可以是-inf(无穷)和+inf(正无穷)，可以不需要知道的有序集合最高或最低score来获得元素。</p>
+<blockquote>
+<p><strong>获取1950年之前（两个极值也包含）出生的人</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrangebyscore hacker -inf <span class="m">1950</span> withscores
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;liubei&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;1945&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;jiangwie&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;1950&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>返回1950,1970区间内的值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrangebyscore hacker <span class="m">1950</span> <span class="m">1970</span> withscores
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;jiangwie&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;1950&#34;</span> 
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;1953&#34;</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>使用)返回 1950,2000区间内的值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrangebyscore hacker <span class="o">(</span><span class="m">1950</span> <span class="o">(</span><span class="m">2000</span> withscores
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;1953&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;zhaoyun&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;1988&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;wangping&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span> <span class="s2">&#34;1989&#34;</span>
+</span></span><span class="line"><span class="cl">7<span class="o">)</span> <span class="s2">&#34;zhugeliang&#34;</span>
+</span></span><span class="line"><span class="cl">8<span class="o">)</span> <span class="s2">&#34;1992&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>使用limit返回指定区间内的值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zrangebyscore hacker -inf +inf withscores limit <span class="m">0</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;liubei&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;1945&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;jiangwie&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;1950&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;zhangfei&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span> <span class="s2">&#34;1953&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>zremrangebyscore这个名字虽然不算好,但他却非常有用,还会返回已删除的元素数量。</p>
+<p>回到Reddit的例子，现在我们有个基于有序集合的像样方案来生成首页。用一个有序集合来包含最近几天的新闻(用zremrangebyscore不时的删除旧新闻).用一个后台任务从有序集合中获取所有元素,根据用户投票和新闻时间计算score,然后用新闻ID和scores关联生成reddit.home.page有序集合.要显示首页,我们只需闪电般的调用ZRANGE不时的从reddit.home.page有序集合中删除过旧的新闻也是为了让我们的系统总是工作在有限的新闻集合之上。
+更新有序集合的scores.</p>
+<p>结束这篇指南之前还有最后一个小贴士.有序集合scores可以在任何时候更新。只要用ZADD对有序集合内的元素操作就会更新它的score(和位置),时间复杂度是O(log(N)),因此即使大量更新,有序集合也是合适的。<font style="background:#bafe01;" size=2>其中N是排序集合中的元素数，M是返回元素的数量。如果M是常数（例如，总是用LIMIT来询问前10个元素)，可以考虑O(log=(N))。</font></p>
+<h3 id="计算交并集">计算交并集</h3>
+<blockquote>
+<p><strong>计算由numkeys指定个数的key的的交集，并将结果存储在其中destination</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; zadd k1 <span class="m">1</span> a <span class="m">2</span> b <span class="m">3</span> c
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>  <span class="c1">#&lt;==a b c相当于数组的key 1 2 3相当于数组的值</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zadd k2 <span class="m">10</span> a <span class="m">20</span> b <span class="m">30</span> c
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zinterstore tmp <span class="m">1</span> k1 k2
+</span></span><span class="line"><span class="cl"><span class="o">(</span>error<span class="o">)</span> ERR syntax error <span class="c1">#&lt;==指定numkeys的数量和传参数量不一致会提示语法错误</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zinterstore tmp <span class="m">2</span> k1 k2
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zrange tmp <span class="m">0</span> -1 withscores
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;a&#34;</span> <span class="c1">#&lt;==可以看出默认的聚合方法是sum</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;11&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;22&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span> <span class="s2">&#34;33&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zinterstore tmp <span class="m">2</span> k1 k2 weights <span class="m">2</span> <span class="m">1</span> aggregate sum
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">3</span>  <span class="c1">#&lt;==指定权重计算两个之间key之间的交集</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; zrange tmp <span class="m">0</span> -1 withscores
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;a&#34;</span> 
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;12&#34;</span> <span class="c1">#&lt;==k1 a=1权重为2 就等于2x1+10=12 </span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;b&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;24&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;c&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span> <span class="s2">&#34;36&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="hash">hash</h2>
+<p>hash能够<font style="background:#bafe01;" size=2>存储一个key对多个属性的数据</font> 如：<font color="#f8070d" size=3><code>user.username user.password</code></font></p>
+<h3 id="设置key中的域与值">设置key中的域与值</h3>
+<blockquote>
+<p><strong>hset：将key中的field域设置为value，如果field域存在则覆盖原value，不存在则添加</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hset user1 name zhangsan
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hset user1 age <span class="m">12</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hset user1 gender male
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hmset：给key设置多个field域与值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hmset user2 name lisi age <span class="m">11</span> gender female
+</span></span><span class="line"><span class="cl">OK
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="获得key中的域和值">获得key中的域和值</h3>
+<blockquote>
+<p><strong>hget：返回key中一个域的值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hget user1 name
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;zhangsan&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hgetall：返回key中所有域和值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hgetall user1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;name&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;zhangsan&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;age&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;12&#34;</span>
+</span></span><span class="line"><span class="cl">5<span class="o">)</span> <span class="s2">&#34;gender&#34;</span>
+</span></span><span class="line"><span class="cl">6<span class="o">)</span> <span class="s2">&#34;male&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hmget：返回key中多个值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hmget user1 name age
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;zhangsan&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;12&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hkeys：返回key中的所有域</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hkeys user1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;age&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;gender&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hvals：返回key中的所有域的值</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hvals user1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;12&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;male&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="删除key">删除key</h3>
+<blockquote>
+<p><strong>hdel：删除key中一个或多个域</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hdel user1 name
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hgetall user1
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;age&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;12&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;gender&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;male&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="查看域信息">查看域信息</h3>
+<blockquote>
+<p><strong>hlen：返回key中域的个数</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hlen user1
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hexists：查看key中是否存在某个域</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hexists user1 name
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">0</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hexists user1 age
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hstrlen：返回key中域的值的长度</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; HSTRLEN user2 gender
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">6</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="hash的原子操作">hash的原子操作</h3>
+<blockquote>
+<p><strong>hincrby：对域中的值增长value个(单位整型)</strong></p>
+<blockquote>
+<p>语法：hincrby key field increment</p>
+</blockquote>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hget user1 age
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;14&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hincrby user1 age <span class="m">2</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">16</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hget user1 age
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;16&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>hincrbyfloat：对域中的值增长value(单位浮点型)</strong></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; hincrbyfloat user1 age 0.3
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;16.3&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hget user1 age
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;16.3&#34;</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; hincrbyfloat user1 age -2 <span class="c1">#&lt;==减少用负数即可</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;14.3&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>bitMap 可实现用很小的内存实现高效的存储。</p>
+<p>HyperLogLog 超小内存唯一值计数。 12k来实现唯一值得计数</p>
+<p>GEO 基于地理信息位置定位</p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-14 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/redis-datatype.html" data-title="redis数据类型" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/redis-datatype.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/redis-datatype.html" data-title="redis数据类型" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/redis-datatype.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/redis-datatype.html" data-title="redis数据类型"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/redis-datatype.html" data-title="redis数据类型"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/redis-datatype.html" data-title="redis数据类型"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/redis-replication.html" class="prev" rel="prev" title="redis主从复制工作原理"><i class="fas fa-angle-left fa-fw"></i>redis主从复制工作原理</a>
+            <a href="/redis-persist.html" class="next" rel="next" title="redis数据持久化">redis数据持久化<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-11-23T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"redis数据类型"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

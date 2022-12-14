@@ -77,16 +77,57 @@
 <main class="main">
                 <div class="container"><div class="page home" posts><div class="home-profile"></div>
 <article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch06-acl.html">ch6 understanding openldap configuration - Access Control</a>
+        <a href="/ch9-linux-with-ldap.html">ch9 understanding openldap applicaiton - linux authentication with ldap</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-30 00:00:00">2019-09-30 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">[toc]
+Overview 如果要使Linux账号通过LDAP进行身份认证，就需要配置Linux的 身份验证模块 (Pluggable Authentication Modules) 与 名称服务交换系统 (Name Service Switch) 与LDAP交互。
+PAM 和 NSS [3] NSS (name service switch) 通俗理解为是一个数据库系统，他作用是用于如何将操作系统与各种名称的解析机制关联起来，例如主机名，用户名，组名等内容的查找；例如UID查找使用 passwd 库，GID的查找使用 group 库，并且还可以告知查找的来源，如文件，LDAP等
+PAM (Pluggable Authentication Modules) 全称是可插拔的认证模块，PAM在Linux中是位于用户数据库与应用之间的认证模块，它本身并不工作，并且本身也不提供或扩展现有数据库系统，当登陆shell时，依赖于由NSS提供的密码库与组库等信息，完成对应的查询
+例如下列两张图完整的阐述了PAM与NSS之间，在用户登陆时做了些什么
+图：pam和nss工作示意图1Source：https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e
+由图可以看出，当在进行 ping , id 等操作时，会通过nss找到 passwd 库找到用户id，以及通过nss确定是 hosts解析还是dns服务解析对应的域名
+如果这张图不明白可以看下一张图
+图：pam和nss工作示意图2-1Source：https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e
+图2-1 中使用了tom用户去登录pecan主机，此时在节点 yam 上，将寻找 pecan主机的IP，这是通过 /etc/nsswitch.conf 来确定是通过 hosts 还是 dns服务进行查找。
+接下来找到pecan的IP，这里会输入用户名与密码，这里将会被sshd服务接管，此时 pecan 主机的sshd接收到用户端请求连接后，将用户名通过nss进行识别，确定是否为合法用户，如果用户有效，则通过PAM进行认证。认证的源也将由 /etc/nsswitch.conf 中配置的对应 passwd 库来找到，例如ldap,file等。正如下图2-2所示
+图：pam和nss工作示意图2-2Source：https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e
+Linux with LDAP [1] 在大致了解了Linux登录认证的原理后，知道了要使Linux使用LDAP需要配置两个部分，NSS与PAM，通常有下述几种方案：
+NSS + PAM SSSD (System Security Services Daemon)，SSSD是提供严重的一种工具，可以包含多种源例如LDAP，AD，Kerberos 等，并且提供了缓存功能（当ldap不可用时提供服务） 配置NSS 安装 nss-pam-ldapd</div><div class="post-footer">
+        <a href="/ch9-linux-with-ldap.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch8-openldap-configuration.html">ch8 understanding openldap configuration - advanced application</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-24 00:00:00">2019-09-24 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">memberOf 默认情况下，openldap提供的Posixgroup组，实际上并不能很有效的区分组与用户之间的关系。而 memberOf 则可以有效地检索用户与组的关系
+在OpenLDAP配置MemberOf模块 步骤一：可以检查在允许的slapd服务是否已经启用该模块
+1 $ slapcat -n 0 | grep olcModuleLoad 对于新部署的服务，可以按照如下方式添加
+1 2 3 4 dn: cn=module,cn=config objectClass: olcModuleList cn: module olcModuleload: memberof.la 可以在线更改一个正在运行的slapd服务，使其加载 memberOf 模块，需要主义对应的 module{0} 是否正确
+1 2 3 4 5 6 cat &lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:/// dn: cn=module{0},cn=config changetype: modify add: olcModuleLoad olcModuleLoad: memberof.la EOF 步骤二：配置overlay
+在官方指南中看到olcOverlay 必须要配置到特定数据库的子条目。即此配置段需要在database配置后面。
+Overlays must be configured as child entries of a specific database.</div><div class="post-footer">
+        <a href="/ch8-openldap-configuration.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch7-backup-and-restore.html">ch7 understanding openldap configuration - Backup and Restore</a>
+    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-23 00:00:00">2019-09-23 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">Overview 本章基于openldap 2.4+版本进行，主要讲解 openldap 的两种备份方法：备份openldap backend-database 文件，另一种方式为导出 LDIF 目录方式
+Backup 备份部分将分为两种方式：使用基于 slapcat 导出目录文件方式，与直接备份数据库文件方式。
+slapcat 是可用于导出 slapd 数据库中数据为LDAP交换格式的命令行工具，它可以导出 slapd 的配置也可以导出 slapd的数据。
+slapcat 使用起来很简单，参数也是与 openldap 其他命令参数类似，
+参数 说 明 -a filter 只导出与过滤器声明条件相匹配的数据
+例如：slapcat -a &quot;(!(entryDN:dnSubtreeMatch:=ou=People,dc=example,dc=com))&quot; -b suffix 将只导出-b指定DN域内数据，-b 不能与 -n 同时使用 -c 忽略错误 -f -f 后接的文件将替代默认的配置文件，通常情况下备份在slapd本机执行可以不使用该参数 -F 指定配置目录，-F比-f优先级高，同时指定生效为-F，也就是导出的目录 -g 导出时不使用从属关系，仅仅为指定的数据库才会被导出 -H 连接 slapd 服务的地址 -l 输出的文件，默认slapcat是将内容输出到标准输出stdout中 -s subtree-dn 仅导出符合dn子树的条目 例如下列命令用于备份配置文件的
+1 $ slapcat -n 0 -l config.ldif Notes：slapd中，配置（0）永远是第一个数据库，跟着的就是在配置中指定的数据库，例如 {0}hdb 将表示1，{1}hdb 则是2
+下列命令用于导出为LDIF格式数据</div><div class="post-footer">
+        <a href="/ch7-backup-and-restore.html">阅读全文</a><div class="post-tags">
+                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
+</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
+        <a href="/ch6-acl.html">ch6 understanding openldap configuration - Access Control</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-22 00:00:00">2019-09-22 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">Overview 访问控制 (Access Control) 是对目录树中的IDT访问的权限控制。主要指 “谁” 应该能够 “访问记录” 在 “什么条件下” 他们应该能看到多少这样的记录，这些将是本节中阐述的问题 。
 OpenLDAP控制目录数据访问的主要方法是 通过访问控制列表 (Access Control List)。使 slapd 服务端在处理来自客户端的请求时，会评估客户端是否具有访问所请求的 DIT 的权限。要执行此计算，slapd 将依次计算LDIF 中配置的每个ACL策略，以检查客户端是否有权限访问该 DIT。
 Note：
 ACL策略由上而下依次进行匹配 默认的访问控制策略是对所有客户端都允许读取，不管定义了什么ACL策略，rootdn （databases部分设置的）总是允许对所有和任何东西拥有完全的权限（即身份验证、搜索、比较、读和写 ） ACL介绍 访问控制主要定义三大方面：
 what 定义对那些地方的访问，部分选择应用访问的条目和/或属性 who 定义人员，部分指定授予哪些实体访问 access 定义权限，部分指定授予的访问。 1 2 3 access to [what] by [who] [control] by [who] [control] 1 2 3 access to [resources] by [who] [type of access granted] [control] by [who] [type of access granted] [control] 对于完整的ACL语法，如下面所示 [1]</div><div class="post-footer">
-        <a href="/ch06-acl.html">阅读全文</a><div class="post-tags">
+        <a href="/ch6-acl.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch05-replication.html">ch5 understanding openldap configuration - replication mechnism</a>
+        <a href="/ch5-replication.html">ch5 understanding openldap configuration - replication mechnism</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-20 00:00:00">2019-09-20 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">LDAP复制概述 openldap的复制 ( replication) 是可以将 LDAP DIT (Directory Information Tree) 同步更新复制到一个或多个LDAP (“ slapd ”) 系统，主要是用于实现备份或提升性能场景。在 openldap中，需要注意的一点是 “复制” 级别属于DIT级别而非LDAP服务级别运行。因此，在运行的一个服务 (slapd) 中的多个DIT，每一个DIT都可以被复制到不同的其他服务中 (slapd) 。本章节只讲述 openldap 2.4+ 的四种复制模式。
 注意：在 openldap 2.4- 提供的复制功能，属于一个额外的守护进程 slurpd。仅适用于（2.3之前版本）。
 openldap的复制模式 在openldap 2.4+ 中，提供了四种复制模式：
@@ -95,18 +136,18 @@ Delta-syncrepl Delta-syncrepl 模式是基于日志模式 syncrepl 的一种变�
 优点：对象发生改变时无需注意改变次数，仅需要结果即可，类似于kubernetes list-watch 机制 缺点：开支过大，例如存在102,400个对象，每个对象大小1KB，当跑脚本批量更改所有对象的其中一个属性时（2Byte），每个comsumer将要触发的同步数据将为100MB数据，来更改200KB数据，外加TCP/IP协议的开销 Delta-syncrepl 的诞生就是为了解决 syncrepl 机制的缺点
 Note:
 syncrepl 就是传统的 povider-comsumer/master-slave 模型 Delta-syncrepl 需要注意的一点就是，当两边数据完全不同（或为空）将使用 syncrepl 同步完成后切换为 Delta-syncrepl 模式 对于 Delta-syncrepl 与 syncrepl 模式来说可以产生多种变种模型，push 与 pull</div><div class="post-footer">
-        <a href="/ch05-replication.html">阅读全文</a><div class="post-tags">
+        <a href="/ch5-replication.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch04-ssl.html">ch4 understanding openldap configuration - TLS/SSL</a>
+        <a href="/ch4-ssl.html">ch4 understanding openldap configuration - TLS/SSL</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-19 00:00:00">2019-09-19 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">OpenLDAP TLS/SSL 配置 对于 TLS/SSL 方向的内容不过多阐述了，这里只阐述openldap TLS/SSL 配置方向的内容
 openldap提供了两种方式进行 TLS/SSL 认证
 自动模式：客户端通过 ldaps://hostname/ 形式的URL访问slapd，slapd默认为636端口提供 TLS 会话 主动定义：slapd标准端口389支持 TLS/SSL ，客户端通过显式配置 TLS/SSL 也可以使用 URL格式ldap://hostname/ 进行访问，需要注意的是，在同步时如果使用 ldap:// 格式URL需要指定参数 starttls=yes 或者 starttls=critical 使用 ldaps:// 则不需要指定该参数 生成自签名证书 创建CA证书
 1 2 3 4 5 6 7 8 9 10 openssl genrsa -out cakey.key 2048 openssl req -new -x509 \ -key cakey.key \ -out cacert.crt \ -days 3650 \ -subj &#34;/C=HK/ST=HK/O=TVB/OU=bigbigchannl/CN=tvb-ca&#34; touch index.txt echo &#34;01&#34; &gt; serial 生成证书请求</div><div class="post-footer">
-        <a href="/ch04-ssl.html">阅读全文</a><div class="post-tags">
+        <a href="/ch4-ssl.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch03-schema.html">ch3  understanding openldap configuration - schema</a>
+        <a href="/ch3-schema.html">ch3  understanding openldap configuration - schema</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-09-01 00:00:00">2019-09-01 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">什么是schema schema又称为数据模型，是openldap中用于来指定一个条目所包含的对象类(objectClass)以及每个对象类所包含的属性值(attribute)，其中属性值又包含必要属性和可选属性。
 Notes：拥有schema的数据代表该数据是结构化数据，无论他是什么格式，甚至于是一个连续的字符串
 如何理解schema 不管是在学习OpenLDAP时还是学习数据库时，都会遇到一个很迷糊的Schema的概念。
@@ -115,26 +156,26 @@ Notes：拥有schema的数据代表该数据是结构化数据，无论他是什
 what-is-a-schema
 schema overview
 1 2 3 4 5 6 7 8 9 10 11 12 olcObjectClasses: ( 0.9.2342.19200300.100.4.19 NAME &#39;simpleSecurityObject&#39; DESC &#39;RFC1274: simple security object&#39; SUP top AUXILIARY MUST userPassword ) # 必须包含的属性 # # RFC 1274 + RFC 2247 olcAttributeTypes: ( 0.9.2342.19200300.100.1.25 NAME ( &#39;dc&#39; &#39;domainComponent&#39; ) # 表示属性名称 DESC &#39;RFC1274/2247: domain component&#39; EQUALITY caseIgnoreIA5Match # 相等性匹配 SUBSTR caseIgnoreIA5SubstringsMatch # 字符串匹配 SYNTAX 1.</div><div class="post-footer">
-        <a href="/ch03-schema.html">阅读全文</a><div class="post-tags">
+        <a href="/ch3-schema.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch02-commandline.html">ch2 understanding openldap - command line</a>
+        <a href="/ch2-commandline.html">ch2 understanding openldap - command line</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-08-27 00:00:00">2019-08-27 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">ldapsearch 查询api ldapsearch ldapsearch命令参数说明 语法
 1 ldapsearch [options] filter [attributes] 参数 说 明 -W 指定密码，交互式，不需要在命令上写密码 -w 指定密码，需要命令上指定密码 -H ldapapi -D 所绑定的服务器的DN，如cn=admin,dc=etiantian,dc=org -f -f: filename.ldif文件 -b -b 指定作为查询节点而不是默认的 -LLL 以LDIF格式打印响应，不带注释 -x 简单的认证 简单的搜索 最简单的在查询ldap条目的最简单方法是使用带有 “-x” 选项进行简单身份验证，并使用 “-b” 指定搜索域。
 1 $ ldapsearch -x -b &lt;search_base&gt; -H &lt;ldap_host&gt; 例如向 10.0.0.3 上openldap服务查询，该命令需要服务器接受匿名身份验证，这将可以查询而无需绑定管理员帐户
 1 $ ldapsearch -x -b &#34;dc=test,dc=com&#34; -H ldap://10.0.0.3 使用管理员账户进行搜索 使用管理员帐户进行搜索，必须使用backend配置的 RootDN 并在命令行使用 “-D” 选项 和 “-W” ，如果要使用非交互式认证，使用选项 “-w”
 1 $ ldapsearch -x -b &lt;search_base&gt; -H &lt;ldap_host&gt; -D &lt;bind_dn&gt; -W 例如，上章在安装时配置了RootDN：“ cn=admin,dc=test,dc=com ”。如果要使用此帐户执行搜索，可以使用命令</div><div class="post-footer">
-        <a href="/ch02-commandline.html">阅读全文</a><div class="post-tags">
+        <a href="/ch2-commandline.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/ch01-install.html">ch1 understanding openldap - install</a>
+        <a href="/ch1-install.html">ch1 understanding openldap - install</a>
     </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2019-08-25 00:00:00">2019-08-25 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div><div class="content">生产服务器硬件配置需求 ldap服务对系统环境的要求不高，一般在生产场景，ldap服务应该最少是两台，这样某一台物理服务器岩机才不会因单点问题影响生产业务故障，对于硬件要求，本质上openldap使用硬件资源并不大，网上有两个帖子提出了openldap的硬件需求：
 2003年openldap官网留言，我想安装一个 LDAP 服务器来验证邮件服务器的用户，目前有200个用户需要多少内存和CPU？[1] 1GHZ PIII/512MB 足以 运行于Ubuntu LXC 之上的openldap，用户150,000，sladp进程常驻内存为200-300MB，mdb数据库文件大小为377MB，10 并发平均响应时间为 9-11 毫秒 [13] 操作系统：Centos7/8 64bit。
 操 作 系 统 其 它 CentOS-7.6 当前很稳定且免费的Linux版本。 网卡及IP资源
 名 称 接 口 IP 用途 ldap主服务器01 eth0 10.0.0.17 外部管理IP，用于WAN数据转发。 eth1 10.0.0.17 备用管理IP，用于LAN内数据转发。 ldap从服务器02 eth0 10.0.0.8 管理IP，用于LAN数据转发。 eth1 10.0.0.18 外部管理IP，用于WAN数据转发。 Tips：内外网IP分配可采用最后8位相同的方式，这样使于管理。
 openldap master服务安装 CentOS/Redhat 安装OpenLDAP组件
 1 2 3 4 5 6 yum install -y \ openldap \ openldap-servers \ openldap-clients \ openldap-devel \ compat-openldap Ubuntu18.</div><div class="post-footer">
-        <a href="/ch01-install.html">阅读全文</a><div class="post-tags">
+        <a href="/ch1-install.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
 </article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
         <a href="/ch0-understanding-ldap.html">ch0 understanding openldap - introduction</a>
@@ -155,38 +196,6 @@ LDAP基本概念中的常用名词缩写及含义
 关 键字 英文全称 含 义 dc Domain Component 城名的部分，其格式是将完整的城名分成几部分，如域名为exaple.com变成dc=exaple,dc=com uid User Id 用户ID，如 “oldboy”。 ou Organization Unit 组织单位，类似于Limux文件系统中的子目录，它是一个容器对象，组织单位可以包含其他各种对象（包括其他组织单元），如“tech，rongjunfeng，bingge” cn Common Name 公共名称，如 “Thowas Johansson” sn Surnase 姓，如 “Johansson” dn Distinguished Name 唯一辨别名，类似于Linux文件系统中的绝对路径，每个对象都有一个唯一的名称，如uid=tos,ou=market,dc=example,dc=com，在一个目录树中 总是唯一的。 rdn Relative dn 相对辨别名，类似于文件系统中的相对路径，它是与目录树结构无关的部分，如uid=tom或cn=Thoeas Johansscn。 c Country 国家，如“CN”或“US”等 o organizatione 组织名，如“Example，Inc.</div><div class="post-footer">
         <a href="/ch0-understanding-ldap.html">阅读全文</a><div class="post-tags">
                 <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/%E6%94%B6%E9%9B%86java%E6%97%A5%E5%BF%97.html">ELK 收集java日志</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-11-02 00:00:00">2018-11-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/elk.html"><i class="far fa-folder fa-fw"></i>ELK</a></span></div><div class="content">Java日志多由多行行组成，初始行之后的每一行以空格开头，如下例所示：在这种情况下，需要在将事件数据output之前处理多行事件。
-1 2 3 4 5 [ERROR] - 2018-09-21 04:19:57.685 (SocketTransfer.java:73) - Socket交互遇到错误 Exception in thread &#34;main&#34; java.lang.NullPointerException at com.example.myproject.Book.getTitle(Book.java:16) at com.example.myproject.Author.getBookTitles(Author.java:25) at com.example.myproject.Bootstrap.main(Bootstrap.java:14) 配置multiline参数如下：Multiline codec plugin
-参数 说明 pattern 指定正则表达式。与指定正则表达式匹配的行被视为前一行的延续或新多行事件的开始。 what previous或next。该previous值指定与pattern选项中的值匹配的行是上一行的一部分。该next值指定与pattern选项中的值匹配的行是以下行的一部分 negate true或false（默认为false）。如果true，与pattern模式不匹配的消息将构成多行过滤器的匹配what并将应用。 1 2 3 4 5 6 7 8 9 10 11 12 input { file { path =&gt; &#34;/root/apache-tomcat-8.5.34/logs/catalina.out&#34; type =&gt; &#34;sk&#34; start_position =&gt; &#34;beginning&#34; codec =&gt; multiline { pattern =&gt; &#34;^\[&#34; negate =&gt; &#34;true&#34; what =&gt; &#34;previous&#34; } } } 如上列日志格式为</div><div class="post-footer">
-        <a href="/%E6%94%B6%E9%9B%86java%E6%97%A5%E5%BF%97.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/elk.html">ELK</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/%E6%94%B6%E9%9B%86syslog.html">ELK 收集syslog</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-11-02 00:00:00">2018-11-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/elk.html"><i class="far fa-folder fa-fw"></i>ELK</a></span></div><div class="content">Logstash通过网络将syslog消息作为事件读取。使用用 UDPSocket, TCPServer 和
-LogStash::Filters::Grok 来实现
-配置示例 1 2 3 4 5 input { syslog{ port =&gt; &#34;514&#34; } } 配置客户端，在修改linux主机/etc/rsyslog.conf
-1 *.* @@host:port 配置说明 参数 说明 * 类型 * 级别 @ udp @@ tcp host 可为主机名或ip地址 注：收集到的数据，本身就以及是rsyslog格式了，无需再进行grok
-1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 { &#34;message&#34; =&gt; &#34;(root) CMD (/bin/echo 1111 &gt;&gt;/root/1.txt)\n&#34;, &#34;@version&#34; =&gt; &#34;1&#34;, &#34;@timestamp&#34; =&gt; &#34;2018-10-05T12:13:01.000Z&#34;, &#34;host&#34; =&gt; &#34;10.0.0.16&#34;, &#34;priority&#34; =&gt; 78, &#34;timestamp&#34; =&gt; &#34;Oct 5 20:13:01&#34;, &#34;logsource&#34; =&gt; &#34;node02&#34;, &#34;program&#34; =&gt; &#34;CROND&#34;, &#34;pid&#34; =&gt; &#34;92923&#34;, &#34;severity&#34; =&gt; 6, &#34;facility&#34; =&gt; 9, &#34;facility_label&#34; =&gt; &#34;clock&#34;, &#34;severity_label&#34; =&gt; &#34;Informational&#34; } 收集到的数据需要对时间进行格式化</div><div class="post-footer">
-        <a href="/%E6%94%B6%E9%9B%86syslog.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/elk.html">ELK</a></div></div>
-</article><article class="single summary" itemscope itemtype="http://schema.org/Article"><h1 class="single-title" itemprop="name headline">
-        <a href="/logstash.html">Logstash 使用</a>
-    </h1><div class="post-meta"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-publish">发布于 <time datetime="2018-11-02 00:00:00">2018-11-02 00:00:00</time></span>&nbsp;<span class="post-category">收录于 <a href="/categories/elk.html"><i class="far fa-folder fa-fw"></i>ELK</a></span></div><div class="content">[TOC]
-1 logstash概述 logstash是基于Jruby语言研发的server/agent结构的日志收集工具，可以在任何一个能产生日志的服务器上部署其agent。agent能同时监控多个产生日志的服务，并把每个服务所产生的日志信息收集并发送给logstash server端。由于收集到的日志信息是分散的，logstash有专门的节点用来将所有的节点收集到的日志信息按时间序列合并在一起形成一个序列，基于这一个序列请求写入并存储在elasticsearch集群中。
-kibana是基于node.js开发的elasticsearch的图形用户接口。它可以将用户的搜索语句发送给ES，有ES完成搜索，并且将结果返回。kibana可以将返回的数据，用非常直观的方式（画图）来做趋势展示的。
-logstash基于多种数据获取机制，TCP/UDP协议、文件、syslog、windows EventLogs及STDIN等。同时也支持多种数据输出机制。获取到数据后，它支持对数据执行过滤、修改等操作。
-logstash基于JRuby语言研发，需要运行在JVM虚拟机之上。工作于agent/server模型。
-1.1 logstash工作机制 在每一个产生日志的节点之上部署一个agent，这个agent通常称为shipper。shipper负责收集日志，并且发送给server端。但是在发送给server端时，为了避免server端可能无法应付大量节点同时发来的信息，会在server端和agent端之间放置一个消息队列，通常称之为broker。这个消息队列比较常见的使用redis。各agent将数据发送至broker，logstash服务器会从broker中依次取出日志拿来在本地做过滤、修改等操作。在完修改后将其发送至ES集群。
-对于logstash而言，server端也是插件式的工作的模式，与ES的不同在于，ES的插件是可有可无的。logstash的除核心外的所有功能都是基于插件来完成的。
-1.2 logstash工作流程 logstash的工作模式类似于管道，从指定位置读入数据，而后过滤数据，最后将其输出到指定位置。事实上logstash的工作流程为：input | filter | output。如无需对数据额外处理，filter可省略。
-1.3 logstash插件分类 input plugin：收集数据 codec plugin：编码插件 filter plugin：过滤 output plugin：输出插件 2 logstash安装下载 官网地址：https://www.elastic.co/cn/products../../images/Logstash
-3 logstash的配置使用 /etc../../images/Logstash/conf.d/路径下所有以.conf结尾的文件都被当做配置文件使用。对于logstash的配置文件定义，就是定义插件。从哪得到数据。向哪里输出数据。
-3.1 logstash的基本配置框架 1 2 3 4 5 6 7 8 9 10 11 input{ .... } filter{ .... } output{ .... } 简单的
-1 2 3 4 5 6 7 8 input{ stdin {} } output { stdout{ codec =&gt;rubydebug } } 检查配置文件语法是否正确logstash -f /etc.</div><div class="post-footer">
-        <a href="/logstash.html">阅读全文</a><div class="post-tags">
-                <i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/elk.html">ELK</a></div></div>
 </article><ul class="pagination"><li class="page-item ">
                     <span class="page-link">
                         <a href="/">1</a>
@@ -217,7 +226,7 @@ logstash基于JRuby语言研发，需要运行在JVM虚拟机之上。工作于a
                     <span class="page-link" aria-hidden="true">&hellip;</span>
                 </li><li class="page-item ">
                     <span class="page-link">
-                        <a href="/page/25.html">25</a>
+                        <a href="/page/28.html">28</a>
                     </span>
                 </li></ul></div></div>
             </main><footer class="footer">

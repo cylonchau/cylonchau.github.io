@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>ch8 understanding openldap configuration - advanced application - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="ch8 understanding openldap configuration - advanced application" />
+<meta property="og:description" content="memberOf 默认情况下，openldap提供的Posixgroup组，实际上并不能很有效的区分组与用户之间的关系。而 memberOf 则可以有效地检索用户与组的关系
+在OpenLDAP配置MemberOf模块 步骤一：可以检查在允许的slapd服务是否已经启用该模块
+1 $ slapcat -n 0 | grep olcModuleLoad 对于新部署的服务，可以按照如下方式添加
+1 2 3 4 dn: cn=module,cn=config objectClass: olcModuleList cn: module olcModuleload: memberof.la 可以在线更改一个正在运行的slapd服务，使其加载 memberOf 模块，需要主义对应的 module{0} 是否正确
+1 2 3 4 5 6 cat &lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:/// dn: cn=module{0},cn=config changetype: modify add: olcModuleLoad olcModuleLoad: memberof.la EOF 步骤二：配置overlay
+在官方指南中看到olcOverlay 必须要配置到特定数据库的子条目。即此配置段需要在database配置后面。
+Overlays must be configured as child entries of a specific database." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch8-openldap-configuration.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-09-24T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-11-28T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="ch8 understanding openldap configuration - advanced application"/>
+<meta name="twitter:description" content="memberOf 默认情况下，openldap提供的Posixgroup组，实际上并不能很有效的区分组与用户之间的关系。而 memberOf 则可以有效地检索用户与组的关系
+在OpenLDAP配置MemberOf模块 步骤一：可以检查在允许的slapd服务是否已经启用该模块
+1 $ slapcat -n 0 | grep olcModuleLoad 对于新部署的服务，可以按照如下方式添加
+1 2 3 4 dn: cn=module,cn=config objectClass: olcModuleList cn: module olcModuleload: memberof.la 可以在线更改一个正在运行的slapd服务，使其加载 memberOf 模块，需要主义对应的 module{0} 是否正确
+1 2 3 4 5 6 cat &lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:/// dn: cn=module{0},cn=config changetype: modify add: olcModuleLoad olcModuleLoad: memberof.la EOF 步骤二：配置overlay
+在官方指南中看到olcOverlay 必须要配置到特定数据库的子条目。即此配置段需要在database配置后面。
+Overlays must be configured as child entries of a specific database."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch8-openldap-configuration.html" /><link rel="prev" href="https://cylonchau.github.io/ch7-backup-and-restore.html" /><link rel="next" href="https://cylonchau.github.io/ch9-linux-with-ldap.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "ch8 understanding openldap configuration - advanced application",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch8-openldap-configuration.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "ldap, linux","wordcount":  987 ,
+        "url": "https:\/\/cylonchau.github.io\/ch8-openldap-configuration.html","datePublished": "2019-09-24T00:00:00+00:00","dateModified": "2022-11-28T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">ch8 understanding openldap configuration - advanced application</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ldap.html"><i class="far fa-folder fa-fw"></i>ldap</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2019-09-24 00:00:00">2019-09-24 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 987 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 5 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#memberof">memberOf</a>
+      <ul>
+        <li><a href="#在openldap配置memberof模块">在OpenLDAP配置MemberOf模块</a></li>
+      </ul>
+    </li>
+    <li><a href="#referential-integrity">Referential Integrity</a>
+      <ul>
+        <li><a href="#在openldap配置referential-integrity模块">在OpenLDAP配置Referential Integrity模块</a></li>
+      </ul>
+    </li>
+    <li><a href="#password-policy">Password Policy</a>
+      <ul>
+        <li><a href="#在openldap配置ppolicy模块">在OpenLDAP配置ppolicy模块</a></li>
+        <li><a href="#为用户配置默认策略">为用户配置默认策略</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="memberof">memberOf</h2>
+<p>默认情况下，openldap提供的Posixgroup组，实际上并不能很有效的区分组与用户之间的关系。而 <code>memberOf</code> 则可以有效地检索用户与组的关系</p>
+<h3 id="在openldap配置memberof模块">在OpenLDAP配置MemberOf模块</h3>
+<p><strong>步骤一</strong>：可以检查在允许的slapd服务是否已经启用该模块</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ slapcat -n <span class="m">0</span> <span class="p">|</span> grep olcModuleLoad
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>对于新部署的服务，可以按照如下方式添加</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: cn=module,cn=config
+</span></span><span class="line"><span class="cl">objectClass: olcModuleList
+</span></span><span class="line"><span class="cl">cn: module
+</span></span><span class="line"><span class="cl">olcModuleload: memberof.la
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>可以在线更改一个正在运行的slapd服务，使其加载 <code>memberOf</code> 模块，需要主义对应的 <code>module{0}</code> 是否正确</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:///
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=module{0},cn=config
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: olcModuleLoad
+</span></span></span><span class="line"><span class="cl"><span class="s">olcModuleLoad: memberof.la
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>步骤二</strong>：配置overlay</p>
+<p>在官方指南中看到<code>olcOverlay</code> 必须要配置到特定数据库的子条目。即此配置段需要在database配置后面。</p>
+<blockquote>
+<p>Overlays must be configured as child entries of  a  specific  database. <sup><a href="#1">[1]</a></sup></p>
+</blockquote>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: olcOverlay={0}memberof,olcDatabase={2}hdb,cn=config
+</span></span><span class="line"><span class="cl">objectClass: olcConfig
+</span></span><span class="line"><span class="cl">objectClass: olcMemberOf
+</span></span><span class="line"><span class="cl">objectClass: olcOverlayConfig
+</span></span><span class="line"><span class="cl">objectClass: top
+</span></span><span class="line"><span class="cl">olcOverlay: memberof
+</span></span><span class="line"><span class="cl">olcMemberOfDangling: ignore
+</span></span><span class="line"><span class="cl">olcMemberOfRefInt: TRUE
+</span></span><span class="line"><span class="cl">olcMemberOfGroupOC: groupOfUniqueNames
+</span></span><span class="line"><span class="cl">olcMemberOfMemberAD: uniqueMember
+</span></span><span class="line"><span class="cl">olcMemberOfMemberOfAD: memberOf
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>步骤三</strong>：配置refint</p>
+<p>refint为 (<em><strong>referential integrity</strong></em>)，所引用完整性。是保持属性与所引用的条目保持一致。在使用 <code>memberOf</code> 时，当一个用户被归为 <code>memberOf</code> 组时，会存在 <code>memberOf</code> 的属性。当这个用户组重命名或删除时，<code>refintOverlay</code> 将自动修改或删除对应的属性。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: olcOverlay=refint,olcDatabase={2}hdb,cn=config
+</span></span><span class="line"><span class="cl">objectClass: olcConfig
+</span></span><span class="line"><span class="cl">objectClass: olcOverlayConfig
+</span></span><span class="line"><span class="cl">objectClass: olcRefintConfig
+</span></span><span class="line"><span class="cl">objectClass: top
+</span></span><span class="line"><span class="cl">olcOverlay: refint
+</span></span><span class="line"><span class="cl">olcRefintAttribute: memberOf uniqueMember uid cn ## 哪些属性被改动时修改其他所属关系。
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>步骤四</strong>：配置memberOf</p>
+<p>新建一个groupOfUniqueNames用户组，将用户放入组内</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">cat &lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span><span class="line"><span class="cl">dn: ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">objectClass: organizationalUnit
+</span></span><span class="line"><span class="cl">ou: tvb
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dn: cn=adminGroup,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">objectClass: groupOfUniqueNames
+</span></span><span class="line"><span class="cl">cn: adminGroup
+</span></span><span class="line"><span class="cl">uniqueMember: uid=admin,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dn: cn=dirGroup,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">objectClass: groupOfUniqueNames
+</span></span><span class="line"><span class="cl">cn: dirGroup
+</span></span><span class="line"><span class="cl">uniqueMember: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dn: cn=confGroup,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">objectClass: groupOfUniqueNames
+</span></span><span class="line"><span class="cl">cn: confGroup
+</span></span><span class="line"><span class="cl">uniqueMember: uid=syncUser,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">EOF
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>创建测试用户</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=syncUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 10006
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 10002
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: syncUser
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=confGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 10005
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 10001
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: searchUser
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=dirGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=admin,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 0
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 0
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/admin
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=adminGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=admin1,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: inetOrgPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalPerson
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: person
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: posixAccount
+</span></span></span><span class="line"><span class="cl"><span class="s">uid: admin1
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">uidNumber: 0
+</span></span></span><span class="line"><span class="cl"><span class="s">gidNumber: 0
+</span></span></span><span class="line"><span class="cl"><span class="s">homeDirectory: /home/admin
+</span></span></span><span class="line"><span class="cl"><span class="s">loginShell: /bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="s">userPassword: {SSHA}QnB7dO98+hoCUgiaAYaiJWnDzlhn2Tn6
+</span></span></span><span class="line"><span class="cl"><span class="s">sn: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">givenName: admin
+</span></span></span><span class="line"><span class="cl"><span class="s">memberOf: cn=adminGroup,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>查看用户的memberof属性</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ldapsearch -x -H ldaps://10.0.0.4 -b dc=test,dc=com -D &#34;cn=admin,dc=test,dc=com&#34; -w 111 memberOf
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="referential-integrity">Referential Integrity</h2>
+<p>引用完整 (<em><strong>Referential Integrity</strong></em>) 模块是指在两个属性互相引用时，如果自动修改或删除了一端的值，将保持另一端也能够保持一致性，删除或更新。</p>
+<p>例如下面示例，<code>uid=eve,ou=users,dc=tvb,dc=com</code> 是一个管理员用户，<code>uid=mallory,ou=users,dc=tvb,dc=com</code> 是一个普通用户，普通用户mallory的管理员是eve用户，当eve用户修改名称或者被删除时，mallory对应的 <code>manager</code> 也应该保持更新或删除</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: uid=eve,ou=users,dc=tvb,dc=com
+</span></span><span class="line"><span class="cl">objectClass: posixAccount
+</span></span><span class="line"><span class="cl">objectClass: shadowAccount
+</span></span><span class="line"><span class="cl">objectClass: inetOrgPerson
+</span></span><span class="line"><span class="cl">cn: Eve
+</span></span><span class="line"><span class="cl">sn: Eavesdropper
+</span></span><span class="line"><span class="cl">uid: eve
+</span></span><span class="line"><span class="cl">uidNumber: 5000
+</span></span><span class="line"><span class="cl">gidNumber: 5000
+</span></span><span class="line"><span class="cl">homeDirectory: /home/eve
+</span></span><span class="line"><span class="cl">loginShell: /bin/sh
+</span></span><span class="line"><span class="cl">gecos: Eve Eavesdropper
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">dn: uid=mallory,ou=users,dc=tvb,dc=com
+</span></span><span class="line"><span class="cl">objectClass: posixAccount
+</span></span><span class="line"><span class="cl">objectClass: shadowAccount
+</span></span><span class="line"><span class="cl">objectClass: inetOrgPerson
+</span></span><span class="line"><span class="cl">cn: Mallory
+</span></span><span class="line"><span class="cl">sn: Malicious
+</span></span><span class="line"><span class="cl">uid: eve
+</span></span><span class="line"><span class="cl">uidNumber: 5001
+</span></span><span class="line"><span class="cl">gidNumber: 5000
+</span></span><span class="line"><span class="cl">homeDirectory: /home/mallory
+</span></span><span class="line"><span class="cl">loginShell: /bin/sh
+</span></span><span class="line"><span class="cl">gecos: Mallory Malicious
+</span></span><span class="line"><span class="cl">manager: uid=eve,ou=users,dc=tvb,dc=com
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="在openldap配置referential-integrity模块">在OpenLDAP配置Referential Integrity模块</h3>
+<p><strong>步骤一</strong>：可以检查在允许的slapd服务是否已经启用该模块</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ slapcat -n <span class="m">0</span> <span class="p">|</span> grep olcModuleLoad
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>可以在线更改一个正在运行的slapd服务，使其加载 <code>refint</code> 模块，需要主义对应的 <code>module{0}</code> 是否正确</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:///
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=module{0},cn=config
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: olcModuleLoad
+</span></span></span><span class="line"><span class="cl"><span class="s">olcModuleLoad: refint.la
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>另外如果 模块目录不为标准的路径，也需要配置 <code>olcModulePath</code> ，当然这个参数只能指定一次</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-v" data-lang="v"><span class="line"><span class="cl"><span class="nv">dn</span><span class="p">:</span> <span class="nv">cn</span><span class="o">=</span><span class="kn">module</span><span class="p">,</span><span class="nv">cn</span><span class="o">=</span><span class="nv">config</span>
+</span></span><span class="line"><span class="cl"><span class="nv">cn</span><span class="p">:</span> <span class="kn">module</span> 
+</span></span><span class="line"><span class="cl"><span class="nv">objectClass</span><span class="p">:</span> <span class="nv">olcModuleList</span>
+</span></span><span class="line"><span class="cl"><span class="nv">olcModulePath</span><span class="p">:</span> <span class="o">/</span><span class="nv">opt</span><span class="o">/</span><span class="nv">openldap</span><span class="o">-</span><span class="nv">current</span><span class="o">/</span><span class="nv">libexec</span><span class="o">/</span><span class="nv">openldap</span>
+</span></span><span class="line"><span class="cl"><span class="nv">olcModuleLoad</span><span class="p">:</span> <span class="nv">refint</span><span class="p">.</span><span class="nv">la</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>下表是关于各操作系统内置 openldap 服务模块的标准路径</p>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>PATH</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CentOS 7</td>
+<td>/usr/lib64/openldap</td>
+</tr>
+<tr>
+<td>openSUSE</td>
+<td>/usr/lib64/openldap</td>
+</tr>
+<tr>
+<td>Debian (Stretch)</td>
+<td>/usr/lib/ldap</td>
+</tr>
+<tr>
+<td>Source (Default)</td>
+<td>/usr/local/libexec/openldap</td>
+</tr>
+</tbody>
+</table>
+<p>由于overlay的特性，需要指定为database的子模块</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ cat <span class="s">&lt;&lt; EOF | ldapadd -Y EXTERNAL -H ldapi:///
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: olcOverlay=refint,olcDatabase={1}mdb,cn=config
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: olcOverlayConfig
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: olcRefintConfig
+</span></span></span><span class="line"><span class="cl"><span class="s">olcOverlay: refint
+</span></span></span><span class="line"><span class="cl"><span class="s">olcRefintAttribute: manager secretary
+</span></span></span><span class="line"><span class="cl"><span class="s">olcRefintNothing: cn=config
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里需要注意的属性为：</p>
+<ul>
+<li><code>olcDatabase={1}mdb</code> 数据库这里需要指定要配置的数据库</li>
+<li><code>olcRefintAttribute</code> 这个属性指明了两个条目间关联的属性</li>
+<li><code>olcRefintNothing</code> 可选参数，因为两端需要关联时，例如memberOf，组对象至少保留一个 <code>memberOf</code> 属性，当删除最后一个关联用户时，会提示非法，这个参数就是在删除最后一个用户时，指定一个占位符的该属性</li>
+</ul>
+<h2 id="password-policy">Password Policy</h2>
+<p>openldap中 Password Policy 是指用户的密码策略，如过期时间，密码安全最低要求等</p>
+<h3 id="在openldap配置ppolicy模块">在OpenLDAP配置ppolicy模块</h3>
+<p>可以在线更改一个正在运行的slapd服务，使其加载 <code>ppolicy</code> 模块，需要主义对应的 <code>module{0}</code> 是否正确</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapmodify -Q -Y EXTERNAL -H ldapi:///
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=module{0},cn=config
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: olcModuleLoad
+</span></span></span><span class="line"><span class="cl"><span class="s">olcModuleLoad: ppolicy.la
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>在加载完成后，需要叠加到database上才可以生效，如下列配置</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: olcOverlay=ppolicy,olcDatabase={1}mdb,cn=config
+</span></span><span class="line"><span class="cl">objectClass: olcPPolicyConfig
+</span></span><span class="line"><span class="cl">olcOverlay: ppolicy
+</span></span><span class="line"><span class="cl">olcPPolicyDefault: cn=default,ou=tvb,dc=test,dc=com
+</span></span><span class="line"><span class="cl">olcPPolicyUseLockout: FALSE
+</span></span><span class="line"><span class="cl">olcPPolicyHashCleartext: TRUE
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里需要注意的一点是，<code>olcPPolicyDefault</code> 是指定的一个默认密码策略，即没有为用户配置密码策略时，将使用这个默认策略</p>
+<h3 id="为用户配置默认策略">为用户配置默认策略</h3>
+<p>如果需要使用模块 <code>ppolicy</code> ，必须做下述三个步骤其一才可满足为用户密码提供一个管理策略</p>
+<ul>
+<li>需要创建一个默认策略</li>
+<li>为用户 ldift 添加属性  <code>pwdPolicySubentry</code> ，这可以为不同的用户设置不同的密码策略</li>
+<li>属性 <code>pwdPolicy</code> 可以作为用户 ldif 中被多次引用，这代表可以设置多种不同的策略，这种比较繁琐</li>
+</ul>
+<p><strong>场景一</strong>：创建一个默认策略</p>
+<p>例如在配置ppolicy的overlay时，默认策略名称填写了 <code>cn=default,ou=tvb,dc=test,dc=com</code> 那么需要用这个DN创建一个默认策略，而创建DN需要按层级创建，顾需要创建 <code>ou=plicies</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalUnit
+</span></span></span><span class="line"><span class="cl"><span class="s">ou: policies
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>接下来创建默认的密码策略</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=default,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: pwdPolicy
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalRole
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: default
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdAttribute: userPassword
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdMinLength: 3
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdCheckQuality: 2
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>下表是对于一些密码策略的属性说明</p>
+<table>
+<thead>
+<tr>
+<th>属性</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pwdAttribute</td>
+<td>指定那个字段是密码</td>
+</tr>
+<tr>
+<td>pwdMinAge</td>
+<td>多少秒之间必须经过更改密码，默认0</td>
+</tr>
+<tr>
+<td>pwdMaxAge</td>
+<td>密码最大期限，如果密码过期用户将被拒绝登录。 默认的是密码永不过期。</td>
+</tr>
+<tr>
+<td>pwdInHistory</td>
+<td>存储多少个历史旧密码，例如更改密码时提示与历史使用密码类似。 默认为0，即可以重复使用旧密码</td>
+</tr>
+<tr>
+<td>pwdMinLength</td>
+<td>密码的最小的长度。 默认没有长度的要求。 这个属性将与 <code>pwdCheckQuality</code> 同时生效，当  <code>pwdCheckQuality</code> 为0，则长度限制不生效</td>
+</tr>
+<tr>
+<td>pwdCheckQuality</td>
+<td>如何对用户长度进行检查。 默认0不检查，<br>2 ：总是强制执行的质量检查；如果它不能检查它，密码就会被拒绝。<br>1 ：可被接受的密码</td>
+</tr>
+<tr>
+<td>pwdMaxFailure</td>
+<td>密码错误几次用户被锁定，默认0 代表不会被锁定，他们是锁着的。 为了对此采取影响，  必须关联属性 <code>pwdLockout=TRUE</code></td>
+</tr>
+<tr>
+<td>pwdLockout</td>
+<td><code>pwdLockout=TRUE</code> 时  pwdMaxFailure 会生效，否则忽略  <code>pwdMaxFailure</code> 配置</td>
+</tr>
+<tr>
+<td>pwdLockoutDuration</td>
+<td>账户自动解锁的时间</td>
+</tr>
+<tr>
+<td>pwdMustChange</td>
+<td>这是当管理员创建用户后，第一次登陆时需要必须修改密码</td>
+</tr>
+<tr>
+<td>pwdPolicySubentry</td>
+<td>表示设置密码的策略。 DN对应适用密码政策的条目。 默认策略由  <code>olcPPolicyDefault</code>  属性的配置。如果不存在，会使用 <code>olcPPolicyDefault</code> ，当存在时会覆盖 <code>olcPPolicyDefault</code></td>
+</tr>
+</tbody>
+</table>
+<p>如果需要上述的策略，需要引入对象 <code>objectClass: pwdPolicy</code> 例如修改一个用户的密码策略</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: pwdMinLength
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdMinLength: 4
+</span></span></span><span class="line"><span class="cl"><span class="s">-
+</span></span></span><span class="line"><span class="cl"><span class="s">add: pwdCheckQuality
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdCheckQuality: 2
+</span></span></span><span class="line"><span class="cl"><span class="s">-
+</span></span></span><span class="line"><span class="cl"><span class="s">replace: pwdPolicySubentry
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdPolicySubentry: cn=example2,ou=tvb,dc=tvb,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>而上述属性  <code>pwdPolicySubentry</code>  代表那个策略适用于那个条目。 如果不存在则默认策略生效。如果需要引入存在的密码策略可以使用该属性进行应用。</p>
+<p>例如，下述是创建两天密码策略</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=example1,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: example1
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalRole
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: pwdPolicy
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdAttribute: userPassword
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdMinLength: 5
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdCheckQuality: 2
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: cn=example2,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">cn: example2
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: organizationalRole
+</span></span></span><span class="line"><span class="cl"><span class="s">objectClass: pwdPolicy
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdAttribute: userPassword
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdMinLength: 6
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdCheckQuality: 2
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdMaxFailure: 3
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdLockout: TRUE
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdLockoutDuration: 10
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdInHistory: 5
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>当需要创建一个用户引用现有的一组密码策略时，可以对用户添加属性 <code> pwdPolicySubentry</code>，而不是重复的设置每条策略，例如下面示例</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF | ldapadd -x -H ldap://10.0.0.10 -D &#34;cn=admin,dc=test,dc=com&#34; -w 111
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=admin1,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: pwdPolicySubentry
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdPolicySubentry: cn=example1,ou=tvb,dc=tvb,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">dn: uid=searchUser,ou=tvb,dc=test,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">changetype: modify
+</span></span></span><span class="line"><span class="cl"><span class="s">add: pwdPolicySubentry
+</span></span></span><span class="line"><span class="cl"><span class="s">pwdPolicySubentry: cn=example2,ou=tvb,dc=tvb,dc=com
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><strong>Reference</strong></p>
+<p><sup id="1">[1]</sup> <a href="https://www.openldap.org/software/man.cgi?query=slapd-config&amp;sektion=5&amp;apropos=0&amp;manpath=OpenLDAP&#43;2.4-Release#OVERLAYS" target="_blank" rel="noopener noreffer"><em><strong>slapd-config</strong></em></a></p>
+</blockquote>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-11-28 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-title="ch8 understanding openldap configuration - advanced application" data-hashtags="ldap,linux"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-hashtag="ldap"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-title="ch8 understanding openldap configuration - advanced application" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-title="ch8 understanding openldap configuration - advanced application"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-title="ch8 understanding openldap configuration - advanced application"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch8-openldap-configuration.html" data-title="ch8 understanding openldap configuration - advanced application"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/ldap.html">ldap</a>,&nbsp;<a href="/tags/linux.html">linux</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch7-backup-and-restore.html" class="prev" rel="prev" title="ch7 understanding openldap configuration - Backup and Restore"><i class="fas fa-angle-left fa-fw"></i>ch7 understanding openldap configuration - Backup and Restore</a>
+            <a href="/ch9-linux-with-ldap.html" class="next" rel="next" title="ch9 understanding openldap applicaiton - linux authentication with ldap">ch9 understanding openldap applicaiton - linux authentication with ldap<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2019-09-24T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"ch8 understanding openldap configuration - advanced application"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

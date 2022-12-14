@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>redis主从复制工作原理 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="redis主从复制工作原理" />
+<meta property="og:description" content="Replication的工作原理 设置一个Slave，无论是第一次还是重连到Master，它都会发出一个sync命令。当Master收到sync命令之后，会做两件事：
+Master执行BGSAVE，即在后台保存数据到磁盘（rdb快照文件）。 Master同时将新收到的写入和修改数据集的命令存入缓冲区（非查询类）。 当Master在后台把数据保存到快照文件完成之后，把这个快照传送给Slave，而Slave则把内存清空后，加载该文件到内存中。而Master也会把此前收集到缓冲区中的命令，通过Reids命令协议形式转发给Slave，Slave执行这些命令，实现和Master的同步。Master/Slave此后会不断通过异步方式进行命令的同步。
+注：在redis2.8之前，主从之间一旦发生重连都会引发全量同步操作。但在2.8之后版本，也可能是部分同步操作。
+部分复制 2.8后，当主从之间的连接断开之后，他们之间可以采用持续复制处理方式代替采用全量同步。Master端为复制流维护一个内存缓冲区（in-memory backlog），记录最近发送的复制流命令；同时，Master和Slave之间都维护一个复制偏移量(replication offset)和当前Master服务器ID（Master run id）。当网络断开，Slave尝试重连时：
+如果MasterID相同（即仍是断网前的Master服务器），并且从断开时到当前时刻的历史命令依然在Master的内存缓冲区中存在，则Master会将缺失的这段时间的所有命令发送给Slave执行，然后复制工作就可以继续执行了
+否则，依然需要全量复制操作。
+Redis 2.8 的这个部分重同步特性会用到一个新增的PSYNC内部命令， 而 Redis 2.8以前的旧版本只有SYNC命令，不过，只要从服务器是Redis 2.8或以上的版本，它就会根据主服务器的版本来决定到底是使用 PSYNC还是SYNC。 如果主服务器是 Redis 2.8 或以上版本，那么从服务器使用 PSYNC 命令来进行同步。 如果主服务器是 Redis 2.8 之前的版本，那么从服务器使用 SYNC 命令来进行同步。
+redis主从同步特点 一个Master可以有多个Slave。 Redis使用异步复制。从2.8开始，Slave会周期性（每秒一次）发起一个ack确认复制流（replication stream）被处理进度； 不仅主服务器可以有从服务器， 从服务器也可以有自己的从服务器， 多个从服务器之间可以构成一个图状结构； 复制在Master端是非阻塞模式的，这意味着即便是多个Slave执行首次同步时，Master依然可以提供查询服务； 复制在Slave端也是非阻塞模式的：如果你在redis.conf做了设置，Slave在执行首次同步的时候仍可以使用旧数据集提供查询；你也可以配置为当Master与Slave失去联系时，让Slave返回客户端一个错误提示； 当Slave要删掉旧的数据集，并重新加载新版数据时，Slave会阻塞连接请求（一般发生在与Master断开重连后的恢复阶段）； 复制功能可以单纯地用于数据冗余（data redundancy），也可以通过让多个从服务器处理只读命令请求来提升扩展性（scalability）： 比如说， 繁重的 SORT 命令可以交给附属节点去运行。 可以通过修改Master端的redis.config来避免在Master端执行持久化操作（Save），由Slave端来执行持久化。 redis replication配置文件详解 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 slaveof [masterip] [masterport] #←该redis为slave ip和port是master的ip和port masterauth &lt;master-password&gt; #←如果master设置了安全密码，此处为master的安全密码 slave-serve-stale-data yes#←当slave丢失master或同步正在进行时，如果发生对slave的服务请求： slave-serve-stale-data no #←slave返回client错误:&#34;SYNC with master in progress&#34; slave-serve-stale-data yes #←slave依然正常提供服务 slave-read-only yes #←设置slave不可以写数据，只能用于同步 repl-ping-slave-period 10 #←发送ping到master的时间间隔 repl-timeout 60 #←IO超时时间 repl-backlog-size 1mb #←backlog的大小，当从库连接不到主库时，backlog的队列能放多少 repl-backlog-ttl 3600 #←backlog的生命周期 min-slaves-max-lag 10 #←延迟小于min-slaves-max-lag秒的slave才认为是健康的slave # 当master不可用,Sentinel会根据slave的优先级选举一个master。 # 最低的优先级的slave,当选master." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/redis-replication.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-11-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-14T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="redis主从复制工作原理"/>
+<meta name="twitter:description" content="Replication的工作原理 设置一个Slave，无论是第一次还是重连到Master，它都会发出一个sync命令。当Master收到sync命令之后，会做两件事：
+Master执行BGSAVE，即在后台保存数据到磁盘（rdb快照文件）。 Master同时将新收到的写入和修改数据集的命令存入缓冲区（非查询类）。 当Master在后台把数据保存到快照文件完成之后，把这个快照传送给Slave，而Slave则把内存清空后，加载该文件到内存中。而Master也会把此前收集到缓冲区中的命令，通过Reids命令协议形式转发给Slave，Slave执行这些命令，实现和Master的同步。Master/Slave此后会不断通过异步方式进行命令的同步。
+注：在redis2.8之前，主从之间一旦发生重连都会引发全量同步操作。但在2.8之后版本，也可能是部分同步操作。
+部分复制 2.8后，当主从之间的连接断开之后，他们之间可以采用持续复制处理方式代替采用全量同步。Master端为复制流维护一个内存缓冲区（in-memory backlog），记录最近发送的复制流命令；同时，Master和Slave之间都维护一个复制偏移量(replication offset)和当前Master服务器ID（Master run id）。当网络断开，Slave尝试重连时：
+如果MasterID相同（即仍是断网前的Master服务器），并且从断开时到当前时刻的历史命令依然在Master的内存缓冲区中存在，则Master会将缺失的这段时间的所有命令发送给Slave执行，然后复制工作就可以继续执行了
+否则，依然需要全量复制操作。
+Redis 2.8 的这个部分重同步特性会用到一个新增的PSYNC内部命令， 而 Redis 2.8以前的旧版本只有SYNC命令，不过，只要从服务器是Redis 2.8或以上的版本，它就会根据主服务器的版本来决定到底是使用 PSYNC还是SYNC。 如果主服务器是 Redis 2.8 或以上版本，那么从服务器使用 PSYNC 命令来进行同步。 如果主服务器是 Redis 2.8 之前的版本，那么从服务器使用 SYNC 命令来进行同步。
+redis主从同步特点 一个Master可以有多个Slave。 Redis使用异步复制。从2.8开始，Slave会周期性（每秒一次）发起一个ack确认复制流（replication stream）被处理进度； 不仅主服务器可以有从服务器， 从服务器也可以有自己的从服务器， 多个从服务器之间可以构成一个图状结构； 复制在Master端是非阻塞模式的，这意味着即便是多个Slave执行首次同步时，Master依然可以提供查询服务； 复制在Slave端也是非阻塞模式的：如果你在redis.conf做了设置，Slave在执行首次同步的时候仍可以使用旧数据集提供查询；你也可以配置为当Master与Slave失去联系时，让Slave返回客户端一个错误提示； 当Slave要删掉旧的数据集，并重新加载新版数据时，Slave会阻塞连接请求（一般发生在与Master断开重连后的恢复阶段）； 复制功能可以单纯地用于数据冗余（data redundancy），也可以通过让多个从服务器处理只读命令请求来提升扩展性（scalability）： 比如说， 繁重的 SORT 命令可以交给附属节点去运行。 可以通过修改Master端的redis.config来避免在Master端执行持久化操作（Save），由Slave端来执行持久化。 redis replication配置文件详解 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 slaveof [masterip] [masterport] #←该redis为slave ip和port是master的ip和port masterauth &lt;master-password&gt; #←如果master设置了安全密码，此处为master的安全密码 slave-serve-stale-data yes#←当slave丢失master或同步正在进行时，如果发生对slave的服务请求： slave-serve-stale-data no #←slave返回client错误:&#34;SYNC with master in progress&#34; slave-serve-stale-data yes #←slave依然正常提供服务 slave-read-only yes #←设置slave不可以写数据，只能用于同步 repl-ping-slave-period 10 #←发送ping到master的时间间隔 repl-timeout 60 #←IO超时时间 repl-backlog-size 1mb #←backlog的大小，当从库连接不到主库时，backlog的队列能放多少 repl-backlog-ttl 3600 #←backlog的生命周期 min-slaves-max-lag 10 #←延迟小于min-slaves-max-lag秒的slave才认为是健康的slave # 当master不可用,Sentinel会根据slave的优先级选举一个master。 # 最低的优先级的slave,当选master."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/redis-replication.html" /><link rel="prev" href="https://cylonchau.github.io/ch1-iptables-introduction.html" /><link rel="next" href="https://cylonchau.github.io/redis-datatype.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "redis主从复制工作原理",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/redis-replication.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  201 ,
+        "url": "https:\/\/cylonchau.github.io\/redis-replication.html","datePublished": "2016-11-23T00:00:00+00:00","dateModified": "2022-12-14T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">redis主从复制工作原理</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-11-23 00:00:00">2016-11-23 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 201 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 1 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#replication的工作原理">Replication的工作原理</a>
+      <ul>
+        <li><a href="#部分复制">部分复制</a></li>
+      </ul>
+    </li>
+    <li><a href="#redis主从同步特点">redis主从同步特点</a></li>
+    <li><a href="#redis-replication配置文件详解">redis replication配置文件详解</a></li>
+    <li><a href="#配置replication">配置Replication</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="replication的工作原理">Replication的工作原理</h2>
+<p>设置一个Slave，无论是第一次还是重连到Master，它都会发出一个sync命令。当Master收到sync命令之后，会做两件事：</p>
+<ol>
+<li>Master执行BGSAVE，即在后台保存数据到磁盘（rdb快照文件）。</li>
+<li>Master同时将新收到的写入和修改数据集的命令存入缓冲区（非查询类）。</li>
+</ol>
+<p>当Master在后台把数据保存到快照文件完成之后，把这个快照传送给Slave，而Slave则把内存清空后，加载该文件到内存中。而Master也会把此前收集到缓冲区中的命令，通过Reids命令协议形式转发给Slave，Slave执行这些命令，实现和Master的同步。Master/Slave此后会不断通过<font style="background:#edfb05;" size=2>异步方式进行命令的同步</font>。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214204055170.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214204055170.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214204055170.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214204055170.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214204055170.png"
+        title="image-20221214204055170" /></p>
+<hr>
+<p><font color=#360c9f size=2><strong>注：在redis2.8之前，主从之间一旦发生重连都会引发全量同步操作。但在2.8之后版本，也可能是部分同步操作。</strong></font></p>
+<hr>
+<h3 id="部分复制">部分复制</h3>
+<p>2.8后，当主从之间的连接断开之后，他们之间可以采用持续复制处理方式代替采用全量同步。Master端为复制流维护一个内存缓冲区（in-memory backlog），记录最近发送的复制流命令；同时，Master和Slave之间都维护一个复制偏移量(replication offset)和当前Master服务器ID（Master run id）。当网络断开，Slave尝试重连时：</p>
+<ol>
+<li>
+<p>如果MasterID相同（即仍是断网前的Master服务器），并且从断开时到当前时刻的历史命令依然在Master的内存缓冲区中存在，则Master会将缺失的这段时间的所有命令发送给Slave执行，然后复制工作就可以继续执行了</p>
+</li>
+<li>
+<p>否则，依然需要全量复制操作。</p>
+</li>
+</ol>
+<p>Redis 2.8 的这个部分重同步特性会用到一个新增的PSYNC内部命令， 而 Redis 2.8以前的旧版本只有SYNC命令，不过，只要从服务器是Redis 2.8或以上的版本，它就会根据主服务器的版本来决定到底是使用 PSYNC还是SYNC。
+如果主服务器是 Redis 2.8 或以上版本，那么从服务器使用 PSYNC 命令来进行同步。
+如果主服务器是 Redis 2.8 之前的版本，那么从服务器使用 SYNC 命令来进行同步。</p>
+<h2 id="redis主从同步特点">redis主从同步特点</h2>
+<ol>
+<li>一个Master可以有多个Slave。</li>
+<li>Redis使用异步复制。从2.8开始，Slave会周期性（每秒一次）发起一个ack确认复制流（replication stream）被处理进度；</li>
+<li>不仅主服务器可以有从服务器， 从服务器也可以有自己的从服务器， 多个从服务器之间可以构成一个图状结构；</li>
+<li>复制在Master端是非阻塞模式的，这意味着即便是多个Slave执行首次同步时，Master依然可以提供查询服务；</li>
+<li>复制在Slave端也是非阻塞模式的：如果你在redis.conf做了设置，Slave在执行首次同步的时候仍可以使用旧数据集提供查询；你也可以配置为当Master与Slave失去联系时，让Slave返回客户端一个错误提示；</li>
+<li>当Slave要删掉旧的数据集，并重新加载新版数据时，Slave会阻塞连接请求（一般发生在与Master断开重连后的恢复阶段）；</li>
+<li>复制功能可以单纯地用于数据冗余（data redundancy），也可以通过让多个从服务器处理只读命令请求来提升扩展性（scalability）： 比如说， 繁重的 SORT 命令可以交给附属节点去运行。</li>
+<li>可以通过修改Master端的redis.config来避免在Master端执行持久化操作（Save），由Slave端来执行持久化。</li>
+</ol>
+<h2 id="redis-replication配置文件详解">redis replication配置文件详解</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">slaveof <span class="o">[</span>masterip<span class="o">]</span> <span class="o">[</span>masterport<span class="o">]</span> <span class="c1">#←该redis为slave ip和port是master的ip和port</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">masterauth &lt;master-password&gt; <span class="c1">#←如果master设置了安全密码，此处为master的安全密码</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">slave-serve-stale-data yes#←当slave丢失master或同步正在进行时，如果发生对slave的服务请求：
+</span></span><span class="line"><span class="cl">slave-serve-stale-data no <span class="c1">#←slave返回client错误:&#34;SYNC with master in progress&#34;</span>
+</span></span><span class="line"><span class="cl">slave-serve-stale-data yes <span class="c1">#←slave依然正常提供服务</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">slave-read-only yes <span class="c1">#←设置slave不可以写数据，只能用于同步</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">repl-ping-slave-period <span class="m">10</span> <span class="c1">#←发送ping到master的时间间隔</span>
+</span></span><span class="line"><span class="cl">repl-timeout <span class="m">60</span> <span class="c1">#←IO超时时间</span>
+</span></span><span class="line"><span class="cl">repl-backlog-size 1mb <span class="c1">#←backlog的大小，当从库连接不到主库时，backlog的队列能放多少</span>
+</span></span><span class="line"><span class="cl">repl-backlog-ttl <span class="m">3600</span> <span class="c1">#←backlog的生命周期</span>
+</span></span><span class="line"><span class="cl">min-slaves-max-lag <span class="m">10</span> <span class="c1">#←延迟小于min-slaves-max-lag秒的slave才认为是健康的slave</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 当master不可用,Sentinel会根据slave的优先级选举一个master。</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 最低的优先级的slave,当选master.而配置成0,永远不会被选举</span>
+</span></span><span class="line"><span class="cl">slave-priority <span class="m">100</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="配置replication">配置Replication</h2>
+<p><em><strong>当前生效：在命令行输入以下命令</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">redis-cli slaveof 127.0.0.1 <span class="m">6379</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><em><strong>永久生效：修改配置文件&quot;slaveof&quot;选项</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">slaveof <span class="o">[</span>masterip<span class="o">]</span> <span class="o">[</span>masterport<span class="o">]</span>
+</span></span><span class="line"><span class="cl">slaveof 127.0.0.1 <span class="m">6379</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这样就可以保证Redis_6380服务程序在每次启动后都会主动建立与Redis_6379的Replication连接了。</p>
+<p><em><strong>查看从库的同步情况</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6380&gt; MONITOR   <span class="c1">#←监听服务器实时收到的所有请求</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">1492710733.401532 <span class="o">[</span><span class="m">0</span> 127.0.0.1:6379<span class="o">]</span> <span class="s2">&#34;PING&#34;</span> <span class="c1">#← 从库会ping主库</span>
+</span></span><span class="line"><span class="cl">1492710743.510808 <span class="o">[</span><span class="m">0</span> 127.0.0.1:6379<span class="o">]</span> <span class="s2">&#34;PING&#34;</span>
+</span></span><span class="line"><span class="cl">1492711152.901232 <span class="o">[</span><span class="m">0</span> 127.0.0.1:6379<span class="o">]</span> <span class="s2">&#34;sadd&#34;</span> <span class="s2">&#34;web_site&#34;</span> <span class="s2">&#34;www.baidu.com&#34;</span> <span class="s2">&#34;www.google.com&#34;</span> <span class="s2">&#34;www.qq.com&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><em><strong>获取有关服务器的信息和统计信息</strong></em></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6380&gt; info Replication
+</span></span><span class="line"><span class="cl">Replication
+</span></span><span class="line"><span class="cl">role:slave
+</span></span><span class="line"><span class="cl">master_host:127.0.0.1
+</span></span><span class="line"><span class="cl">master_port:6379
+</span></span><span class="line"><span class="cl">master_link_status:up
+</span></span><span class="line"><span class="cl">master_last_io_seconds_ago:9
+</span></span><span class="line"><span class="cl">master_sync_in_progress:0
+</span></span><span class="line"><span class="cl">slave_repl_offset:8999
+</span></span><span class="line"><span class="cl">slave_priority:100
+</span></span><span class="line"><span class="cl">slave_read_only:1
+</span></span><span class="line"><span class="cl">connected_slaves:0
+</span></span><span class="line"><span class="cl">master_repl_offset:0
+</span></span><span class="line"><span class="cl">repl_backlog_active:0
+</span></span><span class="line"><span class="cl">repl_backlog_size:1048576
+</span></span><span class="line"><span class="cl">repl_backlog_first_byte_offset:0
+</span></span><span class="line"><span class="cl">repl_backlog_histlen:0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><em><strong>当前主从同步存在的问题</strong></em>
+由于master和slave服务器不是Redis自动选举产生，需要人工参与，因此主从倒换无法自动完成。这样就存在一个问题，什么时候以及由谁来触发倒换。redis2.8的master和slave服务器是Redis自动选举产生了。</p>
+<p>redis高可用 <a href="http://www.cnblogs.com/Xrinehart/p/3501372.html" target="_blank" rel="noopener noreffer">http://www.cnblogs.com/Xrinehart/p/3501372.html</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-14 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/redis-replication.html" data-title="redis主从复制工作原理" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/redis-replication.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/redis-replication.html" data-title="redis主从复制工作原理" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/redis-replication.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/redis-replication.html" data-title="redis主从复制工作原理"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/redis-replication.html" data-title="redis主从复制工作原理"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/redis-replication.html" data-title="redis主从复制工作原理"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch1-iptables-introduction.html" class="prev" rel="prev" title="ch1 iptables介绍"><i class="fas fa-angle-left fa-fw"></i>ch1 iptables介绍</a>
+            <a href="/redis-datatype.html" class="next" rel="next" title="redis数据类型">redis数据类型<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-11-23T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"redis主从复制工作原理"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

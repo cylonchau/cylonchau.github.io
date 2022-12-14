@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>redis事务与发布订阅 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="redis事务与发布订阅" />
+<meta property="og:description" content="发布与订阅 Publish/Subscribe 发布订阅(pub/sub)是一种消息通信模式，主要的目的是解耦消息发布者和消息订阅者之间的藕合，这点和设计模式中的观察者模式比较相似。pub/sub不仅仅解决发布者和订阅者直接代码级别耦合也解决两者在物理部署上的耦合。Redis作为一个pub/sub的server,在订阅者和发布者之间起到了消息路由的功能。订阅者可以通过subscribe和psubscribe命令向Redis server订阅自己感兴趣的消息类型，Redis将消息类型称为通道(channel)。当发布者通过publish命令向Redis server发送特定类型的消息时。订阅该消息类型的全部client
+都会收到此消息。这里消息的传递是多对多的。一个client可以订阅多个channel,也可以向多个channel发送消息。
+Redis支持这样一种特性，你可以将数据推到某个信息管道中，然后其它人可以通过订阅这些管道来获取推送过来的信息。
+用一个客户端订阅频道 1 2 3 4 5 6 psubscribe new #### 1.批量订阅 127.0.0.1:6379&gt; publish news news-test (integer) 1 127.0.0.1:6379&gt; publish video video-test (integer) 1 此时可以见到接受的信息
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 127.0.0.1:6379&gt; psubscribe news video Reading messages... (press Ctrl-C to quit) 1) &#34;psubscribe&#34; 2) &#34;news&#34; 3) (integer) 1 1) &#34;psubscribe&#34; 2) &#34;video&#34; 3) (integer) 2 1) &#34;pmessage&#34; 2) &#34;news&#34; 3) &#34;news&#34; 4) &#34;news-test&#34; 1) &#34;pmessage&#34; 2) &#34;video&#34; 3) &#34;video&#34; 4) &#34;video-test&#34; 数据过期设置及机制 Redis key的过期机制 Redis对过期键采用了lazy expiration：在访间key的时候判定key是否过期，如果过期，则进行过期处理（过期的key没有被访间可能不会被删除）。其次，每秒对volatile keys进行抽样测试，如果有过期键，那么对所有过期key进行处理。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/redis-subscribetransaction.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-11-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-14T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="redis事务与发布订阅"/>
+<meta name="twitter:description" content="发布与订阅 Publish/Subscribe 发布订阅(pub/sub)是一种消息通信模式，主要的目的是解耦消息发布者和消息订阅者之间的藕合，这点和设计模式中的观察者模式比较相似。pub/sub不仅仅解决发布者和订阅者直接代码级别耦合也解决两者在物理部署上的耦合。Redis作为一个pub/sub的server,在订阅者和发布者之间起到了消息路由的功能。订阅者可以通过subscribe和psubscribe命令向Redis server订阅自己感兴趣的消息类型，Redis将消息类型称为通道(channel)。当发布者通过publish命令向Redis server发送特定类型的消息时。订阅该消息类型的全部client
+都会收到此消息。这里消息的传递是多对多的。一个client可以订阅多个channel,也可以向多个channel发送消息。
+Redis支持这样一种特性，你可以将数据推到某个信息管道中，然后其它人可以通过订阅这些管道来获取推送过来的信息。
+用一个客户端订阅频道 1 2 3 4 5 6 psubscribe new #### 1.批量订阅 127.0.0.1:6379&gt; publish news news-test (integer) 1 127.0.0.1:6379&gt; publish video video-test (integer) 1 此时可以见到接受的信息
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 127.0.0.1:6379&gt; psubscribe news video Reading messages... (press Ctrl-C to quit) 1) &#34;psubscribe&#34; 2) &#34;news&#34; 3) (integer) 1 1) &#34;psubscribe&#34; 2) &#34;video&#34; 3) (integer) 2 1) &#34;pmessage&#34; 2) &#34;news&#34; 3) &#34;news&#34; 4) &#34;news-test&#34; 1) &#34;pmessage&#34; 2) &#34;video&#34; 3) &#34;video&#34; 4) &#34;video-test&#34; 数据过期设置及机制 Redis key的过期机制 Redis对过期键采用了lazy expiration：在访间key的时候判定key是否过期，如果过期，则进行过期处理（过期的key没有被访间可能不会被删除）。其次，每秒对volatile keys进行抽样测试，如果有过期键，那么对所有过期key进行处理。"/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/redis-subscribetransaction.html" /><link rel="prev" href="https://cylonchau.github.io/redis-persist.html" /><link rel="next" href="https://cylonchau.github.io/redis-install.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "redis事务与发布订阅",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/redis-subscribetransaction.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  410 ,
+        "url": "https:\/\/cylonchau.github.io\/redis-subscribetransaction.html","datePublished": "2016-11-23T00:00:00+00:00","dateModified": "2022-12-14T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">redis事务与发布订阅</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-11-23 00:00:00">2016-11-23 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 410 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 2 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#发布与订阅">发布与订阅</a>
+      <ul>
+        <li><a href="#publishsubscribe">Publish/Subscribe</a></li>
+        <li><a href="#用一个客户端订阅频道">用一个客户端订阅频道</a></li>
+      </ul>
+    </li>
+    <li><a href="#数据过期设置及机制">数据过期设置及机制</a>
+      <ul>
+        <li><a href="#redis-key的过期机制">Redis key的过期机制</a></li>
+        <li><a href="#expire设置key的生命周期">expire设置key的生命周期</a></li>
+        <li><a href="#设置指定时间过期">设置指定时间过期</a></li>
+        <li><a href="#创建key时设置生命周期">创建key时设置生命周期</a></li>
+      </ul>
+    </li>
+    <li><a href="#事务">事务</a>
+      <ul>
+        <li><a href="#用法">用法</a></li>
+        <li><a href="#放弃事务">放弃事务</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="发布与订阅">发布与订阅</h2>
+<h3 id="publishsubscribe">Publish/Subscribe</h3>
+<p>发布订阅(pub/sub)是一种消息通信模式，主要的目的是解耦消息发布者和消息订阅者之间的藕合，这点和设计模式中的观察者模式比较相似。pub/sub不仅仅解决发布者和订阅者直接代码级别耦合也解决两者在物理部署上的耦合。Redis作为一个pub/sub的server,在订阅者和发布者之间起到了消息路由的功能。订阅者可以通过subscribe和psubscribe命令向Redis server订阅自己感兴趣的消息类型，Redis将消息类型称为通道(channel)。当发布者通过publish命令向Redis server发送特定类型的消息时。订阅该消息类型的全部client</p>
+<p>都会收到此消息。这里消息的传递是多对多的。一个client可以订阅多个channel,也可以向多个channel发送消息。</p>
+<p>Redis支持这样一种特性，你可以将数据推到某个信息管道中，然后其它人可以通过订阅这些管道来获取推送过来的信息。</p>
+<h3 id="用一个客户端订阅频道">用一个客户端订阅频道</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">psubscribe new
+</span></span><span class="line"><span class="cl"><span class="c1">#### 1.批量订阅</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; publish news news-test
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; publish video video-test
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>此时可以见到接受的信息</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; psubscribe news video
+</span></span><span class="line"><span class="cl">Reading messages... <span class="o">(</span>press Ctrl-C to quit<span class="o">)</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;psubscribe&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;news&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;psubscribe&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;video&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="o">(</span>integer<span class="o">)</span> <span class="m">2</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;pmessage&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;news&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;news&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;news-test&#34;</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;pmessage&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;video&#34;</span>
+</span></span><span class="line"><span class="cl">3<span class="o">)</span> <span class="s2">&#34;video&#34;</span>
+</span></span><span class="line"><span class="cl">4<span class="o">)</span> <span class="s2">&#34;video-test&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="数据过期设置及机制">数据过期设置及机制</h2>
+<h3 id="redis-key的过期机制">Redis key的过期机制</h3>
+<p>Redis对过期键采用了lazy expiration：在访间key的时候判定key是否过期，如果过期，则进行过期处理<font style="background:#bafe01;" size=2>（过期的key没有被访间可能不会被删除）</font>。其次，每秒对volatile keys进行抽样测试，如果有过期键，那么对所有过期key进行处理。</p>
+<h3 id="expire设置key的生命周期">expire设置key的生命周期</h3>
+<p><strong>使用ttl命令可以获得某个key的过期时间</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl <span class="nb">test</span> 
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> -1  <span class="c1">#&lt;== -1代表永久</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl test1
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> -2  <span class="c1">#&lt;==redis2.8后不存在的key返回-2</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>expire：设置一个key的生命周期，单位秒</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; expire site <span class="m">10240000</span>  <span class="c1">#&lt;==设置key多长时间后过期,单位秒</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl site
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">10239996</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>pexpire：以毫秒数设置key的生命周期</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; pexpire a <span class="m">10000</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">8</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>pttl：以毫秒返回生命周期</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; pttl a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">5432</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><strong>persist：将key设置为永久有效</strong></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; pexpire a <span class="m">10000</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; persist a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl a
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> -1
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="设置指定时间过期">设置指定时间过期</h3>
+<p>unix时间戳转换：http://tool.chinaz.com/Tools/unixtime.aspx</p>
+<p>linux下获得unix时间戳</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>root@redis ~<span class="o">]</span><span class="c1"># date +%s  #&lt;==获得当前时间的时间戳</span>
+</span></span><span class="line"><span class="cl"><span class="m">1492845155</span>  
+</span></span><span class="line"><span class="cl"><span class="o">[</span>root@redis ~<span class="o">]</span><span class="c1"># date +%s -d &#39;2017-4-27 18:10&#39; #&lt;==获得指定时间的时间戳</span>
+</span></span><span class="line"><span class="cl"><span class="m">1493287800</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="创建key时设置生命周期">创建key时设置生命周期</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> test-expire test-tmp ex <span class="m">10</span>  <span class="c1">#&lt;==ex/px 秒/毫秒</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; ttl test-expire
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">4</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="事务">事务</h2>
+<p>redis对事务的支持目前还比较简单。redis只能保证一个client发起的事务中的命令可以连续的执行，而中间不会插入其他client的命令。 由于redis是单线程来处理所有client的请求的，所以做到这点是很容易的。一般情况下redis在接受到一个client发来的命令后会立即处理并返回处理结果，但是当一个client在一个连接中发出multi命令有，这个连接会进入一个事务上下文，该连接后续的命令并不是立即执行，而是先放到一个队列中。当从此连接受到exec命令后，redis会顺序的执行队列中的所有命令。并将所有命令的运行结果打包到一起返回给client，然后此连接就结束事务上下文。</p>
+<h3 id="用法">用法</h3>
+<p><em><strong>选项详解</strong></em></p>
+<table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MULTI</td>
+<td>于开启一个事务，它总是返回 OK</td>
+</tr>
+<tr>
+<td>DISCARD</td>
+<td>清空事务队列， 并放弃执行事务。</td>
+</tr>
+<tr>
+<td>EXEC</td>
+<td>负责触发并执行事务中的所有命令</td>
+</tr>
+<tr>
+<td>WATCH</td>
+<td>为Redis 事务提供 check-and-set （CAS）行为；<br>被WATCH的键会被监视，并会发觉这些键是否被改动过了。 如果有至少一个被监执行之前被修改了， 那么整个事务都会被取消。</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> num <span class="m">1000</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">set</span> num2 <span class="m">2000</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; multi  <span class="c1">#&lt;==开启队列</span>
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; decrby num2 <span class="m">1000</span> <span class="c1">#&lt;==将num2的值减少1000</span>
+</span></span><span class="line"><span class="cl">QUEUED <span class="c1">#&lt;==当客户端处于事务状态时,所有传入的命令都会返回一个内容为QUEUED的状态回复</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get num2
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;1000&#34;</span> <span class="c1">#&lt;==这时在当前查看num2的值，发现已经被更改了</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get num2 
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;2000&#34;</span> <span class="c1">#&lt;==此时在其他客户端查看num2的值</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">exec</span> <span class="c1">#&lt;==执行队列中的语句</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)(</span>integer<span class="o">)</span> <span class="m">1000</span> 
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; get num2 <span class="c1">#&lt;==这时在其他客户端查看num2</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;1000&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><hr>
+<p>注：即使事务中有某条/某些命令执行失败了， 事务队列中的其他命令仍然会继续执行，Redis 不会停止执行事务中的命令。</p>
+<hr>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; decrby num1 <span class="m">5</span>
+</span></span><span class="line"><span class="cl">QUEUED
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; decrby num2 aaa
+</span></span><span class="line"><span class="cl">QUEUED
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">exec</span>
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="o">(</span>integer<span class="o">)</span> -5
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="o">(</span>error<span class="o">)</span> ERR value is not an integer or out of range
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="放弃事务">放弃事务</h3>
+<p>执行 DISCARD 命令，事务会被放弃，事务队列会被清空，并且客户端会从事务状态中退出</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; multi
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">QUEUED
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; discard
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; keys *
+</span></span><span class="line"><span class="cl">1<span class="o">)</span> <span class="s2">&#34;num1&#34;</span>
+</span></span><span class="line"><span class="cl">2<span class="o">)</span> <span class="s2">&#34;num2&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p><em><strong>使用 check-and-set 操作实现乐观锁</strong></em></p>
+</blockquote>
+<p>被 WATCH 的键会被监视，并会发觉这些键是否被改动过了。 如果有至少一个被监视的键在 EXEC 执行之前被修改了， 那么整个事务都会被取消， EXEC 返回空多条批量回复（null multi-bulk reply）来表示事务已经失败。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">127.0.0.1:6379&gt; watch num1
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; multi
+</span></span><span class="line"><span class="cl">OK
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; incr num1 <span class="c1">#&lt;==在其它客户端修改num1</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>integer<span class="o">)</span> <span class="m">101</span>
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; incr num1
+</span></span><span class="line"><span class="cl">QUEUED
+</span></span><span class="line"><span class="cl">127.0.0.1:6379&gt; <span class="nb">exec</span>
+</span></span><span class="line"><span class="cl"><span class="o">(</span>nil<span class="o">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>参考资料 <a href="http://doc.redisfans.com/topic/transaction.html" target="_blank" rel="noopener noreffer">http://doc.redisfans.com/topic/transaction.html</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-14 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-title="redis事务与发布订阅" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-title="redis事务与发布订阅" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/redis-subscribetransaction.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-title="redis事务与发布订阅"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-title="redis事务与发布订阅"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/redis-subscribetransaction.html" data-title="redis事务与发布订阅"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/redis-persist.html" class="prev" rel="prev" title="redis数据持久化"><i class="fas fa-angle-left fa-fw"></i>redis数据持久化</a>
+            <a href="/redis-install.html" class="next" rel="next" title="redis安装">redis安装<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-11-23T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"redis事务与发布订阅"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

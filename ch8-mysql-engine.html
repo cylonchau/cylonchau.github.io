@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>MySQL存储引擎 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="MySQL存储引擎" />
+<meta property="og:description" content="[toc]
+什么是存储引擎 在经清楚什么是存储引擎之前，我们先来个比喻，我们都知道录制一个视频文件，可以转换成不同的格式如mp4 avi wmv等，而存在我们电脑的磁盘上也会存在于不同类型的文件系统中如windows里常见的ntfs fat32，存在于linux常见的ext3 ext4 xfs，但是，给我们或者用户看到实际视频内容都是一样的。直观区别是，占用系统的空间大小与清晰程度可能不一样。
+那么数据库表里的数据存储在数据库里及磁盘上和上述的视频格式及存储磁盘文件系统格式特征类似，也有很多中存储方式。
+但是，对于用户和应用程序来说同样一张表的数据，无论用什么引擎来存储，用户看到的数据都是一样的。不同的引擎存储，引擎功能，占用的空间大小，读取性能等可能有区别。
+MySQL最常用的存储引擎为：MyISAM和InnoDB。全文索引：目前MySQL5.5版本，myisam和inondb都已经支持。
+MySQL存储引擎的架构 MySQL的存储引擎是MySQL数据库的重要组成部分，MySQL常用的表的引擎为MyISAM和InnoDB两种。MySQL的每种存储引擎在MySQL里是通过插件的方式使用的，MySQL可以同时支持多种存储引擎。下面是MySQL存储引擎体系结构简图：
+MyISAM引擎 MyISAM引擎是MySQL关系数据库管理系统的默认存储引擎（MySQL 5.5.5以前）。这种MySQL表存储结构从旧的ISAM代码扩展出许多有用的功能。在新版本MySQL中，InnoDB引擎由于其对事务参照完整性，以及更高的并发性等优点开始逐步的取代MyISAM引擎，
+“InnoDB is the default storage engine as of MySQL 5.5.5。MyISAM: The MySQL storage engine that is used the most in Web,data warehousing,and other application environments.MyISAM is supported in all MySQL configurations,an is the default storage engine prior to MySQL 5.5.5。”
+查看MySQL5.1数据库默认引擎
+1 2 3 4 5 6 7 mysql&gt; show create table test1\G *************************** 1." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/ch8-mysql-engine.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2017-05-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2022-12-14T23:00:36+08:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="MySQL存储引擎"/>
+<meta name="twitter:description" content="[toc]
+什么是存储引擎 在经清楚什么是存储引擎之前，我们先来个比喻，我们都知道录制一个视频文件，可以转换成不同的格式如mp4 avi wmv等，而存在我们电脑的磁盘上也会存在于不同类型的文件系统中如windows里常见的ntfs fat32，存在于linux常见的ext3 ext4 xfs，但是，给我们或者用户看到实际视频内容都是一样的。直观区别是，占用系统的空间大小与清晰程度可能不一样。
+那么数据库表里的数据存储在数据库里及磁盘上和上述的视频格式及存储磁盘文件系统格式特征类似，也有很多中存储方式。
+但是，对于用户和应用程序来说同样一张表的数据，无论用什么引擎来存储，用户看到的数据都是一样的。不同的引擎存储，引擎功能，占用的空间大小，读取性能等可能有区别。
+MySQL最常用的存储引擎为：MyISAM和InnoDB。全文索引：目前MySQL5.5版本，myisam和inondb都已经支持。
+MySQL存储引擎的架构 MySQL的存储引擎是MySQL数据库的重要组成部分，MySQL常用的表的引擎为MyISAM和InnoDB两种。MySQL的每种存储引擎在MySQL里是通过插件的方式使用的，MySQL可以同时支持多种存储引擎。下面是MySQL存储引擎体系结构简图：
+MyISAM引擎 MyISAM引擎是MySQL关系数据库管理系统的默认存储引擎（MySQL 5.5.5以前）。这种MySQL表存储结构从旧的ISAM代码扩展出许多有用的功能。在新版本MySQL中，InnoDB引擎由于其对事务参照完整性，以及更高的并发性等优点开始逐步的取代MyISAM引擎，
+“InnoDB is the default storage engine as of MySQL 5.5.5。MyISAM: The MySQL storage engine that is used the most in Web,data warehousing,and other application environments.MyISAM is supported in all MySQL configurations,an is the default storage engine prior to MySQL 5.5.5。”
+查看MySQL5.1数据库默认引擎
+1 2 3 4 5 6 7 mysql&gt; show create table test1\G *************************** 1."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/ch8-mysql-engine.html" /><link rel="prev" href="https://cylonchau.github.io/ch7-mysql-non-interact.html" /><link rel="next" href="https://cylonchau.github.io/haproxy.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "MySQL存储引擎",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/ch8-mysql-engine.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "databases","wordcount":  786 ,
+        "url": "https:\/\/cylonchau.github.io\/ch8-mysql-engine.html","datePublished": "2017-05-23T00:00:00+00:00","dateModified": "2022-12-14T23:00:36+08:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">MySQL存储引擎</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-05-23 00:00:00">2017-05-23 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 786 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#什么是存储引擎">什么是存储引擎</a></li>
+    <li><a href="#mysql存储引擎的架构">MySQL存储引擎的架构</a></li>
+    <li><a href="#myisam引擎">MyISAM引擎</a>
+      <ul>
+        <li><a href="#myisam引擎特点">MyISAM引擎特点</a></li>
+        <li><a href="#myisam引擎适用的生产业务场景">MyISAM引擎适用的生产业务场景</a></li>
+      </ul>
+    </li>
+    <li><a href="#innodb引擎">InnoDB引擎</a>
+      <ul>
+        <li><a href="#innodb引擎特点">InnoDB引擎特点</a></li>
+        <li><a href="#innodb引擎使用的生产业务场景">innodb引擎使用的生产业务场景</a></li>
+        <li><a href="#innodb引擎调优精要">innodb引擎调优精要</a></li>
+      </ul>
+    </li>
+    <li><a href="#mysql引擎特别说明">MySQL引擎特别说明</a></li>
+    <li><a href="#如何确定mysql服务器有那些引擎可用">如何确定MySQL服务器有那些引擎可用？</a></li>
+    <li><a href="#生产场景中批量更改mysql引擎">生产场景中批量更改MySQL引擎</a></li>
+    <li><a href="#有关mysql引擎常见企业面试题">有关MySQL引擎常见企业面试题</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><p>[toc]</p>
+<h2 id="什么是存储引擎">什么是存储引擎</h2>
+<p>在经清楚什么是存储引擎之前，我们先来个比喻，我们都知道录制一个视频文件，可以转换成不同的格式如mp4 avi wmv等，而存在我们电脑的磁盘上也会存在于不同类型的文件系统中如windows里常见的ntfs fat32，存在于linux常见的ext3 ext4 xfs，但是，给我们或者用户看到实际视频内容都是一样的。直观区别是，占用系统的空间大小与清晰程度可能不一样。</p>
+<p>那么数据库表里的数据存储在数据库里及磁盘上和上述的视频格式及存储磁盘文件系统格式特征类似，也有很多中存储方式。</p>
+<p>但是，对于用户和应用程序来说同样一张表的数据，无论用什么引擎来存储，用户看到的数据都是一样的。不同的引擎存储，引擎功能，占用的空间大小，读取性能等可能有区别。</p>
+<p>MySQL最常用的存储引擎为：MyISAM和InnoDB。全文索引：目前MySQL5.5版本，myisam和inondb都已经支持。</p>
+<h2 id="mysql存储引擎的架构">MySQL存储引擎的架构</h2>
+<p>MySQL的存储引擎是MySQL数据库的重要组成部分，MySQL常用的表的引擎为MyISAM和InnoDB两种。MySQL的每种存储引擎在MySQL里是通过插件的方式使用的，MySQL可以同时支持多种存储引擎。下面是MySQL存储引擎体系结构简图：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201434104.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201434104.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201434104.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201434104.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201434104.png"
+        title="image-20221214201434104" /></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201452181.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201452181.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201452181.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201452181.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201452181.png"
+        title="image-20221214201452181" /></p>
+<h2 id="myisam引擎">MyISAM引擎</h2>
+<p>MyISAM引擎是MySQL关系数据库管理系统的默认存储引擎（MySQL 5.5.5以前）。这种MySQL表存储结构从旧的ISAM代码扩展出许多有用的功能。在新版本MySQL中，InnoDB引擎由于其对事务参照完整性，以及更高的并发性等优点开始逐步的取代MyISAM引擎，</p>
+<blockquote>
+<p>“InnoDB is the default storage engine as of MySQL 5.5.5。MyISAM: The MySQL storage engine that is used the most in Web,data warehousing,and other application environments.MyISAM is supported in all MySQL configurations,an is the default storage engine prior to MySQL 5.5.5。”</p>
+</blockquote>
+<p>查看MySQL5.1数据库默认引擎</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show create table test1<span class="se">\G</span>
+</span></span><span class="line"><span class="cl">*************************** 1. row ***************************
+</span></span><span class="line"><span class="cl">       Table: test1
+</span></span><span class="line"><span class="cl">Create Table: CREATE TABLE <span class="sb">`</span>test1<span class="sb">`</span> <span class="o">(</span>
+</span></span><span class="line"><span class="cl">  <span class="sb">`</span>name<span class="sb">`</span> int<span class="o">(</span>11<span class="o">)</span> DEFAULT NULL
+</span></span><span class="line"><span class="cl"><span class="o">)</span> <span class="nv">ENGINE</span><span class="o">=</span>MyISAM DEFAULT <span class="nv">CHARSET</span><span class="o">=</span>latin1
+</span></span><span class="line"><span class="cl"><span class="m">1</span> row in <span class="nb">set</span> <span class="o">(</span>0.00 sec<span class="o">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>提示：MySQL 5.1数据库的默认存储引擎为MyISAM。</p>
+<p>每一个MyISAM的表都对应于硬盘上的三个文件。这三个文件有一样的文件名，但是有不同的扩展名指示其类型用途：</p>
+<hr>
+<p>.frm文件保存表的定义，这个文件并不是MyISAM引擎的一部分，而是服务器的一部分</p>
+<p>.MYD保存表的数据</p>
+<p>.MYI是表的索引文件。</p>
+<p># MYD和MYI是MyISAM的关键点</p>
+<hr>
+<p>范例</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ll /var/lib/mysql/mysql/
+</span></span><span class="line"><span class="cl">user.frm	<span class="c1"># 表的定义</span>
+</span></span><span class="line"><span class="cl">user.MYD	<span class="c1"># data</span>
+</span></span><span class="line"><span class="cl">user.MYI	<span class="c1"># index</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>MySQL系统的表多数属于MyISAM引擎</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ls /var/lib/mysql/mysql/
+</span></span><span class="line"><span class="cl">columns_priv.frm   help_keyword.frm      proc.frm                   time_zone_leap_second.MYI
+</span></span><span class="line"><span class="cl">columns_priv.MYD   help_keyword.MYD      proc.MYD                   time_zone.MYD
+</span></span><span class="line"><span class="cl">columns_priv.MYI   help_keyword.MYI      proc.MYI                   time_zone.MYI
+</span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>“<strong>为什么MySQL5.5.5以前默认的是MyISAM引擎，而MySQL5.5.5以后默认是innodb</strong>”</p>
+<p>答：和互联网发展有关，互联网诞生之初。基本上已读为主，那时机器硬件性能低。设计数据库时需要占用资源少的数据库。5.5之后选择了innodb</p>
+<p>“<strong>为什么mysql库里内部表默认是myisam</strong>”</p>
+<p>web2.0时代：以用户为中心的时代多数平台都是用户上传其他用户读）在这种时代myisam引擎就胜任不了了，顾mysql5。</p>
+</blockquote>
+<h3 id="myisam引擎特点">MyISAM引擎特点</h3>
+<p><strong><font color="#0215cd" size=3> 至少掌握5点</font></strong></p>
+<ol>
+<li>
+<p><strong>不支持事务</strong> 事务是指逻辑上的一组操作，组成这组操作的各个单元，要么全成功要么全失败</p>
+</li>
+<li>
+<p><strong>表级锁定</strong>  数据更新时锁定整个表：其锁定机制是表级锁定，这虽然可以让锁定的实现成本很小但是也同时降低了其开发性能</p>
+<hr>
+<p>举例子：上厕所，还有很多小便坑，锁上外面的们，一个人上厕所，谁也去不了厕所了。</p>
+<p>表级锁定并发处理降低，但是提升了效率 举例：商场有小偷，不知道在哪，锁住一楼大门，然后逐一摸排</p>
+<p>缺点是，别人想出出不去了。但是对于保安来说是最有效的方法。</p>
+<hr>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201921894.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201921894.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201921894.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201921894.png 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214201921894.png"
+        title="image-20221214201921894" /></p>
+</li>
+<li>
+<p><strong>读写互相阻塞</strong>  不仅会在写入的时候阻塞读取，myisam还会在读取的时候阻塞写入，但读本身并不会阻塞另外的读</p>
+</li>
+<li>
+<p><strong>只会缓存索引</strong>  MyISAM可以通过key_buffer_size（只是myisam）缓存索引，以大大提高访问性能较少磁盘IO，但这个缓存区只会缓存索引，而不会缓存数据</p>
+</li>
+<li>
+<p>读取速度较快。占用资源相对少。</p>
+</li>
+<li>
+<p>不支持外键约束，但支持全文索引。</p>
+</li>
+<li>
+<p>MyISAM引擎是MySQL5.5.5 前默认的存储引擎 ( “is the default storage engine prior to MySQL 5.5.5” )。</p>
+</li>
+</ol>
+<h3 id="myisam引擎适用的生产业务场景">MyISAM引擎适用的生产业务场景</h3>
+<ol>
+<li>不需要事务支持的业务（例如转账就不行）。</li>
+<li>一般为读数据比较多的应用，读写都频繁场景不适合，读多或者写多的都适合。</li>
+<li>读写并发相对较低的业务（纯读纯写高并发也可以）（锁机制问题）。</li>
+<li>数据修改相对少的业务（阻塞问题）。</li>
+<li>已读为主的业务，例如：读数据库系统表、www blog 图片信息数据库 用户数据库 商品库等业务。</li>
+<li>对数据一致性要求不是非常高的业务（MySQL 5.6前不支持事务）。</li>
+<li>硬件资源比较差的机器都可以用myisam（占用资源少）。</li>
+<li>使用读写分离的MySQL从库可以使用myisam（5年前提到较多）</li>
+</ol>
+<p>小结：单一对数据库的操作都可以使用myisam，所谓单一就是尽量纯读，或纯写（insert update delete）等</p>
+<h2 id="innodb引擎">InnoDB引擎</h2>
+<p>Innodb引擎是MySQL数据库的另一个重要的存储引擎，正式成为MySQLAB所发行新版的标准，被包含在所有二进制安装包里。和其他的存储引擎相比，InnoDB引擎的优势是支持兼容ACID的事务（类似于PostgreSQL），以及参数完整性（即对外键的支持）。Oracle公司2005年手抽了Innobase。innobase采用双认证授权。它使用GNU发型，也允许其他想将InnoDB结合到商业软件的团体获得授权。</p>
+<p>更多参考 reman-5.5-en.html-chapter/storage-engines.html</p>
+<hr>
+<p>提示：只有test1.frm没有MyISAM对应的数据文件和索引文件了。</p>
+<hr>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ll test/
+</span></span><span class="line"><span class="cl">ibdata1
+</span></span><span class="line"><span class="cl">ib_logfile0 <span class="c1">#</span>
+</span></span><span class="line"><span class="cl">ib_logfile1	<span class="c1"># 这里是存放Innodb数据文件</span>
+</span></span><span class="line"><span class="cl">ib_logfile2 <span class="c1">#</span>
+</span></span><span class="line"><span class="cl">test1.frm	
+</span></span><span class="line"><span class="cl">test2.frm
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="innodb引擎特点">InnoDB引擎特点</h3>
+<ol>
+<li>支持事务：支持4个事务隔离级别，支持多版本读。</li>
+<li>行级锁定（更新时一般是锁定当前行）：通过索引实现，全表扫描仍然会是表锁，注意间隙锁的影响。</li>
+<li>读写阻塞与事务隔离级别相关。</li>
+<li>具有非常搞笑的缓存特性：能缓存索引，也能缓存数据。</li>
+<li>整个表和主键以Cluster方式存储，组成一颗平衡树。</li>
+<li>所有Secondary Index都会保存主键信息。</li>
+<li>支持分区，表空间，类似oracle数据库</li>
+<li>支持外键约束，5.5前不支持全文索引</li>
+<li>和MyISAM引擎比，InnoDB对硬件资源要求更高</li>
+</ol>
+<blockquote>
+<p>面试必问</p>
+<p>innodb特点：面试必答项：</p>
+<ol>
+<li>row-level locking</li>
+<li>full-text search indexs</li>
+<li>data caches</li>
+<li>index caches</li>
+<li>transactions</li>
+<li>占用资源多</li>
+<li>读写阻塞与事务隔离级别相关</li>
+<li>外键</li>
+</ol>
+</blockquote>
+<h3 id="innodb引擎使用的生产业务场景">innodb引擎使用的生产业务场景</h3>
+<ol>
+<li>需要事务支持的业务（具有较好的事务特性）。</li>
+<li>行级锁定对高并发有很好的适应能力，但需要确保查询是通过索引完成。</li>
+<li>数据读写及更新都较为频繁的场景，如:BBS SNS 微博，微信等。</li>
+<li>数据一致性要求较高的业务，例如：充值转账，银行卡转账。</li>
+<li>硬件设备内存较大，可以利用InnoDB较好的缓存能力来提高内存利用率，尽可能减少磁盘IO</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">innodb_additional_mem_pool_size = 4M
+</span></span><span class="line"><span class="cl">innodb_buffer_pool_size = 32M
+</span></span><span class="line"><span class="cl">innodb_data_file_path = ibdata1:128M:autoextend
+</span></span><span class="line"><span class="cl">innodb_file_io_threads = 4
+</span></span><span class="line"><span class="cl">innodb_thread_concurrency = 8
+</span></span><span class="line"><span class="cl">innodb_flush_log_at_trx_commit = 2
+</span></span><span class="line"><span class="cl">innodb_log_buffer_size = 2M
+</span></span><span class="line"><span class="cl">innodb_log_file_size = 4M
+</span></span><span class="line"><span class="cl">innodb_log_files_in_group = 3
+</span></span><span class="line"><span class="cl">innodb_max_dirty_pages_pct = 90
+</span></span><span class="line"><span class="cl">innodb_lock_wait_timeout = 120
+</span></span><span class="line"><span class="cl">innodb_file_per_table = 0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>共享表空间对应物理数据文件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ll test/
+</span></span><span class="line"><span class="cl">ibdata1
+</span></span><span class="line"><span class="cl">ib_logfile0
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>独立表空间对应物理数据文件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">innodb_file_per_table
+</span></span><span class="line"><span class="cl"><span class="nv">innodb_data_home_dir</span><span class="o">=</span>xxx
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="innodb引擎调优精要">innodb引擎调优精要</h3>
+<ol>
+<li>
+<p>主键尽可能小，避免给Secondary index带来过大的空间负担</p>
+</li>
+<li>
+<p>建立有效索引避免全表扫描，因为会使用表锁。</p>
+</li>
+<li>
+<p>尽可能缓存所有的索引和数据，提高相应速度，减少磁盘IO消耗</p>
+</li>
+<li>
+<p>在大批量小插入的时候，尽量自己控制事务而不要使用autocommit自动提交。有开关可以控制提交方式；</p>
+</li>
+<li>
+<p>合理设置innodb_flush_log_at_trx_commit参数值，不要过度追求安全性。</p>
+<p>如果innodb_flush_log_at_trx_commit的值为0，log buffer每秒就会被刷写日志文件到磁盘，提交事务时候不做任何操作。</p>
+</li>
+<li>
+<p>避免主键更新。（字段的起名长短都会影响性能）。</p>
+</li>
+</ol>
+<h2 id="mysql引擎特别说明">MySQL引擎特别说明</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>MyISAM</th>
+<th>Memory</th>
+<th>InnoDB</th>
+<th>Archive</th>
+<th>NDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Storage limits</td>
+<td>256TB</td>
+<td>RAM</td>
+<td>64TB</td>
+<td>None</td>
+<td>384EB</td>
+</tr>
+<tr>
+<td>Transactions</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Locking granularity</td>
+<td>Table</td>
+<td>Table</td>
+<td>Row</td>
+<td>Row</td>
+<td>Row</td>
+</tr>
+<tr>
+<td>MVCC</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Geospatial data type support</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Geospatial indexing support</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes[a]</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>B-tree indexes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>T-tree indexes</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Hash indexes</td>
+<td>No</td>
+<td>Yes</td>
+<td>No[b]</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Full-text search indexes</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes[c]</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Clustered indexes</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Data caches</td>
+<td>No</td>
+<td>N/A</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Index caches</td>
+<td>Yes</td>
+<td>N/A</td>
+<td>Yes</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Compressed data</td>
+<td>Yes[d]</td>
+<td>No</td>
+<td>Yes[e]</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Encrypted data[f]</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Cluster database support</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Replication support[g]</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Foreign key support</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Backup / point-in-time recovery[h]</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Query cache support</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Update statistics for data dictionary</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>[a] InnoDB support for geospatial indexing is available in MySQL 5.7.5 and higher.</li>
+<li>[b] InnoDB utilizes hash indexes internally for its Adaptive Hash Index feature.</li>
+<li>[c] InnoDB support for FULLTEXT indexes is available in MySQL 5.6.4 and higher.</li>
+<li>[d] Compressed MyISAM tables are supported only when using the compressed row format. Tables using the compressed row format with MyISAM are read only.</li>
+<li>[e] Compressed InnoDB tables require the InnoDB Barracuda file format.</li>
+<li>[f] Implemented in the server (via encryption functions). Data-at-rest tablespace encryption is available in MySQL 5.7 and higher.</li>
+<li>[g] Implemented in the server, rather than in the storage engine.</li>
+<li>[h] Implemented in the server, rather than in the storage engine.</li>
+</ul>
+<p>参考手册：https://dev.mysql.com/doc/refman/5.5/en/storage-engines.html</p>
+<p>以上是myisam innodb和NDBCluster三个存储引擎是目前互联网公司应用比较多的存储引擎，特别是前两者，其他如 memory merge csv archive等存储引擎的使用场景都相对较少，初学的同学可以暂时忽略。更多可参考MySQL官方文档。</p>
+<h2 id="如何确定mysql服务器有那些引擎可用">如何确定MySQL服务器有那些引擎可用？</h2>
+<p>在MySQL中使用显示引擎的命令得到一个可用引擎的列表</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">show engines<span class="se">\G</span>
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">*************************** 5. row ***************************
+</span></span><span class="line"><span class="cl">      Engine: MyISAM
+</span></span><span class="line"><span class="cl">     Support: YES
+</span></span><span class="line"><span class="cl">     Comment: MyISAM storage engine
+</span></span><span class="line"><span class="cl">Transactions: NO
+</span></span><span class="line"><span class="cl">          XA: NO
+</span></span><span class="line"><span class="cl">  Savepoints: NO
+</span></span><span class="line"><span class="cl">*************************** 6. row ***************************
+</span></span><span class="line"><span class="cl">      Engine: InnoDB
+</span></span><span class="line"><span class="cl">     Support: DEFAULT
+</span></span><span class="line"><span class="cl">     Comment: Percona-XtraDB, Supports transactions, row-level locking, and foreign keys
+</span></span><span class="line"><span class="cl">Transactions: YES
+</span></span><span class="line"><span class="cl">          XA: YES
+</span></span><span class="line"><span class="cl">  Savepoints: YES
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl">...
+</span></span><span class="line"><span class="cl"><span class="m">10</span> rows in <span class="nb">set</span> <span class="o">(</span>0.01 sec<span class="o">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="生产场景中批量更改mysql引擎">生产场景中批量更改MySQL引擎</h2>
+<p>一般来说这样的需求不多见，但偶尔也会有，在这里我们推荐使用sed对备份内容进行引擎转换的方式，当然，不要忘记修改my.cnf使之支持并能高效的使用对应的引擎</p>
+<p><font color="#0215cd" size=3><strong>方法1：MySQL命令语句修改</strong></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">alter table <span class="nb">test</span> <span class="nv">engine</span><span class="o">=</span>innodb<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color="#0215cd" size=3><strong>方法2：使用sed对备份内容进行引擎转换</strong></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 此方法折腾数据不推荐使用</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># 主从复制丛库换引擎，正式数据换不要用</span>
+</span></span><span class="line"><span class="cl">sed -e <span class="s1">&#39;s#MyISAM#InnoDB#g&#39;</span> b.sql&gt;b1.sql
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><font color="#0215cd" size=3><strong>方法3：mysql_convert_table_format命令修改</strong></font></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql_convert_table_format --host<span class="o">=</span><span class="nv">$HOST</span> --user<span class="o">=</span><span class="nv">$USER</span> --passsword<span class="o">=</span><span class="nv">$PASS</span> --socket<span class="o">=</span><span class="nv">$SOCKET</span> --type<span class="o">=</span><span class="nv">$Engine</span> <span class="nv">$DB</span> <span class="nv">$TN</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>建表语句加上指定引擎：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">create table test<span class="o">(</span>
+</span></span><span class="line"><span class="cl">id int not null
+</span></span><span class="line"><span class="cl"><span class="o">)</span> <span class="nv">engine</span><span class="o">=</span>innodb default <span class="nv">charset</span><span class="o">=</span>utf8<span class="p">;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>混合引擎和单独innodb引擎配置差别？</p>
+<h2 id="有关mysql引擎常见企业面试题">有关MySQL引擎常见企业面试题</h2>
+<ol>
+<li>MySQL有那些存储引擎，各自有什么特点和区别？</li>
+<li>生产环境中如何选用MySQL的引擎</li>
+</ol>
+<p>​		在一般的既有读又有写的业务中，建议使用innodb引擎，一句话尽可能多的使用innodb引擎。</p>
+<p>​		纯读 纯写可用myisam。例如系统的MySQL库。</p>
+<ol start="3">
+<li>
+<p>不同引擎如何备份？混合引擎如何备份。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># myisam</span>
+</span></span><span class="line"><span class="cl">mysqldump -uroot -p111 -S/data/3306/mysql.sock <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-A <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-x <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-B <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-F <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--master-data<span class="o">=</span>2<span class="p">|</span>gzip &gt;back.sql
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># innodb</span>
+</span></span><span class="line"><span class="cl">mysqldump -uroot -p111 -S/data/3306/mysql.sock <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-A <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-x <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-B <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-F <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--master-data<span class="o">=</span><span class="m">2</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--single-transaction<span class="p">|</span>gzip &gt;back.sql 
+</span></span></code></pre></td></tr></table>
+</div>
+</div></li>
+</ol>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2022-12-14 23:00:36</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-title="MySQL存储引擎" data-hashtags="databases"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-hashtag="databases"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-title="MySQL存储引擎" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/ch8-mysql-engine.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-title="MySQL存储引擎"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-title="MySQL存储引擎"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/ch8-mysql-engine.html" data-title="MySQL存储引擎"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/databases.html">databases</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/ch7-mysql-non-interact.html" class="prev" rel="prev" title="实现和MySQL非交互式对话"><i class="fas fa-angle-left fa-fw"></i>实现和MySQL非交互式对话</a>
+            <a href="/haproxy.html" class="next" rel="next" title="haproxy">haproxy<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-05-23T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"MySQL存储引擎"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>PHP.ini优化 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="PHP.ini优化" />
+<meta property="og:description" content="PHP引擎缓存优化加速 eaccelerator zend opcode xcache 使用tmpfs作为缓存加速缓存的文件目录 1 2 mount -t tmpfs tmpfs /dev/shm -o size=256m mount -t tmpfs /dev/shm/ /tmp/eaccelerator/ 利用好tmpfs
+1.上传目录缩略图临时处理目录/tmp.
+2.其他加速器临时目录/tmp/eaccelerator/
+php.ini参数优化 无论是 apache 还是 nginx，php.ini都是适合的。而 php-fpm.conf 适合nginx。而php-fpm.conf更适合 nginx&#43;fcgi 的配置。首选选择产品环境的 php.ini
+开发场景：development 生产环境：production 打开php的安全模式 php的安全模式是个非常重要的php内嵌的安全机制，能够控制一些php中的函数执行，比如system() ,同时把很多文件操作的函数进行了权限控制。php5.4后弃用
+该参数配置如下：
+1 2 3 336 ; Safe Mode 337 ; http://php.net/safe-mode 338 safe_mode = Off 用户和安全组 当safe_mode打开时，safe_mode_gid被关闭，那么php脚本能够对文件进行访问，而且相同组的用户也能够对文件进行访问。建议设置为safe_mode_gid=off;
+如果不进行设置，可能我们无法对我们服务器网站目录下的文件进行操作了，比如我们需要对文件进行操作的时候。php5.3默认为 safe_mode_gid=off; （新版弃用）
+关闭危险函数 如果打开了安全模式，那么函数禁止是可以不需要的，但是我们为了安全还是考虑进去。比如，我们觉得不希望执行包括 system() 等在那的能够执行命令的php函数，或者能够查看php信息的 phpinfo() 等函数，那么我们就可以禁止他们，方法如下：
+1 disable_functions = system,passthru,exec,shell_exec,popen,phpinfo 如果你要禁止任何文件和目录的操作，那么可以关闭很多文件操作。
+1 disable_functions = chdir,chroot,getcwd,opendir,readdir,scandir,fopen,unlink,delete,copy,mkdir,rmdir,rename,file,file_get_contents,fputs,fwrite,chgrp,chmod,chown 以上只列出部分不叫常用的文件处理函数，你也可以把上面执行命令函数和这个函数结合，就能够地址大部分的phpshell了。该参数默认为 disable_functions=." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://cylonchau.github.io/php.ini.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2016-10-02T00:00:00+00:00" />
+<meta property="article:modified_time" content="2016-10-02T00:00:00+00:00" />
+
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
+
+<meta name="twitter:title" content="PHP.ini优化"/>
+<meta name="twitter:description" content="PHP引擎缓存优化加速 eaccelerator zend opcode xcache 使用tmpfs作为缓存加速缓存的文件目录 1 2 mount -t tmpfs tmpfs /dev/shm -o size=256m mount -t tmpfs /dev/shm/ /tmp/eaccelerator/ 利用好tmpfs
+1.上传目录缩略图临时处理目录/tmp.
+2.其他加速器临时目录/tmp/eaccelerator/
+php.ini参数优化 无论是 apache 还是 nginx，php.ini都是适合的。而 php-fpm.conf 适合nginx。而php-fpm.conf更适合 nginx&#43;fcgi 的配置。首选选择产品环境的 php.ini
+开发场景：development 生产环境：production 打开php的安全模式 php的安全模式是个非常重要的php内嵌的安全机制，能够控制一些php中的函数执行，比如system() ,同时把很多文件操作的函数进行了权限控制。php5.4后弃用
+该参数配置如下：
+1 2 3 336 ; Safe Mode 337 ; http://php.net/safe-mode 338 safe_mode = Off 用户和安全组 当safe_mode打开时，safe_mode_gid被关闭，那么php脚本能够对文件进行访问，而且相同组的用户也能够对文件进行访问。建议设置为safe_mode_gid=off;
+如果不进行设置，可能我们无法对我们服务器网站目录下的文件进行操作了，比如我们需要对文件进行操作的时候。php5.3默认为 safe_mode_gid=off; （新版弃用）
+关闭危险函数 如果打开了安全模式，那么函数禁止是可以不需要的，但是我们为了安全还是考虑进去。比如，我们觉得不希望执行包括 system() 等在那的能够执行命令的php函数，或者能够查看php信息的 phpinfo() 等函数，那么我们就可以禁止他们，方法如下：
+1 disable_functions = system,passthru,exec,shell_exec,popen,phpinfo 如果你要禁止任何文件和目录的操作，那么可以关闭很多文件操作。
+1 disable_functions = chdir,chroot,getcwd,opendir,readdir,scandir,fopen,unlink,delete,copy,mkdir,rmdir,rename,file,file_get_contents,fputs,fwrite,chgrp,chmod,chown 以上只列出部分不叫常用的文件处理函数，你也可以把上面执行命令函数和这个函数结合，就能够地址大部分的phpshell了。该参数默认为 disable_functions=."/>
+<meta name="application-name" content="Cylon&#39;s Collection">
+<meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://cylonchau.github.io/php.ini.html" /><link rel="prev" href="https://cylonchau.github.io/install-troubleshooting.html" /><link rel="next" href="https://cylonchau.github.io/apache-httpd.html" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "PHP.ini优化",
+        "inLanguage": "",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/cylonchau.github.io\/php.ini.html"
+        },"image": ["https:\/\/cylonchau.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "php","wordcount":  691 ,
+        "url": "https:\/\/cylonchau.github.io\/php.ini.html","datePublished": "2016-10-02T00:00:00+00:00","dateModified": "2016-10-02T00:00:00+00:00","publisher": {
+            "@type": "Organization",
+            "name": "Cylon's Collection","logo": "https:\/\/cylonchau.github.io\/img\/icon.png"},"author": {
+                "@type": "Person",
+                "name": "cylon"
+            },"description": ""
+    }
+    </script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-193031966-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-193031966-2');
+</script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><a class="menu-item" href="/posts.html" title="">杂物归档</a><a class="menu-item" href="/tags.html" title="">标签</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">PHP.ini优化</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/php.html"><i class="far fa-folder fa-fw"></i>php</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-10-02 00:00:00">2016-10-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 691 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 4 分钟&nbsp;<span id="busuanzi_container_page_pv">
+                    <i class="far fa-eye fa-fw"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>&nbsp;次阅读量</span>
+                </span>
+            </div>
+        </div><div class="details toc" id="toc-static"  kept="true">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#php引擎缓存优化加速">PHP引擎缓存优化加速</a></li>
+    <li><a href="#使用tmpfs作为缓存加速缓存的文件目录">使用tmpfs作为缓存加速缓存的文件目录</a></li>
+    <li><a href="#phpini参数优化">php.ini参数优化</a>
+      <ul>
+        <li><a href="#打开php的安全模式">打开php的安全模式</a></li>
+        <li><a href="#用户和安全组">用户和安全组</a></li>
+        <li><a href="#关闭危险函数">关闭危险函数</a></li>
+        <li><a href="#关闭php版本信息在http头中的泄露">关闭PHP版本信息在http头中的泄露</a></li>
+        <li><a href="#关闭注册全局变量">关闭注册全局变量</a></li>
+        <li><a href="#打开magic_quotes_gpc来防止sql注入">打开magic_quotes_gpc来防止SQL注入</a></li>
+        <li><a href="#错误信息控制">错误信息控制</a></li>
+        <li><a href="#错误日志">错误日志</a></li>
+        <li><a href="#部分资源限制参数优化">部分资源限制参数优化</a>
+          <ul>
+            <li><a href="#设置每个脚本运行的最长时间">设置每个脚本运行的最长时间</a></li>
+            <li><a href="#每个脚本使用的最大内存">每个脚本使用的最大内存</a></li>
+            <li><a href="#每个脚本等待输入数据最长时间">每个脚本等待输入数据最长时间</a></li>
+            <li><a href="#上载文件的最大许可大小">上载文件的最大许可大小</a></li>
+          </ul>
+        </li>
+        <li><a href="#部分安全参数优化">部分安全参数优化</a>
+          <ul>
+            <li><a href="#禁止打开远程地址">禁止打开远程地址</a></li>
+            <li><a href="#测试远程allow_url_include">测试远程allow_url_include</a></li>
+            <li><a href="#测试远程allow_url_fopen">测试远程allow_url_fopen</a></li>
+          </ul>
+        </li>
+        <li><a href="#调整php-session信息存放类型和位置">调整php session信息存放类型和位置</a></li>
+      </ul>
+    </li>
+    <li><a href="#php-fpm参数优化">PHP-FPM参数优化</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="php引擎缓存优化加速">PHP引擎缓存优化加速</h2>
+<ul>
+<li>eaccelerator</li>
+<li>zend opcode</li>
+<li>xcache</li>
+</ul>
+<h2 id="使用tmpfs作为缓存加速缓存的文件目录">使用tmpfs作为缓存加速缓存的文件目录</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mount -t tmpfs tmpfs /dev/shm -o <span class="nv">size</span><span class="o">=</span>256m
+</span></span><span class="line"><span class="cl">mount -t tmpfs /dev/shm/ /tmp/eaccelerator/
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>利用好tmpfs</p>
+<p>1.上传目录缩略图临时处理目录/tmp.</p>
+<p>2.其他加速器临时目录/tmp/eaccelerator/</p>
+<h2 id="phpini参数优化">php.ini参数优化</h2>
+<p>无论是 apache 还是 nginx，php.ini都是适合的。而 php-fpm.conf 适合nginx。而php-fpm.conf更适合 nginx+fcgi 的配置。首选选择产品环境的 php.ini</p>
+<ul>
+<li>开发场景：development</li>
+<li>生产环境：production</li>
+</ul>
+<h3 id="打开php的安全模式">打开php的安全模式</h3>
+<p>php的安全模式是个非常重要的php内嵌的安全机制，能够控制一些php中的函数执行，比如<code>system()</code> ,同时把很多文件操作的函数进行了权限控制。<font style="background:#ffc104;" size=3>php5.4后弃用</font></p>
+<p>该参数配置如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">336 ; Safe Mode
+</span></span><span class="line"><span class="cl">337 ; http://php.net/safe-mode
+</span></span><span class="line"><span class="cl">338 safe_mode = Off
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="用户和安全组">用户和安全组</h3>
+<p>当safe_mode打开时，safe_mode_gid被关闭，那么php脚本能够对文件进行访问，而且相同组的用户也能够对文件进行访问。建议设置为safe_mode_gid=off;</p>
+<p>如果不进行设置，可能我们无法对我们服务器网站目录下的文件进行操作了，比如我们需要对文件进行操作的时候。<font style="background:#ffc104;" size=3>php5.3默认为 <code>safe_mode_gid=off;</code> </font>（新版弃用）</p>
+<h3 id="关闭危险函数">关闭危险函数</h3>
+<p>如果打开了安全模式，那么函数禁止是可以不需要的，但是我们为了安全还是考虑进去。比如，我们觉得不希望执行包括 <code>system()</code> 等在那的能够执行命令的php函数，或者能够查看php信息的 <code>phpinfo()</code> 等函数，那么我们就可以禁止他们，方法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">disable_functions =  system,passthru,exec,shell_exec,popen,phpinfo
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>如果你要禁止任何文件和目录的操作，那么可以关闭很多文件操作。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">disable_functions =  chdir,chroot,getcwd,opendir,readdir,scandir,fopen,unlink,delete,copy,mkdir,rmdir,rename,file,file_get_contents,fputs,fwrite,chgrp,chmod,chown
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>以上只列出部分不叫常用的文件处理函数，你也可以把上面执行命令函数和这个函数结合，就能够地址大部分的phpshell了。该参数默认为 <code>disable_functions=</code>.</p>
+<h3 id="关闭php版本信息在http头中的泄露">关闭PHP版本信息在http头中的泄露</h3>
+<p>为了防止黑客获取服务器中php版本信息，可以关闭该信息泄露在http头中，该参数默认如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># 在http头中加上其签名，不会有安全上直接威胁，但使客户端知道PHP版本
+</span></span><span class="line"><span class="cl">expose_php = On
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># 建议设置为Off
+</span></span><span class="line"><span class="cl">expose_php = Off
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>建议设置为Off，这样当黑客抓取头信息时，无法看到PHP的信息。</p>
+<h3 id="关闭注册全局变量">关闭注册全局变量</h3>
+<p>在PHP中提交的变量，包括使用POST或者GET提交的变量，都将自动注册为全局变量，能够直接访问，这是对服务器非常不安全的，所以我们不能让它注册为全局变量，就把注册全局变量选项关闭（<font style="background:#ffc104;" size=3>5.4弃用</font>）</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">register_globals = Off
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="打开magic_quotes_gpc来防止sql注入">打开magic_quotes_gpc来防止SQL注入</h3>
+<p>SQL注入是非常危险的问题，轻则网站后台被入侵，重则整个服务器沦陷，php.ini 有一个设置，<font style="background:#ffc104;" size=3>5.4已移除</font></p>
+<h3 id="错误信息控制">错误信息控制</h3>
+<p>一般php在没有连接到数据库或者其他情况下会有提示错误，一般错误信息会包含php脚本当前距离信息或者查询的SQL语句等信息，这类信息提供给黑客后，是不安全的，所以一般服务器建议禁止错误提示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">display_errors = Off
+</span></span><span class="line"><span class="cl">; 是否将错误信息作为输出的一部分显示给终端用户。应用调试时，可以打开，方便查看错误.
+</span></span><span class="line"><span class="cl">; 在最终发布的web站点上，强烈建议你关掉这个特性，并使用错误日志代替（参看下面）.
+</span></span><span class="line"><span class="cl">; 在最终发布的web站点打开这个特性可能暴露一些安全信息.
+</span></span><span class="line"><span class="cl">; 例如你的web服务器上的文件路径、数据库规划或别的信息.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>设置为</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">display = Off # (php 5.3+默认即为Off)
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>如果你确实要显示错误信息，一定要设置显示错误级别，比如只显示警告以上的信息，当然最好是关闭错误提示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">error_reporting = E_WARNING &amp; E_ERROR
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="错误日志">错误日志</h3>
+<p>建议在关闭display_errors后能够把错误信息记录下来，便于查找服务器运行的原因：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">log_errors = On
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>同时也要设置错误日志存放的目录，建议和Web日志存放在一起.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># 文件必须允许web用户和组具有写权限
+</span></span><span class="line"><span class="cl">error_log = /app/logs/php_errors.log
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="部分资源限制参数优化">部分资源限制参数优化</h3>
+<h4 id="设置每个脚本运行的最长时间">设置每个脚本运行的最长时间</h4>
+<p>当无法上传较大的文件或者后台备份数据经常超时，此时需要调整如下设置：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_execution_time = 30
+</span></span><span class="line"><span class="cl">; 每个脚本允许最大执行时间（秒），0表示没有限制.
+</span></span><span class="line"><span class="cl">; 这个参数有助于组织劣质脚本无休止占用服务器资源.
+</span></span><span class="line"><span class="cl">; 该指令仅影响脚本本身的运行时间，任何其它华为在脚本运行之外的时间.
+</span></span><span class="line"><span class="cl">; 如用system()/sleep()函数的使用、数据库查询、文件上传等，都不包括在内.
+</span></span><span class="line"><span class="cl">; 在安全模式下，你不能用ini_set()在运行时改变这个位置.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="每个脚本使用的最大内存">每个脚本使用的最大内存</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">memory_limit = 128M
+</span></span><span class="line"><span class="cl">; 一个脚本能够申请到的最大内存字节数（可以使用K和M作为单位）.
+</span></span><span class="line"><span class="cl">; 这有助于防止劣质脚本消耗完服务器上所有内存.
+</span></span><span class="line"><span class="cl">; 要能够使用该指令碧玺在编译时使用“--enable-memory-limit”配置选项.
+</span></span><span class="line"><span class="cl">; 如果要取消内存限制，则必须将其设为-1.
+</span></span><span class="line"><span class="cl">; 设置了该指令后，memory_get_usage()函数变为可用.
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="每个脚本等待输入数据最长时间">每个脚本等待输入数据最长时间</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_input_time = -1
+</span></span><span class="line"><span class="cl">; 每个脚本解析输入数据（POST,GET,upload）的最大允许时间（秒）
+</span></span><span class="line"><span class="cl">; -1 表示不限制
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="http://php.net/max-input-time" target="_blank" rel="noopener noreffer">http://php.net/max-input-time</a></p>
+<p>设置为</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_input_time = 60
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="上载文件的最大许可大小">上载文件的最大许可大小</h4>
+<p>当上传较大文件时，需要调整如下参数：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 上载文件的最大许可大小
+</span></span><span class="line"><span class="cl">upload_max_filesize = 2M
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>详情：http://php.net/upload-max-filesize</p>
+<h3 id="部分安全参数优化">部分安全参数优化</h3>
+<h4 id="禁止打开远程地址">禁止打开远程地址</h4>
+<p>记得最近出的 <code>php include</code> 的那个漏洞吗？就是在一个php程序中include变量，那么入侵者就可以利用这个控制服务器在本地执行远程的一个php程序，例如phpshell，所以我们关闭这个。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; Whether to allow the treatment of URLs (like http:// or ftp://) as files.
+</span></span><span class="line"><span class="cl">allow_url_fopen = On
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>详情：http://php.net/allow-url-fopen</p>
+<h4 id="测试远程allow_url_include">测试远程allow_url_include</h4>
+<p><a href="https://www.remote.com/1.php" target="_blank" rel="noopener noreffer">www.remote.com/1.php</a>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
+</span></span><span class="line"><span class="cl">	<span class="nv">$arr</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://www.httpd.com/1.php" target="_blank" rel="noopener noreffer">www.httpd.com/1.php</a>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
+</span></span><span class="line"><span class="cl">	<span class="k">include</span><span class="p">(</span><span class="s1">&#39;http://www.remote.com:81/1.php&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">var_dump</span><span class="p">(</span><span class="nv">$arr</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>运行结果</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg 2x"
+        data-sizes="auto"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg"
+        title="img" /></p>
+<h4 id="测试远程allow_url_fopen">测试远程allow_url_fopen</h4>
+<p>本地读取远端文件的脚本文件内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$file</span> <span class="o">=</span> <span class="nx">fopen</span><span class="p">(</span><span class="s1">&#39;http://www.remote.com:81/1.php&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">);</span>		<span class="c1">// 读取远程文件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nv">$i</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span> 	<span class="c1">//初始化行号
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">while</span><span class="p">(</span> <span class="o">!</span><span class="nx">feof</span><span class="p">(</span><span class="nv">$file</span><span class="p">)</span> <span class="p">){</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">$row</span> <span class="o">=</span> <span class="nx">fgets</span><span class="p">(</span><span class="nv">$file</span><span class="p">);</span>	<span class="c1">//读取一行
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">echo</span> <span class="nv">$i</span> <span class="o">.</span> <span class="s1">&#39;--&#39;</span> <span class="o">.</span> <span class="nv">$row</span><span class="p">;</span>	<span class="c1">//输出
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nv">$i</span><span class="o">++</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fclose</span><span class="p">(</span><span class="nv">$file</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>执行脚本结果如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ /app/php/bin/php 2.php
+</span></span><span class="line"><span class="cl">1--&lt;?php
+</span></span><span class="line"><span class="cl">2--<span class="nv">$arr</span> <span class="o">=</span> array<span class="o">(</span>1,2,3,4,5<span class="o">)</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">3--?&gt;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>当在禁止后，再重新运行以上脚本文件会报如下错误</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Warning: include<span class="o">()</span> <span class="o">[[</span><span class="k">function</span>.include<span class="o">](</span>http://www.httpd.com/function.include<span class="o">)]</span>: http:// wrapper is disabled in the server configuration by <span class="nv">allow_url_fopen</span><span class="o">=</span><span class="m">0</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Warning: fopen<span class="o">()</span> <span class="o">[[</span><span class="k">function</span>.fopen<span class="o">](</span>http://www.httpd.com/function.fopen<span class="o">)]</span>: http:// wrapper is disabled in the server configuration by <span class="nv">allow_url_fopen</span><span class="o">=</span><span class="m">0</span> 
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="调整php-session信息存放类型和位置">调整php session信息存放类型和位置</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 存储和检索会话关联的数据的处理器名字。默认为文件“file”
+</span></span><span class="line"><span class="cl">; 如果想要使用自定义的处理器（如基于数据库的处理器），可用“user”
+</span></span><span class="line"><span class="cl">; 设为&#34;memcache&#34;则可以使用memcache作为会话处理器（需要指定&#34;--enable-memcache-session&#34;编译选项）。
+</span></span><span class="line"><span class="cl">session.save_handler = files
+</span></span><span class="line"><span class="cl">; 传递给处理器的参数。对于files处理器，此值是创建会出数据文件的路径。
+</span></span><span class="line"><span class="cl">session.save_path = &#34;/tmp&#34;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>web集群session贡献存储设置，默认php.ini中session的类型和配置路径：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">session.save_handler = &#34;tcp://192.168.2.8:11211&#34;
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="php-fpm参数优化">PHP-FPM参数优化</h2>
+<p>如果你的高负载网站使用PHP-FPM管理FastCGI，也许下面这些技巧对你有用</p>
+<ol>
+<li>
+<p>尽量少安装PHP模块，最简单是最好（快）的</p>
+</li>
+<li>
+<p>把你的PHP FastCGI子进程数调到100或以上，在4G内存的服务器上200就可以（建议压力测试来得出自己服务器合理的值）</p>
+</li>
+<li>
+<p>socket连接FastCGI，/dev/shm是内存文件系统，socket放在内存中肯定会快些</p>
+</li>
+<li>
+<p>Linux下增加文件打开数，命令如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 增加 PHP-FPM 打开文件描述符的限制，此参数和php-fpm进程数有关
+</span></span><span class="line"><span class="cl">rlimit_files = 51200
+</span></span></code></pre></td></tr></table>
+</div>
+</div></li>
+<li>
+<p>使用php代码加速器，例如 eAccelerator, XCache.在Linux平台上可以把 <code>cache_dir</code> 指向 <code>/dev/shm</code></p>
+</li>
+</ol>
+<p><strong>php-fpm.conf重要优化参数详解</strong>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">pm = dynamic
+</span></span><span class="line"><span class="cl">; pm参数指定了进程管理方式，有两种可供选择：static或dynamic，从字面意思不难理解，为静态或动态方式。如果是静态方式，那么在php-fpm启动的时候就创建了指定数目的进程，在运行过程中不会再有变化(并不是真的就永远不变)；而动态的则在运行过程中动态调整，当然并不是无限制的创建新进程，受pm.max_spare_servers参数影响；动态适合小内存机器，灵活分配进程，省内存。静态适用于大内存机器，动态创建回收进程对服务器资源也是一种消耗
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">pm.max_children = 24
+</span></span><span class="line"><span class="cl">; static模式下创建的子进程数或dynamic模式下同一时刻允许最大的php-fpm子进程数量
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">pm.start_servers = 16
+</span></span><span class="line"><span class="cl">; 动态方式下的起始php-fpm进程数量
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">pm.min_spare_servers = 12
+</span></span><span class="line"><span class="cl">; 动态方式下服务器空闲时最小php-fpm进程数量
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">pm.max_spare_servers = 24
+</span></span><span class="line"><span class="cl">; 动态方式下服务器空闲时最大php-fpm进程数量
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">log_level = error
+</span></span><span class="line"><span class="cl">; 错误级别. 可用级别为: alert（必须立即处理）, error（错误情况）, warning（警告情况）, notice
+</span></span><span class="line"><span class="cl">;（一般重要信息）, debug（调试信息）. 默认: notice.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">error_log = /app/run/log/php-fpm.log
+</span></span><span class="line"><span class="cl">; 错误日志，默认在安装目录中的var/log/php-fpm.log
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">pid = /app/run/php/php-fpm  #&lt;==一般规划好目录与mysql nginx等在同目录下，方便管理
+</span></span><span class="line"><span class="cl">; pid设置，默认在安装目录中的var/run/php-fpm.pid，建议开启
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">emergency_restart_threshold = 0 
+</span></span><span class="line"><span class="cl">emergency_restart_interval = 0
+</span></span><span class="line"><span class="cl">; 表示在emergency_restart_interval所设值内出现SIGSEGV或者SIGBUS错误的php-cgi进程数如
+</span></span><span class="line"><span class="cl">; 果超过 emergency_restart_threshold个，php-fpm就会优雅重启。这两个选项一般保持默认值。
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">process_control_timeout = 0
+</span></span><span class="line"><span class="cl">; 设置子进程接受主进程复用信号的超时时间. 可用单位: s(秒), m(分), h(小时), 或者 d(天) 默认单位: s(秒). 默认值: 0.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">daemonize = yes
+</span></span><span class="line"><span class="cl">; 后台执行fpm,默认值为yes，如果为了调试可以改为no。在FPM中，可以使用不同的设置来运行多个进程池。 这些设置可以针对每个进程池单独设置.
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">listen = 127.0.0.1:9000
+</span></span><span class="line"><span class="cl">; fpm监听端口，即nginx中php处理的地址，一般默认值即可。可用格式为: &#39;ip:port&#39;, &#39;port&#39;, &#39;/path/to/unix/socket&#39;. 每个进程池都需要设置.
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">listen.backlog = -1
+</span></span><span class="line"><span class="cl">; backlog数，-1表示无限制，由操作系统决定，此行注释掉就行。backlog含义参考http://www.3gyou.cc/?p=41
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">listen.allowed_clients = 127.0.0.1
+</span></span><span class="line"><span class="cl">; 允许访问FastCGI进程的IP，设置any为不限制IP，如果要设置其他主机的nginx也能访问这台FPM进程，listen处要设置成本地可被访问的IP。默认值是any。每个地址是用逗号分隔. 如果没有设置或者为空，则允许任何服务器请求连接
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">listen.owner = www
+</span></span><span class="line"><span class="cl">listen.group = www
+</span></span><span class="line"><span class="cl">listen.mode = 0666
+</span></span><span class="line"><span class="cl">; unix socket设置选项，如果使用tcp方式访问，这里注释即可。
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">user = www
+</span></span><span class="line"><span class="cl">group = www
+</span></span><span class="line"><span class="cl">; 启动进程的帐户和组
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">pm.max_requests = 1000
+</span></span><span class="line"><span class="cl">; 设置每个子进程重生之前服务的请求数. 对于可能存在内存泄漏的第三方模块来说是非常有用的. 如果设置为 &#39;0&#39; 则一直接受请求. 等同于 PHP_FCGI_MAX_REQUESTS 环境变量. 默认值: 0.
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">pm.status_path = /status
+</span></span><span class="line"><span class="cl">; FPM状态页面的网址. 如果没有设置, 则无法访问状态页面. 默认值: none. munin监控会使用到
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">ping.path = /ping
+</span></span><span class="line"><span class="cl">; FPM监控页面的ping网址. 如果没有设置, 则无法访问ping页面. 该页面用于外部检测FPM是否存活并且可以响应请求. 请注意必须以斜线开头 (/)。
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">ping.response = pong
+</span></span><span class="line"><span class="cl">; 用于定义ping请求的返回相应. 返回为 HTTP 200 的 text/plain 格式文本. 默认值: pong.
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">request_terminate_timeout = 0
+</span></span><span class="line"><span class="cl">; 设置单个请求的超时中止时间. 该选项可能会对php.ini设置中的&#39;max_execution_time&#39;因为某些特殊原因没有中止运行的脚本有用. 设置为 &#39;0&#39; 表示 &#39;Off&#39;.当经常出现502错误时可以尝试更改此选项。
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">request_slowlog_timeout = 10s
+</span></span><span class="line"><span class="cl">; 当一个请求该设置的超时时间后，就会将对应的PHP调用堆栈信息完整写入到慢日志中. 设置为 &#39;0&#39; 表示 &#39;Off&#39;
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">slowlog = log/$pool.log.slow
+</span></span><span class="line"><span class="cl">; 慢请求的记录日志,配合request_slowlog_timeout使用
+</span></span><span class="line"><span class="cl"> 
+</span></span><span class="line"><span class="cl">rlimit_files = 1024
+</span></span><span class="line"><span class="cl">; 设置文件打开描述符的rlimit限制. 默认值: 系统定义值默认可打开句柄是1024，可使用 ulimit -n查看，ulimit -n 2048修改。
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>一般 php-fpm 进程占用20~30m左右的内存就按 30m 算。如果单独跑 php-fpm，动态方式起始值可设置物理内存 $\frac{Mem}{30M}$，由于大家一般Nginx, MySQL都在一台机器上，于是预留一半给它们，即php-fpm进程数为 $\frac{mem}{2\times30M}$。</p>
+<p>参考文章：</p>
+<p><a href="https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html" target="_blank" rel="noopener noreffer">https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html</a></p>
+<p><a href="http://www.cnblogs.com/argb/p/3604340.html" target="_blank" rel="noopener noreffer">http://www.cnblogs.com/argb/p/3604340.html</a></p>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2016-10-02 00:00:00</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 Twitter" data-sharer="twitter" data-url="https://cylonchau.github.io/php.ini.html" data-title="PHP.ini优化" data-hashtags="php"><i class="fab fa-twitter fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Facebook" data-sharer="facebook" data-url="https://cylonchau.github.io/php.ini.html" data-hashtag="php"><i class="fab fa-facebook-square fa-fw"></i></a><a href="javascript:void(0);" title="分享到 WhatsApp" data-sharer="whatsapp" data-url="https://cylonchau.github.io/php.ini.html" data-title="PHP.ini优化" data-web><i class="fab fa-whatsapp fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Reddit" data-sharer="reddit" data-url="https://cylonchau.github.io/php.ini.html"><i class="fab fa-reddit fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Line" data-sharer="line" data-url="https://cylonchau.github.io/php.ini.html" data-title="PHP.ini优化"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/line.svg"></i></a><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://cylonchau.github.io/php.ini.html" data-title="PHP.ini优化"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 Skype" data-sharer="skype" data-url="https://cylonchau.github.io/php.ini.html" data-title="PHP.ini优化"><i class="fab fa-skype fa-fw"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/php.html">php</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/install-troubleshooting.html" class="prev" rel="prev" title="PHP安装错误"><i class="fas fa-angle-left fa-fw"></i>PHP安装错误</a>
+            <a href="/apache-httpd.html" class="next" rel="next" title="Apache httpd配置集锦">Apache httpd配置集锦<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"><div id="gitalk" class="comment"></div><noscript>
+                Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
+            </noscript></div></article></div>
+            </main><footer class="footer">
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+                <span id="busuanzi_container_site_pv">
+                    访问量 <span id="busuanzi_value_site_pv"></span> 次
+                </span>
+                &nbsp;|&nbsp;
+                <span id="busuanzi_container_site_uv">
+                    访客数 <span id="busuanzi_value_site_uv"></span> 人次
+                </span>
+                </br>
+                
+
+            </div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-10-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"PHP.ini优化"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+</html>
