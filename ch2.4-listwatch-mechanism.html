@@ -6,21 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>理解kubernetes listwatch机制原理 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="理解kubernetes listwatch机制原理" />
-<meta property="og:description" content="overview kubernetes的设计里面大致上分为3部分：
-API驱动型的特点 (API-driven) 控制循环（control loops）与 条件触发 （Level Trigger） API的可延伸性 而正因为这些设计特性，才使得kubernetes工作非常稳定。
-什么是Level Trigger与 Edge trigger 看到网上有资料是这么解释两个属于的：
-条件触发(level-trigger，也被称为水平触发)LT指： 只要满足条件，就触发一个事件(只要有数据没有被获取，就不断通知)。
-边缘触发(edge-trigger)ET: 每当状态变化时，触发一个事件。
-通过查询了一些资料，实际上也不明白这些究竟属于哪门科学中的理论，但是具体解释起来看的很明白。
-LEVEL TRIGGERING：当电流有两个级别，VH 和 VL。代表了两个触发事件的级别。如果将VH 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为LEVEL TRIGGERING，每当遇到VH 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。
-Edge TRIGGERING:
-如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（Edge TRIGGERING:）。
-如果需要打开LED灯，则当时钟从VL转换到VH时才会亮起，而不是一家处在对应的时钟线上，仅仅是在过渡时亮起。
-为什么kubernetes使用Level Trigger而不使用Edge trigger 如图所述，两种不同的设计模式，随着时间形状进行相应，当系统在由高转低，或由低转高时，系统处在关闭或者不可控的异常状态下，应如何触发对应的事件呢。
-换一种方式来来解释，比如说通过 加法运算，如下，i=3，当给I&#43;4作为一个操作触发事件。
-1 2 3 4 5 # let i=3 # let i&#43;=4 # let i # echo $i 7 当为Edge trigger时操作的情况下，将看到 i&#43;4 ,而在 level trigger 时看到的是 i=7。这里将会从``i&#43;4` 一直到下一个信号的触发。
-信号的干扰 通常情况下，两者是没有区别的，但在大规模分布式网络环境中，有很多因素的影响下，任何都是不可靠的，在这种情况下会改变了我们对事件信号的感知。
-如图所示，图为Level Trigger与Edge trigger 的信号发生模拟，在理想情况下，两者间并没有什么不同。" />
+<meta property="og:description" content="overview kubernetes的设计里面大致上分为3部分：" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/ch2.4-listwatch-mechanism.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2021-12-12T00:00:00+00:00" />
@@ -30,21 +16,7 @@ Edge TRIGGERING:
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="理解kubernetes listwatch机制原理"/>
-<meta name="twitter:description" content="overview kubernetes的设计里面大致上分为3部分：
-API驱动型的特点 (API-driven) 控制循环（control loops）与 条件触发 （Level Trigger） API的可延伸性 而正因为这些设计特性，才使得kubernetes工作非常稳定。
-什么是Level Trigger与 Edge trigger 看到网上有资料是这么解释两个属于的：
-条件触发(level-trigger，也被称为水平触发)LT指： 只要满足条件，就触发一个事件(只要有数据没有被获取，就不断通知)。
-边缘触发(edge-trigger)ET: 每当状态变化时，触发一个事件。
-通过查询了一些资料，实际上也不明白这些究竟属于哪门科学中的理论，但是具体解释起来看的很明白。
-LEVEL TRIGGERING：当电流有两个级别，VH 和 VL。代表了两个触发事件的级别。如果将VH 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为LEVEL TRIGGERING，每当遇到VH 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。
-Edge TRIGGERING:
-如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（Edge TRIGGERING:）。
-如果需要打开LED灯，则当时钟从VL转换到VH时才会亮起，而不是一家处在对应的时钟线上，仅仅是在过渡时亮起。
-为什么kubernetes使用Level Trigger而不使用Edge trigger 如图所述，两种不同的设计模式，随着时间形状进行相应，当系统在由高转低，或由低转高时，系统处在关闭或者不可控的异常状态下，应如何触发对应的事件呢。
-换一种方式来来解释，比如说通过 加法运算，如下，i=3，当给I&#43;4作为一个操作触发事件。
-1 2 3 4 5 # let i=3 # let i&#43;=4 # let i # echo $i 7 当为Edge trigger时操作的情况下，将看到 i&#43;4 ,而在 level trigger 时看到的是 i=7。这里将会从``i&#43;4` 一直到下一个信号的触发。
-信号的干扰 通常情况下，两者是没有区别的，但在大规模分布式网络环境中，有很多因素的影响下，任何都是不可靠的，在这种情况下会改变了我们对事件信号的感知。
-如图所示，图为Level Trigger与Edge trigger 的信号发生模拟，在理想情况下，两者间并没有什么不同。"/>
+<meta name="twitter:description" content="overview kubernetes的设计里面大致上分为3部分："/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -74,13 +46,13 @@ Edge TRIGGERING:
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -93,7 +65,7 @@ Edge TRIGGERING:
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -113,7 +85,7 @@ Edge TRIGGERING:
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">理解kubernetes listwatch机制原理</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a>&nbsp;<a href="/categories/kubernetes-develop.html"><i class="far fa-folder fa-fw"></i>kubernetes develop</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-12-12 00:00:00">2021-12-12 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 196 字&nbsp;
@@ -132,13 +104,7 @@ Edge TRIGGERING:
     <li><a href="#什么是level-trigger与-edge-trigger">什么是Level Trigger与 Edge trigger</a></li>
     <li><a href="#为什么kubernetes使用level-trigger而不使用edge-trigger">为什么kubernetes使用Level Trigger而不使用Edge trigger</a>
       <ul>
-        <li><a href="#信号的干扰">信号的干扰</a>
-          <ul>
-            <li><a href="#一次中断场景">一次中断场景</a></li>
-            <li><a href="#两次中断的场景下">两次中断的场景下</a></li>
-            <li><a href="#通过运算来表示两种模式的变化情况">通过运算来表示两种模式的变化情况</a></li>
-          </ul>
-        </li>
+        <li><a href="#信号的干扰">信号的干扰</a></li>
       </ul>
     </li>
     <li><a href="#如何使理想状态和实际状态一样呢">如何使理想状态和实际状态一样呢？</a></li>
@@ -157,42 +123,42 @@ Edge TRIGGERING:
 <p>看到网上有资料是这么解释两个属于的：</p>
 <ul>
 <li>
-<p><strong>条件触发(level-trigger，也被称为水平触发)LT指：</strong> 只要满足条件，就触发一个事件(只要有数据没有被获取，就不断通知)。</p>
+<p><strong>条件触发(level-trigger，也被称为水平触发)LT指</strong>： 只要满足条件，就触发一个事件(只要有数据没有被获取，就不断通知)。</p>
 </li>
 <li>
-<p><strong>边缘触发(edge-trigger)ET:</strong> 每当状态变化时，触发一个事件。</p>
+<p><strong>边缘触发(edge-trigger)ET</strong>: 每当状态变化时，触发一个事件。</p>
 </li>
 </ul>
 <p>通过查询了一些资料，实际上也不明白这些究竟属于哪门科学中的理论，但是具体解释起来看的很明白。</p>
-<p><strong>LEVEL TRIGGERING：<strong>当电流有两个级别，<code>VH</code> 和 <code>VL</code>。代表了两个触发事件的级别。如果将<code>VH</code> 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为</strong>LEVEL TRIGGERING</strong>，每当遇到<code>VH</code> 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。</p>
+<p><strong>LEVEL TRIGGERING</strong>：当电流有两个级别，<code>VH</code> 和 <code>VL</code>。代表了两个触发事件的级别。如果将<code>VH</code> 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为<strong>LEVEL TRIGGERING</strong>，每当遇到<code>VH</code> 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232954599.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232954599.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232954599.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232954599.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232954599.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png"
         title="image-20211212232954599" /></p>
-<p><strong>Edge TRIGGERING:</strong></p>
-<p>如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（<strong>Edge TRIGGERING:</strong>）。</p>
+<p><strong>Edge TRIGGERING</strong>:</p>
+<p>如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（<strong>Edge TRIGGERING</strong>:）。</p>
 <p>如果需要打开LED灯，则当时钟从<code>VL</code>转换到<code>VH</code>时才会亮起，而不是一家处在对应的时钟线上，仅仅是在过渡时亮起。</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233004721.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233004721.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233004721.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233004721.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233004721.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png"
         title="image-20211212233004721" /></p>
 <h2 id="为什么kubernetes使用level-trigger而不使用edge-trigger">为什么kubernetes使用Level Trigger而不使用Edge trigger</h2>
 <p>如图所述，两种不同的设计模式，随着时间形状进行相应，当系统在由高转低，或由低转高时，系统处在关闭或者不可控的异常状态下，应如何触发对应的事件呢。</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233012534.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233012534.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233012534.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233012534.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233012534.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png"
         title="image-20211212233012534" /></p>
 <p>换一种方式来来解释，比如说通过 加法运算，如下，i=3，当给I+4作为一个操作触发事件。</p>
 <div class="highlight"><div class="chroma">
@@ -218,29 +184,29 @@ Edge TRIGGERING:
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233021583.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233021583.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233021583.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233021583.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212233021583.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png"
         title="image-20211212233021583" /></p>
 <h4 id="一次中断场景">一次中断场景</h4>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232713291.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232713291.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232713291.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232713291.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232713291.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png"
         title="image-20211212232713291" /></p>
 <p>由图可知，<code>Edge trigger</code>当在恰当的时间点发生信号中断，会对整个流产生很大的影响，甚至改变了整个状态，对于较少的干扰并不会对有更好的结果，而单次的中断，使<code>Edge trigger</code>错过了从高到低的变化，而 <code>level trigger</code> 基本上保证了整个信号量的所有改变状态。</p>
 <h4 id="两次中断的场景下">两次中断的场景下</h4>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232747769.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232747769.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232747769.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232747769.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232747769.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png"
         title="image-20211212232747769" /></p>
 <p>由图可看到，信号的上升和下降中如果存在了中断，<code>Edge trigger</code> 丢失了上升的信号，但最终状态是正确的。</p>
 <p>在信号状态的两次变化时发生了两次中断，<code>Level Trigger</code>与<code>Edge trigger</code> 之间的区别很明显，<code>Edge trigger</code> 的信号错过了第一次上升，而<code>Level Trigger</code> 保持了最后观察到的状态，知道拿到了其他状态，这种模式保证了得到的信号基本的正确性，但是发生延迟到中断恢复后。</p>
@@ -297,10 +263,10 @@ Edge TRIGGERING:
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232804746.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232804746.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232804746.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232804746.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20211212232804746.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png"
         title="image-20211212232804746" /></p>
 <p>如图所示，在一个<code>Edge trigger</code> 中，最终的结果很可能会与理想中的结果发生偏差。</p>
 <p>当初始实例为1时，并希望扩展为5个副本，然后再向下缩容到2个副本，则<code>Edge trigger</code>环境下将看到以下状态：系统的实际状态不能立即对这些命令作出反应。正如图所述，当只有3个副本在运行时，它可能会终止3个副本。这就给我们留下了0个副本，而不是所需的2个副本。</p>
@@ -367,7 +333,7 @@ Edge TRIGGERING:
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -387,5 +353,5 @@ Edge TRIGGERING:
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2021-12-12T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"理解kubernetes listwatch机制原理"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2021-12-12T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"理解kubernetes listwatch机制原理"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

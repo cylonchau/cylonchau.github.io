@@ -6,17 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>Kubernetes 存储卷 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="Kubernetes 存储卷" />
-<meta property="og:description" content="在Kubernetes之上，在节点级提供一个存储卷的方式来持久存储数据的逻辑，这种只具备一定程度上的持久性。为了实现更强大的持久性，应该使用脱离节点而存在的共享存储设备。 为此Kubernetes提供了不同类型的存储卷。
-大多数和数据存储服务相关的应用，和有状态应用几乎都是需要持久存储数据的。容器本身是有生命周期的，为了使容器终结后可以将其删除，或者编排至其他节点上去运行。意味着数据不能存储在容器本地。一旦Pod故障就会触发重构。如果将数据放置在Pod自有的容器内名称空间中，数据随着Pod终结而结束。为了突破Pod生命周期的限制，需要将数据放置在Pod自有文件系统之外的地方。
-存储卷
-对Kubernetes来讲，存储卷不属于容器，而属于Pod。因此，在Kubernetes中同一个Pod内的多个容器可共享访问同一组存储卷。
-Pod底部有一个基础容器， ==pause==，但是不会启动。pause是基础架构容器。创建Pod时pause时Pod的根，所有Pod，包括网络命名空间等分配都是分配给pause的。在Pod中运行的容器是pause的网络名称空间的。容器在挂载存储卷时，实际上是复制pause的存储卷。
-因此为了真的实现持久性，存储卷应为宿主机挂载的外部存储设备的存储卷。如果需要实现跨节点持久，一般而言需要使用脱离节点本地的网络存储设备（ceph、glusterfs、nfs）来实现。节点如果需要使用此种存储的话，需要可以驱动相应存储设备才可以（在节点级可以访问相应网络存储设备）。
-k8s之上可使用的存储卷 Kubernetes支持的存储卷类型
-empryDir：只在节点本地使用的，用于做临时目录，或当缓存使用。一旦Pod删除，存储卷一并被删除。empryDir背后关联的宿主机目录可以使宿主机的内存。 hostPath：使宿主机目录与容器建立关联关系。 网络存储 传统的SAN（iSCSI，FC）NAS（常见用法协议 NFS,cifs,http）设备所构建的网络存储设备。 分布式存储（分机系统或块级别），glusterfs，ceph(rbd ceph的块接口存储)，cephfs等。 云存储：EBS（弹性块存储）亚马逊 ,Azure Disk 微软。此模型只适用于Kubernetes集群托管在其公有云之上的场景。 使用kubectl explain pod.spec.volumes查看Kubernetes所支持的存储类型。
-emptyDir 语法
-emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 空间上限 定义完存储卷之后，需要在container当中使用volumeMounts指明挂载哪个或哪些个存储卷
-1 2 3 4 5 - container - mountPath 挂载路径 - name 挂载那个卷 - readOnly 是否只读挂载 - subPath 是否挂载子路径之下 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 apiVersion: v1 kind: Pod metadata: name: my-nginx namespace: default spec: containers: - name: busybox image: busybox imagePullPolicy: IfNotPresent ports: - name: http containerPort: 80 command: [&#34;tail&#34;] volumeMounts: # 指明挂载哪一个存储卷 - name: html mountPath: /data/web/html # 指明挂载到容器的哪个路径下 volumes: - name: html emptyDir: {} # 表示空映射，都使用默认值，大小不限制，使用磁盘空间，而不是不定义 在Kubernetes中 $()是变量引用" />
+<meta property="og:description" content="在Kubernetes之上，在节点级提供一个存储卷的方式来持久存储数据的逻辑，这种只具备一定程度上的持久性。为了实现更强大的持久性，应该使用脱离节点而存在的共享存储设备。 为此Kubernetes提供了不同类型的存储卷。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/%E5%AD%98%E5%82%A8%E5%8D%B7.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2018-09-30T00:00:00+00:00" />
@@ -26,17 +16,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="Kubernetes 存储卷"/>
-<meta name="twitter:description" content="在Kubernetes之上，在节点级提供一个存储卷的方式来持久存储数据的逻辑，这种只具备一定程度上的持久性。为了实现更强大的持久性，应该使用脱离节点而存在的共享存储设备。 为此Kubernetes提供了不同类型的存储卷。
-大多数和数据存储服务相关的应用，和有状态应用几乎都是需要持久存储数据的。容器本身是有生命周期的，为了使容器终结后可以将其删除，或者编排至其他节点上去运行。意味着数据不能存储在容器本地。一旦Pod故障就会触发重构。如果将数据放置在Pod自有的容器内名称空间中，数据随着Pod终结而结束。为了突破Pod生命周期的限制，需要将数据放置在Pod自有文件系统之外的地方。
-存储卷
-对Kubernetes来讲，存储卷不属于容器，而属于Pod。因此，在Kubernetes中同一个Pod内的多个容器可共享访问同一组存储卷。
-Pod底部有一个基础容器， ==pause==，但是不会启动。pause是基础架构容器。创建Pod时pause时Pod的根，所有Pod，包括网络命名空间等分配都是分配给pause的。在Pod中运行的容器是pause的网络名称空间的。容器在挂载存储卷时，实际上是复制pause的存储卷。
-因此为了真的实现持久性，存储卷应为宿主机挂载的外部存储设备的存储卷。如果需要实现跨节点持久，一般而言需要使用脱离节点本地的网络存储设备（ceph、glusterfs、nfs）来实现。节点如果需要使用此种存储的话，需要可以驱动相应存储设备才可以（在节点级可以访问相应网络存储设备）。
-k8s之上可使用的存储卷 Kubernetes支持的存储卷类型
-empryDir：只在节点本地使用的，用于做临时目录，或当缓存使用。一旦Pod删除，存储卷一并被删除。empryDir背后关联的宿主机目录可以使宿主机的内存。 hostPath：使宿主机目录与容器建立关联关系。 网络存储 传统的SAN（iSCSI，FC）NAS（常见用法协议 NFS,cifs,http）设备所构建的网络存储设备。 分布式存储（分机系统或块级别），glusterfs，ceph(rbd ceph的块接口存储)，cephfs等。 云存储：EBS（弹性块存储）亚马逊 ,Azure Disk 微软。此模型只适用于Kubernetes集群托管在其公有云之上的场景。 使用kubectl explain pod.spec.volumes查看Kubernetes所支持的存储类型。
-emptyDir 语法
-emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 空间上限 定义完存储卷之后，需要在container当中使用volumeMounts指明挂载哪个或哪些个存储卷
-1 2 3 4 5 - container - mountPath 挂载路径 - name 挂载那个卷 - readOnly 是否只读挂载 - subPath 是否挂载子路径之下 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 apiVersion: v1 kind: Pod metadata: name: my-nginx namespace: default spec: containers: - name: busybox image: busybox imagePullPolicy: IfNotPresent ports: - name: http containerPort: 80 command: [&#34;tail&#34;] volumeMounts: # 指明挂载哪一个存储卷 - name: html mountPath: /data/web/html # 指明挂载到容器的哪个路径下 volumes: - name: html emptyDir: {} # 表示空映射，都使用默认值，大小不限制，使用磁盘空间，而不是不定义 在Kubernetes中 $()是变量引用"/>
+<meta name="twitter:description" content="在Kubernetes之上，在节点级提供一个存储卷的方式来持久存储数据的逻辑，这种只具备一定程度上的持久性。为了实现更强大的持久性，应该使用脱离节点而存在的共享存储设备。 为此Kubernetes提供了不同类型的存储卷。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -66,13 +46,13 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -85,7 +65,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -105,7 +85,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">Kubernetes 存储卷</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2018-09-30 00:00:00">2018-09-30 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 654 字&nbsp;
@@ -122,21 +102,8 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
   <ul>
     <li>
       <ul>
-        <li>
-          <ul>
-            <li><a href="#k8s之上可使用的存储卷">k8s之上可使用的存储卷</a></li>
-            <li><a href="#emptydir">emptyDir</a></li>
-            <li><a href="#gitrepo">gitRepo</a></li>
-            <li><a href="#hostpath">hostPath</a></li>
-            <li><a href="#nfs对于nfs存储卷来讲">NFS，对于nfs存储卷来讲</a></li>
-          </ul>
-        </li>
-        <li><a href="#pvc使用逻辑">PVC使用逻辑</a>
-          <ul>
-            <li><a href="#pvc语法">PVC语法</a></li>
-            <li><a href="#在pod中使用当前名称空间已经存在的pvc">在Pod中使用当前名称空间已经存在的PVC</a></li>
-          </ul>
-        </li>
+        <li></li>
+        <li><a href="#pvc使用逻辑">PVC使用逻辑</a></li>
         <li><a href="#storageclass">StorageClass</a></li>
       </ul>
     </li>
@@ -251,7 +218,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
 </li>
 </ol>
 <blockquote>
-<p><strong>gitRepo 卷示例：</strong></p>
+<p><strong>gitRepo 卷示例</strong>：</p>
 </blockquote>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -335,7 +302,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
 <li><code>BlockDevice</code> 块类型的设备文件。</li>
 </ul>
 <blockquote>
-<p><strong>hostPath 卷示例：</strong></p>
+<p><strong>hostPath 卷示例</strong>：</p>
 </blockquote>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
@@ -714,7 +681,7 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -734,5 +701,5 @@ emptyDir medium 媒介类型 empty string （disk 默认） or memory sizeLimit 
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-09-30T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Kubernetes 存储卷"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2018-09-30T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Kubernetes 存储卷"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

@@ -6,34 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>网络实验 - VxLAN - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="网络实验 - VxLAN" />
-<meta property="og:description" content="vXlan概念 实验 什么是VxLAN RFC定义了虚拟扩展局域网 VXLAN （Virtual eXtensible Local Area Network，）扩展方案，是对传统VLAN协议的一种扩展。VXLAN采用 （MACin UDP（User Datagram Protocol）封装方式，是NVO3（Network Virtualization over Layer 3）中的一种网络虚拟化技术。VXLAN的特点是将L2的以太帧封装到UDP报文（即L2 over L4）中，并在L3网络中传输。
-VXLAN本质上是一种隧道技术，在源网络设备与目的网络设备之间的IP网络上，建立一条逻辑隧道，将用户报文经过特定的封装后通过这条隧道转发。从用户的角度来看，接入网络的服务器就像是连接到了一个虚拟的二层交换机的不同端口上（可把蓝色虚框表示的数据中心VXLAN网络看成一个二层虚拟交换机），可以方便地通信。
-为什么需要VxLAN 虚拟机规模受网络设备表项规格的限制
-在传统二层网络环境下，数据报文是通过查询MAC地址表进行二层转发。服务器虚拟化后，VM的数量比原有的物理机发生了数量级的增长，伴随而来的便是VM网卡MAC地址数量的空前增加。而接入侧二层设备的MAC地址表规格较小，无法满足快速增长的VM数量。
-网络隔离能力有限
-VLAN作为当前主流的网络隔离技术，在标准定义中只有12比特，因此可用的VLAN数量仅4096个。对于公有云或其它大型虚拟化云计算服务这种动辄上万甚至更多租户的场景而言，VLAN的隔离能力无法满足。
-虚拟机迁移范围受限
-由于服务器资源等问题（如CPU过高，内存不够等），虚拟机迁移已经成为了一个常态性业务。
-什么是虚拟机动态迁移？
-所谓虚拟机动态迁移，是指在保证虚拟机上服务正常运行的同时，将一个虚拟机系统从一个物理服务器移动到另一个物理服务器的过程。该过程对于最终用户来说是无感知的，从而使得管理员能够在不影响用户正常使用的情况下，灵活调配服务器资源，或者对物理服务器进行维修和升级。
-在服务器虚拟化后，虚拟机动态迁移变得常态化，为了保证迁移时业务不中断，就要求在虚拟机迁移时，不仅虚拟机的IP地址、MAC地址等参数保持不变，而且虚拟机的运行状态也必须保持原状（例如TCP会话状态），所以虚拟机的动态迁移只能在同一个二层域中进行，而不能跨二层域迁移。
-VxLAN方案 为了应对传统数据中心网络对服务器虚拟化技术的限制，VXLAN技术应运而生，其能够很好的解决上述问题。
-针对虚拟机规模受设备表项规格限制
-VXLAN将管理员规划的同一区域内的VM发出的原始报文封装成新的UDP报文，并使用物理网络的IP和MAC地址作为外层头，这样报文对网络中的其他设备只表现为封装后的参数。因此，极大降低了大二层网络对MAC地址规格的需求。
-针对网络隔离能力限制
-在传统的VLAN网络中，标准定义所支持的可用VLAN数量只有4000个左右。VXLAN引入了类似VLAN ID的用户标识，称为VXLAN网络标识VNI（VXLAN Network Identifier），由24比特组成，支持多达16M的VXLAN段，有效得解决了云计算中海量租户隔离的问题。
-针对虚拟机迁移范围受限
-VXLAN将VM发出的原始报文进行封装后通过VXLAN隧道进行传输，隧道两端的VM不需感知传输网络的物理架构。这样，对于具有同一网段IP地址的VM而言，即使其物理位置不在同一个二层网络中，但从逻辑上看，相当于处于同一个二层域。即VXLAN技术在三层网络之上，构建出了一个虚拟的大二层网络，只要虚拟机路由可达，就可以将其规划到同一个大二层网络中。这就解决了虚拟机迁移范围受限问题。
-VxLAN与VLAN之间的区别 VLAN是传统的网络隔离技术，在标准定义中VLAN的数量只有4096，无法满足大型数据中心的租户间隔离需求。另外，VLAN的二层范围一般较小且固定，无法支持虚拟机大范围的动态迁移。
-VXLAN完美地弥补了VLAN的上述不足，一方面通过VXLAN中的24比特VNI字段，提供多达16M租户的标识能力，远大于VLAN的4096；另一方面，VXLAN本质上在两台交换机之间构建了一条穿越数据中心基础IP网络的虚拟隧道，将数据中心网络虚拟成一个巨型“二层交换机”，满足虚拟机大范围动态迁移的需求。
-VXLAN Header
-增加VXLAN头（8字节），其中包含24比特的VNI字段，用来定义VXLAN网络中不同的租户。此外，还包含VXLAN Flags（8比特，取值为00001000）和两个保留字段（分别为24比特和8比特）。
-UDP Header
-VXLAN头和原始以太帧一起作为UDP的数据。UDP头中，目的端口号（VXLAN Port）固定为4789，源端口号（UDP Src. Port）是原始以太帧通过哈希算法计算后的值。
-Outer IP Header
-封装外层IP头。其中，源IP地址（Outer Src. IP）为源VM所属VTEP的IP地址，目的IP地址（Outer Dst. IP）为目的VM所属VTEP的IP地址。
-Outer MAC Header
-封装外层以太头。其中，源MAC地址（Src. MAC Addr.）为源VM所属VTEP的MAC地址，目的MAC地址（Dst. MAC Addr." />
+<meta property="og:description" content="vXlan概念 实验 什么是VxLAN RFC定义了虚拟扩展局域网 VXLAN （Virtual eXtensible Local Area Network，）扩展方案，是对传统VLAN协议的一种扩展。VXLAN采用 （MACin UDP（User Datagram Protocol）封装方式，是NVO3（Network Virtualization over Layer 3）中的一种网络虚拟化技术。VXLAN的特点是将L2的以太帧封装到UDP报文（即L2 over L4）中，并在L3网络中传输。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/experiment-vxlan.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2021-01-02T00:00:00+00:00" />
@@ -43,34 +16,7 @@ Outer MAC Header
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="网络实验 - VxLAN"/>
-<meta name="twitter:description" content="vXlan概念 实验 什么是VxLAN RFC定义了虚拟扩展局域网 VXLAN （Virtual eXtensible Local Area Network，）扩展方案，是对传统VLAN协议的一种扩展。VXLAN采用 （MACin UDP（User Datagram Protocol）封装方式，是NVO3（Network Virtualization over Layer 3）中的一种网络虚拟化技术。VXLAN的特点是将L2的以太帧封装到UDP报文（即L2 over L4）中，并在L3网络中传输。
-VXLAN本质上是一种隧道技术，在源网络设备与目的网络设备之间的IP网络上，建立一条逻辑隧道，将用户报文经过特定的封装后通过这条隧道转发。从用户的角度来看，接入网络的服务器就像是连接到了一个虚拟的二层交换机的不同端口上（可把蓝色虚框表示的数据中心VXLAN网络看成一个二层虚拟交换机），可以方便地通信。
-为什么需要VxLAN 虚拟机规模受网络设备表项规格的限制
-在传统二层网络环境下，数据报文是通过查询MAC地址表进行二层转发。服务器虚拟化后，VM的数量比原有的物理机发生了数量级的增长，伴随而来的便是VM网卡MAC地址数量的空前增加。而接入侧二层设备的MAC地址表规格较小，无法满足快速增长的VM数量。
-网络隔离能力有限
-VLAN作为当前主流的网络隔离技术，在标准定义中只有12比特，因此可用的VLAN数量仅4096个。对于公有云或其它大型虚拟化云计算服务这种动辄上万甚至更多租户的场景而言，VLAN的隔离能力无法满足。
-虚拟机迁移范围受限
-由于服务器资源等问题（如CPU过高，内存不够等），虚拟机迁移已经成为了一个常态性业务。
-什么是虚拟机动态迁移？
-所谓虚拟机动态迁移，是指在保证虚拟机上服务正常运行的同时，将一个虚拟机系统从一个物理服务器移动到另一个物理服务器的过程。该过程对于最终用户来说是无感知的，从而使得管理员能够在不影响用户正常使用的情况下，灵活调配服务器资源，或者对物理服务器进行维修和升级。
-在服务器虚拟化后，虚拟机动态迁移变得常态化，为了保证迁移时业务不中断，就要求在虚拟机迁移时，不仅虚拟机的IP地址、MAC地址等参数保持不变，而且虚拟机的运行状态也必须保持原状（例如TCP会话状态），所以虚拟机的动态迁移只能在同一个二层域中进行，而不能跨二层域迁移。
-VxLAN方案 为了应对传统数据中心网络对服务器虚拟化技术的限制，VXLAN技术应运而生，其能够很好的解决上述问题。
-针对虚拟机规模受设备表项规格限制
-VXLAN将管理员规划的同一区域内的VM发出的原始报文封装成新的UDP报文，并使用物理网络的IP和MAC地址作为外层头，这样报文对网络中的其他设备只表现为封装后的参数。因此，极大降低了大二层网络对MAC地址规格的需求。
-针对网络隔离能力限制
-在传统的VLAN网络中，标准定义所支持的可用VLAN数量只有4000个左右。VXLAN引入了类似VLAN ID的用户标识，称为VXLAN网络标识VNI（VXLAN Network Identifier），由24比特组成，支持多达16M的VXLAN段，有效得解决了云计算中海量租户隔离的问题。
-针对虚拟机迁移范围受限
-VXLAN将VM发出的原始报文进行封装后通过VXLAN隧道进行传输，隧道两端的VM不需感知传输网络的物理架构。这样，对于具有同一网段IP地址的VM而言，即使其物理位置不在同一个二层网络中，但从逻辑上看，相当于处于同一个二层域。即VXLAN技术在三层网络之上，构建出了一个虚拟的大二层网络，只要虚拟机路由可达，就可以将其规划到同一个大二层网络中。这就解决了虚拟机迁移范围受限问题。
-VxLAN与VLAN之间的区别 VLAN是传统的网络隔离技术，在标准定义中VLAN的数量只有4096，无法满足大型数据中心的租户间隔离需求。另外，VLAN的二层范围一般较小且固定，无法支持虚拟机大范围的动态迁移。
-VXLAN完美地弥补了VLAN的上述不足，一方面通过VXLAN中的24比特VNI字段，提供多达16M租户的标识能力，远大于VLAN的4096；另一方面，VXLAN本质上在两台交换机之间构建了一条穿越数据中心基础IP网络的虚拟隧道，将数据中心网络虚拟成一个巨型“二层交换机”，满足虚拟机大范围动态迁移的需求。
-VXLAN Header
-增加VXLAN头（8字节），其中包含24比特的VNI字段，用来定义VXLAN网络中不同的租户。此外，还包含VXLAN Flags（8比特，取值为00001000）和两个保留字段（分别为24比特和8比特）。
-UDP Header
-VXLAN头和原始以太帧一起作为UDP的数据。UDP头中，目的端口号（VXLAN Port）固定为4789，源端口号（UDP Src. Port）是原始以太帧通过哈希算法计算后的值。
-Outer IP Header
-封装外层IP头。其中，源IP地址（Outer Src. IP）为源VM所属VTEP的IP地址，目的IP地址（Outer Dst. IP）为目的VM所属VTEP的IP地址。
-Outer MAC Header
-封装外层以太头。其中，源MAC地址（Src. MAC Addr.）为源VM所属VTEP的MAC地址，目的MAC地址（Dst. MAC Addr."/>
+<meta name="twitter:description" content="vXlan概念 实验 什么是VxLAN RFC定义了虚拟扩展局域网 VXLAN （Virtual eXtensible Local Area Network，）扩展方案，是对传统VLAN协议的一种扩展。VXLAN采用 （MACin UDP（User Datagram Protocol）封装方式，是NVO3（Network Virtualization over Layer 3）中的一种网络虚拟化技术。VXLAN的特点是将L2的以太帧封装到UDP报文（即L2 over L4）中，并在L3网络中传输。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -100,13 +46,13 @@ Outer MAC Header
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -119,7 +65,7 @@ Outer MAC Header
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -139,7 +85,7 @@ Outer MAC Header
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">网络实验 - VxLAN</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/network.html"><i class="far fa-folder fa-fw"></i>network</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-01-02 00:00:00">2021-01-02 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 488 字&nbsp;
@@ -166,11 +112,7 @@ Outer MAC Header
       <ul>
         <li><a href="#什么是vxlan-vtep">什么是VXLAN VTEP</a></li>
         <li><a href="#什么是vxlan-vni">什么是VXLAN VNI</a></li>
-        <li><a href="#完成vxlan网络架构">完成VxLAN网络架构</a>
-          <ul>
-            <li><a href="#ensp中配置vxlan">eNSP中配置VxLAN</a></li>
-          </ul>
-        </li>
+        <li><a href="#完成vxlan网络架构">完成VxLAN网络架构</a></li>
       </ul>
     </li>
     <li><a href="#reference">reference</a></li>
@@ -183,10 +125,10 @@ Outer MAC Header
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225057747.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225057747.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225057747.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225057747.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506225057747.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506225057747.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506225057747.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506225057747.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220506225057747.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506225057747.png"
         title="image-20220506225057747" /></p>
 <h3 id="为什么需要vxlan">为什么需要VxLAN</h3>
 <p><strong>虚拟机规模受网络设备表项规格的限制</strong></p>
@@ -209,10 +151,10 @@ Outer MAC Header
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/5448c00ff2b14df88b112f3ee7923c6c.jpg"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/5448c00ff2b14df88b112f3ee7923c6c.jpg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/5448c00ff2b14df88b112f3ee7923c6c.jpg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/5448c00ff2b14df88b112f3ee7923c6c.jpg 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/5448c00ff2b14df88b112f3ee7923c6c.jpg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/5448c00ff2b14df88b112f3ee7923c6c.jpg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/5448c00ff2b14df88b112f3ee7923c6c.jpg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/5448c00ff2b14df88b112f3ee7923c6c.jpg 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/5448c00ff2b14df88b112f3ee7923c6c.jpg"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/5448c00ff2b14df88b112f3ee7923c6c.jpg"
         title="img" /></p>
 <h3 id="vxlan与vlan之间的区别">VxLAN与VLAN之间的区别</h3>
 <p>VLAN是传统的网络隔离技术，在标准定义中VLAN的数量只有4096，无法满足大型数据中心的租户间隔离需求。另外，VLAN的二层范围一般较小且固定，无法支持虚拟机大范围的动态迁移。</p>
@@ -220,10 +162,10 @@ Outer MAC Header
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210202234615267.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210202234615267.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210202234615267.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210202234615267.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210202234615267.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210202234615267.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210202234615267.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210202234615267.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210202234615267.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210202234615267.png"
         title="image-20210202234615267" /></p>
 <ul>
 <li>
@@ -248,10 +190,10 @@ Outer MAC Header
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/9aae9ee2cc864c6793e6a93792426a98.jpg"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/9aae9ee2cc864c6793e6a93792426a98.jpg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/9aae9ee2cc864c6793e6a93792426a98.jpg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/9aae9ee2cc864c6793e6a93792426a98.jpg 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9aae9ee2cc864c6793e6a93792426a98.jpg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9aae9ee2cc864c6793e6a93792426a98.jpg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9aae9ee2cc864c6793e6a93792426a98.jpg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9aae9ee2cc864c6793e6a93792426a98.jpg 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/9aae9ee2cc864c6793e6a93792426a98.jpg"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9aae9ee2cc864c6793e6a93792426a98.jpg"
         title="https://download.huawei.com/mdl/image/download?uuid=9aae9ee2cc864c6793e6a93792426a98" /></p>
 <h3 id="什么是vxlan-vtep">什么是VXLAN VTEP</h3>
 <p>VXLAN隧道端点，VTEP（VXLAN Tunnel Endpoints）是VXLAN网络的边缘设备，是VXLAN隧道的起点和终点，VXLAN对用户原始数据帧的封装和解封装均在VTEP上进行。</p>
@@ -268,10 +210,10 @@ Outer MAC Header
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203000139766.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203000139766.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203000139766.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203000139766.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210203000139766.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210203000139766.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210203000139766.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210203000139766.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20210203000139766.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20210203000139766.png"
         title="image-20210203000139766" /></p>
 <h4 id="ensp中配置vxlan">eNSP中配置VxLAN</h4>
 <p>在eNSP中只有华为的CE设备（CloudEngine系列交换机）支持VxLAN</p>
@@ -603,7 +545,7 @@ Outer MAC Header
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -623,5 +565,5 @@ Outer MAC Header
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2021-01-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"网络实验 - VxLAN"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2021-01-02T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"网络实验 - VxLAN"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

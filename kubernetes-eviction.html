@@ -6,14 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>Understanding Kubernetes - 理解Kubernetes的驱逐机制 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="Understanding Kubernetes - 理解Kubernetes的驱逐机制" />
-<meta property="og:description" content="驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。
-Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
-抢占驱逐 (Preemption and Eviction) [1] 节点压力驱逐 (Node-pressure) [2] 污点驱逐 (Taints) [3] 使用API发起驱逐 (API-initiated) [4] 排出Node上的Pod (drain) [5] 被 controller-manager 驱逐 抢占和优先级 抢占是指当节点资源不足以运行新添加的Pod时，kube-scheduler 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 kube-proxy 被驱逐的场景
-节点压力驱逐 节点压力驱逐是指，Pod所在节点的资源，如CPU, 内存, inode等，这些资源被分为可压缩资源CPU (compressible resources) 与不可压缩资源 (incompressible resources) 磁盘IO, 内存等，当不可压缩资源不足时，Pod会被驱逐。对于此类问题的驱逐 是每个计算节点的 kubelet 通过捕获 cAdvisor 指标来监控节点的资源使用情况。
-被 controller-manager 驱逐 kube-controller-manager 会定期检查节点的状态，如节点处于 NotReady 超过一定时间，或Pod部署长时间失败，这些Pod由控制平面 controller-manager 创建新的Pod已替换存在问题的Pod
-通过API发起驱逐 Kubernetes为用户提供了驱逐的API，用户可以通过调用API来实现自定义的驱逐。
-对于 1.22 以上版本，可以通过API policy/v1 进行驱逐
-1 2 3 4 5 6 7 8 9 10 11 curl -v \ -H &#39;Content-type: application/json&#39; \ https://your-cluster-api-endpoint." />
+<meta property="og:description" content="驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/kubernetes-eviction.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2022-11-29T00:00:00+00:00" />
@@ -23,14 +16,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="Understanding Kubernetes - 理解Kubernetes的驱逐机制"/>
-<meta name="twitter:description" content="驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。
-Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
-抢占驱逐 (Preemption and Eviction) [1] 节点压力驱逐 (Node-pressure) [2] 污点驱逐 (Taints) [3] 使用API发起驱逐 (API-initiated) [4] 排出Node上的Pod (drain) [5] 被 controller-manager 驱逐 抢占和优先级 抢占是指当节点资源不足以运行新添加的Pod时，kube-scheduler 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 kube-proxy 被驱逐的场景
-节点压力驱逐 节点压力驱逐是指，Pod所在节点的资源，如CPU, 内存, inode等，这些资源被分为可压缩资源CPU (compressible resources) 与不可压缩资源 (incompressible resources) 磁盘IO, 内存等，当不可压缩资源不足时，Pod会被驱逐。对于此类问题的驱逐 是每个计算节点的 kubelet 通过捕获 cAdvisor 指标来监控节点的资源使用情况。
-被 controller-manager 驱逐 kube-controller-manager 会定期检查节点的状态，如节点处于 NotReady 超过一定时间，或Pod部署长时间失败，这些Pod由控制平面 controller-manager 创建新的Pod已替换存在问题的Pod
-通过API发起驱逐 Kubernetes为用户提供了驱逐的API，用户可以通过调用API来实现自定义的驱逐。
-对于 1.22 以上版本，可以通过API policy/v1 进行驱逐
-1 2 3 4 5 6 7 8 9 10 11 curl -v \ -H &#39;Content-type: application/json&#39; \ https://your-cluster-api-endpoint."/>
+<meta name="twitter:description" content="驱逐 (eviction) 是指终止在Node上运行的Pod，保证workload的可用性，对于使用Kubernetes，了解驱逐机制是很有必要性的，因为通常情况下，Pod被驱逐是需要解决驱逐背后导致的问题，而想要快速定位就需要对驱逐机制进行了解。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -60,13 +46,13 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -79,7 +65,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -99,7 +85,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">Understanding Kubernetes - 理解Kubernetes的驱逐机制</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-11-29 00:00:00">2022-11-29 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 519 字&nbsp;
@@ -119,11 +105,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
         <li><a href="#抢占和优先级">抢占和优先级</a></li>
         <li><a href="#节点压力驱逐">节点压力驱逐</a></li>
         <li><a href="#被-controller-manager-驱逐">被 controller-manager 驱逐</a></li>
-        <li><a href="#通过api发起驱逐">通过API发起驱逐</a>
-          <ul>
-            <li><a href="#通过api驱逐返回状态">通过API驱逐返回状态</a></li>
-          </ul>
-        </li>
+        <li><a href="#通过api发起驱逐">通过API发起驱逐</a></li>
         <li><a href="#排出node上的pod">排出Node上的Pod</a></li>
         <li><a href="#污点驱逐">污点驱逐</a></li>
       </ul>
@@ -132,14 +114,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
       <ul>
         <li><a href="#方法1启用auto-scaler">方法1：启用auto-scaler</a></li>
         <li><a href="#方法2保护关键pod">方法2：保护关键Pod</a></li>
-        <li><a href="#检查思路">检查思路</a>
-          <ul>
-            <li><a href="#查看pod容忍度">查看Pod容忍度</a></li>
-            <li><a href="#查看防止-pod-驱逐的条件">查看防止 Pod 驱逐的条件</a></li>
-            <li><a href="#检查pod的已分配资源">检查Pod的已分配资源</a></li>
-            <li><a href="#检查pod-是否定期失败">检查Pod 是否定期失败</a></li>
-          </ul>
-        </li>
+        <li><a href="#检查思路">检查思路</a></li>
       </ul>
     </li>
     <li><a href="#如何监控被驱逐的pod">如何监控被驱逐的Pod</a>
@@ -454,7 +429,7 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -474,5 +449,5 @@ Pod被驱逐原因 Kubernetes官方给出了下属Pod被驱逐的原因：
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-11-29T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Understanding Kubernetes - 理解Kubernetes的驱逐机制"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-11-29T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Understanding Kubernetes - 理解Kubernetes的驱逐机制"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

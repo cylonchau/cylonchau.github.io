@@ -6,20 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>Pod网络排错 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="Pod网络排错" />
-<meta property="og:description" content="Overview 本文将引入一个思路：“在Kubernetes集群发生网络异常时如何排查”。文章将引入Kubernetes 集群中网络排查的思路，包含网络异常模型，常用工具，并且提出一些案例以供学习。
-Pod常见网络异常分类 网络排查工具 Pod网络异常排查思路及流程模型 CNI网络异常排查步骤 案例学习 Pod网络异常 网络异常大概分为如下几类：
-网络不可达，主要现象为ping不通，其可能原因为：
-源端和目的端防火墙（iptables, selinux）限制 网络路由配置不正确 源端和目的端的系统负载过高，网络连接数满，网卡队列满 网络链路故障 端口不可达：主要现象为可以ping通，但telnet端口不通，其可能原因为：
-源端和目的端防火墙限制 源端和目的端的系统负载过高，网络连接数满，网卡队列满，端口耗尽 目的端应用未正常监听导致（应用未启动，或监听为127.0.0.1等） DNS解析异常：主要现象为基础网络可以连通，访问域名报错无法解析，访问IP可以正常连通。其可能原因为
-Pod的DNS配置不正确 DNS服务异常 pod与DNS服务通讯异常 大数据包丢包：主要现象为基础网络和端口均可以连通，小数据包收发无异常，大数据包丢包。可能原因为：
-数据包的大小超过了 dockero，CNI 插件，或者宿主机网卡的 MTU 值。 可使用 ping -s 指定数据包大小进行测试 CNI异常：主要现象为Node可以通，但Pod无法访问集群地址，可能原因有：
-kube-proxy 服务异常，没有生成 iptables 策略或者 ipvs 规则导致无法访问 CIDR耗尽，无法为Node注入 PodCIDR 导致 CNI 插件异常 其他 CNI 插件问题 那么整个Pod网络异常分类可以如下图所示：
-图：Pod network trouble hirarchy
-总结一下，Pod最常见的网络故障有，网络不可达（ping不通）；端口不可达（telnet不通）；DNS解析异常（域名不通）与大数据包丢失（大包不通）。
-常用网络排查工具 在了解到常见的网络异常后，在排查时就需要使用到一些网络工具才可以很有效的定位到网络故障原因，下面会介绍一些网络排查工具。
-tcpdump [1] tcpdump网络嗅探器，将强大和简单结合到一个单一的命令行界面中，能够将网络中的报文抓取，输出到屏幕或者记录到文件中。
-各系统下的安装
-Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；yum install -y tcpdump Apline：tcpdump ；apk add tcpdump --no-cache 查看指定接口上的所有通讯" />
+<meta property="og:description" content="Overview 本文将引入一个思路：“在Kubernetes集群发生网络异常时如何排查”。文章将引入Kubernetes 集群中网络排查的思路，包含网络异常模型，常用工具，并且提出一些案例以供学习。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/ch00.0-pod-network-troubleshooting.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2022-08-17T00:00:00+00:00" />
@@ -29,20 +16,7 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="Pod网络排错"/>
-<meta name="twitter:description" content="Overview 本文将引入一个思路：“在Kubernetes集群发生网络异常时如何排查”。文章将引入Kubernetes 集群中网络排查的思路，包含网络异常模型，常用工具，并且提出一些案例以供学习。
-Pod常见网络异常分类 网络排查工具 Pod网络异常排查思路及流程模型 CNI网络异常排查步骤 案例学习 Pod网络异常 网络异常大概分为如下几类：
-网络不可达，主要现象为ping不通，其可能原因为：
-源端和目的端防火墙（iptables, selinux）限制 网络路由配置不正确 源端和目的端的系统负载过高，网络连接数满，网卡队列满 网络链路故障 端口不可达：主要现象为可以ping通，但telnet端口不通，其可能原因为：
-源端和目的端防火墙限制 源端和目的端的系统负载过高，网络连接数满，网卡队列满，端口耗尽 目的端应用未正常监听导致（应用未启动，或监听为127.0.0.1等） DNS解析异常：主要现象为基础网络可以连通，访问域名报错无法解析，访问IP可以正常连通。其可能原因为
-Pod的DNS配置不正确 DNS服务异常 pod与DNS服务通讯异常 大数据包丢包：主要现象为基础网络和端口均可以连通，小数据包收发无异常，大数据包丢包。可能原因为：
-数据包的大小超过了 dockero，CNI 插件，或者宿主机网卡的 MTU 值。 可使用 ping -s 指定数据包大小进行测试 CNI异常：主要现象为Node可以通，但Pod无法访问集群地址，可能原因有：
-kube-proxy 服务异常，没有生成 iptables 策略或者 ipvs 规则导致无法访问 CIDR耗尽，无法为Node注入 PodCIDR 导致 CNI 插件异常 其他 CNI 插件问题 那么整个Pod网络异常分类可以如下图所示：
-图：Pod network trouble hirarchy
-总结一下，Pod最常见的网络故障有，网络不可达（ping不通）；端口不可达（telnet不通）；DNS解析异常（域名不通）与大数据包丢失（大包不通）。
-常用网络排查工具 在了解到常见的网络异常后，在排查时就需要使用到一些网络工具才可以很有效的定位到网络故障原因，下面会介绍一些网络排查工具。
-tcpdump [1] tcpdump网络嗅探器，将强大和简单结合到一个单一的命令行界面中，能够将网络中的报文抓取，输出到屏幕或者记录到文件中。
-各系统下的安装
-Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；yum install -y tcpdump Apline：tcpdump ；apk add tcpdump --no-cache 查看指定接口上的所有通讯"/>
+<meta name="twitter:description" content="Overview 本文将引入一个思路：“在Kubernetes集群发生网络异常时如何排查”。文章将引入Kubernetes 集群中网络排查的思路，包含网络异常模型，常用工具，并且提出一些案例以供学习。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -72,13 +46,13 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -91,7 +65,7 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -111,7 +85,7 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">Pod网络排错</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes-network.html"><i class="far fa-folder fa-fw"></i>kubernetes network</a>&nbsp;<a href="/categories/troubleshooting.html"><i class="far fa-folder fa-fw"></i>troubleshooting</a>&nbsp;<a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-08-17 00:00:00">2022-08-17 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1800 字&nbsp;
@@ -130,42 +104,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
     <li><a href="#pod网络异常">Pod网络异常</a></li>
     <li><a href="#常用网络排查工具">常用网络排查工具</a>
       <ul>
-        <li><a href="#tcpdump-supa-href11asup">tcpdump <sup><a href="#1">[1]</a></sup></a>
-          <ul>
-            <li><a href="#捕获所有网络接口">捕获所有网络接口</a></li>
-            <li><a href="#通过网络查找数据包">通过网络查找数据包</a></li>
-            <li><a href="#使用十六进制输出数据包内容">使用十六进制输出数据包内容</a></li>
-            <li><a href="#查看特定端口的流量">查看特定端口的流量</a></li>
-            <li><a href="#查找端口范围的流量">查找端口范围的流量</a></li>
-            <li><a href="#过滤包的大小">过滤包的大小</a></li>
-            <li><a href="#捕获流量输出为文件">捕获流量输出为文件</a></li>
-            <li><a href="#组合条件">组合条件</a></li>
-            <li><a href="#原始输出">原始输出</a></li>
-            <li><a href="#ip到端口">IP到端口</a></li>
-            <li><a href="#去除特定流量">去除特定流量</a></li>
-            <li><a href="#选项分组">选项分组</a></li>
-            <li><a href="#过滤tcp标记位">过滤TCP标记位</a></li>
-            <li><a href="#查找http包">查找http包</a></li>
-            <li><a href="#查找dns流量">查找DNS流量</a></li>
-            <li><a href="#查找对应流量的明文密码">查找对应流量的明文密码</a></li>
-            <li><a href="#wireshark追踪流">wireshark追踪流</a></li>
-            <li><a href="#关于抓包节点和抓包设备">关于抓包节点和抓包设备</a></li>
-          </ul>
-        </li>
-        <li><a href="#nsenter">nsenter</a>
-          <ul>
-            <li><a href="#如何定位pod名称空间">如何定位Pod名称空间</a></li>
-          </ul>
-        </li>
+        <li><a href="#tcpdump-supa-href11asup">tcpdump <sup><a href="#1">[1]</a></sup></a></li>
+        <li><a href="#nsenter">nsenter</a></li>
         <li><a href="#paping">paping</a></li>
-        <li><a href="#mtr">mtr</a>
-          <ul>
-            <li><a href="#简单的使用示例">简单的使用示例</a></li>
-            <li><a href="#mtr输出的数据">mtr输出的数据</a></li>
-            <li><a href="#丢包判断">丢包判断</a></li>
-            <li><a href="#延迟判断">延迟判断</a></li>
-          </ul>
-        </li>
+        <li><a href="#mtr">mtr</a></li>
       </ul>
     </li>
     <li><a href="#pod网络排查流程">Pod网络排查流程</a></li>
@@ -238,10 +180,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821164836806.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821164836806.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821164836806.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821164836806.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821164836806.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821164836806.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821164836806.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821164836806.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821164836806.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821164836806.png"
         title="image-20220821164836806" /></p>
 <center>图：Pod network trouble hirarchy</center><br>
 <p>总结一下，Pod最常见的网络故障有，网络不可达（ping不通）；端口不可达（telnet不通）；DNS解析异常（域名不通）与大数据包丢失（大包不通）。</p>
@@ -640,10 +582,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821200501496.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821200501496.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821200501496.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821200501496.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821200501496.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821200501496.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821200501496.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821200501496.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821200501496.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821200501496.png"
         title="image-20220821200501496" /></p>
 <center>图：VxLAN in kubernetes</center><br>
 <h3 id="nsenter">nsenter</h3>
@@ -1037,10 +979,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821225201747.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821225201747.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821225201747.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821225201747.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821225201747.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821225201747.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821225201747.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821225201747.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821225201747.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821225201747.png"
         title="image-20220821225201747" /></p>
 <center>图：Pod network exception troubleshooting idea</center><br>
 <h2 id="案例学习">案例学习</h2>
@@ -1136,79 +1078,79 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231943753.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231943753.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231943753.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231943753.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231943753.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231943753.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231943753.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231943753.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231943753.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231943753.png"
         title="image-20220821231943753" /></p>
 <center>图：10.233.65.46路由</center><br>
 <p>查看对端的回程路由</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232111046.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232111046.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232111046.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232111046.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232111046.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232111046.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232111046.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232111046.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232111046.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232111046.png"
         title="image-20220821232111046" /></p>
 <center>图：回程路由</center><br>
 <p>以上排查证明问题原因不是 <em>cni</em> 插件或者 <em>kube-proxy</em> 异常导致，因此需要在访问链路上抓包，判断问题原因、问题节点执行 <code>curl 10.233.0.100:5000</code>，在问题节点和后端pod所在节点的flannel.1上同时抓包发包节点一直在重传，Cluster lP已 <em>DNAT</em> 转换为后端Pod IP，如图所示</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231845672.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231845672.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231845672.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231845672.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231845672.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231845672.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231845672.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231845672.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231845672.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231845672.png"
         title="image-20220821231845672" /></p>
 <center>图：抓包过程，发送端</center><br>
 <p>后端Pod（ <em>registry</em> 服务）所在节点的 <em>flannel.1</em> 上未抓到任何数据包，如图所示</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231730846.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231730846.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231730846.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231730846.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231730846.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231730846.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231730846.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231730846.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821231730846.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821231730846.png"
         title="image-20220821231730846" /></p>
 <center>图：抓包过程，服务端</center><br>
 <p>请求 <em>service</em> 的 <em>ClusterlP</em> 时，在两端物理机网卡抓包，发包端如图所示，封装的源端节点IP是10.153.204.15，但一直在重传</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232249344.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232249344.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232249344.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232249344.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232249344.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232249344.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232249344.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232249344.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232249344.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232249344.png"
         title="image-20220821232249344" /></p>
 <center>图：包传送过程，发送端</center><br>
 <p>收包端收到了包，但未回包，如图所示</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232338410.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232338410.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232338410.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232338410.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232338410.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232338410.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232338410.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232338410.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232338410.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232338410.png"
         title="image-20220821232338410" /></p>
 <center>图：包传送过程，服务端</center><br>
 <p>由此可以知道，NAT的动作已经完成，而只是后端Pod（ <em>registry</em> 服务）没有回包，接下来在问题节点执行 <code>curl 10.233.65.46:5000</code>，在问题节点和后端（ <em>registry</em> 服务）Pod所在节点的 <em>flannel.1</em> 上同时抓包，两节点收发正常，发包如图所示</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232550959.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232550959.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232550959.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232550959.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232550959.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232550959.png"
         title="image-20220821232550959" /></p>
 <center>图：正常包发送端</center><br>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232827589.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232827589.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232827589.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232827589.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232827589.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232827589.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232827589.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232827589.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821232827589.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821232827589.png"
         title="image-20220821232827589" /></p>
 <center>图：正常包接收端</center><br>
 <p>接下来在两端物理机网卡接口抓包，因为数据包通过物理机网卡会进行 <em>vxlan</em> 封装，需要抓 <em>vxlan</em> 设备的8472端口，发包端如图所示</p>
@@ -1216,20 +1158,20 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233107112.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233107112.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233107112.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233107112.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233107112.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233107112.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233107112.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233107112.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233107112.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233107112.png"
         title="image-20220821233107112" /></p>
 <center>图：问题节点物理机网卡接口抓包</center><br>
 <p>后端Pod所在节点的物理网卡上抓包，注意需要过滤其他正常节点的请求包，如图所示；发现收到的数据包，源地址是10.153.204.228，但是问题节点的IP是10.153.204.15。</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233258211.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233258211.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233258211.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233258211.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233258211.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233258211.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233258211.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233258211.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233258211.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233258211.png"
         title="image-20220821233258211" /></p>
 <center>图：对端节点物理机网卡接口抓包</center><br>
 <p>此时问题以及清楚了，是一个Pod存在两个IP，导致发包和回包时无法通过隧道设备找到对端的接口，所以发可以收到，但不能回。</p>
@@ -1237,20 +1179,20 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233642903.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233642903.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233642903.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233642903.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233642903.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233642903.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233642903.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233642903.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233642903.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233642903.png"
         title="image-20220821233642903" /></p>
 <center>图：问题节点IP</center><br>
 <p>进一步查看网卡配置文件，发现网卡既配置了静态IP，又配置了dhcp动态获取IP。如图所示</p>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233741211.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233741211.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233741211.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233741211.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233741211.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233741211.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233741211.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233741211.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821233741211.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821233741211.png"
         title="image-20220821233741211" /></p>
 <center>图：问题节点网卡配置</center><br>
 <p>最终定位原因为问题节点既配置了dhcp 获取IP，又配置了静态IP，导致IP冲突，引发网络异常</p>
@@ -1272,10 +1214,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234238398.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234238398.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234238398.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234238398.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234238398.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234238398.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234238398.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234238398.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234238398.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234238398.png"
         title="image-20220821234238398" /></p>
 <p>通过抓包结果分析结果为TCP链接建立没有问题，但是在传输大数据的时候会一直重传 **1514 **大小的第一个数据包直至超时。怀疑是链路两端MTU大小不一致导致（现象：某一个固定大小的包一直超时的情况）。如图所示，1514大小的包一直在重传。</p>
 <p>报文1-3 TCP三次握手正常</p>
@@ -1285,10 +1227,10 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234410926.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234410926.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234410926.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234410926.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234410926.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234410926.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234410926.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234410926.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220821234410926.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220821234410926.png"
         title="image-20220821234410926" /></p>
 <center>图：wireshark分析</center><br>
 <p>在云主机上使用 <code>ping -s</code> 指定数据包大小，发现超过1400大小的数据包无法正常发送。结合以上情况，定位是云主机网卡配置的MTU是1500，<em>tunl0</em> 配置的MTU是1440，导致大数据包无法发送至 <em>tunl0</em> ，因此Pod没有收到报文，接口调用失败。</p>
@@ -1357,7 +1299,7 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -1377,5 +1319,5 @@ Ubuntu/Debian: tcpdump ；apt-get install -y tcpdump Centos/Fedora: tcpdump ；y
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-08-17T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Pod网络排错"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-08-17T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Pod网络排错"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

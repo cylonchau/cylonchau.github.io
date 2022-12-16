@@ -6,32 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>MySQL主从复制 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="MySQL主从复制" />
-<meta property="og:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。
-文件级别的异机同步方案
-scp/sftp/nc命令可以实现远程数据同步。 搭建ftp/http/svn/nfs服务器，然后在客户端上也可以把数据同步到服务器。 搭建samba文件共享服务，然后在客户端上也可以把数据同步到服务器。 利用rsync/csync2/union等均可以实现数据同步。 提示：union可实现双向同步，csync2可实现多机同步。
-​	以上文件同步方式如果结合定时任务或innotify sersync等功能，可以实现定时以及实时的数据同步。
-扩展思想：文件级别复制也可以利用mysql,mongodb等软件作为容器实现。
-扩展思想：程序向两个服务器同时写数据，双写就是一个同步机制。
-​	特点：简单、方便、效率和文件系统级别要差一些，但是被同步的节点可以提供访问。
-软件的自身同步机制（mysql、oracle、mongdb、ttserver、redis&hellip;..），文件放到数据库，听不到从库，再把文件拿出来。 文件系统级别的异机同步方案
-drbd基于文件系统同步，相当于网络RAID1，可以同步几乎任何业务数据。
-mysql数据的官方推荐drbd同步数据，所有单点服务例如：NFS，MFS(DRBD)，MySQL等度可以用drbd做复制，效率很高，缺点：备机服务不可用。
-数据库同步方案
-自身同步机制：mysql relication，（逻辑的SQL重写）物理复制方法drbd（丛库不提供读写）。 第三方drbd MySQL主从复制概述 MySQL的主从复制方案，和上述文件及文件系统级别同步是类似的，都是数据的传输。只不过MySQL无需借助第三方工具，而是其自带的同步复制功能，另外一点，MySQL的主从复制并不是磁盘上文件直接同步，而是逻辑的binlog日志绒布到本地在应用执行的过程
-MySQL主从复制是一个异步的复制过程（虽然一般情况下感觉是实时的），数据将从一个MySQL数据库（Master）复制到另一个数据库（Slave），在 mater 与 Slave之 间实现整个主从复制的过程是由三个线程参与完成的。其中有两个线程( SQL和IO )在Slave端，另外一个线程（I/O）在Master端。
-要实现MySQL的主从复制，首先必须打开 Master 端的 binlog 记录功能，否则就无法实现。因为整个复制过程实际上就是Slave从Master端获取Binlog日志，然后在Slave上以相同顺序逐自获取 binlog 日志中所记录的各种SQL操作。
-要打开MySQL的binlog记录功能，可能通过在MySQL的配置文件 my.cnf 中的 mysqld 模块( [mysqld] )标识后的参数部分增加 “log-bin” 参数选项来实现，具体信息如下：
-1 2 [mysqld] log-bin = /data/3307/mysql-bin 提示：log-bin需放置在[mysqld]标识后，否则会导致配置复制不成功。
-MySQL数据可支持单向、双向、链式级联等不同场景的复制。在复制过程中，一台服务器充当主服务器（Master），而一个或多个其他的服务器充当从服务器（Slave）。
-复制可以使单向：M==&gt;S，也可以是双向 M&lt;==&gt;M，当然也可以多M环装同步等。
-如果设置了链式级联复制，那么，从（slave）服务器本身除了充当从服务器外，也会同时充当其下面从服务器的主服务器。链式级联复制类似 A==&gt;B==&gt;C==&gt;D 的复制形式。
-下面是MySQL各种同步架构的逻辑图。
-单向主从复制逻辑图，次架构只能在Master端进行数据写入。官方给出Slave最多9，工作中不要超过5
-双向主主同步逻辑图，次架构可以再Master1端或Master2端进行数据写入
-线性级联单向双主同步逻辑图，此架构只能在Master1端进行数据写入
-缺陷：1 ==&gt;3 之间会存在延迟
-环装级联单向多主同步逻辑图，任意一个点都可以写入数据。
-环装级联单向多主多从同步逻辑图，次架构只能在任意一个Master端进行数据写入。" />
+<meta property="og:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/ch6-mysql-replication.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2017-05-21T00:00:00+00:00" />
@@ -41,32 +16,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="MySQL主从复制"/>
-<meta name="twitter:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。
-文件级别的异机同步方案
-scp/sftp/nc命令可以实现远程数据同步。 搭建ftp/http/svn/nfs服务器，然后在客户端上也可以把数据同步到服务器。 搭建samba文件共享服务，然后在客户端上也可以把数据同步到服务器。 利用rsync/csync2/union等均可以实现数据同步。 提示：union可实现双向同步，csync2可实现多机同步。
-​	以上文件同步方式如果结合定时任务或innotify sersync等功能，可以实现定时以及实时的数据同步。
-扩展思想：文件级别复制也可以利用mysql,mongodb等软件作为容器实现。
-扩展思想：程序向两个服务器同时写数据，双写就是一个同步机制。
-​	特点：简单、方便、效率和文件系统级别要差一些，但是被同步的节点可以提供访问。
-软件的自身同步机制（mysql、oracle、mongdb、ttserver、redis&hellip;..），文件放到数据库，听不到从库，再把文件拿出来。 文件系统级别的异机同步方案
-drbd基于文件系统同步，相当于网络RAID1，可以同步几乎任何业务数据。
-mysql数据的官方推荐drbd同步数据，所有单点服务例如：NFS，MFS(DRBD)，MySQL等度可以用drbd做复制，效率很高，缺点：备机服务不可用。
-数据库同步方案
-自身同步机制：mysql relication，（逻辑的SQL重写）物理复制方法drbd（丛库不提供读写）。 第三方drbd MySQL主从复制概述 MySQL的主从复制方案，和上述文件及文件系统级别同步是类似的，都是数据的传输。只不过MySQL无需借助第三方工具，而是其自带的同步复制功能，另外一点，MySQL的主从复制并不是磁盘上文件直接同步，而是逻辑的binlog日志绒布到本地在应用执行的过程
-MySQL主从复制是一个异步的复制过程（虽然一般情况下感觉是实时的），数据将从一个MySQL数据库（Master）复制到另一个数据库（Slave），在 mater 与 Slave之 间实现整个主从复制的过程是由三个线程参与完成的。其中有两个线程( SQL和IO )在Slave端，另外一个线程（I/O）在Master端。
-要实现MySQL的主从复制，首先必须打开 Master 端的 binlog 记录功能，否则就无法实现。因为整个复制过程实际上就是Slave从Master端获取Binlog日志，然后在Slave上以相同顺序逐自获取 binlog 日志中所记录的各种SQL操作。
-要打开MySQL的binlog记录功能，可能通过在MySQL的配置文件 my.cnf 中的 mysqld 模块( [mysqld] )标识后的参数部分增加 “log-bin” 参数选项来实现，具体信息如下：
-1 2 [mysqld] log-bin = /data/3307/mysql-bin 提示：log-bin需放置在[mysqld]标识后，否则会导致配置复制不成功。
-MySQL数据可支持单向、双向、链式级联等不同场景的复制。在复制过程中，一台服务器充当主服务器（Master），而一个或多个其他的服务器充当从服务器（Slave）。
-复制可以使单向：M==&gt;S，也可以是双向 M&lt;==&gt;M，当然也可以多M环装同步等。
-如果设置了链式级联复制，那么，从（slave）服务器本身除了充当从服务器外，也会同时充当其下面从服务器的主服务器。链式级联复制类似 A==&gt;B==&gt;C==&gt;D 的复制形式。
-下面是MySQL各种同步架构的逻辑图。
-单向主从复制逻辑图，次架构只能在Master端进行数据写入。官方给出Slave最多9，工作中不要超过5
-双向主主同步逻辑图，次架构可以再Master1端或Master2端进行数据写入
-线性级联单向双主同步逻辑图，此架构只能在Master1端进行数据写入
-缺陷：1 ==&gt;3 之间会存在延迟
-环装级联单向多主同步逻辑图，任意一个点都可以写入数据。
-环装级联单向多主多从同步逻辑图，次架构只能在任意一个Master端进行数据写入。"/>
+<meta name="twitter:description" content="Linux文件数据同步方案 在讲解MySQL主从复制之前，先回忆下，前面将结果的普通文件（磁盘上的文件）的同步方法。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -96,13 +46,13 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -115,7 +65,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -135,7 +85,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">MySQL主从复制</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/databases.html"><i class="far fa-folder fa-fw"></i>databases</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2017-05-21 00:00:00">2017-05-21 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 1632 字&nbsp;
@@ -431,7 +381,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 <pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql -uroot -p111 -S /data/3306/mysql.sock
 </span></span></code></pre></td></tr></table>
 </div>
-</div><p><strong>建立用于从库复制的账号rep：</strong></p>
+</div><p><strong>建立用于从库复制的账号rep</strong>：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt">1
@@ -464,7 +414,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 </span></span></code></pre></td></tr></table>
 </div>
 </div><p><font color="#f8070d" size=3><strong>实现对数据库锁表只读</strong></font></p>
-<p><strong>1. 对主数据库锁表只读（当钱窗口不要关闭）的命令：</strong></p>
+<p><strong>1. 对主数据库锁表只读（当钱窗口不要关闭）的命令</strong>：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt">1
@@ -1041,7 +991,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 </span></span><span class="line"><span class="cl">             Master_Server_Id: <span class="m">1</span>
 </span></span></code></pre></td></tr></table>
 </div>
-</div><p><font color="#f8070d" size=3><strong>对于该冲突，解决方法1：</strong></font></p>
+</div><p><font color="#f8070d" size=3><strong>对于该冲突，解决方法1</strong>：</font></p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt"> 1
@@ -1093,7 +1043,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 </div><hr>
 <p>提示：``set global sql_slave_skip_counter=n`  n取值&gt;0，忽略执行N个更新。</p>
 <hr>
-<p><font color="#f8070d" size=3><strong>解决方法2：根据可以忽略的错误号事先在配置文件中配置，跳过指定的不同映像业务数据的错误，例如：</strong></font></p>
+<p><font color="#f8070d" size=3><strong>解决方法2：根据可以忽略的错误号事先在配置文件中配置，跳过指定的不同映像业务数据的错误，例如</strong>：</font></p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt">1
@@ -1305,7 +1255,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
 <li>命令：<code>grant select,insert,update,delete on web.* to web_m@10.0.0.% identified by '111'</code></li>
 </ul>
 <p>由于主库设置了read-only，非super权限是无法写入的，因此，通过read-only参数就可以很好的控制用户非法将数据写入从库。</p>
-<p><font color="#f8070d" size=3><strong>生产工作场景的设置方案如下：</strong></font></p>
+<p><font color="#f8070d" size=3><strong>生产工作场景的设置方案如下</strong>：</font></p>
 <ol>
 <li>忽略主库mysql同步</li>
 <li>主库和从库使用相同的用户，但授权不同的权限</li>
@@ -1341,7 +1291,7 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -1361,5 +1311,5 @@ MySQL数据可支持单向、双向、链式级联等不同场景的复制。在
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-05-21T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"MySQL主从复制"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2017-05-21T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"MySQL主从复制"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

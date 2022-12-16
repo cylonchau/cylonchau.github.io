@@ -6,18 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>Kubernetes网络模型 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="Kubernetes网络模型" />
-<meta property="og:description" content="Overview 本文将深入探讨Kubernetes中的网络模型，以及对各种网络模型进行分析。
-Underlay Network Model 什么是Underlay Network 底层网络 Underlay Network 顾名思义是指网络设备基础设施，如交换机，路由器, DWDM 使用网络介质将其链接成的物理网络拓扑，负责网络之间的数据包传输。
-图：Underlay network topology Source：https://community.cisco.com/t5/data-center-switches/understanding-underlay-and-overlay-networks/td-p/4295870
-underlay network 可以是二层，也可以是三层；二层 underlay network 的典型例子是以太网 Ethernet，三层是 underlay network 的典型例子是互联网 Internet。
-而工作与二层的技术是 vlan，工作在三层的技术是由 OSPF, BGP 等协议组成
-kubernetes中的underlay network 在kubernetes中，underlay network 是将宿主机作为路由器设备而，Pod 的网络则通过学习成路由条目从而实现跨节点通讯。
-图：underlay network topology in kubernetes
-这种模型下典型的有 flannel 的 host-gw 模式与 calico BGP 模式。
-flannel host-gw [1] flannel host-gw 模式中每个Node需要在同一个二层网络中，并将Node作为一个路由器，跨节点通讯将通过路由表方式进行，这样方式下将网络模拟成一个underlay network。
-图：layer2 ethernet topology Source：https://www.auvik.com/franklyit/blog/layer-3-switches-layer-2/
-Notes：因为是通过路由方式，集群的cidr至少要配置16，因为这样可以保证，跨节点的Node作为一层网络，同节点的Pod作为一个网络。如果不是这种用情况，路由表处于相同的网络中，会存在网络不可达
-Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议。它是通过维护IP路由表或&rsquo;前缀&rsquo;表来实现AS （Autonomous System）之间的可访问性，属于向量路由协议。" />
+<meta property="og:description" content="Overview 本文将深入探讨Kubernetes中的网络模型，以及对各种网络模型进行分析。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/ch03-kubernetes-network-model.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2022-08-17T00:00:00+00:00" />
@@ -27,18 +16,7 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="Kubernetes网络模型"/>
-<meta name="twitter:description" content="Overview 本文将深入探讨Kubernetes中的网络模型，以及对各种网络模型进行分析。
-Underlay Network Model 什么是Underlay Network 底层网络 Underlay Network 顾名思义是指网络设备基础设施，如交换机，路由器, DWDM 使用网络介质将其链接成的物理网络拓扑，负责网络之间的数据包传输。
-图：Underlay network topology Source：https://community.cisco.com/t5/data-center-switches/understanding-underlay-and-overlay-networks/td-p/4295870
-underlay network 可以是二层，也可以是三层；二层 underlay network 的典型例子是以太网 Ethernet，三层是 underlay network 的典型例子是互联网 Internet。
-而工作与二层的技术是 vlan，工作在三层的技术是由 OSPF, BGP 等协议组成
-kubernetes中的underlay network 在kubernetes中，underlay network 是将宿主机作为路由器设备而，Pod 的网络则通过学习成路由条目从而实现跨节点通讯。
-图：underlay network topology in kubernetes
-这种模型下典型的有 flannel 的 host-gw 模式与 calico BGP 模式。
-flannel host-gw [1] flannel host-gw 模式中每个Node需要在同一个二层网络中，并将Node作为一个路由器，跨节点通讯将通过路由表方式进行，这样方式下将网络模拟成一个underlay network。
-图：layer2 ethernet topology Source：https://www.auvik.com/franklyit/blog/layer-3-switches-layer-2/
-Notes：因为是通过路由方式，集群的cidr至少要配置16，因为这样可以保证，跨节点的Node作为一层网络，同节点的Pod作为一个网络。如果不是这种用情况，路由表处于相同的网络中，会存在网络不可达
-Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议。它是通过维护IP路由表或&rsquo;前缀&rsquo;表来实现AS （Autonomous System）之间的可访问性，属于向量路由协议。"/>
+<meta name="twitter:description" content="Overview 本文将深入探讨Kubernetes中的网络模型，以及对各种网络模型进行分析。"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -68,13 +46,13 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -87,7 +65,7 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -107,7 +85,7 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">Kubernetes网络模型</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/kubernetes.html"><i class="far fa-folder fa-fw"></i>kubernetes</a>&nbsp;<a href="/categories/kubernetes-network.html"><i class="far fa-folder fa-fw"></i>kubernetes network</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2022-08-17 00:00:00">2022-08-17 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 460 字&nbsp;
@@ -126,13 +104,7 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
     <li><a href="#underlay-network-model">Underlay Network Model</a>
       <ul>
         <li><a href="#什么是underlay-network">什么是Underlay Network</a></li>
-        <li><a href="#kubernetes中的underlay-network">kubernetes中的underlay network</a>
-          <ul>
-            <li><a href="#flannel-host-gw-supa-href11asup">flannel host-gw <sup><a href="#1">[1]</a></sup></a></li>
-            <li><a href="#calico-bgp-supa-href22asup">Calico BGP <sup><a href="#2">[2]</a></sup></a></li>
-            <li><a href="#ipvlan--macvlan-supa-href44asup">IPVLAN &amp; MACVLAN <sup><a href="#4">[4]</a></sup></a></li>
-          </ul>
-        </li>
+        <li><a href="#kubernetes中的underlay-network">kubernetes中的underlay network</a></li>
       </ul>
     </li>
     <li><a href="#overlay-network-model">Overlay Network Model</a>
@@ -154,10 +126,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/download.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/download.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/download.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/download.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/download.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/download.png"
         title="典型的底层网络" /></p>
 <center>图：Underlay network topology</center>
 <center><em>Source：</em>https://community.cisco.com/t5/data-center-switches/understanding-underlay-and-overlay-networks/td-p/4295870</center><br>
@@ -168,10 +140,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220820230021593.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220820230021593.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220820230021593.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220820230021593.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220820230021593.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220820230021593.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220820230021593.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220820230021593.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220820230021593.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220820230021593.png"
         title="image-20220820230021593" /></p>
 <center>图：underlay network topology in kubernetes</center><br>
 <p>这种模型下典型的有 <em>flannel</em> 的 <em>host-gw</em> 模式与 <em>calico</em> <em>BGP</em> 模式。</p>
@@ -180,10 +152,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/SwitchDiagram1_update_feb16.jpeg"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/SwitchDiagram1_update_feb16.jpeg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/SwitchDiagram1_update_feb16.jpeg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/SwitchDiagram1_update_feb16.jpeg 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/SwitchDiagram1_update_feb16.jpeg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/SwitchDiagram1_update_feb16.jpeg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/SwitchDiagram1_update_feb16.jpeg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/SwitchDiagram1_update_feb16.jpeg 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/SwitchDiagram1_update_feb16.jpeg"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/SwitchDiagram1_update_feb16.jpeg"
         title="网络交换机图 1" /></p>
 <center>图：layer2 ethernet topology</center>
 <center><em>Source：</em>https://www.auvik.com/franklyit/blog/layer-3-switches-layer-2/</center><br>
@@ -195,10 +167,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/ti020109.gif"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/ti020109.gif, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/ti020109.gif 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/ti020109.gif 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/ti020109.gif"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/ti020109.gif, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/ti020109.gif 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/ti020109.gif 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/ti020109.gif"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/ti020109.gif"
         title="img" /></p>
 <center>图：BGP network topology</center>
 <center><em>Source：</em>https://infocenter.nokia.com/public/7705SAR214R1A/index.jsp?topic=%2Fcom.sar.routing_protocols%</center><br>
@@ -206,10 +178,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/cisco-nx-os-calico-network-design_0.jpeg"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/cisco-nx-os-calico-network-design_0.jpeg, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/cisco-nx-os-calico-network-design_0.jpeg 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/cisco-nx-os-calico-network-design_0.jpeg 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cisco-nx-os-calico-network-design_0.jpeg"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cisco-nx-os-calico-network-design_0.jpeg, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cisco-nx-os-calico-network-design_0.jpeg 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cisco-nx-os-calico-network-design_0.jpeg 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/cisco-nx-os-calico-network-design_0.jpeg"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cisco-nx-os-calico-network-design_0.jpeg"
         title="相关图片、图表或屏幕截图" /></p>
 <center>图：Calico Network Architecture</center>
 <center><em>Source：</em>https://www.cisco.com/c/en/us/td/docs/dcn/whitepapers/cisco-nx-os-calico-network-design.html</center><br>
@@ -224,10 +196,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/7a021d86-virtual-networking-1024x380.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/7a021d86-virtual-networking-1024x380.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/7a021d86-virtual-networking-1024x380.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/7a021d86-virtual-networking-1024x380.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7a021d86-virtual-networking-1024x380.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7a021d86-virtual-networking-1024x380.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7a021d86-virtual-networking-1024x380.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7a021d86-virtual-networking-1024x380.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/7a021d86-virtual-networking-1024x380.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7a021d86-virtual-networking-1024x380.png"
         title="img" /></p>
 <center>图：Virtual networking modes: bridging, multiplexing and SR-IOV</center>
 <center><em>Source：</em>https://thenewstack.io/hackers-guide-kubernetes-networking/</center><br>
@@ -244,10 +216,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817154334081.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817154334081.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817154334081.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817154334081.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817154334081.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817154334081.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817154334081.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817154334081.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817154334081.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817154334081.png"
         title="image-20220817154334081" /></p>
 <center>图：Mutus networking Architecture overlay and SR-IOV</center>
 <center><em>Source：</em>https://builders.intel.com/docs/networkbuilders/enabling_new_features_in_kubernetes_for_NFV.pdf</center><br>
@@ -265,10 +237,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/multus02.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/multus02.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/multus02.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/multus02.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/multus02.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/multus02.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/multus02.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/multus02.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/multus02.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/multus02.png"
         title="布鲁吉" /></p>
 <center>图：Mutus networking Architecture overlay and ipvlan</center>
 <center><em>Source：</em>https://devopstales.github.io/kubernetes/multus/</center><br>
@@ -280,10 +252,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay.png"
         title="图 4：建立在 Internet 样式底层之上的示例 Overlay 网络" /></p>
 <center>图：overlay network topology</center>
 <center><em>Source：</em>https://www.researchgate.net/figure/Example-Overlay-Network-built-on-top-of-an-Internet-style-Underlay_fig4_230774628</center><br>
@@ -298,10 +270,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/IPIP_Process.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/IPIP_Process.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/IPIP_Process.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/IPIP_Process.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/IPIP_Process.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/IPIP_Process.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/IPIP_Process.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/IPIP_Process.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/IPIP_Process.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/IPIP_Process.png"
         title="img" /></p>
 <center>图：A simple IPIP network workflow</center>
 <center><em>Source：</em>https://ssup2.github.io/theory_analysis/IPIP_GRE_Tunneling/</center><br>
@@ -309,19 +281,19 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163743182.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163743182.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163743182.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163743182.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163743182.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163743182.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163743182.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163743182.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163743182.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163743182.png"
         title="image-20220817163743182" /></p>
 <center>图：IPIP in kubernetes</center><br>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163814698.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163814698.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163814698.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163814698.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163814698.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163814698.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163814698.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163814698.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220817163814698.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220817163814698.png"
         title="image-20220817163814698" /></p>
 <center>图：IPIP packet with wireshark unpack</center><br>
 <blockquote>
@@ -332,10 +304,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220815232351298.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220815232351298.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220815232351298.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220815232351298.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220815232351298.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220815232351298.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220815232351298.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220815232351298.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220815232351298.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220815232351298.png"
         title="image-20220815232351298" /></p>
 <center>图：A simple VxLAN network topology</center><br>
 <p>在kubernetes中vxlan网络，例如 <em>flannel</em>，守护进程会根据kubernetes的Node而维护 <em>VxLAN</em>，名称为 <code>flannel.1</code> 这是 <em>VNID</em>，并维护这个网络的路由，当发生跨节点的流量时，本地会维护对端 <em>VxLAN</em> 设备的MAC地址，通过这个地址可以知道发送的目的端，这样就可以封包发送到对端，收到包的对端 VxLAN设备 <code>flannel.1</code>  解包后得到真实的目的地址。</p>
@@ -353,19 +325,19 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 </div><p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816161418748.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816161418748.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816161418748.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816161418748.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816161418748.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816161418748.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816161418748.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816161418748.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816161418748.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816161418748.png"
         title="image-20220816161418748" /></p>
 <center>图：VxLAN in kubernetes</center><br>
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816164301428.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816164301428.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816164301428.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816164301428.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816164301428.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816164301428.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816164301428.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816164301428.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/image-20220816164301428.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220816164301428.png"
         title="image-20220816164301428" /></p>
 <center>图：VxLAN packet with wireshark unpack</center><br>
 <blockquote>
@@ -377,10 +349,10 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
 <p><img
         class="lazyload"
         src="/svg/loading.min.svg"
-        data-src="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/weave-net-fdp1-1024x454.png"
-        data-srcset="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/weave-net-fdp1-1024x454.png, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/weave-net-fdp1-1024x454.png 1.5x, https://raw.githubusercontent.com/CylonChau/imgbed/main/img/weave-net-fdp1-1024x454.png 2x"
+        data-src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/weave-net-fdp1-1024x454.png"
+        data-srcset="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/weave-net-fdp1-1024x454.png, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/weave-net-fdp1-1024x454.png 1.5x, https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/weave-net-fdp1-1024x454.png 2x"
         data-sizes="auto"
-        alt="https://raw.githubusercontent.com/CylonChau/imgbed/main/img/weave-net-fdp1-1024x454.png"
+        alt="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/weave-net-fdp1-1024x454.png"
         title="Weave Net Encapsulation" /></p>
 <center>图：weave fastdp network topology</center>
 <center><em>Source：</em>https://www.weave.works/docs/net/latest/concepts/fastdp-how-it-works/</center><br>
@@ -425,7 +397,7 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -445,5 +417,5 @@ Calico BGP [2] BGP（Border Gateway Protocol）是去中心化自治路由协议
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-08-17T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Kubernetes网络模型"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2022-08-17T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"Kubernetes网络模型"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>

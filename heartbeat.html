@@ -6,32 +6,7 @@
         <meta name="robots" content="noodp" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
         <title>haproxy2安装 - Cylon&#39;s Collection</title><meta name="Description" content=""><meta property="og:title" content="haproxy2安装" />
-<meta property="og:description" content="heartbeat介绍 Heartbeat一款开源提供高可用(Highly-Available)服务的软件，通过heartbeat，可以将资源（IP及程序服务等资源）从一台已经故障的计算机快速转移到另一台正常运转的机器上继续提供服务，一般称之为高可用服务。在实际生产应用场景中，heartbeat的功能和另一个高可用开源软件keepalived有很多相同之处，但在生产中，对应实际的业务应用也是有区别的，例如:keepalived主要是控制IP的漂移，配置、应用简单，而heartbeat则不但可以控制IP漂移，更搜长对资源服务的控制，配置、应用比较复杂
-heartbeat工作原理 通过修改heartbeat软件的配置文件，可以指定哪一台Heartbeat服务器作为主服务器，则另一台将自动成为热备服务器.然后在热备服务器上配里Heartbeat守护程序来监听来自主服务器的心跳消息。如果热备服务器在指定时间内未监听到来自主服务器的心跳，就会启动故障转移程序，并取得主服务器上的相关资源服务的所有权，接替主服务器继续不间断的提供服务，从而达到资源及服务高可用性的目的。
-以上描述的是heartbeat主备的模式，heartbeat还支持主主棋式，即两台服务器互为主备，这时它们之间会相互发送报文来告诉对方自己当前的状态，如果在指定的时间内未受到对方发送的心跳报文，那么，一方就会认为对方失效或者宕机了，这时每个运行正常的主机就会启动自身的资源接管模块来接管运行在对方主机上的资源或者服务，继续为用户提供服务。一般情况下，可以较好的实现一台主机故障后，企业业务仍能够不间断的持续运行。
-注意：所谓的业务不间断，再故障转移期间也是需要切换时间的(例如:停止数据库及存储服务等)，heartbeat的主备高可用的切换时间一般是在5-20秒左右(服务器宕机的切换比人工切换要快)。
-另外，和keepalived高可用软件一样，heartbeat高可用是操作系统级别的，不是服务(软件)级别的，可以通过简单的脚本控制.实现软件级别的高可用。
-高可用服务器切换的常见条件场景：
-主服务器物理宕机(硬件损坏，操作系统故障)。 Heartbeat服务软件本身故障。 两台主备服务器之间心跳连接故障。 服务故障不会导致切换.可以通过服务宕机把heartbeat服务停掉。
-3 heartbeat心跳连接 经过前面的叙述，要部署heartbeat服务，至少需要两台主机来完成。那么，要实现高可用服务，这两台主机之间是如何做到互相通信和互相监侧的呢？
-下面是两台heartbeat主机之间通信的一些常用的可行方法：
-利用串行电缆，即所谓的串口线连接两台服务器(可选)。 一根以太网电缆两网卡直连(可选)。 以太网电缆，通过交换机等网络设备连接(次选)。 如何为高可用服务器端选择心跳通信方案？ 串口线信号不会和以太网网络交集，也不需要单独配置丐地址等信息，因此传输稳定不容易出现问题，使用串口线的缺点是两个服务器对之间的距离距离不能太远，串口线对应服务端的设备为/dev/ttys0。串口线形状如下图所示：
-使用以太网网线(无需特殊交叉线了)直连网卡的方式，配置也比较简单，只需对这两块直连网线的网卡配好独立的IP段地址能够互相通信即可，普通的网线就可以了（推荐）
-使用联网以太网网线和网卡作为心跳线是次选的方案，因为这个链路里增加了交换机设备这样的故障点，且这个线路不是专用心跳线路，容易受以太网其他数据传输的影响，导致心跳报文发送延迟或者无法送达问题。
-选择方案小结：
-和数据相关的业务，要求较高，可以串口和网线直连的方式并用。 Web业务，可以网线直连的方式或局域网通信方式也可。 Heartbeat软件未来发展说明 有关heartbeat分3个分支的说明
-自2.1.4版本后，Linux-HA将Heartbeat分包成三个不同的子项目，并且提供了一个cluster-glue的组件，专用于Local ResourceManager 的管理。即heartbeat &#43; cluster-glue &#43; resouce-agent 三部分。
-Heartbeat hearbeat本身是整个集群的基础（cluster messaging layer），负责维护集群各节点的信息以及它们之前通信。
-Cluster Glue 相当于一个中间层，负责调度，可以将heartbeat和crm（pacemaker）联系起来，包括两个摸块:本地资漂管理(Local Resource Manager)LRM和STONITH。
-Resource Agents 资源代理层，各种的资源的ocf脚本，这些脚本将被LRM调用从而实现各种资源启动、停止、监控等等。
-Pacfrmaker资料
-pacemaker介绍：http://baike.baidu.com/view/8635511.htm
-从头开始搭建其群在Fedora上面创建主/主和主/备集群 http://www.clusterlabs.org/doc/zh-CN/Pacemaker/1.1/html-single/Clusters_from_Scratch/index.html
-参考文档：http://www.2cto.com/os/201511/448872.html
-裂脑 什么是裂脑 由于某些原因，导致两台高可用服务器对之间在指定时间内，无法互相检侧到对方心跳而各自启动故障转移功能，取得了资源及服务的所有权，而此时的两台高可用服务器对都还活着并在正常运行，这样就会导致同一个IP或服务在两端同时启动而发生冲突的严重问题，最严重的是两台主机占用同一个VIP地址，当用户写入数据时可能会分别写入到两端，这样可能会导致服务器两端的数据不一致或造成数据丢失，这种情况就被称为裂脑，也有人称其为分区集群或大脑垂直分割，英文为split brain。
-导致裂脑发生的多种原因 一般来说，裂脑的发生，有以下几个原因。 高可用服务器对之间心跳线链路故障。导致无法正常通信。
-心跳线坏了(包括断了，老化)。 网卡及相关驱动坏了，IP配置及冲突问题(网卡直连)。 心跳线间连接的设备故障(网卡及交换机)。 仲裁的机器出问题(仲裁的方案)。 高可用服务器对上开启了如iptables防火墙阻挡了心跳的传输。 高可用服务器对上心跳网卡地址等信息配置不正确，导致发送心跳失败。 其它服务配置不当等原因，如心跳方式不同，心跳广播冲突、软件BUG等。 提示:另外的高可用软件keepalived配置里如果virtual router_id参数，两端配置不一致，也会导致裂脑问题发生。
-防止裂脑发生的8种秘籍 发生裂脑时，对业务的影响是极其严重的，有时甚至是致命的。如:两台高可用服务器对之间发生裂脑，导致互相争用同一IP资源，就如同我们在局域网内常见的IP地址冲突一样，两个机器就会有一个或者两个都不正常，影响用户正常访问服务器。如果是应用在数据库或者存储服务这种极重要的高可用上，那就可能会导致用户发布的数据间断的写在两台不同服务器上，最终数据恢复极困难或难以恢复(当然，有NAS等公共存储的硬件也许会好一些）。" />
+<meta property="og:description" content="heartbeat介绍 Heartbeat一款开源提供高可用(Highly-Available)服务的软件，通过heartbeat，可以将资源（IP及程序服务等资源）从一台已经故障的计算机快速转移到另一台正常运转的机器上继续提供服务，一般称之为高可用服务。在实际生产应用场景中，heartbeat的功能和另一个高可用开源软件keepalived有很多相同之处，但在生产中，对应实际的业务应用也是有区别的，例如:keepalived主要是控制IP的漂移，配置、应用简单，而heartbeat则不但可以控制IP漂移，更搜长对资源服务的控制，配置、应用比较复杂" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://cylonchau.github.io/heartbeat.html" /><meta property="og:image" content="https://cylonchau.github.io/logo.png"/><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2016-04-25T00:00:00+00:00" />
@@ -41,32 +16,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
 <meta name="twitter:image" content="https://cylonchau.github.io/logo.png"/>
 
 <meta name="twitter:title" content="haproxy2安装"/>
-<meta name="twitter:description" content="heartbeat介绍 Heartbeat一款开源提供高可用(Highly-Available)服务的软件，通过heartbeat，可以将资源（IP及程序服务等资源）从一台已经故障的计算机快速转移到另一台正常运转的机器上继续提供服务，一般称之为高可用服务。在实际生产应用场景中，heartbeat的功能和另一个高可用开源软件keepalived有很多相同之处，但在生产中，对应实际的业务应用也是有区别的，例如:keepalived主要是控制IP的漂移，配置、应用简单，而heartbeat则不但可以控制IP漂移，更搜长对资源服务的控制，配置、应用比较复杂
-heartbeat工作原理 通过修改heartbeat软件的配置文件，可以指定哪一台Heartbeat服务器作为主服务器，则另一台将自动成为热备服务器.然后在热备服务器上配里Heartbeat守护程序来监听来自主服务器的心跳消息。如果热备服务器在指定时间内未监听到来自主服务器的心跳，就会启动故障转移程序，并取得主服务器上的相关资源服务的所有权，接替主服务器继续不间断的提供服务，从而达到资源及服务高可用性的目的。
-以上描述的是heartbeat主备的模式，heartbeat还支持主主棋式，即两台服务器互为主备，这时它们之间会相互发送报文来告诉对方自己当前的状态，如果在指定的时间内未受到对方发送的心跳报文，那么，一方就会认为对方失效或者宕机了，这时每个运行正常的主机就会启动自身的资源接管模块来接管运行在对方主机上的资源或者服务，继续为用户提供服务。一般情况下，可以较好的实现一台主机故障后，企业业务仍能够不间断的持续运行。
-注意：所谓的业务不间断，再故障转移期间也是需要切换时间的(例如:停止数据库及存储服务等)，heartbeat的主备高可用的切换时间一般是在5-20秒左右(服务器宕机的切换比人工切换要快)。
-另外，和keepalived高可用软件一样，heartbeat高可用是操作系统级别的，不是服务(软件)级别的，可以通过简单的脚本控制.实现软件级别的高可用。
-高可用服务器切换的常见条件场景：
-主服务器物理宕机(硬件损坏，操作系统故障)。 Heartbeat服务软件本身故障。 两台主备服务器之间心跳连接故障。 服务故障不会导致切换.可以通过服务宕机把heartbeat服务停掉。
-3 heartbeat心跳连接 经过前面的叙述，要部署heartbeat服务，至少需要两台主机来完成。那么，要实现高可用服务，这两台主机之间是如何做到互相通信和互相监侧的呢？
-下面是两台heartbeat主机之间通信的一些常用的可行方法：
-利用串行电缆，即所谓的串口线连接两台服务器(可选)。 一根以太网电缆两网卡直连(可选)。 以太网电缆，通过交换机等网络设备连接(次选)。 如何为高可用服务器端选择心跳通信方案？ 串口线信号不会和以太网网络交集，也不需要单独配置丐地址等信息，因此传输稳定不容易出现问题，使用串口线的缺点是两个服务器对之间的距离距离不能太远，串口线对应服务端的设备为/dev/ttys0。串口线形状如下图所示：
-使用以太网网线(无需特殊交叉线了)直连网卡的方式，配置也比较简单，只需对这两块直连网线的网卡配好独立的IP段地址能够互相通信即可，普通的网线就可以了（推荐）
-使用联网以太网网线和网卡作为心跳线是次选的方案，因为这个链路里增加了交换机设备这样的故障点，且这个线路不是专用心跳线路，容易受以太网其他数据传输的影响，导致心跳报文发送延迟或者无法送达问题。
-选择方案小结：
-和数据相关的业务，要求较高，可以串口和网线直连的方式并用。 Web业务，可以网线直连的方式或局域网通信方式也可。 Heartbeat软件未来发展说明 有关heartbeat分3个分支的说明
-自2.1.4版本后，Linux-HA将Heartbeat分包成三个不同的子项目，并且提供了一个cluster-glue的组件，专用于Local ResourceManager 的管理。即heartbeat &#43; cluster-glue &#43; resouce-agent 三部分。
-Heartbeat hearbeat本身是整个集群的基础（cluster messaging layer），负责维护集群各节点的信息以及它们之前通信。
-Cluster Glue 相当于一个中间层，负责调度，可以将heartbeat和crm（pacemaker）联系起来，包括两个摸块:本地资漂管理(Local Resource Manager)LRM和STONITH。
-Resource Agents 资源代理层，各种的资源的ocf脚本，这些脚本将被LRM调用从而实现各种资源启动、停止、监控等等。
-Pacfrmaker资料
-pacemaker介绍：http://baike.baidu.com/view/8635511.htm
-从头开始搭建其群在Fedora上面创建主/主和主/备集群 http://www.clusterlabs.org/doc/zh-CN/Pacemaker/1.1/html-single/Clusters_from_Scratch/index.html
-参考文档：http://www.2cto.com/os/201511/448872.html
-裂脑 什么是裂脑 由于某些原因，导致两台高可用服务器对之间在指定时间内，无法互相检侧到对方心跳而各自启动故障转移功能，取得了资源及服务的所有权，而此时的两台高可用服务器对都还活着并在正常运行，这样就会导致同一个IP或服务在两端同时启动而发生冲突的严重问题，最严重的是两台主机占用同一个VIP地址，当用户写入数据时可能会分别写入到两端，这样可能会导致服务器两端的数据不一致或造成数据丢失，这种情况就被称为裂脑，也有人称其为分区集群或大脑垂直分割，英文为split brain。
-导致裂脑发生的多种原因 一般来说，裂脑的发生，有以下几个原因。 高可用服务器对之间心跳线链路故障。导致无法正常通信。
-心跳线坏了(包括断了，老化)。 网卡及相关驱动坏了，IP配置及冲突问题(网卡直连)。 心跳线间连接的设备故障(网卡及交换机)。 仲裁的机器出问题(仲裁的方案)。 高可用服务器对上开启了如iptables防火墙阻挡了心跳的传输。 高可用服务器对上心跳网卡地址等信息配置不正确，导致发送心跳失败。 其它服务配置不当等原因，如心跳方式不同，心跳广播冲突、软件BUG等。 提示:另外的高可用软件keepalived配置里如果virtual router_id参数，两端配置不一致，也会导致裂脑问题发生。
-防止裂脑发生的8种秘籍 发生裂脑时，对业务的影响是极其严重的，有时甚至是致命的。如:两台高可用服务器对之间发生裂脑，导致互相争用同一IP资源，就如同我们在局域网内常见的IP地址冲突一样，两个机器就会有一个或者两个都不正常，影响用户正常访问服务器。如果是应用在数据库或者存储服务这种极重要的高可用上，那就可能会导致用户发布的数据间断的写在两台不同服务器上，最终数据恢复极困难或难以恢复(当然，有NAS等公共存储的硬件也许会好一些）。"/>
+<meta name="twitter:description" content="heartbeat介绍 Heartbeat一款开源提供高可用(Highly-Available)服务的软件，通过heartbeat，可以将资源（IP及程序服务等资源）从一台已经故障的计算机快速转移到另一台正常运转的机器上继续提供服务，一般称之为高可用服务。在实际生产应用场景中，heartbeat的功能和另一个高可用开源软件keepalived有很多相同之处，但在生产中，对应实际的业务应用也是有区别的，例如:keepalived主要是控制IP的漂移，配置、应用简单，而heartbeat则不但可以控制IP漂移，更搜长对资源服务的控制，配置、应用比较复杂"/>
 <meta name="application-name" content="Cylon&#39;s Collection">
 <meta name="apple-mobile-web-app-title" content="Cylon&#39;s Collection"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -96,13 +46,13 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
 
   gtag('config', 'UA-193031966-2');
 </script></head>
-    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+    <body header-desktop="auto" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
 
         <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
     <div class="header-wrapper">
         <div class="header-title">
-            <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+            <a href="/" title="Cylon&#39;s Collection"><span id="id-1" class="typeit"></span></a>
         </div>
         <div class="menu">
             <div class="menu-inner"><a class="menu-item" href="/posts.html"> 杂物归档 </a><a class="menu-item" href="/tags.html"> 标签 </a><span class="menu-item delimiter"></span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
@@ -115,7 +65,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
     <div class="header-container">
         <div class="header-wrapper">
             <div class="header-title">
-                <a href="/" title="Cylon&#39;s Collection">Cylon&#39;s Collection</a>
+                <a href="/" title="Cylon&#39;s Collection"><span id="id-2" class="typeit"></span></a>
             </div>
             <div class="menu-toggle" id="menu-toggle-mobile">
                 <span></span><span></span><span></span>
@@ -135,7 +85,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
 <main class="main">
                 <div class="container"><div class="toc" id="toc-auto">
             <h2 class="toc-title">目录</h2>
-            <div class="toc-content" id="toc-content-auto"></div>
+            <div class="toc-content always-active" id="toc-content-auto"></div>
         </div><article class="page single"><h1 class="single-title animated flipInX">haproxy2安装</h1><div class="post-meta">
             <div class="post-meta-line"><span class="post-author"><a href="/" title="Author" rel=" author" class="author"><i class="fas fa-user-circle fa-fw"></i>cylon</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/ha.html"><i class="far fa-folder fa-fw"></i>HA</a></span></div>
             <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2016-04-25 00:00:00">2016-04-25 00:00:00</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 635 字&nbsp;
@@ -169,54 +119,21 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
         <li><a href="#导致裂脑发生的多种原因">导致裂脑发生的多种原因</a></li>
         <li><a href="#防止裂脑发生的8种秘籍">防止裂脑发生的8种秘籍</a></li>
         <li><a href="#fence设备和仲裁机制">fence设备和仲裁机制</a></li>
-        <li><a href="#stonith">stonith</a>
-          <ul>
-            <li><a href="#介绍">介绍</a></li>
-            <li><a href="#stonith事件触发工作步骤">Stonith事件触发工作步骤</a></li>
-          </ul>
-        </li>
-        <li><a href="#heartbeat消息类型">Heartbeat消息类型</a>
-          <ul>
-            <li><a href="#心跳消息">心跳消息</a></li>
-            <li><a href="#集群转换消息">集群转换消息</a></li>
-            <li><a href="#跳实现方式及查看心跳消息">跳实现方式及查看心跳消息</a></li>
-          </ul>
-        </li>
+        <li><a href="#stonith">stonith</a></li>
+        <li><a href="#heartbeat消息类型">Heartbeat消息类型</a></li>
       </ul>
     </li>
     <li><a href="#heartbeat-ip地址接管和故障转移">Heartbeat IP地址接管和故障转移</a>
       <ul>
-        <li><a href="#vipip别名辅助ip">VIP/IP别名/辅助IP</a>
-          <ul>
-            <li><a href="#real-ip">real IP</a></li>
-            <li><a href="#vip">VIP</a></li>
-            <li><a href="#别名ipalias-ip">别名IP（alias ip）</a></li>
-            <li><a href="#辅助ipsecondary-ip-address">辅助IP（secondary ip address）</a></li>
-          </ul>
-        </li>
+        <li><a href="#vipip别名辅助ip">VIP/IP别名/辅助IP</a></li>
       </ul>
     </li>
     <li><a href="#部署heartbeat">部署heartbeat</a>
       <ul>
         <li><a href="#heartbeat服务主机资源规划">heartbeat服务主机资源规划</a></li>
-        <li><a href="#安装heartbeat">安装heartbeat</a>
-          <ul>
-            <li><a href="#yum安装heartbeat">yum安装heartbeat</a></li>
-            <li><a href="#编译安装heartbeat">编译安装heartbeat</a></li>
-          </ul>
-        </li>
-        <li><a href="#heartbeat说明">heartbeat说明</a>
-          <ul>
-            <li><a href="#heartbeat配置文件">heartbeat配置文件</a></li>
-            <li><a href="#配置服务器心跳连接">配置服务器心跳连接</a></li>
-          </ul>
-        </li>
-        <li><a href="#配置hacf文件">配置ha.cf文件</a>
-          <ul>
-            <li><a href="#配置authkey文件">配置authkey文件</a></li>
-            <li><a href="#配置haresource文件">配置haresource文件</a></li>
-          </ul>
-        </li>
+        <li><a href="#安装heartbeat">安装heartbeat</a></li>
+        <li><a href="#heartbeat说明">heartbeat说明</a></li>
+        <li><a href="#配置hacf文件">配置ha.cf文件</a></li>
         <li><a href="#安装错误">安装错误</a></li>
       </ul>
     </li>
@@ -246,7 +163,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
 <p><font style="background:#fee904;" size=3>服务故障不会导致切换.可以通过服务宕机把heartbeat服务停掉。</font></p>
 <p>3 heartbeat心跳连接
 经过前面的叙述，要部署heartbeat服务，至少需要两台主机来完成。那么，要实现高可用服务，这两台主机之间是如何做到互相通信和互相监侧的呢？</p>
-<p><strong>下面是两台heartbeat主机之间通信的一些常用的可行方法：</strong></p>
+<p><strong>下面是两台heartbeat主机之间通信的一些常用的可行方法</strong>：</p>
 <ul>
 <li>利用串行电缆，即所谓的串口线连接两台服务器(可选)。</li>
 <li>一根以太网电缆两网卡直连(可选)。</li>
@@ -342,7 +259,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
 </ul>
 </li>
 </ol>
-<p><strong>小结:如何开发程序判断裂脑：</strong></p>
+<p><strong>小结:如何开发程序判断裂脑</strong>：</p>
 <ol>
 <li>简单判断，只要备节点出现VIP就是报普(a.主机宕机了，各机接管了。b.主机没宕，裂脑了)，不管哪个情况，人工查看。</li>
 <li>严谨判断，备机出现VIP，并且主机及服务还活着，裂脑了（依赖报警）。</li>
@@ -854,7 +771,7 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
                 Please enable JavaScript to view the comments powered by <a href="https://github.com/gitalk/gitalk"></a>Gitalk</a>.
             </noscript></div></article></div>
             </main><footer class="footer">
-        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2021 - 2022</span><span class="author" itemprop="copyrightHolder">&nbsp;<a href="/" target="_blank">cylon</a></span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2018 - 2022</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></br>
                 <span id="busuanzi_container_site_pv">
                     访问量 <span id="busuanzi_value_site_pv"></span> 次
                 </span>
@@ -874,5 +791,5 @@ pacemaker介绍：http://baike.baidu.com/view/8635511.htm
             </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
                 <i class="fas fa-comment fa-fw"></i>
             </a>
-        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":100},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-04-25T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"haproxy2安装"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
+        </div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/css/lightgallery.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.css"><script type="text/javascript" src="https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.fill%2CArray.prototype.find%2CArray.from%2CIntersectionObserver%2CMath.sign%2CObject.assign%2CPromise%2CObject.entries%2CElement.prototype.closest%2CrequestAnimationFrame%2CCustomEvent%2Chtml5shiv%2CObject.values%2Cfetch%2CElement.prototype.after"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/object-fit-images@3.2.4/dist/ofi.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/twemoji@13.0.0/dist/twemoji.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lightgallery.js@1.2.0/dist/js/lightgallery.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-thumbnail.js@1.2.0/dist/lg-thumbnail.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lg-zoom.js@1.2.0/dist/lg-zoom.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/copy-tex.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/mhchem.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/cookieconsent@3.1.1/build/cookieconsent.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":200},"comment":{"gitalk":{"admin":["cylonchau"],"clientID":"34cd1e01f4c4301c8aea","clientSecret":"80a5248be256e490b93bcb6db4dd3c93bd6dc3bc","id":"2016-04-25T00:00:00Z","owner":"cylonchau","repo":"cylonchau.github.io","title":"haproxy2安装"}},"cookieconsent":{"content":{"dismiss":"同意","link":"了解更多","message":"本网站使用 Cookies 来改善您的浏览体验."},"enable":true,"palette":{"button":{"background":"#f0f0f0"},"popup":{"background":"#1aa3ff"}},"theme":"edgeless"},"data":{"id-1":"Cylon's Collection","id-2":"Cylon's Collection"},"lightGallery":{"actualSize":false,"exThumbImage":"data-thumbnail","hideBarsDelay":2000,"selector":".lightgallery","speed":400,"thumbContHeight":80,"thumbWidth":80,"thumbnail":true},"math":{"delimiters":[{"display":true,"left":"$$","right":"$$"},{"display":true,"left":"\\[","right":"\\]"},{"display":false,"left":"$","right":"$"},{"display":false,"left":"\\(","right":"\\)"}],"strict":false},"twemoji":true,"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script></body>
 </html>
