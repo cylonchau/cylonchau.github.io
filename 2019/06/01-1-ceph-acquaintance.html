@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Ceph概念 - 初识Ceph | Cylon&#39;s Collection</title>
+<meta name="keywords" content="ceph">
+<meta name="description" content="Ceph概念 - 初识Ceph - Cylon&#39;s Collection">
+<meta name="author" content="cylon">
+<link rel="canonical" href="https://www.cilicilic.top/2019/06/01-1-ceph-acquaintance.html">
+<link crossorigin="anonymous" href="../../assets/css/stylesheet.3bcd61012ec8957f74765ef0284a444b758cc984fb8e74bb3fe2731f12454562.css" integrity="sha256-O81hAS7IlX90dl7wKEpES3WMyYT7jnS7P&#43;JzHxJFRWI=" rel="preload stylesheet" as="style">
+<script defer crossorigin="anonymous" src="../../assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js" integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG&#43;9vmJ0cTS&#43;ovo0FeA="
+    onload="hljs.initHighlightingOnLoad();"></script>
+<link rel="icon" href="https://www.cilicilic.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.cilicilic.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.cilicilic.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.cilicilic.top/logo.gif">
+<link rel="mask-icon" href="https://www.cilicilic.top/logo.gif">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --hljs-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript><script type="text/javascript"
+        async
+        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\[\[','\]\]']],
+    processEscapes: true,
+    processEnvironments: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+    TeX: { equationNumbers: { autoNumber: "AMS" },
+         extensions: ["AMSmath.js", "AMSsymbols.js"] }
+  }
+});
+
+MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+});
+</script>
+
+<style>
+code.has-jax {
+    font: inherit;
+    font-size: 100%;
+    background: inherit;
+    border: inherit;
+    color: #515151;
+}
+</style>
+<meta property="og:title" content="Ceph概念 - 初识Ceph" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.cilicilic.top/2019/06/01-1-ceph-acquaintance.html" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-06-30T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-09-19T00:21:16+08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Ceph概念 - 初识Ceph"/>
+<meta name="twitter:description" content=""/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [   
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Ceph概念 - 初识Ceph",
+      "item": "https://www.cilicilic.top/2019/06/01-1-ceph-acquaintance.html"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Ceph概念 - 初识Ceph",
+  "name": "Ceph概念 - 初识Ceph",
+  "description": "",
+  "keywords": [
+    "ceph"
+  ],
+  "articleBody": "初识Ceph Ceph 是一个开源分布式存储系统系统，它不是一种单一的存储，而是面向云提供一种统一存储平台，包含块存储 RBD, 文件存储 CephFS, 以及对象存储 RGW，这种存储的出现允许用户拜托供应商的绑定，它可以提供块存储到 “云平台”，也可以提供对象存储到 “应用”，并支持理论上的无限扩展性，数千客户端访问 PB 甚至 EB 级别的数据\nSAN VS Ceph 与传统 SAN 存储相比，Ceph 客户端会计算他们所需的数据所在的位置，这消除了存储系统中需要在“中心化查找”的瓶颈。 这使得 Ceph 集群可以在不损失性能的情况下进行扩展。\nCeph 集群架构组成 Ceph 集群核心是 RADOS，而基于 RADOS，构建出多种类型存储，块存储, 文件系统, 对象存储，而一个基础的 Ceph 集群的组件由 “Ceph monitor” 与 “Ceph OSD Daemon” 组成\nCeph Monitor（进程名称为 ceph-mon，下文中以 ceph-mon 代表 Ceph Monitor） 维护集群映射的主副本。 ceph集群中的monitor，可确保 ceph-mon 守护进程在失败时的高可用性。客户端从 ceph-mon 检索集群映射的副本。 Ceph OSD Daemon 检查”自身“及”其他“ OSD 的状态并报告给 Monitor。 Ceph 中的常见术语 Application 用于使用 Ceph 集群的任何 Ceph 外部的应用程序\nBlock Device 也称为 “RADOS 块设备” 或 ”RBD“ ，协调基于块的数据存储的工具，Ceph块设备拆分基于块的应用程序数据 成“块”。 RADOS 将这些块存储为对象。 Ceph 块 设备协调这些对象的存储 存储集群。\n也称为 “RADOS Block Device” 或 “RBD”。一种用于协调 Ceph 中基于块的数据的存储的软件。 Ceph 块设备将基于块的应用程序数据拆分为 “Chunk”。 RADOS 将这些块存储为对象。\nChunk 与 Block 是两种不同的概念\nChunk 存储是类似于 Key-Value 存储和对象存储，是一种结构化数据，并固定大小的块\nBlock 通常被提到的上下文是作为硬件接口提供的，通常代表硬件裸设备\n所以说 Block Device 是将数据划分为固定大小的 Chunk，存储在 Block 上。\nMGR (Manager) Ceph Manager 又称为 Ceph Manager Daemon，进程名称为 ceph-mgr, 是与 Ceph Monitoring 一起运行的守护进程，用于提供监视以及与外部监视和管理系统的接口。自 Luminous 版本 (12) 起，ceph-mgr 没有运行的情况下 Ceph 集群无法正常运行。\nMON (Monitor) Ceph Monitor 维护集群状态影视的守护进程，这些“集群状态”包括 Monitor map、Manager map、OSD map 和 CRUSH map。 Ceph 集群必须至少包含三个正在运行的 Monitor，才能实现冗余和高可用性。\nOSD Ceph Object Storage Daemon，又被称为 OSD, 在 “research and industry” 中 OSD 表示 ”对象存储设备“，而 Ceph 社区将 OSD 称为 OSD daemon，用于与逻辑磁盘交互的进程。\nOSD fsid 用于标识 OSD 的唯一标识符。它可以在 OSD 路径中名为 osd_fsid 的文件中找到。术语 “fsid” 与 “uuid” 互换使用\nOSD id 定义 OSD 的 integer，它是在创建每个 OSD 期间由监视器生成的。\nHybrid OSD 指同时拥有 HDD 和 SSD 的 OSD\nCluster Map 由 monitor map、OSD Map、PG Map、MDS Map 和 CRUSH Map 组成的一组 Map，它们共同报告 Ceph 集群的状态。有关详细信息。\nCRUSH CRUSH Controlled Replication Under Scalable Hashing 可扩展散列下的受控复制，Ceph 用于计算对象存储位置的算法。\nDAS DAS Direct-Attached Storage 直接附加存储，无需访问网络直接连接计算机的存储。例如 SSD\nLVM tags Logical Volume Manager tags 逻辑卷管理器标签，LVM “卷” 和 “组” 的可扩展元数据。它们用于存储有关设备及其与 OSD 关系的 Ceph 特定信息。\nPGs (Placement Groups) “放置组” 是每个逻辑 Ceph Pool 的子集。放置组执行将对象（作为一个组）放置到 OSD 中的功能。 Ceph 在内部以“放置组粒度”来管理数据：这比管理单个RADOS 对象的扩展性将更好。具有较大数量放置组的集群比具有较少数量放置组的其他相同集群具有更好的平衡性。\nPools 池是用于存储对象的逻辑分区。\nRADOS Reliable Autonomic Distributed Object Store 可靠的自动分布对象存储，RADOS 是为可变大小的对象提供可扩展服务的对象存储。 RADOS 对象存储是 Ceph 集群的核心组件。\nBlock Storage 块存储是 Ceph支持的三种存储类型之一。 Ceph 块存储指的是块存储 结合使用时的相关服务和功能 集合\nCeph File System Ceph File System (CephFS) 是一个兼容 POSIX 的文件系统，构建在 RADOS 之上，可根据按需部署\nMDS (Metadata Server) Ceph MetaData Server daemon MDS，构建在 RADOS 之上，存储所有文件的元数据作为”文件系统“类型的存储提供给用户，运行的程序名为 ceph-mds，故 也是是否使用 CephFS 的标记\nRGW (Radow Gateway) Ceph 提供兼容 Amazon S3 RESTful API 和 OpenStack Swift API 的组件，可根据按需部署\nRealm 是位于对象存储中的上下文，领域 (Realm) 是一个全局唯一的命名空间，由一个或多个区域组组成。\nZone 是位于对象存储中的上下文，区域 (zone) 是由一个或多个 RGW 实例组成的逻辑组。“zone” 的配置状态存储在 \"\" 中\nPeriod 是位于对象存储中的上下文，Period 是 Realm 的配置状态。该 Period 存储多站点配置的配置状态。当 Period 被更新时，“epoch” 被认为已经改变。\nCephX CephX Ceph authentication protocol；CephX 是用于对用户和守护进程进行身份验证。 CephX 的运行方式类似于 Kerberos，但它没有单点故障。\nSecrets Secret 是用户访问是需要提供的身份验证的系统用于执行数字身份验证的凭据。\nCeph存储集群组成 Ceph 存储集群由多种类型的守护进程组成：\nCeph Monitor Ceph OSD Daemon Ceph Manager Ceph Metadata Server OSD (Object Storage Device) 对象存储设备 OSD (Object Storage Device) 通常是指==单独的磁盘设备==，每个 Ceph Node 上有一个或多个o OSD，每一个 OSD 是真正存放数据的地方（在文件系统中同样概念为文件与目录）；OSD不是主机。由多个 Ceph Node 组合起来称为 RADOS Cluster\n为了使每个 OSD 能够被单独使用和管理，每个 OSD 都会有一个单独的专用的守护进程被称为 ceph-osd。OSD 本身用来存储数据，还包括数据复制、恢复、数据重新均衡、提供监视信息给mon和mgr\n一个集群至少有 3个 Ceph OSDs，已确保高可用。选择 OSD 冗余时，应自己指定故障率，故障转移率或故障容忍率。OSD级别故障就在OSD级别冗余，主机级别就跨主机冗余，故障率是机架级别就机架冗余。 在做crush运行图的设定时是应该自己指定的。\n(MGR Manager) Mgr (Manager) 集群元数据服务器，维护集群映射的主副本。Ceph 监视器集群可确保监视器守护进程发生故障时的高可用性。存储集群客户端从 Ceph Monitor 检索集群映射的副本。\nmonitor在每一次读数据都是实时查询的，故monitor不适用频繁周期性采集数据的监控操作。在Ceph新版中引入新组建mgr，（早期Ceph版本是没有mgr的）用来专门维护查询类操作，将查询操作按照自己内部空闲方式缓存下来，一旦有监控可及时响应。\nmgr是在一类节点上运行的守护进程，一般为两个活以上节点，此类守护进程被称为ceph-mgr。主要功能在于跟踪运行时的指标数据。如磁盘使用率、CPU使用率。以及集群当前状态，此状态不是内部运行状态，而是查询做监控时的状态。包括存储空间利用率、当前性能指标、节点负载（系统级）等\nMON (Monitor) 一个 Ceph 集群内除了存储节点之外，还有另外一种节点 Monitor ，用来管理整个集群的，如有多少个节点，每个节点上有多少个OSD，每个OSD是否健康，他会持有整个集群的运行图（运行状态）。mon是用来集中维护集群元数据而非文件元数据。为了维护整个集群能够正常运行而设定的节点，离开此节点集群内部就无法协调。\n在一个主机上运行的守护进程 ceph-mon，守护进程扮演、监视着整个集群所有组件的角色，被称为集群运行图的持有者cluster map（整个集群有多少存储池，每个池中有多少PG，每个PG映射哪个OSD，有多少OSD等等）集群运行图 Cluster Map\nmonitor负责维护整个进群的认证信息并实行认证，认证协议叫 ==CephX== 协议（ceph内部的认证协议）。monitor用来维护认证信息并实行认证。认证中心 monitor自身是无状态的，所以实现均衡认证负载。\nmonitor的高可用自己内部直接使用POSIX协议来实现数据冗余，monitor也是节点级冗余，为了确保各节点数据是强一致的，每个节点都可写，写完后会同步到其他节点。为了避免同时写导致的冲突，使用了分布式一致性协议，monitor就是使用POSIX协议来进行分布式协作的。\nMDS (Metadata Server) ==Ceph Metadata Server== 用来代表ceph文件系统而提供的守护进程ceph-mds，如不使用CephFS，此进程是无需启动的。利用底层RADOS存储空间，将存储空间抽象成文件系统，来兼容POSIX file system 提供服务。\nNote: 一个基础的 Ceph 存储集群由，OSD, Monitor, Manager 组成\nCeph集群中其他概念 客户端接口 Ceph 存储集群提供了基础的对象数据存储服务，客户端可基于RADOS协议和 librados API 直接与存储系统交互进行对象数据存取 Librados Librados提供了访问 RADOS 在存储集群支持 “异步” 通信的 API 接口，支持对集群中对象数据的的直接并行访问，用户可通过支持的编程语言开发自定义客户端程序通过RADOS协议与存储系统进行交互 客户端应用程序必须与librados绑定方可连接到RADOS存储集群，因此，用户必须实现安装librados及其依赖后才能编写使用librados的应用程序。 librados API本身使用 C++ 编写的，它额外支持C、Python、Java、和PHP等开发接口 当然，并非所有用户都有能力自定义开发接口以接入RADOS存储集群的需要，为此，Ceph也原生提供了几个较高级别的各户端接口，它们分别是 RADOS GateWay (RGW), Reliable Block Device (RBD) 和 MDS (MetaData Server)，分别为用户提供 RESTFUL、块和 POSIX 文件系统接口 管理节点 (Admin Host) Ceph通常是分布式集群，为了便于去管理维护整个集群，通常在Ceph集群中找一个专门的节点用来当管理节点。此节点可以连接至每一个节点用来管理节点上的Ceph守护进程。\nCeph的管理接口是一系列命令行工具，例如 rados, ceph, rbd 等命令，管理员可以从某个特定的MON节点执行管理操作，但也有人更倾向于使用专用的管理节点。\nNote: 在早期 (Ceph-deploy) 部署的集群，通常管理节点是必要的，但使用 cephadm 部署的集群，实际上管理管理节点可以在任何位置\nPool Ceph所提供的存储空间（没有目录之类一说）是将“所有对象都是存储在数据平面上”，因此，所有对象都不能同名。RADOS 将他的存储空间切分为多个分区以便好进行管理。每一个分区叫做一个“存储池”。存储池的大小是取决于底层的存储空间的。与真正意义上的分区不是一回事。在Ceph中每一个存储池存放的数据了也可能会太大，所以存储池也可以进一步划分（可选）。被称为名称空间（先切分为存储池，每个存储池可进一步被划分成名称空间） 两级逻辑组件。\n第三级 PG 每一个存储池内部会有多个PG（Placement Groups 规置组）存在。Pool 与 pg 都是抽象的概念。\nObject 对象是自带元数据的组件，\n对象id，每一个对象应有一个对象ID在集群内部来引用对象 数据 元数据 key vlaue类型的数据 这些类型打包成一起存储，被称为一个对象。RADOS集群会吧真正存储的每一个文件，切分成N个对象来进行存储的。（切分个数与默认对象切分大小有关）。\n每一个对象都是被单独管理的，都拥有自己的标识符。因此， 同一个文件的object有可能被映射到不同的PG上，PG提交给主机的，由主机负责将对象存储在磁盘（OSD）被存储在不同的OSD上。\n文件存储到RADOS集群 一般要接入RADOS集群必须通过客户端来实现(LIBRADOS、RBD、CephFS、RADOSGW)，才能接入到集群中来。\n当将文件存入Ceph中时，需要通过某一类客户端接入，客户端接入时，需要借助于 Ceph 存储API接口将其切分为固定大小的存储对象(Date object)，此数据对象究竟被放置在哪个 OSD 上存放这中间是靠 crush 来完成的。数据对象被存放在哪个存储池上是固定的。存储池需创建才可使用。但PG是虚拟的中间层。\n",
+  "wordCount" : "4504",
+  "inLanguage": "zh",
+  "datePublished": "2019-06-30T00:00:00Z",
+  "dateModified": "2023-09-19T00:21:16+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "cylon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.cilicilic.top/2019/06/01-1-ceph-acquaintance.html"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Cylon's Collection",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.cilicilic.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.cilicilic.top" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.cilicilic.top/" title="🏠主页">
+                    <span>🏠主页</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.cilicilic.top/archives" title="⏱归档">
+                    <span>⏱归档</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.cilicilic.top/tags" title="🔖标签">
+                    <span>🔖标签</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.cilicilic.top/search" title="🔍搜索 (Alt &#43; /)" accesskey=/>
+                    <span>🔍搜索</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.cilicilic.top/about" title="🤞关于我">
+                    <span>🤞关于我</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="https://www.cilicilic.top">主页</a></div>
+    <h1 class="post-title">
+      Ceph概念 - 初识Ceph
+    </h1>
+    <div class="post-meta"><span title='2019-06-30 00:00:00 +0000 UTC'>2019-06-30</span>&nbsp;·&nbsp;9 分钟&nbsp;·&nbsp;cylon
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e5%88%9d%e8%af%86ceph" aria-label="初识Ceph">初识Ceph</a><ul>
+                        
+                <li>
+                    <a href="#san-vs-ceph" aria-label="SAN VS Ceph">SAN VS Ceph</a></li>
+                <li>
+                    <a href="#ceph-%e9%9b%86%e7%be%a4%e6%9e%b6%e6%9e%84%e7%bb%84%e6%88%90" aria-label="Ceph 集群架构组成">Ceph 集群架构组成</a></li>
+                <li>
+                    <a href="#ceph-%e4%b8%ad%e7%9a%84%e5%b8%b8%e8%a7%81%e6%9c%af%e8%af%ad" aria-label="Ceph 中的常见术语">Ceph 中的常见术语</a><ul>
+                        
+                <li>
+                    <a href="#application" aria-label="Application">Application</a></li>
+                <li>
+                    <a href="#block-device" aria-label="Block Device">Block Device</a></li>
+                <li>
+                    <a href="#mgr-manager" aria-label="MGR (Manager)">MGR (Manager)</a></li>
+                <li>
+                    <a href="#mon-monitor" aria-label="MON (Monitor)">MON (Monitor)</a></li>
+                <li>
+                    <a href="#osd" aria-label="OSD">OSD</a></li>
+                <li>
+                    <a href="#osd-fsid" aria-label="OSD fsid">OSD fsid</a></li>
+                <li>
+                    <a href="#osd-id" aria-label="OSD id">OSD id</a></li>
+                <li>
+                    <a href="#hybrid-osd" aria-label="Hybrid OSD">Hybrid OSD</a></li>
+                <li>
+                    <a href="#cluster-map" aria-label="Cluster Map">Cluster Map</a></li>
+                <li>
+                    <a href="#crush" aria-label="CRUSH">CRUSH</a></li>
+                <li>
+                    <a href="#das" aria-label="DAS">DAS</a></li>
+                <li>
+                    <a href="#lvm-tags" aria-label="LVM tags">LVM tags</a></li>
+                <li>
+                    <a href="#pgs-placement-groups" aria-label="PGs (Placement Groups)">PGs (Placement Groups)</a></li>
+                <li>
+                    <a href="#pools" aria-label="Pools">Pools</a></li>
+                <li>
+                    <a href="#rados" aria-label="RADOS">RADOS</a></li>
+                <li>
+                    <a href="#block-storage" aria-label="Block Storage">Block Storage</a></li>
+                <li>
+                    <a href="#ceph-file-system" aria-label="Ceph File System">Ceph File System</a></li>
+                <li>
+                    <a href="#mds-metadata-server" aria-label="MDS (Metadata Server)">MDS (Metadata Server)</a></li>
+                <li>
+                    <a href="#rgw-radow-gateway" aria-label="RGW (Radow Gateway)">RGW (Radow Gateway)</a></li>
+                <li>
+                    <a href="#realm" aria-label="Realm">Realm</a></li>
+                <li>
+                    <a href="#zone" aria-label="Zone">Zone</a></li>
+                <li>
+                    <a href="#period" aria-label="Period">Period</a></li>
+                <li>
+                    <a href="#cephx" aria-label="CephX">CephX</a></li>
+                <li>
+                    <a href="#secrets" aria-label="Secrets">Secrets</a></li></ul>
+                </li></ul>
+                </li>
+                <li>
+                    <a href="#ceph%e5%ad%98%e5%82%a8%e9%9b%86%e7%be%a4%e7%bb%84%e6%88%90" aria-label="Ceph存储集群组成">Ceph存储集群组成</a><ul>
+                        
+                <li>
+                    <a href="#osd-object-storage-device" aria-label="OSD (Object Storage Device)">OSD (Object Storage Device)</a></li>
+                <li>
+                    <a href="#mgr-manager-1" aria-label="(MGR Manager)">(MGR Manager)</a></li>
+                <li>
+                    <a href="#mon-monitor-1" aria-label="MON (Monitor)">MON (Monitor)</a></li>
+                <li>
+                    <a href="#mds-metadata-server-1" aria-label="MDS (Metadata Server)">MDS (Metadata Server)</a></li></ul>
+                </li>
+                <li>
+                    <a href="#ceph%e9%9b%86%e7%be%a4%e4%b8%ad%e5%85%b6%e4%bb%96%e6%a6%82%e5%bf%b5" aria-label="Ceph集群中其他概念">Ceph集群中其他概念</a><ul>
+                        
+                <li>
+                    <a href="#%e5%ae%a2%e6%88%b7%e7%ab%af%e6%8e%a5%e5%8f%a3" aria-label="客户端接口">客户端接口</a></li>
+                <li>
+                    <a href="#%e7%ae%a1%e7%90%86%e8%8a%82%e7%82%b9-admin-host" aria-label="管理节点 (Admin Host)">管理节点 (Admin Host)</a></li>
+                <li>
+                    <a href="#pool" aria-label="Pool">Pool</a></li>
+                <li>
+                    <a href="#%e7%ac%ac%e4%b8%89%e7%ba%a7-pg" aria-label="第三级 PG">第三级 PG</a></li>
+                <li>
+                    <a href="#object" aria-label="Object">Object</a></li>
+                <li>
+                    <a href="#%e6%96%87%e4%bb%b6%e5%ad%98%e5%82%a8%e5%88%b0rados%e9%9b%86%e7%be%a4" aria-label="文件存储到RADOS集群">文件存储到RADOS集群</a>
+                </li>
+            </ul>
+            </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><h2 id="初识ceph">初识Ceph<a hidden class="anchor" aria-hidden="true" href="#初识ceph">#</a></h2>
+<p>Ceph 是一个开源分布式存储系统系统，它不是一种单一的存储，而是面向云提供一种统一存储平台，包含块存储 RBD, 文件存储 CephFS, 以及对象存储 RGW，这种存储的出现允许用户拜托供应商的绑定，它可以提供块存储到 “云平台”，也可以提供对象存储到 “应用”，并支持理论上的无限扩展性，数千客户端访问 PB 甚至 EB 级别的数据</p>
+<h3 id="san-vs-ceph">SAN VS Ceph<a hidden class="anchor" aria-hidden="true" href="#san-vs-ceph">#</a></h3>
+<p>与传统 SAN 存储相比，Ceph 客户端会计算他们所需的数据所在的位置，这消除了存储系统中需要在“中心化查找”的瓶颈。  这使得 Ceph 集群可以在不损失性能的情况下进行扩展。</p>
+<h3 id="ceph-集群架构组成">Ceph 集群架构组成<a hidden class="anchor" aria-hidden="true" href="#ceph-集群架构组成">#</a></h3>
+<p>Ceph 集群核心是 RADOS，而基于 RADOS，构建出多种类型存储，块存储, 文件系统, 对象存储，而一个基础的 Ceph 集群的组件由 &ldquo;Ceph monitor&rdquo; 与 &ldquo;Ceph OSD Daemon&rdquo; 组成</p>
+<ul>
+<li>Ceph Monitor（进程名称为 ceph-mon，下文中以 ceph-mon 代表 Ceph Monitor） 维护集群映射的主副本。  ceph集群中的monitor，可确保 ceph-mon 守护进程在失败时的高可用性。客户端从 ceph-mon 检索集群映射的副本。</li>
+<li>Ceph OSD Daemon 检查”自身“及”其他“ OSD 的状态并报告给 Monitor。</li>
+</ul>
+<h3 id="ceph-中的常见术语">Ceph 中的常见术语<a hidden class="anchor" aria-hidden="true" href="#ceph-中的常见术语">#</a></h3>
+<h4 id="application">Application<a hidden class="anchor" aria-hidden="true" href="#application">#</a></h4>
+<p>用于使用 Ceph 集群的任何 Ceph 外部的应用程序</p>
+<h4 id="block-device">Block Device<a hidden class="anchor" aria-hidden="true" href="#block-device">#</a></h4>
+<p>也称为 “RADOS 块设备” 或 ”RBD“ ，协调基于块的数据存储的工具，Ceph块设备拆分基于块的应用程序数据   成“块”。   RADOS 将这些块存储为对象。   Ceph 块   设备协调这些对象的存储   存储集群。</p>
+<p>也称为 “RADOS Block Device” 或 “RBD”。一种用于协调 Ceph 中基于块的数据的存储的软件。 Ceph 块设备将基于块的应用程序数据拆分为 “Chunk”。 RADOS 将这些块存储为对象。</p>
+<p>Chunk 与 Block 是两种不同的概念</p>
+<ul>
+<li>
+<p>Chunk 存储是类似于 Key-Value 存储和对象存储，是一种结构化数据，并固定大小的块</p>
+</li>
+<li>
+<p>Block 通常被提到的上下文是作为硬件接口提供的，通常代表硬件裸设备</p>
+</li>
+</ul>
+<p>所以说 Block Device 是将数据划分为固定大小的 Chunk，存储在 Block 上。</p>
+<h4 id="mgr-manager">MGR (Manager)<a hidden class="anchor" aria-hidden="true" href="#mgr-manager">#</a></h4>
+<p>Ceph Manager 又称为 Ceph Manager Daemon，进程名称为 <code>ceph-mgr</code>, 是与 Ceph Monitoring 一起运行的守护进程，用于提供监视以及与外部监视和管理系统的接口。自 Luminous 版本 (12) 起，ceph-mgr 没有运行的情况下 Ceph 集群无法正常运行。</p>
+<h4 id="mon-monitor">MON (Monitor)<a hidden class="anchor" aria-hidden="true" href="#mon-monitor">#</a></h4>
+<p>Ceph Monitor 维护集群状态影视的守护进程，这些“集群状态”包括 Monitor map、Manager map、OSD map 和 CRUSH map。 Ceph 集群必须至少包含三个正在运行的 Monitor，才能实现冗余和高可用性。</p>
+<h4 id="osd">OSD<a hidden class="anchor" aria-hidden="true" href="#osd">#</a></h4>
+<p>Ceph <strong>O</strong>bject <strong>S</strong>torage <strong>D</strong>aemon，又被称为 OSD, 在 “research and industry” 中 OSD 表示 ”对象存储设备“，而 Ceph 社区将 OSD 称为 OSD daemon，用于与逻辑磁盘交互的进程。</p>
+<h4 id="osd-fsid">OSD fsid<a hidden class="anchor" aria-hidden="true" href="#osd-fsid">#</a></h4>
+<p>用于标识 OSD 的唯一标识符。它可以在 OSD 路径中名为 osd_fsid 的文件中找到。术语 “fsid” 与 “uuid” 互换使用</p>
+<h4 id="osd-id">OSD id<a hidden class="anchor" aria-hidden="true" href="#osd-id">#</a></h4>
+<p>定义 OSD 的 integer，它是在创建每个 OSD 期间由监视器生成的。</p>
+<h4 id="hybrid-osd">Hybrid OSD<a hidden class="anchor" aria-hidden="true" href="#hybrid-osd">#</a></h4>
+<p>指同时拥有 HDD 和 SSD 的 OSD</p>
+<h4 id="cluster-map">Cluster Map<a hidden class="anchor" aria-hidden="true" href="#cluster-map">#</a></h4>
+<p>由 monitor map、OSD Map、PG Map、MDS Map 和 CRUSH Map 组成的一组 Map，它们共同报告 Ceph 集群的状态。有关详细信息。</p>
+<h4 id="crush">CRUSH<a hidden class="anchor" aria-hidden="true" href="#crush">#</a></h4>
+<p>CRUSH <strong>C</strong>ontrolled <strong>R</strong>eplication <strong>U</strong>nder <strong>S</strong>calable <strong>H</strong>ashing 可扩展散列下的受控复制，Ceph 用于计算对象存储位置的算法。</p>
+<h4 id="das">DAS<a hidden class="anchor" aria-hidden="true" href="#das">#</a></h4>
+<p>DAS <strong>D</strong>irect-<strong>A</strong>ttached <strong>S</strong>torage 直接附加存储，无需访问网络直接连接计算机的存储。例如 SSD</p>
+<h4 id="lvm-tags">LVM tags<a hidden class="anchor" aria-hidden="true" href="#lvm-tags">#</a></h4>
+<p><strong>L</strong>ogical <strong>V</strong>olume <strong>M</strong>anager tags 逻辑卷管理器标签，LVM “卷” 和 “组” 的可扩展元数据。它们用于存储有关设备及其与 OSD 关系的 Ceph 特定信息。</p>
+<h4 id="pgs-placement-groups">PGs (Placement Groups)<a hidden class="anchor" aria-hidden="true" href="#pgs-placement-groups">#</a></h4>
+<p>“放置组” 是每个逻辑 Ceph Pool 的子集。放置组执行将对象（作为一个组）放置到 OSD 中的功能。 Ceph 在内部以“放置组粒度”来管理数据：这比管理单个RADOS 对象的扩展性将更好。<strong>具有较大数量放置组的集群比具有较少数量放置组的其他相同集群具有更好的平衡性</strong>。</p>
+<h4 id="pools">Pools<a hidden class="anchor" aria-hidden="true" href="#pools">#</a></h4>
+<p>池是用于存储对象的逻辑分区。</p>
+<h4 id="rados">RADOS<a hidden class="anchor" aria-hidden="true" href="#rados">#</a></h4>
+<p><strong>R</strong>eliable <strong>A</strong>utonomic <strong>D</strong>istributed <strong>O</strong>bject <strong>S</strong>tore 可靠的自动分布对象存储，RADOS 是为可变大小的对象提供可扩展服务的对象存储。 RADOS 对象存储是 <strong>Ceph 集群的核心组件</strong>。</p>
+<h4 id="block-storage">Block Storage<a hidden class="anchor" aria-hidden="true" href="#block-storage">#</a></h4>
+<p>块存储是 Ceph支持的三种存储类型之一。  Ceph 块存储指的是块存储 结合使用时的相关服务和功能 集合</p>
+<h4 id="ceph-file-system">Ceph File System<a hidden class="anchor" aria-hidden="true" href="#ceph-file-system">#</a></h4>
+<p>Ceph File System (CephFS) 是一个兼容 POSIX 的文件系统，构建在 RADOS 之上，可根据按需部署</p>
+<h4 id="mds-metadata-server">MDS (Metadata Server)<a hidden class="anchor" aria-hidden="true" href="#mds-metadata-server">#</a></h4>
+<p>Ceph <strong>M</strong>eta<strong>D</strong>ata <strong>S</strong>erver daemon MDS，构建在 RADOS 之上，存储所有文件的元数据作为”文件系统“类型的存储提供给用户，运行的程序名为 <code>ceph-mds</code>，故 也是是否使用 CephFS 的标记</p>
+<h4 id="rgw-radow-gateway">RGW (Radow Gateway)<a hidden class="anchor" aria-hidden="true" href="#rgw-radow-gateway">#</a></h4>
+<p>Ceph 提供兼容 Amazon S3 RESTful API 和 OpenStack Swift API 的组件，可根据按需部署</p>
+<h4 id="realm">Realm<a hidden class="anchor" aria-hidden="true" href="#realm">#</a></h4>
+<p>是位于对象存储中的上下文，领域 (Realm) 是一个全局唯一的命名空间，由一个或多个区域组组成。</p>
+<h4 id="zone">Zone<a hidden class="anchor" aria-hidden="true" href="#zone">#</a></h4>
+<p>是位于对象存储中的上下文，区域 (zone) 是由一个或多个 RGW 实例组成的逻辑组。&ldquo;zone&rdquo; 的配置状态存储在 &quot;&quot; 中</p>
+<h4 id="period">Period<a hidden class="anchor" aria-hidden="true" href="#period">#</a></h4>
+<p>是位于对象存储中的上下文，Period 是 Realm 的配置状态。该 Period 存储多站点配置的配置状态。当 Period 被更新时，“epoch” 被认为已经改变。</p>
+<h4 id="cephx">CephX<a hidden class="anchor" aria-hidden="true" href="#cephx">#</a></h4>
+<p>CephX Ceph authentication protocol；CephX 是用于对用户和守护进程进行身份验证。 CephX 的运行方式类似于 Kerberos，但它没有单点故障。</p>
+<h4 id="secrets">Secrets<a hidden class="anchor" aria-hidden="true" href="#secrets">#</a></h4>
+<p>Secret 是用户访问是需要提供的身份验证的系统用于执行数字身份验证的凭据。</p>
+<h2 id="ceph存储集群组成">Ceph存储集群组成<a hidden class="anchor" aria-hidden="true" href="#ceph存储集群组成">#</a></h2>
+<p>Ceph 存储集群由多种类型的守护进程组成：</p>
+<ul>
+<li>Ceph Monitor</li>
+<li>Ceph OSD Daemon</li>
+<li>Ceph Manager</li>
+<li>Ceph Metadata Server</li>
+</ul>
+<h3 id="osd-object-storage-device">OSD (Object Storage Device)<a hidden class="anchor" aria-hidden="true" href="#osd-object-storage-device">#</a></h3>
+<p>对象存储设备 OSD (Object Storage Device) 通常是指==单独的磁盘设备==，每个 Ceph Node 上有一个或多个o OSD，每一个 OSD 是真正存放数据的地方（在文件系统中同样概念为文件与目录）；OSD不是主机。由多个 Ceph Node 组合起来称为 RADOS Cluster</p>
+<p>为了使每个 OSD 能够被单独使用和管理，每个 OSD 都会有一个单独的专用的守护进程被称为 <code>ceph-osd</code>。OSD 本身用来存储数据，还包括数据复制、恢复、数据重新均衡、提供监视信息给mon和mgr</p>
+<p>一个集群至少有 3个 Ceph OSDs，已确保高可用。选择 OSD 冗余时，应自己指定故障率，故障转移率或故障容忍率。OSD级别故障就在OSD级别冗余，主机级别就跨主机冗余，故障率是机架级别就机架冗余。 在做crush运行图的设定时是应该自己指定的。</p>
+<h3 id="mgr-manager-1">(MGR Manager)<a hidden class="anchor" aria-hidden="true" href="#mgr-manager-1">#</a></h3>
+<p>Mgr (Manager) 集群元数据服务器，维护集群映射的主副本。Ceph 监视器集群可确保监视器守护进程发生故障时的高可用性。存储集群客户端从 Ceph Monitor 检索集群映射的副本。</p>
+<p>monitor在每一次读数据都是实时查询的，故monitor不适用频繁周期性采集数据的监控操作。在Ceph新版中引入新组建mgr，（早期Ceph版本是没有mgr的）用来专门维护查询类操作，将查询操作按照自己内部空闲方式缓存下来，一旦有监控可及时响应。</p>
+<p>mgr是在一类节点上运行的守护进程，一般为两个活以上节点，此类守护进程被称为<code>ceph-mgr</code>。主要功能在于跟踪运行时的指标数据。如磁盘使用率、CPU使用率。以及集群当前状态，此状态不是内部运行状态，而是查询做监控时的状态。包括存储空间利用率、当前性能指标、节点负载（系统级）等</p>
+<h3 id="mon-monitor-1">MON (Monitor)<a hidden class="anchor" aria-hidden="true" href="#mon-monitor-1">#</a></h3>
+<p>一个 Ceph 集群内除了存储节点之外，还有另外一种节点 Monitor ，用来管理整个集群的，如有多少个节点，每个节点上有多少个OSD，每个OSD是否健康，他会持有整个集群的运行图（运行状态）。mon是用来集中维护集群元数据而非文件元数据。为了维护整个集群能够正常运行而设定的节点，离开此节点集群内部就无法协调。</p>
+<p>在一个主机上运行的守护进程 <code>ceph-mon</code>，守护进程扮演、监视着整个集群所有组件的角色，被称为集群运行图的持有者cluster map（整个集群有多少存储池，每个池中有多少PG，每个PG映射哪个OSD，有多少OSD等等）集群运行图 <code>Cluster Map</code></p>
+<p>monitor负责维护整个进群的认证信息并实行认证，认证协议叫 ==CephX== 协议（ceph内部的认证协议）。monitor用来维护认证信息并实行认证。<code>认证中心</code> monitor自身是无状态的，所以实现均衡认证负载。</p>
+<p>monitor的高可用自己内部直接使用POSIX协议来实现数据冗余，monitor也是节点级冗余，为了确保各节点数据是强一致的，每个节点都可写，写完后会同步到其他节点。为了避免同时写导致的冲突，使用了分布式一致性协议，monitor就是使用POSIX协议来进行分布式协作的。</p>
+<h3 id="mds-metadata-server-1">MDS (Metadata Server)<a hidden class="anchor" aria-hidden="true" href="#mds-metadata-server-1">#</a></h3>
+<p>==Ceph Metadata Server== 用来代表ceph文件系统而提供的守护进程<code>ceph-mds</code>，如不使用CephFS，此进程是无需启动的。利用底层RADOS存储空间，将存储空间抽象成文件系统，来兼容POSIX file system 提供服务。</p>
+<blockquote>
+<p>Note: 一个基础的 Ceph 存储集群由，OSD, Monitor, Manager 组成</p>
+</blockquote>
+<h2 id="ceph集群中其他概念">Ceph集群中其他概念<a hidden class="anchor" aria-hidden="true" href="#ceph集群中其他概念">#</a></h2>
+<h3 id="客户端接口">客户端接口<a hidden class="anchor" aria-hidden="true" href="#客户端接口">#</a></h3>
+<ul>
+<li><strong>Ceph</strong> 存储集群提供了基础的对象数据存储服务，客户端可基于RADOS协议和 librados API 直接与存储系统交互进行对象数据存取</li>
+<li><strong>Librados</strong>
+<ul>
+<li>Librados提供了访问 RADOS 在存储集群支持 “异步” 通信的 API 接口，支持对集群中对象数据的的直接并行访问，用户可通过支持的编程语言开发自定义客户端程序通过RADOS协议与存储系统进行交互</li>
+<li>客户端应用程序必须与librados绑定方可连接到RADOS存储集群，因此，用户必须实现安装librados及其依赖后才能编写使用librados的应用程序。</li>
+<li>librados API本身使用 C++ 编写的，它额外支持C、Python、Java、和PHP等开发接口</li>
+</ul>
+</li>
+<li>当然，并非所有用户都有能力自定义开发接口以接入RADOS存储集群的需要，为此，Ceph也原生提供了几个较高级别的各户端接口，它们分别是 <em><strong>RADOS GateWay</strong></em> (RGW), <em><strong>Reliable Block Device</strong></em> (RBD) 和 <em><strong>MDS</strong></em> (MetaData Server)，分别为用户提供 RESTFUL、块和 POSIX 文件系统接口</li>
+</ul>
+<h3 id="管理节点-admin-host">管理节点 (Admin Host)<a hidden class="anchor" aria-hidden="true" href="#管理节点-admin-host">#</a></h3>
+<p>Ceph通常是分布式集群，为了便于去管理维护整个集群，通常在Ceph集群中找一个专门的节点用来当管理节点。此节点可以连接至每一个节点用来管理节点上的Ceph守护进程。</p>
+<p>Ceph的管理接口是一系列命令行工具，例如 <code>rados</code>,  <code>ceph</code>,  <code>rbd </code>等命令，管理员可以从某个特定的MON节点执行管理操作，但也有人更倾向于使用专用的管理节点。</p>
+<blockquote>
+<p>Note: 在早期 (Ceph-deploy) 部署的集群，通常管理节点是必要的，但使用 cephadm 部署的集群，实际上管理管理节点可以在任何位置</p>
+</blockquote>
+<h3 id="pool">Pool<a hidden class="anchor" aria-hidden="true" href="#pool">#</a></h3>
+<p>Ceph所提供的存储空间（没有目录之类一说）是将“所有对象都是存储在数据平面上”，因此，所有对象都不能同名。RADOS 将他的存储空间切分为多个分区以便好进行管理。每一个分区叫做一个“<strong>存储池</strong>”。存储池的大小是取决于底层的存储空间的。与真正意义上的分区不是一回事。在Ceph中每一个存储池存放的数据了也可能会太大，所以存储池也可以进一步划分（可选）。被称为名称空间（先切分为存储池，每个存储池可进一步被划分成名称空间） 两级逻辑组件。</p>
+<h3 id="第三级-pg">第三级 PG<a hidden class="anchor" aria-hidden="true" href="#第三级-pg">#</a></h3>
+<p>每一个存储池内部会有多个PG（<strong>P</strong>lacement <strong>G</strong>roups 规置组）存在。Pool 与 pg 都是抽象的概念。</p>
+<h3 id="object">Object<a hidden class="anchor" aria-hidden="true" href="#object">#</a></h3>
+<p>对象是自带元数据的组件，</p>
+<ul>
+<li>对象id，每一个对象应有一个对象ID在集群内部来引用对象</li>
+<li>数据</li>
+<li>元数据 key vlaue类型的数据</li>
+</ul>
+<p>这些类型打包成一起存储，被称为一个对象。RADOS集群会吧真正存储的每一个文件，切分成N个对象来进行存储的。（切分个数与默认对象切分大小有关）。</p>
+<p>每一个对象都是被单独管理的，都拥有自己的标识符。因此， 同一个文件的object有可能被映射到不同的PG上，PG提交给主机的，由主机负责将对象存储在磁盘（OSD）被存储在不同的OSD上。</p>
+<h3 id="文件存储到rados集群">文件存储到RADOS集群<a hidden class="anchor" aria-hidden="true" href="#文件存储到rados集群">#</a></h3>
+<p>一般要接入RADOS集群必须通过客户端来实现(LIBRADOS、RBD、CephFS、RADOSGW)，才能接入到集群中来。</p>
+<p>当将文件存入Ceph中时，需要通过某一类客户端接入，客户端接入时，需要借助于 Ceph 存储API接口将其切分为固定大小的存储对象(Date object)，此数据对象究竟被放置在哪个 OSD 上存放这中间是靠 crush 来完成的。数据对象被存放在哪个存储池上是固定的。存储池需创建才可使用。但PG是虚拟的中间层。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://www.cilicilic.top/tags/storage.html">storage</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="https://www.cilicilic.top/2019/07/prome-nginx-module-vts.html">
+    <span class="title">« 上一页</span>
+    <br>
+    <span>用于监控nginx的exporter：nginx-module-vts</span>
+  </a>
+  <a class="next" href="https://www.cilicilic.top/2019/06/prometheus-golang_client%E5%BC%80%E5%8F%91exporter.html">
+    <span class="title">下一页 »</span>
+    <br>
+    <span>prometheus golang_client开发Exporter</span>
+  </a>
+</nav>
+
+
+<div class="share-buttons">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on twitter"
+        href="https://twitter.com/intent/tweet/?text=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html&amp;hashtags=storage">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html&amp;title=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph&amp;summary=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph&amp;source=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html&title=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on facebook"
+        href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on whatsapp"
+        href="https://api.whatsapp.com/send?text=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph%20-%20https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html">
+        <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+        </svg>
+    </a>
+    <a target="_blank" rel="noopener noreferrer" aria-label="share Ceph概念 - 初识Ceph on telegram"
+        href="https://telegram.me/share/url?text=Ceph%e6%a6%82%e5%bf%b5%20-%20%e5%88%9d%e8%af%86Ceph&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f06%2f01-1-ceph-acquaintance.html">
+        <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
+            <path
+                d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+        </svg>
+    </a>
+</div>
+  </footer><div class="comments">
+    <script>
+    function loadComment() {
+        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
+        let s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
+        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
+        s.setAttribute('data-category', 'Announcements');
+        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
+        s.setAttribute('data-mapping', 'title');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '1');
+        s.setAttribute('data-input-position', 'top');
+        s.setAttribute('data-lang', 'zh-TW');
+        s.setAttribute('data-theme', theme);
+        s.setAttribute('crossorigin', 'anonymous');
+        s.setAttribute('async', '');
+        document.querySelector('div.comments').innerHTML = '';
+        document.querySelector('div.comments').appendChild(s);
+    }
+    loadComment();
+    </script>
+</div>
+
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="https://www.cilicilic.top">Cylon&#39;s Collection</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = '复制';
+
+        function copyingDone() {
+            copybutton.innerHTML = '已复制！';
+            setTimeout(() => {
+                copybutton.innerHTML = '复制';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
+<script>
+    mermaid.init(undefined, '.language-mermaid');
+</script>
+</body>
+
+</html>
