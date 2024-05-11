@@ -5,9 +5,9 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>Kubernetes Install with binary files | Cylon&#39;s Collection</title>
-<meta name="keywords" content="kubernetes">
-<meta name="description" content="Kubernetes Install with binary files - Cylon&#39;s Collection">
+<title>使用二进制文件构建k8s集群 | Cylon&#39;s Collection</title>
+<meta name="keywords" content="kubernetes, Kubernetes Install with binary files">
+<meta name="description" content="使用二进制文件构建k8s集群 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.cilicilic.top/2019/01/kubernetes-install-with-binary-files.html">
 <link crossorigin="anonymous" href="../../assets/css/stylesheet.3bcd61012ec8957f74765ef0284a444b758cc984fb8e74bb3fe2731f12454562.css" integrity="sha256-O81hAS7IlX90dl7wKEpES3WMyYT7jnS7P&#43;JzHxJFRWI=" rel="preload stylesheet" as="style">
@@ -91,15 +91,15 @@ code.has-jax {
     color: #515151;
 }
 </style>
-<meta property="og:title" content="Kubernetes Install with binary files" />
+<meta property="og:title" content="使用二进制文件构建k8s集群" />
 <meta property="og:description" content="" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://www.cilicilic.top/2019/01/kubernetes-install-with-binary-files.html" /><meta property="article:section" content="posts" />
 <meta property="article:published_time" content="2019-01-20T00:00:00+00:00" />
-<meta property="article:modified_time" content="2023-06-18T17:38:19+08:00" />
+<meta property="article:modified_time" content="2023-06-04T23:00:36+08:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Kubernetes Install with binary files"/>
+<meta name="twitter:title" content="使用二进制文件构建k8s集群"/>
 <meta name="twitter:description" content=""/>
 
 
@@ -111,7 +111,7 @@ code.has-jax {
     {
       "@type": "ListItem",
       "position":  2 ,
-      "name": "Kubernetes Install with binary files",
+      "name": "使用二进制文件构建k8s集群",
       "item": "https://www.cilicilic.top/2019/01/kubernetes-install-with-binary-files.html"
     }
   ]
@@ -121,17 +121,17 @@ code.has-jax {
 {
   "@context": "https://schema.org",
   "@type": "BlogPosting",
-  "headline": "Kubernetes Install with binary files",
-  "name": "Kubernetes Install with binary files",
+  "headline": "使用二进制文件构建k8s集群",
+  "name": "使用二进制文件构建k8s集群",
   "description": "",
   "keywords": [
-    "kubernetes"
+    "kubernetes", "Kubernetes Install with binary files"
   ],
   "articleBody": " 本篇文章发布于cylon的收藏册，转载请声明出处哦~\nKubernetes集群的构成 Master Node (Control plane) Master 是整个 Kubernetes 集群构成的基础，它负责整个集群的管理，例如处理集群的状态；组件包含 API Server, Controller manager, Scheduller, Etcd\nAPI server API 服务器是 Master 的统一前端入口，负责集群内其他组件的 协调 与 通信。该组件用于定义集群的状态。可以通过命令行, HTTP API, 第三方托管平台（dashboard, Rancker, Kuboard等）与 Kubernetes API 进行交互。\nScheduler 调度程序 Scheduler 负责根据可用资源来决定如何去部署容器，部署到哪里？确保所有 Pod（容器组）都分配给某一组节点。\nController Manager Controller manager，又分为Controller 和 Manager，Controller的组要作用是用于协调各种控制器(Deployment, Daemonset…)，这些控制器可确保在节点发生故障时采取适当的措施。而 Manager 则管理的众多Controller；更一般地说，CM 负责随时将集群的当前状态调整到所需状态（Kubernetes设计基石）。\netcd etcd 是控制平面内的一个组件，他提供了 Kubernetes 资源的存储，并为集群内组件提供了 Watch 的功能，这将意味着，etcd 在 kubernetes 集群中作为存储与分布式协调的功能。\nWorker nodes 每个集群中至少需要存在一个工作节点，但是通常会有大量的节点；而工作节点包括的组件不限于 Kubelet, Kube-proxy, CNI Plugin。\nKubelet kubelet是工作节点中管理运行时的组件，负责整个Pod （容器组）进程的生命周期\nKube-proxy Kube-proxy 为整个集群内提供了 service 的功能，如果这个组件无法正常工作，那么整个集群内的网络通信将不能正常，因为 service 是作为集群内服务的访问入口，包含 Kubernetes API service。\nCNI CNI (Container Network Interface) 是 Kubernetes 集群中提供跨节点通信的一个组件，通常来说，它是一个独立于容器运行时（Docker等）的网络插件规范，旨在实现容器之间和容器与宿主机之间的网络连接。\n一个 CNI 基本的功能就是去管理网络设备的生命周期，例如，生成网卡，添加IP地址，注销网卡，而构成这些网络功能的则有操作系统来提供的，例如网络隧道(VxLAN)，而还存在一种情况就是三层网络，这时CNI会作为一个路由器来分发路由。除此之外，CNI还提供了更多的功能，例如数据包加密，网络策略，服务网格，网络加速，IPAM等功能\n通过二进制安装Kubernetes cluster 硬件配置推荐 在选择节点数量时，需要考虑集群的用途，通常情况下建议至少使用 3 个节点 (APIServer)，对于控制平面其他组件来说，通常最少为两个即可，因为HA架构中工作节点总是需要一个即可\n要运行 apiserver 和 etcd，您需要一台具有 2 个内核和 2GB RAM 的 机器，用于中小型集群，更大规模集群可能需要更多的核心。工作节点必须有足够的资源来托管您的应用程序，并且可以有不同的配置。\netcd 硬件配置推荐 Kuberentes 中工作节点需要启动一个或多个 etcd 实例，通常官方推荐运行奇数个 etcd 实例，因为一个 3 实例时有两个活跃就具备了集群的 quorum ，同理五个实例时存在3个实例活跃即可，7=\u003e4 等，通常集群规模不大于9，否则存在同步时的延迟。\n集群的部署模式 单独托管的 etcd 集群 master节点同台主机上托管 etcd 集群 通过 kubeadm 生成的 etcd 集群 在这里我们使用二进制方式最小化部署，即 单节点的 etcd 集群，与同时为 control plane 与 worker 一体托管在单台物理/虚拟机之上的 Kubernetes 集群\n题外话：kubeadm 和 二进制究竟有什么区别？\n实际上 kubeadm 和 二进制本质上并没有什么区别，如果非要说存在区别的话，那么就是其 Procss Manager 不同，\n一个是由 systemd/system v 或其他操作系统维护的1 id的进程进行维护； kubeadm 部署的 kubelet 将 由 kubelet 进程自己来监控，当 pod 崩溃时重启该 pod，kubelete 也无法对他们进行健康检查。静态 pod 始终绑定在某一个 kubelet，并且始终运行在同一个节点上，可以通过在 master 节点上查看 /etc/kubernetes/manifests 目录 配置证书 通常情况下，大家都知道安装 kubernetes 集群需要证书，但是不知道为什么需要证书，这里需要了解 Kubernetes 认证机制，也就是“用户”在kubernetes集群中被称为什么\nKubernetes 中用户被分为几类：\nX.509 证书 静态 Token 文件 Bootstrap Tokens Service Account Tokens kubernetes 使用了客户端证书方式进行认证，这是作为外部用户的一种方式，这些证书会被默认生成对应的内部用户，所以需要准备证书文件，在本文中一切准备文件都是由脚本生成，不做基础的配置讲解。\n对于 X.509 证书，需要注意有几点\nkubernetes 中，对于证书的用户，CN就是用户名，O 就是组织。 对于证书认证来说，客户端证书，也就是说客户端必须在可信任列表中，也就是 subject_name 中允许的 对于 Kubernetes 组件来说，通常情况下需要包含 Kubernetes API service 的所有名称（短域名+完整域名） kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster kubernetes.default.svc.cluster.local 如果你希望使用IP，而不是域名，也可以对证书中sub_name增加对应域名\n对于组件间认证，目前 Kubernetes 中基本上组件间认证都有 kubeconfig 完成，而 kubelet，kube-controller-manager 这两个组件，由于提供的功能不同，可能存在其他的认证方式；例如 kubelet 所作的事情是 “监听Pod资源进行部署” 那么这个时候与 APIServer 通讯使用了 kubeconfig，在例如 kubelet 要被 APIServer 签发时，此时认证是使用的 bootstrap token 进行的，而这个kubeconfig 就是 签发后生成的内容，本质上来说，kubelet 没有客户端证书，只有token，而例如 kube-scheduler 是有客户端证书，但是需要生产 kubeconfig 文件\n签发kubelet 给 kubelet 签发证书主要由两部分组成，一种是 kube-controller-manager 自动签发，一种是 kubectl certifcate approve 手动签发，这里就有必要知道 kubelet 的认证的流程：\nkubelet启动时会找 kubeconfig ，如果没有进入下一部 没有 kubeconfig，会使用 bootstraps 进行认证，此时会被颁发客户端证书 在通过后，kubelet 会根据签发证书 生成 –kubeconfig 指定的 kubeconfig 文件 下次后，kubelet 会根据这个 kubeconfig 同 Kubernetes API 进行 验证 了解了 kubelet 的签发过程，就明白在二进制部署时，为什么需要做一个 clusterrolebinding ？\n因为Kubernetes API 为 kubelet 的 bootstraps-token 使用的是用户 system:node-bootstrapper ，所以要想让这个用户可以访问 API 资源，那么就需要为这个用户绑定上集群角色（用户/组），这就需要执行一个命令\n1 $ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers 此时再去查看证书颁发，这时因为有权限访问 API 资源了， 所以获得了证书的被签发\n1 2 3 $ kubectl get csr NAME AGE REQUESTOR CONDITION node-csr-a-MREQ1IybB0U5M8RP5FasSjckQOZiCoCYlf8ipDwx8 5m11s system:bootstrapper Pending kube-dns 的部署 coredns部署\n1 2 3 4 $ mkdir coredns \u0026\u0026 cd coredns $ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/coredns.yaml.sed $ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/deploy.sh $ bash deploy.sh -i 10.96.0.10 -r \"10.96.0.0/12\" -s -t coredns.yaml.sed |kubectl apply -f - 开启IPVS 内核开启IPVS功能否则降级\n1 2 3 4 5 6 7 8 9 10 cat \u003e /etc/sysconfig/modules/ipvs.modules \u003c\u003c EOF #!/bin/bash ipvs_mods_dir=\"/usr/lib/modules/$(uname -r)/kernel/net/netfilter/ipvs\" for i in \\$(ls \\$ipvs_mods_dir | grep -o \"^[^.]*\"); do /sbin/modinfo -F filename \\$i \u003e/dev/null if [ \\$? -eq 0 ]; then /sbin/modprobe -- \\$i fi done EOF or\n1 2 3 4 5 6 7 8 9 10 11 cat \u003e /etc/sysconfig/modules/ipvs.modules \u003c",
   "wordCount" : "4210",
   "inLanguage": "zh",
   "datePublished": "2019-01-20T00:00:00Z",
-  "dateModified": "2023-06-18T17:38:19+08:00",
+  "dateModified": "2023-06-04T23:00:36+08:00",
   "author":{
     "@type": "Person",
     "name": "cylon"
@@ -226,7 +226,7 @@ code.has-jax {
   <header class="post-header">
     <div class="breadcrumbs"><a href="https://www.cilicilic.top">主页</a></div>
     <h1 class="post-title">
-      Kubernetes Install with binary files
+      使用二进制文件构建k8s集群
     </h1>
     <div class="post-meta"><span title='2019-01-20 00:00:00 +0000 UTC'>2019-01-20</span>&nbsp;·&nbsp;9 分钟&nbsp;·&nbsp;cylon
 
@@ -706,57 +706,57 @@ code.has-jax {
       <li><a href="https://www.cilicilic.top/tags/kubernetes.html">kubernetes</a></li>
     </ul>
 <nav class="paginav">
-  <a class="prev" href="https://www.cilicilic.top/2019/02/golang%E6%AF%8F%E6%97%A5%E4%B8%80%E5%BA%93-cronexpr.html">
+  <a class="prev" href="https://www.cilicilic.top/2019/02/cronexpr.html">
     <span class="title">« 上一页</span>
     <br>
-    <span>golang每日一库 - cronexpr</span>
+    <span>Go每日一库 - cronexpr</span>
   </a>
-  <a class="next" href="https://www.cilicilic.top/2018/12/go-byte%E4%B8%8Erune%E5%8C%BA%E5%88%AB.html">
+  <a class="next" href="https://www.cilicilic.top/2018/12/golang-byte-and-rune.html">
     <span class="title">下一页 »</span>
     <br>
-    <span>go byte与rune区别</span>
+    <span>Go byte与rune区别</span>
   </a>
 </nav>
 
 
 <div class="share-buttons">
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on twitter"
-        href="https://twitter.com/intent/tweet/?text=Kubernetes%20Install%20with%20binary%20files&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&amp;hashtags=kubernetes">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on twitter"
+        href="https://twitter.com/intent/tweet/?text=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&amp;hashtags=kubernetes">
         <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
             <path
                 d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-253.927,424.544c135.939,0 210.268,-112.643 210.268,-210.268c0,-3.218 0,-6.437 -0.153,-9.502c14.406,-10.421 26.973,-23.448 36.935,-38.314c-13.18,5.824 -27.433,9.809 -42.452,11.648c15.326,-9.196 26.973,-23.602 32.49,-40.92c-14.252,8.429 -30.038,14.56 -46.896,17.931c-13.487,-14.406 -32.644,-23.295 -53.946,-23.295c-40.767,0 -73.87,33.104 -73.87,73.87c0,5.824 0.613,11.494 1.992,16.858c-61.456,-3.065 -115.862,-32.49 -152.337,-77.241c-6.284,10.881 -9.962,23.601 -9.962,37.088c0,25.594 13.027,48.276 32.95,61.456c-12.107,-0.307 -23.448,-3.678 -33.41,-9.196l0,0.92c0,35.862 25.441,65.594 59.311,72.49c-6.13,1.686 -12.72,2.606 -19.464,2.606c-4.751,0 -9.348,-0.46 -13.946,-1.38c9.349,29.426 36.628,50.728 68.965,51.341c-25.287,19.771 -57.164,31.571 -91.8,31.571c-5.977,0 -11.801,-0.306 -17.625,-1.073c32.337,21.15 71.264,33.41 112.95,33.41Z" />
         </svg>
     </a>
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on linkedin"
-        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&amp;title=Kubernetes%20Install%20with%20binary%20files&amp;summary=Kubernetes%20Install%20with%20binary%20files&amp;source=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on linkedin"
+        href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&amp;title=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4&amp;summary=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4&amp;source=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
         <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
             <path
                 d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
         </svg>
     </a>
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on reddit"
-        href="https://reddit.com/submit?url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&title=Kubernetes%20Install%20with%20binary%20files">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on reddit"
+        href="https://reddit.com/submit?url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html&title=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4">
         <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
             <path
                 d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
         </svg>
     </a>
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on facebook"
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on facebook"
         href="https://facebook.com/sharer/sharer.php?u=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
         <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
             <path
                 d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
         </svg>
     </a>
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on whatsapp"
-        href="https://api.whatsapp.com/send?text=Kubernetes%20Install%20with%20binary%20files%20-%20https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on whatsapp"
+        href="https://api.whatsapp.com/send?text=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4%20-%20https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
         <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
             <path
                 d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
         </svg>
     </a>
-    <a target="_blank" rel="noopener noreferrer" aria-label="share Kubernetes Install with binary files on telegram"
-        href="https://telegram.me/share/url?text=Kubernetes%20Install%20with%20binary%20files&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
+    <a target="_blank" rel="noopener noreferrer" aria-label="share 使用二进制文件构建k8s集群 on telegram"
+        href="https://telegram.me/share/url?text=%e4%bd%bf%e7%94%a8%e4%ba%8c%e8%bf%9b%e5%88%b6%e6%96%87%e4%bb%b6%e6%9e%84%e5%bb%bak8s%e9%9b%86%e7%be%a4&amp;url=https%3a%2f%2fwww.cilicilic.top%2f2019%2f01%2fkubernetes-install-with-binary-files.html">
         <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
             <path
                 d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
