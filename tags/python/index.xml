@@ -1614,6 +1614,58 @@
     </item>
     
     <item>
+      <title>由PIPE size 引起的线上故障</title>
+      <link>https://www.oomkill.com/2021/10/pipe-size-problem/</link>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2021/10/pipe-size-problem/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<blockquote>
+<p><strong>sence</strong>：python中使用subprocess.Popen(cmd, stdout=sys.STDOUT, stderr=sys.STDERR, shell=True) ，stdout, stderr 为None.</p>
+</blockquote>
+<p>在错误中执行是无法捕获 stderr的内容，后面将上面的改为 <code>subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)</code>,发现是可以拿到 <code>stderr</code>, 但是会遇到大量任务hanging，造成线上事故。</p>
+<p>为此特意查询<code>subprocess</code>的一些参数的说明。</p>
+<blockquote>
+<p><code>stdin</code> <code>stdout </code> <code>stderr </code> 如果这些参数为 <code>PIPE</code>, 此时会为一个文件句柄，而传入其他（例如 <code>sys.stdout</code> 、<code>None</code> 等）的则为<code>None</code></p>
+</blockquote>
+<p>正如这里介绍的一样，<a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin">subprocess</a> 。</p>
+<p>而使用 <code>PIPE</code>，却导致程序 hanging。一般来说不推荐使用 <code>stdout=PIPE</code>  <code>stderr=PIPE</code>，这样会导致一个死锁，子进程会将输入的内容输入到 <code>pipe</code>，直到操作系统从buffer中读取出输入的内容。</p>
+<p>查询手册可以看到确实是这个问题 <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate">Refernce</a></p>
+<blockquote>
+<p><strong>Warning</strong> This will deadlock when using <code>stdout=PIPE</code> and/or <code>stderr=PIPE</code> and the child process generates enough output to a pipe such that it blocks waiting for the OS pipe buffer to accept more data. Use <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate"><code>communicate()</code></a> to avoid that.</p>
+</blockquote>
+<p>而在linux中 <code>PIPE</code> 的容量（capacity）是内核中具有固定大小的一块缓冲区，如果用来接收但不消费就会阻塞，所以当用来接收命令的输出基本上100% 阻塞所以会导致整个任务 hanging。<em>（ -Linux2.6.11 ，pipe capacity 和system page size 一样（如， i386 为 4096 bytes ）。 since Linux 2.6.11+，pipe capacity 为 65536  bytes。）</em></p>
+<p>关于更多的信息可以参考：<a href="https://linux.die.net/man/7/pipe">pipe</a></p>
+<p>所以如果既要拿到对应的输出进行格式化，又要防止程序hang，可以自己创建一个缓冲区，这样可以根据需求控制其容量，可以有效的避免hanging。列如：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">cmd</span> <span class="o">=</span> <span class="s2">&#34;this is complex command&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">outPipe</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">SpooledTemporaryFile</span><span class="p">(</span><span class="n">bufsize</span><span class="o">=</span><span class="mi">10</span><span class="o">*</span><span class="mi">10000</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">fileno</span> <span class="o">=</span> <span class="n">outPipe</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span><span class="n">stdout</span><span class="o">=</span><span class="n">fileno</span><span class="p">,</span><span class="n">stderr</span><span class="o">=</span><span class="n">fileno</span><span class="p">,</span><span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>另外，几个参数设置的不通的区别如下：</p>
+<p><code>stdout=None</code> 为继承父进程的句柄，通俗来说为标准输出。</p>
+<p><code>stderr=STDOUT</code> 重定向错误输出到标准输出</p>
+<p><code>stdout=PIPE</code> 将标准输出到linux pipe</p>
+<h2 id="reference">Reference</h2>
+<blockquote>
+<p><a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin">subprocess</a></p>
+<p><a href="https://stackoverflow.com/questions/25370347/python-subprocess-stderr-stdout-field-is-none-if-created">subprocess stderr/stdout field is None</a></p>
+<p><a href="https://stackoverflow.com/questions/39477003/python-subprocess-popen-hanging">subprocess-popen-hanging</a></p>
+<p><a href="https://unix.stackexchange.com/questions/11946/how-big-is-the-pipe-buffer">pipe size</a></p>
+</blockquote>
+]]></content:encoded>
+    </item>
+    
+    <item>
       <title>python使用虚拟环境venv</title>
       <link>https://www.oomkill.com/2021/06/python-venv/</link>
       <pubDate>Mon, 14 Jun 2021 00:00:00 +0000</pubDate>
