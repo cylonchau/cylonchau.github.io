@@ -6,7 +6,506 @@
     <description>Recent content in go on Cylon&#39;s Collection</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Fri, 10 Mar 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/go/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 19 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/go/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Go每日一库 - 使用 gin &#43; goswagger 构建 REST API 文档</title>
+      <link>https://www.oomkill.com/2024/06/golib-go-swagger/</link>
+      <pubDate>Wed, 19 Jun 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/06/golib-go-swagger/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<h2 id="openapi">OpenAPI</h2>
+<h3 id="什么是openapi">什么是OpenAPI</h3>
+<p>Swagger 是一套围绕 OpenAPI 规范构建的开源工具，可帮助我们设计，构建，记录和使用 REST API。</p>
+<p><strong>OpenAPI 规范</strong>（前名称为 Swagger 规范）是 REST API 的 API 描述格式。包括：</p>
+<ul>
+<li>可用端点 ( 例如 <code>/users</code>) 以及每个 endpoint 上的操作 (例如 <code>GET /users</code>, <code>POST /users</code>)</li>
+<li>操作参数，每个操作的输入和输出</li>
+<li>认证方法</li>
+<li>联系信息，许可证，使用条款等其他信息。</li>
+</ul>
+<h3 id="什么是-swagger">什么是 Swagger？</h3>
+<p><strong>Swagger</strong> 是一组围绕 OpenAPI 规范构建的开源工具，有助于用户设计，构建，记录和使用 REST API，支持整个 API 生命周期的开发，从设计和文档到测试和部署。</p>
+<h3 id="使用-swagger-的目的">使用 Swagger 的目的</h3>
+<ol>
+<li><strong>标准化文档格式</strong>：Swagger (OpenAPI) 采用了准化 API 文档格式。通过使用 Swaggo（将注释转换为 Swagger2.0文档的包） 生成 Swagger 文档，Swagger 的结构化格式的文档，使开发人员更容易理解产品的 API 交互。</li>
+<li><strong>交互式文档体验</strong>：Swagger UI 与 Swaggo 集成，提供交互式且用户友好的界面，用于测试 API。Swaggo提供了一个自动生成的界面，允许开发人员浏览 Endpoint，查看请求/响应示例，甚至可以直接从文档执行 API 请求。这种交互式体验可提高开发人员的工作效率并加速 API 的采用。</li>
+<li><strong>自动且最新的文档</strong>：Swaggo 可自动从用户的 Go 代码生成 API 文档。这种自动化无需手动维护单独的文档文件。Swaggo 直接从用户的代码库中提取信息，包括 endpoint 详细信息，请求/响应模型和注释。使用这种方法可确保用户的 API 文档随着代码的更新而保持最新。</li>
+</ol>
+<h2 id="swagger-与-gin-的集成">Swagger 与 Gin 的集成</h2>
+<h3 id="拉取-swaggo">拉取 Swaggo</h3>
+<p>使用如下命令下载swag</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ go install github.com/swaggo/swag/cmd/swag
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="与-gin-的集成">与 Gin 的集成</h3>
+<h4 id="添加通用注释">添加通用注释</h4>
+<p>swaggo 中包含两种注释，通用注释与 API 注释，通用注释是用于程序 main.go 中，标记文档的信息，API 注释是用于标注每个接口的信息。</p>
+<ol>
+<li>下载相关包</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ go install github.com/swaggo/swag/cmd/swag
+</span></span><span class="line"><span class="cl">$ go get -v github.com/swaggo/gin-swagger <span class="c1"># gin-swagger middleware</span>
+</span></span><span class="line"><span class="cl">$ go get -v github.com/swaggo/files <span class="c1"># swagger embed files</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ol start="2">
+<li>在项目 main.go 源代码中添加通用的 API 注释：</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// @title           Swagger Example API
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @version         1.0
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @description     This is a sample server celler server.
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @termsOfService  http://swagger.io/terms/
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// @contact.name   API Support
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @contact.url    http://www.swagger.io/support
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @contact.email  support@swagger.io
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// @license.name  Apache 2.0
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// @host      localhost:8080
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @BasePath  /api/v1
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// @securityDefinitions.basic  BasicAuth
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// @externalDocs.description  OpenAPI
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @externalDocs.url          https://swagger.io/resources/open-api/
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="o">...</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="为-swagger-docs-添加路由">为 Swagger Docs 添加路由</h4>
+<p>以将中间件添加到您的 Gin 应用程序中。在您的路由函数中或者主函数中，添加如下下代码：</p>
+<p>此代码为 Swagger UI 设置了一条路由，并告诉它在指定的 URL 处查找 Swagger 文档。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// 默认路由
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="o">:=</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">URL</span><span class="p">(</span><span class="s">&#34;http://localhost:8080/swagger/doc.json&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">r</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34; /swagger/*any&#34;</span><span class="p">,</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">WrapHandler</span><span class="p">(</span><span class="nx">swaggerFiles</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">url</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 路由组
+</span></span></span><span class="line"><span class="cl"><span class="c1">// 如果已存在路由组，可以在对应注册路由的函数中添加 docs 路径
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">RegisteredRouter</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Engine</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">e</span><span class="p">.</span><span class="nf">Handle</span><span class="p">(</span><span class="s">&#34;GET&#34;</span><span class="p">,</span> <span class="s">&#34;/swagger/*any&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">WrapHandler</span><span class="p">(</span><span class="nx">swaggerFiles</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">URL</span><span class="p">(</span><span class="s">&#34;/swagger/doc.json&#34;</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl"><span class="o">...</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="向-gin-api-服务器添加-api-注释">向 Gin API 服务器添加 API 注释</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// ShowAccount godoc
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Summary      Show an account
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Description  get string by ID
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Tags         accounts
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Accept       json
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Produce      json
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Param        id   path      int  true  &#34;Account ID&#34;
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Success      200  {object}  model.Account
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Failure      400  {object}  httputil.HTTPError
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Failure      404  {object}  httputil.HTTPError
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Failure      500  {object}  httputil.HTTPError
+</span></span></span><span class="line"><span class="cl"><span class="c1">// @Router       /accounts/{id} [get]
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Controller</span><span class="p">)</span> <span class="nf">ShowAccount</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h4 id="生成-swagger-文档">生成 Swagger 文档</h4>
+<p>将注释添加到代码后，可以通过运行以下命令生成 Swagger 文档</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ swag init -g cmd/main.go --output ./docs/  --packageName docs
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>此命令将会在项目中 docks 文件夹中生成一个文件 <code>doc.json</code> 。我们之前添加的中间件将使用此文件在 Swagger UI 中显示文档。</p>
+<p>确保导入了生成的包 <code>docs/docs.go</code> 文件，这样特定的配置文件才会被初始化。如果通用 API 注释没有写在 <code>main.go</code> 中，可以使用 <code>-g</code> 参数来告知 swag-cli</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ swag init -g http/api.go
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="访问-swagger-文档">访问 swagger 文档</h3>
+<p>在完成上述步骤后，可以浏览器中访问 http://{project_domain}/swagger/index.html，来查看 swagger 文档，这个路径取决于在 gin 路由里配置的路径。</p>
+<h2 id="swagger-注释">swagger 注释</h2>
+<h3 id="通用-api-注释">通用 API 注释</h3>
+<table>
+<thead>
+<tr>
+<th>注释</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>title</td>
+<td><strong>必填</strong> 应用程序的名称。</td>
+<td>// @title Swagger Example API</td>
+</tr>
+<tr>
+<td>version</td>
+<td><strong>必填</strong> 提供应用程序API的版本。</td>
+<td>// @version 1.0</td>
+</tr>
+<tr>
+<td>description</td>
+<td>应用程序的简短描述。</td>
+<td>// @description This is a sample server celler server.</td>
+</tr>
+<tr>
+<td>tag.name</td>
+<td>标签的名称。</td>
+<td>// @tag.name This is the name of the tag</td>
+</tr>
+<tr>
+<td>tag.description</td>
+<td>标签的描述。</td>
+<td>// @tag.description Cool Description</td>
+</tr>
+<tr>
+<td>tag.docs.url</td>
+<td>标签的外部文档的URL。</td>
+<td>// @tag.docs.url <a href="https://example.com/">https://example.com</a></td>
+</tr>
+<tr>
+<td>tag.docs.description</td>
+<td>标签的外部文档说明。</td>
+<td>// @tag.docs.description Best example documentation</td>
+</tr>
+<tr>
+<td>termsOfService</td>
+<td>API的服务条款。</td>
+<td>// @termsOfService <a href="http://swagger.io/terms/">http://swagger.io/terms/</a></td>
+</tr>
+<tr>
+<td>contact.name</td>
+<td>公开的API的联系信息。</td>
+<td>// @contact.name API Support</td>
+</tr>
+<tr>
+<td>contact.url</td>
+<td>联系信息的URL。 必须采用网址格式。</td>
+<td>// @contact.url <a href="http://www.swagger.io/support">http://www.swagger.io/support</a></td>
+</tr>
+<tr>
+<td>contact.email</td>
+<td>联系人/组织的电子邮件地址。 必须采用电子邮件地址的格式。</td>
+<td>// @contact.email <a href="mailto:support@swagger.io">support@swagger.io</a></td>
+</tr>
+<tr>
+<td>license.name</td>
+<td><strong>必填</strong> 用于API的许可证名称。</td>
+<td>// @license.name Apache 2.0</td>
+</tr>
+<tr>
+<td>license.url</td>
+<td>用于API的许可证的URL。 必须采用网址格式。</td>
+<td>// @license.url <a href="http://www.apache.org/licenses/LICENSE-2.0.html">http://www.apache.org/licenses/LICENSE-2.0.html</a></td>
+</tr>
+<tr>
+<td>host</td>
+<td>运行API的主机（主机名或IP地址）。</td>
+<td>// @host localhost:8080</td>
+</tr>
+<tr>
+<td>BasePath</td>
+<td>运行API的基本路径。</td>
+<td>// @BasePath /api/v1</td>
+</tr>
+<tr>
+<td>accept</td>
+<td>API 可以使用的 MIME 类型列表。 请注意，Accept 仅影响具有请求正文的操作，例如 POST、PUT 和 PATCH。 值必须如“<a href="https://github.com/swaggo/swag/blob/master/README_zh-CN.md#mime%E7%B1%BB%E5%9E%8B">Mime类型</a>”中所述。</td>
+<td>// @accept json</td>
+</tr>
+<tr>
+<td>produce</td>
+<td>API可以生成的MIME类型的列表。值必须如“<a href="https://github.com/swaggo/swag/blob/master/README_zh-CN.md#mime%E7%B1%BB%E5%9E%8B">Mime类型</a>”中所述。</td>
+<td>// @produce json</td>
+</tr>
+<tr>
+<td>query.collection.format</td>
+<td>请求URI query里数组参数的默认格式：csv，multi，pipes，tsv，ssv。 如果未设置，则默认为csv。</td>
+<td>// @query.collection.format multi</td>
+</tr>
+<tr>
+<td>schemes</td>
+<td>用空格分隔的请求的传输协议。</td>
+<td>// @schemes http https</td>
+</tr>
+<tr>
+<td>externalDocs.description</td>
+<td>Description of the external document.</td>
+<td>// @externalDocs.description OpenAPI</td>
+</tr>
+<tr>
+<td>externalDocs.url</td>
+<td>URL of the external document.</td>
+<td>// @externalDocs.url <a href="https://swagger.io/resources/open-api/">https://swagger.io/resources/open-api/</a></td>
+</tr>
+<tr>
+<td>x-name</td>
+<td>扩展的键必须以x-开头，并且只能使用json值</td>
+<td>// @x-example-key {&ldquo;key&rdquo;: &ldquo;value&rdquo;}</td>
+</tr>
+</tbody>
+</table>
+<h3 id="api-注释">API 注释</h3>
+<table>
+<thead>
+<tr>
+<th>注释</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>description</td>
+<td>操作行为的详细说明。</td>
+</tr>
+<tr>
+<td>description.markdown</td>
+<td>应用程序的简短描述。该描述将从名为 <code>endpointname.md</code> 的文件中读取。</td>
+</tr>
+<tr>
+<td>id</td>
+<td>用于标识操作的唯一字符串。在所有 API 操作中必须唯一。</td>
+</tr>
+<tr>
+<td>tags</td>
+<td>每个 API 操作的标签列表，以逗号分隔。</td>
+</tr>
+<tr>
+<td>summary</td>
+<td>该操作的简短摘要。</td>
+</tr>
+<tr>
+<td>accept</td>
+<td>API 可以使用的 MIME 类型列表。 请注意，Accept 仅影响具有请求正文的操作，例如 POST、PUT 和 PATCH。 值必须如 “Mime类型” 中所述。</td>
+</tr>
+<tr>
+<td>produce</td>
+<td>API可以生成的MIME类型的列表。值必须如 “Mime类型” 中所述。</td>
+</tr>
+<tr>
+<td>param</td>
+<td>用空格分隔的参数。<br /><code>param name</code>,<br /><code>param type</code>,<br /><code>data type</code>,<br /><code>is mandatory?</code>,<br /><code>comment</code> <code>attribute(optional)</code></td>
+</tr>
+<tr>
+<td>security</td>
+<td>每个 API 操作的安全性。</td>
+</tr>
+<tr>
+<td>success</td>
+<td>以空格分隔的成功响应。<code>return code</code>,<code>{param type}</code>,<code>data type</code>,<code>comment</code></td>
+</tr>
+<tr>
+<td>failure</td>
+<td>以空格分隔的故障响应。<code>return code</code>,<code>{param type}</code>,<code>data type</code>,<code>comment</code></td>
+</tr>
+<tr>
+<td>response</td>
+<td>与success、failure作用相同</td>
+</tr>
+<tr>
+<td>header</td>
+<td>以空格分隔的头字段。 <code>return code</code>,<code>{param type}</code>,<code>data type</code>,<code>comment</code></td>
+</tr>
+<tr>
+<td>router</td>
+<td>以空格分隔的路径定义。 <code>path</code>,<code>[httpMethod]</code></td>
+</tr>
+<tr>
+<td>deprecatedrouter</td>
+<td>与router相同，但是是deprecated的。</td>
+</tr>
+<tr>
+<td>x-name</td>
+<td>扩展字段必须以 <code>x-</code> 开头，并且只能使用 json 值。</td>
+</tr>
+<tr>
+<td>deprecated</td>
+<td>将当前 API 操作的所有路径设置为deprecated</td>
+</tr>
+</tbody>
+</table>
+<h3 id="安全相关参数">安全相关参数</h3>
+<table>
+<thead>
+<tr>
+<th>注释</th>
+<th>描述</th>
+<th>参数</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>securitydefinitions.basic</td>
+<td><a href="https://swagger.io/docs/specification/2-0/authentication/basic-authentication/">Basic</a> auth.</td>
+<td></td>
+<td>// @securityDefinitions.basic BasicAuth</td>
+</tr>
+<tr>
+<td>securitydefinitions.apikey</td>
+<td><a href="https://swagger.io/docs/specification/2-0/authentication/api-keys/">API key</a> auth.</td>
+<td>in, name</td>
+<td>// @securityDefinitions.apikey ApiKeyAuth</td>
+</tr>
+<tr>
+<td>securitydefinitions.oauth2.application</td>
+<td><a href="https://swagger.io/docs/specification/authentication/oauth2/">OAuth2 application</a> auth.</td>
+<td>tokenUrl, scope</td>
+<td>// @securitydefinitions.oauth2.application OAuth2Application</td>
+</tr>
+<tr>
+<td>securitydefinitions.oauth2.implicit</td>
+<td><a href="https://swagger.io/docs/specification/authentication/oauth2/">OAuth2 implicit</a> auth.</td>
+<td>authorizationUrl, scope</td>
+<td>// @securitydefinitions.oauth2.implicit OAuth2Implicit</td>
+</tr>
+<tr>
+<td>securitydefinitions.oauth2.password</td>
+<td><a href="https://swagger.io/docs/specification/authentication/oauth2/">OAuth2 password</a> auth.</td>
+<td>tokenUrl, scope</td>
+<td>// @securitydefinitions.oauth2.password OAuth2Password</td>
+</tr>
+<tr>
+<td>securitydefinitions.oauth2.accessCode</td>
+<td><a href="https://swagger.io/docs/specification/authentication/oauth2/">OAuth2 access code</a> auth.</td>
+<td>tokenUrl, authorizationUrl, scope</td>
+<td>// @securitydefinitions.oauth2.accessCode OAuth2AccessCode</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">troubleshooting</h2>
+<h3 id="failed-to-load-api-definition">Failed to load API definition.</h3>
+<p>引用了 swaggo 的文件必须添加下面包引用</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">_</span> <span class="s">&#34;project_root_dir/cmd/docs&#34;</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="failed-to-load-api-definition-not-found-swaggerv1swaggerjson">failed to load api definition. not found /swagger/v1/swagger.json</h3>
+<p>指定 doc 文档路径必须写对 [ginSwagger.URL(&quot;/swagger/doc.json&quot;)]</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// 默认路由
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="o">:=</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">URL</span><span class="p">(</span><span class="s">&#34;http://localhost:8080/swagger/doc.json&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">r</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34; /swagger/*any&#34;</span><span class="p">,</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">WrapHandler</span><span class="p">(</span><span class="nx">swaggerFiles</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">url</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 路由组
+</span></span></span><span class="line"><span class="cl"><span class="c1">// 如果已存在路由组，可以在对应注册路由的函数中添加 docs 路径
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">RegisteredRouter</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Engine</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">e</span><span class="p">.</span><span class="nf">Handle</span><span class="p">(</span><span class="s">&#34;GET&#34;</span><span class="p">,</span> <span class="s">&#34;/swagger/*any&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">WrapHandler</span><span class="p">(</span><span class="nx">swaggerFiles</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">ginSwagger</span><span class="p">.</span><span class="nf">URL</span><span class="p">(</span><span class="s">&#34;/swagger/doc.json&#34;</span><span class="p">)))</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="cannot-find-type-definition-api_queryuserquery">cannot find type definition: api_query.UserQuery</h3>
+<p>如果参数引用了一个对象，不可以写成 <code>&amp;api_query.UserQuery</code> 的格式</p>
+<h3 id="parsecomment-error-in-file--missing-required-param-comment-parameters-xxx">ParseComment error in file  :missing required param comment parameters &ldquo;xxx&rdquo;</h3>
+<p>你的项目内其他非 API 接口的函数不能使用与 API 注释相同格式的注释</p>
+<h3 id="cannot-find-type-definition-errcodeerror">cannot find type definition: errcode.Error</h3>
+<h2 id="reference">Reference</h2>
+<p><sup id="1">[1]</sup> <a href="https://github.com/swaggo/swag/issues/830">&ldquo;Failed to load API definition&rdquo; / &ldquo;not yet registered swag&rdquo; error when rendering docs page #830</a></p>
+<p><sup id="2">[2]</sup> <a href="https://github.com/swaggo/gin-swagger/issues/2">localhost:8080/swagger returns 404 page not found #2</a></p>
+<p><sup id="3">[3]</sup> <a href="https://medium.com/julotech/implementing-swagger-in-go-projects-8579a5fb955">Implementing Swagger in Go Projects</a></p>
+<p><sup id="4">[4]</sup> <a href="https://lemoncode21.medium.com/how-to-add-swagger-in-golang-gin-6932e8076ec0">How to add Swagger in Golang Gin.</a></p>
+<p><sup id="5">[5]</sup> <a href="https://www.cnblogs.com/Zev_Fung/p/11588515.html">Swagger使用的时候报错：Failed to load API definition</a></p>
+<p><sup id="6">[6]</sup> <a href="https://github.com/swaggo/swag/blob/master/README_zh-CN.md">README_zh-CN.md</a></p>
+<p><sup id="7">[7]</sup> <a href="https://stackoverflow.com/questions/62101550/golang-swaggo-rendering-error-failed-to-load-api-definition-and-fetch-error">Golang swaggo rendering error: &ldquo;Failed to load API definition&rdquo; and &ldquo;Fetch error doc.json&rdquo;</a></p>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>Go设计模式</title>
       <link>https://www.oomkill.com/2023/03/design-patterns/</link>
@@ -2268,9 +2767,9 @@
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
 </span></span></code></pre></td></tr></table>
 </div>
-</div><blockquote>
-<p><strong>Reference</strong>
-<a href="https://www.codenong.com/37246473/">copy different struct</a></p>
+</div><h2 id="reference">Reference</h2>
+<blockquote>
+<p><a href="https://www.codenong.com/37246473/">copy different struct</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -2296,9 +2795,9 @@
 </blockquote>
 <p>
   <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20211014191200274-1721289778.png" alt=""  /></p>
+<h2 id="reference">Reference</h2>
 <blockquote>
-<p><strong>Reference</strong>
-<a href="https://www.jetbrains.com/help/go/creating-and-optimizing-imports.html#use-the-goimports-local-grouping">goimports-group</a></p>
+<p><a href="https://www.jetbrains.com/help/go/creating-and-optimizing-imports.html#use-the-goimports-local-grouping">goimports-group</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
