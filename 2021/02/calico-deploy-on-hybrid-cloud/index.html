@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>基于混合云模式的calico部署 | Cylon&#39;s Collection</title>
+<meta name="keywords" content="kubernetes, calico">
+<meta name="description" content="基于混合云模式的calico部署 - Cylon&#39;s Collection">
+<meta name="author" content="cylon">
+<link rel="canonical" href="https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.df0e7f0648f287aca44f5b657ff5602f436346895340daaa6589b3049a979f73.css" integrity="sha256-3w5/Bkjyh6ykT1tlf/VgL0NjRolTQNqqZYmzBJqXn3M=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.oomkill.com/favicon.ico">
+<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
+
+<meta name="twitter:title" content="基于混合云模式的calico部署 | Cylon&#39;s Collection" />
+<meta name="twitter:description" content="" />
+<meta property="og:title" content="基于混合云模式的calico部署 | Cylon&#39;s Collection" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/" />
+<meta property="article:section" content="posts" />
+  <meta property="article:published_time" content="2021-02-15T00:00:00&#43;00:00" />
+  <meta property="article:modified_time" content="2023-03-22T23:00:36&#43;08:00" />
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://www.oomkill.com/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "基于混合云模式的calico部署",
+      "item": "https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "基于混合云模式的calico部署 | Cylon's Collection",
+  "name": "基于混合云模式的calico部署",
+  "description": "",
+  "keywords": [
+    "kubernetes", "calico"
+  ],
+  "wordCount" : "1346",
+  "inLanguage": "zh",
+  "datePublished": "2021-02-15T00:00:00Z",
+  "dateModified": "2023-03-22T23:00:36+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "cylon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Cylon's Collection",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.oomkill.com/favicon.ico"
+    }
+  }
+}
+</script><script type="text/javascript"
+        async
+        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\[\[','\]\]']],
+    processEscapes: true,
+    processEnvironments: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+    TeX: { equationNumbers: { autoNumber: "AMS" },
+         extensions: ["AMSmath.js", "AMSsymbols.js"] }
+  }
+});
+
+MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+});
+</script>
+
+<style>
+code.has-jax {
+    font: inherit;
+    font-size: 100%;
+    background: inherit;
+    border: inherit;
+    color: #515151;
+}
+</style>
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary-bg: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list-page {
+                background: var(--theme);
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+
+</head>
+
+<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
+function switchTheme(theme) {
+  switch (theme) {
+    case 'light':
+      document.body.classList.remove('dark');
+      break;
+    case 'dark':
+      document.body.classList.add('dark');
+      break;
+    
+    default:
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+  }
+}
+
+function isDarkTheme() {
+  return document.body.className.includes("dark");
+}
+
+function getPrefTheme() {
+  return localStorage.getItem("pref-theme");
+}
+
+function setPrefTheme(theme) {
+  switchTheme(theme)
+  localStorage.setItem("pref-theme", theme);
+}
+
+const toggleThemeCallbacks = {}
+toggleThemeCallbacks['main'] = (isDark) => {
+  
+  if (isDark) {
+    setPrefTheme('light');
+  } else {
+    setPrefTheme('dark');
+  }
+}
+
+
+
+
+window.addEventListener('toggle-theme', function() {
+  
+  const isDark = isDarkTheme()
+  for (const key in toggleThemeCallbacks) {
+    toggleThemeCallbacks[key](isDark)
+  }
+});
+
+
+function toggleThemeListener() {
+  
+  window.dispatchEvent(new CustomEvent('toggle-theme'));
+}
+
+</script>
+<script>
+  
+  (function() {
+    const defaultTheme = 'auto';
+    const prefTheme = getPrefTheme();
+    const theme = prefTheme ? prefTheme : defaultTheme;
+
+    switchTheme(theme);
+  })();
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.oomkill.com/archives/" title="归档"
+                >归档
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/tags/" title="标签"
+                >标签
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
+                >搜索
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/about/" title="关于"
+                >关于
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main post">
+
+<article class="post-single">
+  <header class="post-header"><h1 class="post-title">基于混合云模式的calico部署</h1>
+    <div class="post-meta"><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>2021-02-15</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>Edited on 2023-03-22</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
+  <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes-network/">kubernetes network</a><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a></span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
+  <span>3 分钟</span></span>
+
+      
+      
+    </div>
+  </header> <div class="toc side right">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e5%bc%80%e5%a7%8b%e5%89%8d%e5%87%86%e5%a4%87" aria-label="开始前准备">开始前准备</a><ul>
+                        
+                <li>
+                    <a href="#%e4%b8%8b%e8%bd%bdcalico%e9%83%a8%e7%bd%b2%e6%b8%85%e5%8d%95" aria-label="下载calico部署清单">下载calico部署清单</a></li>
+                <li>
+                    <a href="#%e4%bf%ae%e6%94%b9pod-cidr" aria-label="修改Pod CIDR">修改Pod CIDR</a></li>
+                <li>
+                    <a href="#calico%e7%9a%84ip%e5%88%86%e9%85%8d%e8%8c%83%e5%9b%b4" aria-label="calico的IP分配范围">calico的IP分配范围</a></li>
+                <li>
+                    <a href="#%e9%85%8d%e7%bd%aecalico%e7%9a%84-ip-in-ip" aria-label="配置Calico的 IP in IP">配置Calico的 <code>IP in IP</code></a></li>
+                <li>
+                    <a href="#%e4%bf%ae%e6%94%b9secret" aria-label="修改secret">修改secret</a></li>
+                <li>
+                    <a href="#%e4%bf%ae%e6%94%b9configmap" aria-label="修改configMap">修改configMap</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e5%bc%80%e5%a7%8b%e5%ae%89%e8%a3%85" aria-label="开始安装">开始安装</a></li>
+                <li>
+                    <a href="#%e5%ae%89%e8%a3%85%e5%87%ba%e9%94%99" aria-label="安装出错">安装出错</a></li>
+                <li>
+                    <a href="#%e4%bf%ae%e6%94%b9calicoctl%e7%9a%84%e6%95%b0%e6%8d%ae%e6%ba%90" aria-label="修改calicoctl的数据源">修改calicoctl的数据源</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content">
+    
+
+
+
+
+
+<div class="copyrightTopBlock">
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+</div><h2 id="开始前准备">开始前准备<a hidden class="anchor" aria-hidden="true" href="#开始前准备">¶</a></h2>
+<p>确定calico数据存储</p>
+<p>Calico同时支持kubernetes api和etcd数据存储。官方给出的建议是在本地部署中使用<strong>K8S API</strong>，仅支持Kubernetes模式。而官方给出的etcd则是混合部署（Calico作为Kubernetes和OpenStack的网络插件运行）的最佳数据存储。</p>
+<p>使用etcd作为calico数据存储的好处：</p>
+<ul>
+<li>允许多平台混用calico，如Kubernetes OpenStack上运行Calico</li>
+<li>Kubernetes资源与Calico资源分离</li>
+<li>一个Calico群集，该群集不仅仅包含一个Kubernetes群集，如可与多个kubernetes集群互通。</li>
+</ul>
+<p>坏处：</p>
+<ul>
+<li>安装步骤繁琐</li>
+<li>无法使用Kubernetes RBAC对calico资源的控制</li>
+<li>无法使用Kubernetes资源对calico进行管理</li>
+</ul>
+<h3 id="下载calico部署清单">下载calico部署清单<a hidden class="anchor" aria-hidden="true" href="#下载calico部署清单">¶</a></h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">curl https://docs.projectcalico.org/manifests/calico-etcd.yaml -o calico.yaml
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="修改pod-cidr">修改Pod CIDR<a hidden class="anchor" aria-hidden="true" href="#修改pod-cidr">¶</a></h3>
+<p>　Calico默认的Pod CIDR使用的是<code>192.168.0.0/16</code>，这里一般使用与controller-manager中的<code>--cluster-cidr</code> 保持一,取消资源清单内的 <code>CALICO_IPV4POOL_CIDR</code>变量的注释，并将其设置为与所选Pod CIDR相同的值。</p>
+<h3 id="calico的ip分配范围">calico的IP分配范围<a hidden class="anchor" aria-hidden="true" href="#calico的ip分配范围">¶</a></h3>
+<p>　Calico IPAM从<code>ipPool</code>分配IP地址。修改Pod的默认IP范围则修改清单<code>calico.yaml</code>中的<code>CALICO_IPV4POOL_CIDR</code></p>
+<h3 id="配置calico的-ip-in-ip">配置Calico的 <code>IP in IP</code><a hidden class="anchor" aria-hidden="true" href="#配置calico的-ip-in-ip">¶</a></h3>
+<p>默认情况下，Calico中的IPIP已经禁用，这里使用的v3.17.2 低版本默认会使用IPIP</p>
+<p>要开启IPIP mode则需要修改配置清单内的 <code>CALICO_IPV4POOL_IPIP</code> 环境变量改为 <code>always</code></p>
+<h3 id="修改secret">修改secret<a hidden class="anchor" aria-hidden="true" href="#修改secret">¶</a></h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Populate the following with etcd TLS configuration if desired, but leave blank if</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># not using TLS for etcd.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># The keys below should be uncommented and the values populated with the base64</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># encoded contents of each file that would be associated with the TLS data.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Example command for encoding a file contents: cat &lt;file&gt; | base64 -w 0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># etcd的ca</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">etcd-ca</span><span class="p">:</span><span class="w"> </span><span class="c"># 填写上面命令编码后的值</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># etcd客户端key</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">etcd-key</span><span class="p">:</span><span class="w"> </span><span class="c"># 填写上面命令编码后的值</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># etcd客户端访问证书</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">etcd-cert</span><span class="p">:</span><span class="w"> </span><span class="c"># 填写上面命令编码后的值</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h3 id="修改configmap">修改configMap<a hidden class="anchor" aria-hidden="true" href="#修改configmap">¶</a></h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcd_endpoints</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://10.0.0.6:2379&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># If you&#39;re using TLS enabled etcd uncomment the following.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># You must also populate the Secret below with these files.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcd_ca</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/calico-secrets/etcd-ca&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcd_cert</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/calico-secrets/etcd-cert&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcd_key</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/calico-secrets/etcd-key&#34;</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="开始安装">开始安装<a hidden class="anchor" aria-hidden="true" href="#开始安装">¶</a></h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">kubectl apply -f calico.yaml
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="安装出错">安装出错<a hidden class="anchor" aria-hidden="true" href="#安装出错">¶</a></h2>
+<p><code>/calico-secrets/etcd-cert: permission denied</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-zed" data-lang="zed"><span class="line"><span class="cl"><span class="err">2021</span><span class="o">-</span><span class="err">02</span><span class="o">-</span><span class="err">08</span><span class="w"> </span><span class="err">02</span><span class="o">:</span><span class="err">15</span><span class="o">:</span><span class="err">10</span><span class="p">.</span><span class="err">485</span><span class="w"> </span><span class="p">[</span><span class="n">INFO</span><span class="p">][</span><span class="err">1</span><span class="p">]</span><span class="w"> </span><span class="n">main</span><span class="p">.</span><span class="n">go</span><span class="w"> </span><span class="err">88</span><span class="o">:</span><span class="w"> </span><span class="n">Loaded</span><span class="w"> </span><span class="n">configuration</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">environment</span><span class="w"> </span><span class="n">config</span><span class="o">=&amp;</span><span class="n">config</span><span class="p">.</span><span class="n">Config</span><span class="p">{</span><span class="n">LogLevel</span><span class="o">:</span><span class="err">&#34;</span><span class="n">info</span><span class="err">&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">WorkloadEndpointWorkers</span><span class="o">:</span><span class="err">1</span><span class="p">,</span><span class="w"> </span><span class="n">ProfileWorkers</span><span class="o">:</span><span class="err">1</span><span class="p">,</span><span class="w"> </span><span class="n">PolicyWorkers</span><span class="o">:</span><span class="err">1</span><span class="p">,</span><span class="w"> </span><span class="n">NodeWorkers</span><span class="o">:</span><span class="err">1</span><span class="p">,</span><span class="w"> </span><span class="n">Kubeconfig</span><span class="o">:</span><span class="err">&#34;&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">DatastoreType</span><span class="o">:</span><span class="err">&#34;</span><span class="n">etcdv3</span><span class="err">&#34;</span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="err">2021</span><span class="o">-</span><span class="err">02</span><span class="o">-</span><span class="err">08</span><span class="w"> </span><span class="err">02</span><span class="o">:</span><span class="err">15</span><span class="o">:</span><span class="err">10</span><span class="p">.</span><span class="err">485</span><span class="w"> </span><span class="p">[</span><span class="n">FATAL</span><span class="p">][</span><span class="err">1</span><span class="p">]</span><span class="w"> </span><span class="n">main</span><span class="p">.</span><span class="n">go</span><span class="w"> </span><span class="err">101</span><span class="o">:</span><span class="w"> </span><span class="n">Failed</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">start</span><span class="w"> </span><span class="n">error</span><span class="o">=</span><span class="n">failed</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">build</span><span class="w"> </span><span class="n">Calico</span><span class="w"> </span><span class="n">client</span><span class="o">:</span><span class="w"> </span><span class="n">could</span><span class="w"> </span><span class="n">not</span><span class="w"> </span><span class="n">initialize</span><span class="w"> </span><span class="n">etcdv3</span><span class="w"> </span><span class="n">client</span><span class="o">:</span><span class="w"> </span><span class="n">open</span><span class="w"> </span><span class="o">/</span><span class="n">calico</span><span class="o">-</span><span class="nn">secrets/</span><span class="n">etcd</span><span class="o">-</span><span class="n">cert</span><span class="o">:</span><span class="w"> </span><span class="kd">permission</span><span class="w"> </span><span class="n">denied</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><p>找到资源清单内的对应容器（<code>calico-kube-controllers</code>）的配置。在卷装载中设置440将解决此问题</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Mount in the etcd TLS secrets with mode 400.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># See https://kubernetes.io/docs/concepts/configuration/secret/</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">etcd-certs</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">secret</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">secretName</span><span class="p">:</span><span class="w"> </span><span class="l">calico-etcd-secrets</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">defaultMode</span><span class="p">:</span><span class="w"> </span><span class="m">0400</span><span class="w"> </span><span class="c"># 改为0440</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="修改calicoctl的数据源">修改calicoctl的数据源<a hidden class="anchor" aria-hidden="true" href="#修改calicoctl的数据源">¶</a></h2>
+<p>　使用单独的etcd作为calico数据存储还需要修改calicoctl数据存储访问配置</p>
+<p>　<code>calicoctl</code> 在默认情况下，查找配置文件的路径为<code>/etc/calico/calicoctl.cfg</code>上。可以使用<code>--config</code>覆盖此选项默认配置（使用中测试不成功，官方给出有这个方法）。</p>
+<p>　如果<code>calicoctl</code>无法获得配置文件，将检查环境变量。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">projectcalico.org/v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">CalicoAPIConfig</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">datastoreType</span><span class="p">:</span><span class="w"> </span><span class="l">etcdv3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcdEndpoints</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://10.0.0.6:2379&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcdCACert</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    </span><span class="w">    </span><span class="c"># 这里填写etcd ca证书文件的内容，无需转码base64</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcdCert</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    </span><span class="w">    </span><span class="c"># 这里填写etcd client证书文件的内容，无需转码base64</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">etcdKey</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    </span><span class="w">    </span><span class="c"># 这里填写etcd client秘钥文件的内容，无需转码base64</span><span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><blockquote>
+<p>reference：</p>
+<p><a href="https://github.com/kubernetes/website/issues/25587">Secret permission denied</a></p>
+<p><a href="https://docs.projectcalico.org/getting-started/clis/calicoctl/configure/overview">configuration calicoctl</a></p>
+<p><a href="https://docs.projectcalico.org/reference/installation/api">calico installation</a></p>
+</blockquote>
+
+
+    
+    
+
+
+<div class="copyrightBlock" >
+    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <p>链接：<a href="https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/" target="_blank">https://www.oomkill.com/2021/02/calico-deploy-on-hybrid-cloud/</a></p>
+    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
+    </div>
+</div>
+  </div>
+
+  <footer class="post-footer">
+    
+<nav class="paginav">
+  <a class="prev" href="https://www.oomkill.com/2021/02/calico-network-policy/">
+    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
+      </polyline></svg>&nbsp; </span>
+    
+    <span>calico网络策略</span>
+  </a>
+  <a class="next" href="https://www.oomkill.com/2021/02/linux-1692540024/" >
+    <span class="title"> </span>
+    
+    <span>Linux中169.254.0.0/24的路由来自哪里&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
+  </a>
+</nav>
+
+  </footer>
+
+  
+  <div class="pagination__title">
+    <span class="pagination__title-h"></span>
+  </div>
+  
+  
+  
+  
+    <div class="comments-separator"></div>
+    
+
+<h3>相关阅读</h3>
+<ul>
+	
+	<li><a href="/2021/02/calico-network-policy/">calico网络策略</a></li>
+	
+	<li><a href="/2021/02/linux-1692540024/">Linux中169.254.0.0/24的路由来自哪里</a></li>
+	
+	<li><a href="/2021/01/pass-base-dashboard-k8s/">转：基于Kubernetes的PaaS平台提供dashboard支持的一种方案</a></li>
+	
+	<li><a href="/2021/01/calico-network-cni/">calico network cni网络方案</a></li>
+	
+	<li><a href="/2021/01/ensp-calico-bgp/">使用eNSP构建calico BGP网络</a></li>
+	
+</ul>
+
+  
+
+  
+    
+      <div class="comments-separator"></div>
+<div class="comments">
+    <script>
+    function loadComment() {
+        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
+        let s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
+        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
+        s.setAttribute('data-category', 'Announcements');
+        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
+        s.setAttribute('data-mapping', 'title');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '1');
+        s.setAttribute('data-input-position', 'top');
+        s.setAttribute('data-lang', 'zh-TW');
+        s.setAttribute('data-theme', theme);
+        s.setAttribute('crossorigin', 'anonymous');
+        s.setAttribute('async', '');
+        document.querySelector('div.comments').innerHTML = '';
+        document.querySelector('div.comments').appendChild(s);
+    }
+    loadComment();
+    </script>
+</div>
+</article>
+    </main>
+    
+<footer class="footer">
+  <p>
+  Copyright
+  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
+  <span style="display: inline-block; margin-left: 1em;">
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
+    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
+  </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+  (function() {
+     
+    const disableThemeToggle = '' == '1';
+    if (disableThemeToggle) {
+      return;
+    }
+
+    let button = document.getElementById("theme-toggle")
+    
+    button.removeEventListener('click', toggleThemeListener)
+    
+    button.addEventListener('click', toggleThemeListener)
+  })();
+</script>
+
+<script>
+  (function () {
+    let menu = document.getElementById('menu')
+    if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+    }
+
+    const disableSmoothScroll = '' == '1';
+    const enableInstantClick = '1' == '1';
+    
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
+      return;
+    }
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = this.getAttribute("href").substr(1);
+        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+          behavior: "smooth"
+        });
+        if (id === "top") {
+          history.replaceState(null, null, " ");
+        } else {
+          history.pushState(null, null, `#${id}`);
+        }
+      });
+    });
+  })();
+</script>
+
+<script>
+  document.addEventListener('scroll', function (e) {
+      const readProgress = document.getElementById("read_progress");
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+  })
+</script>
+
+<script>
+  var menu = document.getElementById('menu')
+  if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          var id = this.getAttribute("href").substr(1);
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                  behavior: "smooth"
+              });
+          } else {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+          }
+          if (id === "top") {
+              history.replaceState(null, null, " ");
+          } else {
+              history.pushState(null, null, `#${id}`);
+          }
+      });
+  });
+</script>
+<script>
+  var mybutton = document.getElementById("top-link");
+  window.onscroll = function () {
+      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+          mybutton.style.visibility = "visible";
+          mybutton.style.opacity = "1";
+      } else {
+          mybutton.style.visibility = "hidden";
+          mybutton.style.opacity = "0";
+      }
+  };
+</script>
+<script>
+  if (window.scrollListeners) {
+    
+    for (const listener of scrollListeners) {
+      window.removeEventListener('scroll', listener)
+    }
+  }
+  window.scrollListeners = []
+</script>
+
+
+
+<script src="/js/medium-zoom.min.js" data-no-instant
+></script>
+<script>
+  document.querySelectorAll('pre > code').forEach((codeblock) => {
+    const container = codeblock.parentNode.parentNode;
+
+    const copybutton = document.createElement('button');
+    copybutton.classList.add('copy-code');
+    copybutton.innerText = 'copy';
+
+    function copyingDone() {
+      copybutton.innerText = 'copied';
+      setTimeout(() => {
+        copybutton.innerText = 'copy';
+      }, 2000);
+    }
+
+    copybutton.addEventListener('click', (cb) => {
+      if ('clipboard' in navigator) {
+        navigator.clipboard.writeText(codeblock.textContent);
+        copyingDone();
+        return;
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(codeblock);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      try {
+        document.execCommand('copy');
+        copyingDone();
+      } catch (e) { };
+      selection.removeRange(range);
+    });
+
+    if (container.classList.contains("highlight")) {
+      container.appendChild(copybutton);
+    } else if (container.parentNode.firstChild == container) {
+      
+    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+      
+      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+    } else {
+      
+      codeblock.parentNode.appendChild(copybutton);
+    }
+  });
+</script>
+
+
+
+
+<script>
+  
+  
+  (function() {
+    const enableTocScroll = '1' == '1'
+    if (!enableTocScroll) {
+      return
+    }
+    if (!document.querySelector('.toc')) {
+      console.log('no toc found, ignore toc scroll')
+      return
+    }
+    
+
+    
+    const scrollListeners = window.scrollListeners
+    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
+    const activeClass = 'active';
+
+    
+    let activeHeading = headings[0];
+    getLinkByHeading(activeHeading).classList.add(activeClass);
+
+    const onScroll = () => {
+      const passedHeadings = [];
+      for (const h of headings) {
+        
+        if (getOffsetTop(h) < 5) {
+          passedHeadings.push(h)
+        } else {
+          break;
+        }
+      }
+      if (passedHeadings.length > 0) {
+        newActiveHeading = passedHeadings[passedHeadings.length - 1];
+      } else {
+        newActiveHeading = headings[0];
+      }
+      if (activeHeading != newActiveHeading) {
+        getLinkByHeading(activeHeading).classList.remove(activeClass);
+        activeHeading = newActiveHeading;
+        getLinkByHeading(activeHeading).classList.add(activeClass);
+      }
+    }
+
+    let timer = null;
+    const scrollListener = () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
+      timer = setTimeout(onScroll, 50)
+    }
+    window.addEventListener('scroll', scrollListener, false);
+    scrollListeners.push(scrollListener)
+
+    function getLinkByHeading(heading) {
+      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
+      return document.querySelector(`.toc ul li a[href="#${id}"]`);
+    }
+
+    function getOffsetTop(heading) {
+      if (!heading.getClientRects().length) {
+        return 0;
+      }
+      let rect = heading.getBoundingClientRect();
+      return rect.top
+    }
+  })();
+  </script>
+
+<script src="/js/instantclick.min.js" data-no-instant
+></script>
+<script data-no-instant>
+  
+  
+  
+  
+  
+  
+  InstantClick.init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
+<script>
+    mermaid.init(undefined, '.language-mermaid');
+</script>
+</body>
+
+</html>

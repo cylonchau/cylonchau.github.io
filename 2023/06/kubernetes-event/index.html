@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>源码分析 - Kubernetes中的事件通知机制 | Cylon&#39;s Collection</title>
+<meta name="keywords" content="kubernetes, event">
+<meta name="description" content="文章分析了Kuberentes事件记录及事件是如何调度的">
+<meta name="author" content="cylon">
+<link rel="canonical" href="https://www.oomkill.com/2023/06/kubernetes-event/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.df0e7f0648f287aca44f5b657ff5602f436346895340daaa6589b3049a979f73.css" integrity="sha256-3w5/Bkjyh6ykT1tlf/VgL0NjRolTQNqqZYmzBJqXn3M=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.oomkill.com/favicon.ico">
+<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
+
+<meta name="twitter:title" content="源码分析 - Kubernetes中的事件通知机制 | Cylon&#39;s Collection" />
+<meta name="twitter:description" content="文章分析了Kuberentes事件记录及事件是如何调度的" />
+<meta property="og:title" content="源码分析 - Kubernetes中的事件通知机制 | Cylon&#39;s Collection" />
+<meta property="og:description" content="文章分析了Kuberentes事件记录及事件是如何调度的" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.oomkill.com/2023/06/kubernetes-event/" />
+<meta property="article:section" content="posts" />
+  <meta property="article:published_time" content="2023-06-23T00:00:00&#43;00:00" />
+  <meta property="article:modified_time" content="2024-05-28T21:27:14&#43;08:00" />
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://www.oomkill.com/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "源码分析 - Kubernetes中的事件通知机制",
+      "item": "https://www.oomkill.com/2023/06/kubernetes-event/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "源码分析 - Kubernetes中的事件通知机制 | Cylon's Collection",
+  "name": "源码分析 - Kubernetes中的事件通知机制",
+  "description": "文章分析了Kuberentes事件记录及事件是如何调度的",
+  "keywords": [
+    "kubernetes", "event"
+  ],
+  "wordCount" : "1737",
+  "inLanguage": "zh",
+  "datePublished": "2023-06-23T00:00:00Z",
+  "dateModified": "2024-05-28T21:27:14+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "cylon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.oomkill.com/2023/06/kubernetes-event/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Cylon's Collection",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.oomkill.com/favicon.ico"
+    }
+  }
+}
+</script><script type="text/javascript"
+        async
+        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\[\[','\]\]']],
+    processEscapes: true,
+    processEnvironments: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+    TeX: { equationNumbers: { autoNumber: "AMS" },
+         extensions: ["AMSmath.js", "AMSsymbols.js"] }
+  }
+});
+
+MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+});
+</script>
+
+<style>
+code.has-jax {
+    font: inherit;
+    font-size: 100%;
+    background: inherit;
+    border: inherit;
+    color: #515151;
+}
+</style>
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary-bg: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list-page {
+                background: var(--theme);
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+
+</head>
+
+<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
+function switchTheme(theme) {
+  switch (theme) {
+    case 'light':
+      document.body.classList.remove('dark');
+      break;
+    case 'dark':
+      document.body.classList.add('dark');
+      break;
+    
+    default:
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+  }
+}
+
+function isDarkTheme() {
+  return document.body.className.includes("dark");
+}
+
+function getPrefTheme() {
+  return localStorage.getItem("pref-theme");
+}
+
+function setPrefTheme(theme) {
+  switchTheme(theme)
+  localStorage.setItem("pref-theme", theme);
+}
+
+const toggleThemeCallbacks = {}
+toggleThemeCallbacks['main'] = (isDark) => {
+  
+  if (isDark) {
+    setPrefTheme('light');
+  } else {
+    setPrefTheme('dark');
+  }
+}
+
+
+
+
+window.addEventListener('toggle-theme', function() {
+  
+  const isDark = isDarkTheme()
+  for (const key in toggleThemeCallbacks) {
+    toggleThemeCallbacks[key](isDark)
+  }
+});
+
+
+function toggleThemeListener() {
+  
+  window.dispatchEvent(new CustomEvent('toggle-theme'));
+}
+
+</script>
+<script>
+  
+  (function() {
+    const defaultTheme = 'auto';
+    const prefTheme = getPrefTheme();
+    const theme = prefTheme ? prefTheme : defaultTheme;
+
+    switchTheme(theme);
+  })();
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.oomkill.com/archives/" title="归档"
+                >归档
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/tags/" title="标签"
+                >标签
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
+                >搜索
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/about/" title="关于"
+                >关于
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main post">
+
+<article class="post-single">
+  <header class="post-header"><h1 class="post-title">源码分析 - Kubernetes中的事件通知机制</h1>
+    <div class="post-description">文章分析了Kuberentes事件记录及事件是如何调度的</div>
+    <div class="post-meta"><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>2023-06-23</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>Edited on 2024-05-28</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
+  <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a><a href="https://www.oomkill.com/tags/kubernetes-develop/">kubernetes develop</a></span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
+  <span>4 分钟</span></span>
+
+      
+      
+    </div>
+  </header> <div class="toc side right">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e9%9c%80%e8%a6%81%e4%ba%8b%e4%bb%b6" aria-label="为什么需要事件">为什么需要事件</a></li>
+                <li>
+                    <a href="#%e4%ba%8b%e4%bb%b6%e7%ae%a1%e7%90%86%e5%99%a8" aria-label="事件管理器">事件管理器</a><ul>
+                        
+                <li>
+                    <a href="#%e4%ba%8b%e4%bb%b6%e7%ae%a1%e7%90%86%e5%99%a8%e7%9a%84%e8%ae%be%e8%ae%a1" aria-label="事件管理器的设计">事件管理器的设计</a></li>
+                <li>
+                    <a href="#%e4%ba%8b%e4%bb%b6%e7%94%9f%e4%ba%a7%e8%80%85" aria-label="事件生产者">事件生产者</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%8e%a7%e5%88%b6%e5%99%a8" aria-label="控制器">控制器</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content">
+    
+
+
+
+
+
+<div class="copyrightTopBlock">
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+</div><p>在 Kubernetes 中 事件 ( <em>Event</em> ） 通常被大家认知为是展示集群中发生的情况，通常用作 Pod 的查看，例如为什么 CrashBackOff, 为什么 Pendding，而很少有人知道事件在 Kubernetes 整个系统中的设计是非常巧妙的，可以通过各组件间的传递，使得用户可以知道集群中的情况，文章中将一地揭开Kubernetes to神秘面纱。</p>
+<h2 id="为什么需要事件">为什么需要事件<a hidden class="anchor" aria-hidden="true" href="#为什么需要事件">¶</a></h2>
+<p>Kubernetes 在设计时就是 “声明式”，而声明式的最大特点就是 “多组件的协同工作”，而在多组件协同工作时，势必需要传递一些事件，以告知用户任务的状态如何；而事件本身上是一种资源，在很早版本就以及被移入 api/v1 中。下面是 “事件” 资源的定义。</p>
+<p>位于 <a href="vendor/k8s.io/api/core/v1/types.go">vendor/k8s.io/api/core/v1/types.go</a> ，因为 <code>vendor/k8s.io</code> 实际上是做了一个软连接，那么真实的实际上位于 <code>{kubernetes_repo}/staging/src/k8s.io/api/core/v1</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Event</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// 标准的元数据
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span> <span class="s">`json:&#34;metadata&#34; protobuf:&#34;bytes,1,opt,name=metadata&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 事件涉及的对象
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">InvolvedObject</span> <span class="nx">ObjectReference</span> <span class="s">`json:&#34;involvedObject&#34; protobuf:&#34;bytes,2,opt,name=involvedObject&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 这里表示的是事件原因，通常为简短的的一种状态名称
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: provide exact specification for format.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Reason</span> <span class="kt">string</span> <span class="s">`json:&#34;reason,omitempty&#34; protobuf:&#34;bytes,3,opt,name=reason&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 以人类可读取的方式描述，类似于 tcmpdump -A
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: decide on maximum length.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Message</span> <span class="kt">string</span> <span class="s">`json:&#34;message,omitempty&#34; protobuf:&#34;bytes,4,opt,name=message&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 报告事件的组件，通常包含这个结构体包含 “组件+主机名” 的结构
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Source</span> <span class="nx">EventSource</span> <span class="s">`json:&#34;source,omitempty&#34; protobuf:&#34;bytes,5,opt,name=source&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 首次上报事件的事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">FirstTimestamp</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&#34;firstTimestamp,omitempty&#34; protobuf:&#34;bytes,6,opt,name=firstTimestamp&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 最近一次记录事件的事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LastTimestamp</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&#34;lastTimestamp,omitempty&#34; protobuf:&#34;bytes,7,opt,name=lastTimestamp&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 事件发生的次数
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Count</span> <span class="kt">int32</span> <span class="s">`json:&#34;count,omitempty&#34; protobuf:&#34;varint,8,opt,name=count&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 事件的类型(Normal, Warning)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Type</span> <span class="kt">string</span> <span class="s">`json:&#34;type,omitempty&#34; protobuf:&#34;bytes,9,opt,name=type&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 首次观察到事件的.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">EventTime</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">MicroTime</span> <span class="s">`json:&#34;eventTime,omitempty&#34; protobuf:&#34;bytes,10,opt,name=eventTime&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 事件相关的序列，如果事件为单例事件，那么则为nil
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Series</span> <span class="o">*</span><span class="nx">EventSeries</span> <span class="s">`json:&#34;series,omitempty&#34; protobuf:&#34;bytes,11,opt,name=series&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 对事件对象采取的行动
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Action</span> <span class="kt">string</span> <span class="s">`json:&#34;action,omitempty&#34; protobuf:&#34;bytes,12,opt,name=action&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Optional secondary object for more complex actions.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Related</span> <span class="o">*</span><span class="nx">ObjectReference</span> <span class="s">`json:&#34;related,omitempty&#34; protobuf:&#34;bytes,13,opt,name=related&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 发出事件的对应的控制器，也可以理解为组件，因为通常controller-manager 包含多个控制器
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// e.g. `kubernetes.io/kubelet`.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ReportingController</span> <span class="kt">string</span> <span class="s">`json:&#34;reportingComponent&#34; protobuf:&#34;bytes,14,opt,name=reportingComponent&#34;`</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// 控制器实例的ID, e.g. `kubelet-xyzf`.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ReportingInstance</span> <span class="kt">string</span> <span class="s">`json:&#34;reportingInstance&#34; protobuf:&#34;bytes,15,opt,name=reportingInstance&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="事件管理器">事件管理器<a hidden class="anchor" aria-hidden="true" href="#事件管理器">¶</a></h2>
+<p>通过上面知道了事件这个资源的设计，里面存在一个 ”发出事件的对应的控制器“ 那么必然是作为每一个组件的内置功能，也就是说这可以作为 client-go 中的一个组件。</p>
+<p>代码 <a href="vendor/k8s.io/client-go/tools/events/interfaces.go">vendor/k8s.io/client-go/tools/events/interfaces.go</a> 中定义了一个事件管理器，这将定义了如何接收或发送事件到任何地方，例如事件接收器 (<em>EventSink</em>) 或 log</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">EventBroadcaster</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 发送从指定的eventBroadcaster接收到的事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartRecordingToSink</span><span class="p">(</span><span class="nx">stopCh</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 返回一个 EventRecorder 并可以使用发送事件到 EventBroadcaster，并将事件源设置为给定的事件源。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">NewRecorder</span><span class="p">(</span><span class="nx">scheme</span> <span class="o">*</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">Scheme</span><span class="p">,</span> <span class="nx">reportingController</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">EventRecorder</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// StartEventWatcher 可以使在不使用 StartRecordingToSink 的情况下发送事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 这使得可以通过自定义方式记录事件
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// NOTE: 在使用 eventHandler 接收到的事件时应先进行复制一份。
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: figure out if this can be removed.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartEventWatcher</span><span class="p">(</span><span class="nx">eventHandler</span> <span class="kd">func</span><span class="p">(</span><span class="nx">event</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">Object</span><span class="p">))</span> <span class="kd">func</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// StartStructuredLogging 可以接收 EventBroadcaster 发送的结构化日志功能
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 如果需要可以忽略返回值或使用于停止记录
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartStructuredLogging</span><span class="p">(</span><span class="nx">verbosity</span> <span class="nx">klog</span><span class="p">.</span><span class="nx">Level</span><span class="p">)</span> <span class="kd">func</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 关闭广播
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">Shutdown</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>EventBroadcaster 的实现只有一个 eventBroadcasterImpl</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">type eventBroadcasterImpl struct {
+</span></span><span class="line"><span class="cl">   *watch.Broadcaster
+</span></span><span class="line"><span class="cl">   mu            sync.Mutex
+</span></span><span class="line"><span class="cl">   eventCache    map[eventKey]*eventsv1.Event
+</span></span><span class="line"><span class="cl">   sleepDuration time.Duration
+</span></span><span class="line"><span class="cl">   sink          EventSink
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这里面最重要的就是 sink，sink就是决定如何去存储事件的一个组件，他返回的是一组 client-go 的 REST 客户端。</p>
+<h3 id="事件管理器的设计">事件管理器的设计<a hidden class="anchor" aria-hidden="true" href="#事件管理器的设计">¶</a></h3>
+<h3 id="事件生产者">事件生产者<a hidden class="anchor" aria-hidden="true" href="#事件生产者">¶</a></h3>
+<p>事件生产者在事件管理器中是作为</p>
+<h2 id="控制器">控制器<a hidden class="anchor" aria-hidden="true" href="#控制器">¶</a></h2>
+<p>service的资源创建很奇妙，继不属于 <code>controller-manager</code> 组件，也不属于 <code>kube-proxy</code> 组件，而是存在于 <code>apiserver</code> 中的一个被成为控制器的组件；而这个控制器又区别于准入控制器。更准确来说，准入控制器是位于kubeapiserver中的组件，而 <strong>控制器</strong> 则是存在于单独的一个包，这里包含了很多kubernetes集群的公共组件的功能，其中就有service。这也就是在操作kubernetes时 当 <code>controller-manager</code> 于  <code>kube-proxy</code> 未工作时，也可以准确的为service分配IP。</p>
+<p>首先在构建出apiserver时，也就是代码 <a href="cmd/kube-apiserver/app/server.go">cmd/kube-apiserver/app/server.go</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">serviceIPRange</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">master</span><span class="p">.</span><span class="nf">ServiceIPRange</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">PrimaryServiceClusterIPRange</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/pkg/master/services.go#L34-L54">master.ServiceIPRange</a> 承接了为service分配IP的功能，这部分逻辑就很简单了</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">ServiceIPRange</span><span class="p">(</span><span class="nx">passedServiceClusterIPRange</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">)</span> <span class="p">(</span><span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">,</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">serviceClusterIPRange</span> <span class="o">:=</span> <span class="nx">passedServiceClusterIPRange</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">passedServiceClusterIPRange</span><span class="p">.</span><span class="nx">IP</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Warningf</span><span class="p">(</span><span class="s">&#34;No CIDR for service cluster IPs specified. Default value which was %s is deprecated and will be removed in future releases. Please specify it using --service-cluster-ip-range on kube-apiserver.&#34;</span><span class="p">,</span> <span class="nx">kubeoptions</span><span class="p">.</span><span class="nx">DefaultServiceIPCIDR</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">serviceClusterIPRange</span> <span class="p">=</span> <span class="nx">kubeoptions</span><span class="p">.</span><span class="nx">DefaultServiceIPCIDR</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">size</span> <span class="o">:=</span> <span class="nx">integer</span><span class="p">.</span><span class="nf">Int64Min</span><span class="p">(</span><span class="nx">utilnet</span><span class="p">.</span><span class="nf">RangeSize</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">serviceClusterIPRange</span><span class="p">),</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">16</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">size</span> <span class="p">&lt;</span> <span class="mi">8</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">{},</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{},</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;the service cluster IP range must be at least %d IP addresses&#34;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Select the first valid IP from ServiceClusterIPRange to use as the GenericAPIServer service IP.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">GetIndexedIP</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">serviceClusterIPRange</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">{},</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{},</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Setting service IP to %q (read-write).&#34;</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">serviceClusterIPRange</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>而后kube-apiserver为service分为两类</p>
+<ul>
+<li>apiserver 地址在集群内的service，在代码中表示为 <a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L351">APIServerServiceIP</a></li>
+<li><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L352">Service</a>，<code>--service-cluster-ip-range</code> 配置指定的ip，通过『逗号』分割可以为两个</li>
+</ul>
+<p>有了对 service 更好的理解后，接下来开始本系列第二节<a href="https://cylonchau.github.io/kubernetes-without-service.html">深入理解Kubernetes service - kube-proxy软件架构分析</a></p>
+<blockquote>
+<p><strong>Reference</strong></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/concepts/services-networking/dual-stack/"><em>dual-stack service</em></a></p>
+</blockquote>
+
+
+    
+    
+
+
+<div class="copyrightBlock" >
+    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <p>链接：<a href="https://www.oomkill.com/2023/06/kubernetes-event/" target="_blank">https://www.oomkill.com/2023/06/kubernetes-event/</a></p>
+    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
+    </div>
+</div>
+  </div>
+
+  <footer class="post-footer">
+    
+<nav class="paginav">
+  <a class="prev" href="https://www.oomkill.com/2023/07/using-thanos-improve-prometheus.md/">
+    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
+      </polyline></svg>&nbsp; </span>
+    
+    <span>使用Thanos强化Prometheus</span>
+  </a>
+  <a class="next" href="https://www.oomkill.com/2023/06/calico-cni-deplyment/" >
+    <span class="title"> </span>
+    
+    <span>在Kubernetes集群上安装 Calico cni 的注意事项&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
+  </a>
+</nav>
+
+  </footer>
+
+  
+  <div class="pagination__title">
+    <span class="pagination__title-h"></span>
+  </div>
+  
+  
+  
+  
+    <div class="comments-separator"></div>
+    
+
+<h3>相关阅读</h3>
+<ul>
+	
+	<li><a href="/2023/02/ch23-extend-kube-proxy/">深入理解Kubernetes service - 如何扩展现有的kube-proxy架构？</a></li>
+	
+	<li><a href="/2023/06/calico-cni-deplyment/">在Kubernetes集群上安装 Calico cni 的注意事项</a></li>
+	
+	<li><a href="/2023/05/awesome-kubernetes/">Awesome kubernetes</a></li>
+	
+	<li><a href="/2023/02/kubernetes-lb/">扫盲Kubernetes负载均衡 - 从Ingress聊到LB</a></li>
+	
+	<li><a href="/2023/02/ch18-endpointslices/">深入理解Kubernetes service - EndpointSlices做了什么？</a></li>
+	
+</ul>
+
+  
+
+  
+    
+      <div class="comments-separator"></div>
+<div class="comments">
+    <script>
+    function loadComment() {
+        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
+        let s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
+        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
+        s.setAttribute('data-category', 'Announcements');
+        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
+        s.setAttribute('data-mapping', 'title');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '1');
+        s.setAttribute('data-input-position', 'top');
+        s.setAttribute('data-lang', 'zh-TW');
+        s.setAttribute('data-theme', theme);
+        s.setAttribute('crossorigin', 'anonymous');
+        s.setAttribute('async', '');
+        document.querySelector('div.comments').innerHTML = '';
+        document.querySelector('div.comments').appendChild(s);
+    }
+    loadComment();
+    </script>
+</div>
+</article>
+    </main>
+    
+<footer class="footer">
+  <p>
+  Copyright
+  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
+  <span style="display: inline-block; margin-left: 1em;">
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
+    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
+  </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+  (function() {
+     
+    const disableThemeToggle = '' == '1';
+    if (disableThemeToggle) {
+      return;
+    }
+
+    let button = document.getElementById("theme-toggle")
+    
+    button.removeEventListener('click', toggleThemeListener)
+    
+    button.addEventListener('click', toggleThemeListener)
+  })();
+</script>
+
+<script>
+  (function () {
+    let menu = document.getElementById('menu')
+    if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+    }
+
+    const disableSmoothScroll = '' == '1';
+    const enableInstantClick = '1' == '1';
+    
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
+      return;
+    }
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = this.getAttribute("href").substr(1);
+        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+          behavior: "smooth"
+        });
+        if (id === "top") {
+          history.replaceState(null, null, " ");
+        } else {
+          history.pushState(null, null, `#${id}`);
+        }
+      });
+    });
+  })();
+</script>
+
+<script>
+  document.addEventListener('scroll', function (e) {
+      const readProgress = document.getElementById("read_progress");
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+  })
+</script>
+
+<script>
+  var menu = document.getElementById('menu')
+  if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          var id = this.getAttribute("href").substr(1);
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                  behavior: "smooth"
+              });
+          } else {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+          }
+          if (id === "top") {
+              history.replaceState(null, null, " ");
+          } else {
+              history.pushState(null, null, `#${id}`);
+          }
+      });
+  });
+</script>
+<script>
+  var mybutton = document.getElementById("top-link");
+  window.onscroll = function () {
+      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+          mybutton.style.visibility = "visible";
+          mybutton.style.opacity = "1";
+      } else {
+          mybutton.style.visibility = "hidden";
+          mybutton.style.opacity = "0";
+      }
+  };
+</script>
+<script>
+  if (window.scrollListeners) {
+    
+    for (const listener of scrollListeners) {
+      window.removeEventListener('scroll', listener)
+    }
+  }
+  window.scrollListeners = []
+</script>
+
+
+
+<script src="/js/medium-zoom.min.js" data-no-instant
+></script>
+<script>
+  document.querySelectorAll('pre > code').forEach((codeblock) => {
+    const container = codeblock.parentNode.parentNode;
+
+    const copybutton = document.createElement('button');
+    copybutton.classList.add('copy-code');
+    copybutton.innerText = 'copy';
+
+    function copyingDone() {
+      copybutton.innerText = 'copied';
+      setTimeout(() => {
+        copybutton.innerText = 'copy';
+      }, 2000);
+    }
+
+    copybutton.addEventListener('click', (cb) => {
+      if ('clipboard' in navigator) {
+        navigator.clipboard.writeText(codeblock.textContent);
+        copyingDone();
+        return;
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(codeblock);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      try {
+        document.execCommand('copy');
+        copyingDone();
+      } catch (e) { };
+      selection.removeRange(range);
+    });
+
+    if (container.classList.contains("highlight")) {
+      container.appendChild(copybutton);
+    } else if (container.parentNode.firstChild == container) {
+      
+    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+      
+      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+    } else {
+      
+      codeblock.parentNode.appendChild(copybutton);
+    }
+  });
+</script>
+
+
+
+
+<script>
+  
+  
+  (function() {
+    const enableTocScroll = '1' == '1'
+    if (!enableTocScroll) {
+      return
+    }
+    if (!document.querySelector('.toc')) {
+      console.log('no toc found, ignore toc scroll')
+      return
+    }
+    
+
+    
+    const scrollListeners = window.scrollListeners
+    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
+    const activeClass = 'active';
+
+    
+    let activeHeading = headings[0];
+    getLinkByHeading(activeHeading).classList.add(activeClass);
+
+    const onScroll = () => {
+      const passedHeadings = [];
+      for (const h of headings) {
+        
+        if (getOffsetTop(h) < 5) {
+          passedHeadings.push(h)
+        } else {
+          break;
+        }
+      }
+      if (passedHeadings.length > 0) {
+        newActiveHeading = passedHeadings[passedHeadings.length - 1];
+      } else {
+        newActiveHeading = headings[0];
+      }
+      if (activeHeading != newActiveHeading) {
+        getLinkByHeading(activeHeading).classList.remove(activeClass);
+        activeHeading = newActiveHeading;
+        getLinkByHeading(activeHeading).classList.add(activeClass);
+      }
+    }
+
+    let timer = null;
+    const scrollListener = () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
+      timer = setTimeout(onScroll, 50)
+    }
+    window.addEventListener('scroll', scrollListener, false);
+    scrollListeners.push(scrollListener)
+
+    function getLinkByHeading(heading) {
+      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
+      return document.querySelector(`.toc ul li a[href="#${id}"]`);
+    }
+
+    function getOffsetTop(heading) {
+      if (!heading.getClientRects().length) {
+        return 0;
+      }
+      let rect = heading.getBoundingClientRect();
+      return rect.top
+    }
+  })();
+  </script>
+
+<script src="/js/instantclick.min.js" data-no-instant
+></script>
+<script data-no-instant>
+  
+  
+  
+  
+  
+  
+  InstantClick.init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
+<script>
+    mermaid.init(undefined, '.language-mermaid');
+</script>
+</body>
+
+</html>

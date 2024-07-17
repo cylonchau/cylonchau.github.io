@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>ch11 死锁 | Cylon&#39;s Collection</title>
+<meta name="keywords" content="操作系统, 死锁">
+<meta name="description" content="ch11 死锁 - Cylon&#39;s Collection">
+<meta name="author" content="cylon">
+<link rel="canonical" href="https://www.oomkill.com/2022/05/ch11-deadlock/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.df0e7f0648f287aca44f5b657ff5602f436346895340daaa6589b3049a979f73.css" integrity="sha256-3w5/Bkjyh6ykT1tlf/VgL0NjRolTQNqqZYmzBJqXn3M=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.oomkill.com/favicon.ico">
+<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
+
+<meta name="twitter:title" content="ch11 死锁 | Cylon&#39;s Collection" />
+<meta name="twitter:description" content="" />
+<meta property="og:title" content="ch11 死锁 | Cylon&#39;s Collection" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.oomkill.com/2022/05/ch11-deadlock/" />
+<meta property="article:section" content="posts" />
+  <meta property="article:published_time" content="2022-05-02T00:00:00&#43;00:00" />
+  <meta property="article:modified_time" content="2023-03-22T23:00:36&#43;08:00" />
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://www.oomkill.com/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "ch11 死锁",
+      "item": "https://www.oomkill.com/2022/05/ch11-deadlock/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "ch11 死锁 | Cylon's Collection",
+  "name": "ch11 死锁",
+  "description": "",
+  "keywords": [
+    "操作系统", "死锁"
+  ],
+  "wordCount" : "5450",
+  "inLanguage": "zh",
+  "datePublished": "2022-05-02T00:00:00Z",
+  "dateModified": "2023-03-22T23:00:36+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "cylon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.oomkill.com/2022/05/ch11-deadlock/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Cylon's Collection",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.oomkill.com/favicon.ico"
+    }
+  }
+}
+</script><script type="text/javascript"
+        async
+        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\[\[','\]\]']],
+    processEscapes: true,
+    processEnvironments: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+    TeX: { equationNumbers: { autoNumber: "AMS" },
+         extensions: ["AMSmath.js", "AMSsymbols.js"] }
+  }
+});
+
+MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+});
+</script>
+
+<style>
+code.has-jax {
+    font: inherit;
+    font-size: 100%;
+    background: inherit;
+    border: inherit;
+    color: #515151;
+}
+</style>
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary-bg: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list-page {
+                background: var(--theme);
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+
+</head>
+
+<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
+function switchTheme(theme) {
+  switch (theme) {
+    case 'light':
+      document.body.classList.remove('dark');
+      break;
+    case 'dark':
+      document.body.classList.add('dark');
+      break;
+    
+    default:
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+  }
+}
+
+function isDarkTheme() {
+  return document.body.className.includes("dark");
+}
+
+function getPrefTheme() {
+  return localStorage.getItem("pref-theme");
+}
+
+function setPrefTheme(theme) {
+  switchTheme(theme)
+  localStorage.setItem("pref-theme", theme);
+}
+
+const toggleThemeCallbacks = {}
+toggleThemeCallbacks['main'] = (isDark) => {
+  
+  if (isDark) {
+    setPrefTheme('light');
+  } else {
+    setPrefTheme('dark');
+  }
+}
+
+
+
+
+window.addEventListener('toggle-theme', function() {
+  
+  const isDark = isDarkTheme()
+  for (const key in toggleThemeCallbacks) {
+    toggleThemeCallbacks[key](isDark)
+  }
+});
+
+
+function toggleThemeListener() {
+  
+  window.dispatchEvent(new CustomEvent('toggle-theme'));
+}
+
+</script>
+<script>
+  
+  (function() {
+    const defaultTheme = 'auto';
+    const prefTheme = getPrefTheme();
+    const theme = prefTheme ? prefTheme : defaultTheme;
+
+    switchTheme(theme);
+  })();
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.oomkill.com/archives/" title="归档"
+                >归档
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/tags/" title="标签"
+                >标签
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
+                >搜索
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/about/" title="关于"
+                >关于
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main post">
+
+<article class="post-single">
+  <header class="post-header"><h1 class="post-title">ch11 死锁</h1>
+    <div class="post-meta"><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>2022-05-02</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>Edited on 2023-03-22</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
+  <span class="post-tags"><a href="https://www.oomkill.com/tags/os/">OS</a></span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
+  <span>11 分钟</span></span>
+
+      
+      
+    </div>
+  </header> <div class="toc side right">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e9%97%ae%e9%a2%98" aria-label="死锁问题">死锁问题</a></li>
+                <li>
+                    <a href="#%e7%b3%bb%e7%bb%9f%e6%a8%a1%e5%9e%8b" aria-label="系统模型">系统模型</a><ul>
+                        
+                <li>
+                    <a href="#%e8%b5%84%e6%ba%90%e5%88%86%e9%85%8d" aria-label="资源分配">资源分配</a></li>
+                <li>
+                    <a href="#%e8%b5%84%e6%ba%90%e5%88%86%e9%85%8d%e5%9b%be" aria-label="资源分配图">资源分配图</a></li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e7%a4%ba%e6%84%8f%e5%9b%be" aria-label="死锁示意图">死锁示意图</a></li>
+                <li>
+                    <a href="#%e6%9c%89%e7%8e%af%e4%bd%86%e6%97%a0%e6%ad%bb%e9%94%81" aria-label="有环但无死锁">有环但无死锁</a></li>
+                <li>
+                    <a href="#%e7%bb%93%e8%ae%ba" aria-label="结论">结论</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e7%89%b9%e6%80%a7" aria-label="死锁特性">死锁特性</a><ul>
+                        
+                <li>
+                    <a href="#%e5%bf%85%e8%a6%81%e6%9d%a1%e4%bb%b6" aria-label="必要条件">必要条件</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e5%a4%84%e7%90%86%e6%96%b9%e6%b3%95" aria-label="死锁处理方法">死锁处理方法</a><ul>
+                        
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e9%a2%84%e9%98%b2" aria-label="死锁预防">死锁预防</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e9%81%bf%e5%85%8d%e6%ad%bb%e9%94%81" aria-label="避免死锁">避免死锁</a><ul>
+                        
+                <li>
+                    <a href="#%e5%ae%89%e5%85%a8%e7%8a%b6%e6%80%81" aria-label="安全状态">安全状态</a></li>
+                <li>
+                    <a href="#%e8%b5%84%e6%ba%90%e5%88%86%e9%85%8d%e5%9b%be-1" aria-label="资源分配图">资源分配图</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e9%93%b6%e8%a1%8c%e5%ae%b6%e7%ae%97%e6%b3%95" aria-label="银行家算法">银行家算法</a><ul>
+                        
+                <li>
+                    <a href="#%e4%b8%ba%e4%bd%95%e8%a2%ab%e5%91%bd%e5%90%8d%e4%b8%ba%e9%93%b6%e8%a1%8c%e5%ae%b6%e7%ae%97%e6%b3%95" aria-label="为何被命名为银行家算法？">为何被命名为银行家算法？</a></li>
+                <li>
+                    <a href="#%e9%93%b6%e8%a1%8c%e5%ae%b6%e7%ae%97%e6%b3%95%e7%9a%84%e6%95%b0%e6%8d%ae%e7%bb%93%e6%9e%84" aria-label="银行家算法的数据结构">银行家算法的数据结构</a></li>
+                <li>
+                    <a href="#%e9%93%b6%e8%a1%8c%e5%ae%b6%e7%ae%97%e6%b3%95%e5%ba%94%e7%94%a8" aria-label="银行家算法应用">银行家算法应用</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e6%a3%80%e6%b5%8b" aria-label="死锁检测">死锁检测</a><ul>
+                        
+                <li>
+                    <a href="#%e6%af%8f%e4%b8%aa%e8%b5%84%e6%ba%90%e7%b1%bb%e5%9e%8b%e5%8d%95%e4%b8%80%e5%ae%9e%e4%be%8b" aria-label="每个资源类型单一实例">每个资源类型单一实例</a></li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e6%a3%80%e6%b5%8b%e7%ae%97%e6%b3%95" aria-label="死锁检测算法">死锁检测算法</a></li>
+                <li>
+                    <a href="#%e6%a3%80%e6%b5%8b%e7%ae%97%e6%b3%95%e4%bd%bf%e7%94%a8" aria-label="检测算法使用">检测算法使用</a></li></ul>
+                </li>
+                <li>
+                    <a href="#%e6%ad%bb%e9%94%81%e6%81%a2%e5%a4%8d" aria-label="死锁恢复">死锁恢复</a><ul>
+                        
+                <li>
+                    <a href="#%e8%bf%9b%e7%a8%8b%e7%bb%88%e6%ad%a2" aria-label="进程终止">进程终止</a></li>
+                <li>
+                    <a href="#%e8%b5%84%e6%ba%90%e6%8a%a2%e5%8d%a0" aria-label="资源抢占">资源抢占</a>
+                </li>
+            </ul>
+            </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content">
+    
+
+
+
+
+
+<div class="copyrightTopBlock">
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+</div><h2 id="死锁问题">死锁问题<a hidden class="anchor" aria-hidden="true" href="#死锁问题">¶</a></h2>
+<p>死锁 <code>deadlock</code>；是一组阻塞的进程，每个进程都持有一个资源并等待获取另一个进程持有的资源。</p>
+<p>死锁的示例：交通桥</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/122319_0715_Introductio1.png" alt="死锁示例"  /></p>
+<p>如图所示，桥是资源，进程是车辆，两个不同方向的车辆同时占用桥，此时发生谁也过不去的情况（死锁的发生）；</p>
+<ul>
+<li>当死锁发生时，如果一辆车倒车（抢占资源和回滚）就可以解决死锁问题</li>
+<li>死锁发生时，可能需要后退多台车辆</li>
+<li>饥饿，而饥饿并不一定是死锁</li>
+</ul>
+<h2 id="系统模型">系统模型<a hidden class="anchor" aria-hidden="true" href="#系统模型">¶</a></h2>
+<p>在正常情况下，进程必须在使用之前请求资源，并在完成后释放它，顺序如下：</p>
+<ul>
+<li>
+<p>请求：如果不能立即授予请求，则进程等待，直到它需要的资源变得可用。例如，系统调用 <code>open()</code>、<code>malloc()</code>、<code>new()</code>  、<code>request()</code>  等。</p>
+</li>
+<li>
+<p>使用：进程使用资源，例如文件中读取数据；使用硬件。</p>
+</li>
+<li>
+<p>释放：进程完成后放弃资源，以便其可用于其他进程。如，<code>close()</code>、<code>free()</code>、<code>delete()</code> 、 <code>release()</code>。</p>
+</li>
+</ul>
+<p>当在集合中的每个进程都在等待当前分配给集合中另一个进程的资源时，这一组进程就会发生死锁</p>
+<h3 id="资源分配">资源分配<a hidden class="anchor" aria-hidden="true" href="#资源分配">¶</a></h3>
+<p>通过实例来理解死锁，</p>
+<ul>
+<li>
+<p>一组资源：</p>
+<ul>
+<li>${ R_1,\ R_2,\ R_3,\ &hellip;.,\ R_N }$；为方形，图形内的点代表资源数量</li>
+</ul>
+</li>
+<li>
+<p>一组进程：</p>
+<ul>
+<li>${ P_1,\ P_2,\ P_3,\ &hellip;.,\ P_N }$</li>
+</ul>
+</li>
+<li>
+<p>请求边缘 <code>Request Edge</code>：进程需要一些资源，被称为请求边缘；如 $P_i\ →\ R_j$</p>
+</li>
+<li>
+<p>分配边缘 <code>Assign Edge</code>：当资源已经被分配给进程，被称为分配边缘；如 $R_j\ →\ P_i$</p>
+</li>
+<li>
+<p>当请求被授予时，可以通过反转方向的线将<strong>请求边缘</strong>转换为<strong>分配边缘</strong></p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>示意图</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Process</td>
+<td>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220417173948923.png" alt="image-20220417173948923"  /></td>
+</tr>
+<tr>
+<td>Resource</td>
+<td>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220417174015953.png" alt="image-20220417174015953"  /></td>
+</tr>
+<tr>
+<td>$P_i$ 请求的 $R_j$ 实例</td>
+<td>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220417174158072.png" alt="image-20220417174158072"  /></td>
+</tr>
+<tr>
+<td>$P_i$ 持有一个 $R_j$ 的实例<br>也可以说 $R_j$ 被 $P_i$ 所持有</td>
+<td>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220417174238047.png" alt="image-20220417174238047"  /></td>
+</tr>
+</tbody>
+</table>
+<h3 id="资源分配图">资源分配图<a hidden class="anchor" aria-hidden="true" href="#资源分配图">¶</a></h3>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7_01_ResourceAllocation.jpg" alt="img" style="zoom:100%;" /></center>
+<center>资源分配图</center>
+<p>如图所示，资源类型为：</p>
+<ul>
+<li>P = ${P_1,\ P_2,\ P_3}$</li>
+<li>R = ${R_1,\ R_2,\ R_3,\ R_4}$</li>
+<li>RE = ${P_1\ →\ R_1,\ P_2\ →\ R_3}$</li>
+<li>AE = ${R_1\ →\ P_2,\ R_2\ →\ P_2,\ R_2\ →\ P_1,\ R_3\ →\ P_3}$
+<ul>
+<li>${P_1}$ 持有 ${R_2}$ 等待 ${R_1}$</li>
+<li>${P_2}$ 持有 ${R_1}$ 和 ${R_2}$ 等待 ${R_3}$</li>
+<li>${P_3}$ 持有 ${R_3}$</li>
+</ul>
+</li>
+</ul>
+<h3 id="死锁示意图">死锁示意图<a hidden class="anchor" aria-hidden="true" href="#死锁示意图">¶</a></h3>
+<p>资源分配图不包含循环，则不会死锁；如果有向图为环形，则为死锁，例如</p>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220417175945207.png" alt="image-20220417175945207" style="zoom:80%;" /></center>
+<center>环形有向图</center>
+<p>死锁示意图资源类型为：</p>
+<ul>
+<li>P = ${P_1,\ P_2,\ P_3}$</li>
+<li>R = ${R_1,\ R_2,\ R_3,\ R_4}$</li>
+<li>RE = ${P_1\ →\ R_1,\ P_2\ →\ R_3,\ P_3\ →\ R_2 }$</li>
+<li>AE = ${R_1\ →\ P_2,\ R_2\ →\ P_2,\ R_2\ →\ P_1,\ R_3\ →\ P_3}$
+<ul>
+<li>${P_1}$ 持有 ${R_2}$ 等待 ${R_1}$</li>
+<li>${P_2}$ 持有 ${R_1}$ 和 ${R_2}$ 等待 ${R_3}$</li>
+<li>${P_3}$ 持有 ${R_3}$ 等待 $R_2$</li>
+</ul>
+</li>
+</ul>
+<p>这个图出现两个环形，这种情况下会发生死锁</p>
+<ul>
+<li>$P_1\ →\ R_1\ →\ P_2\ →\ R_3\ →\ P_3\ →\ R_2\ →\ P_1$</li>
+<li>$P_2\ →\ R_3\ →\ P_3\ →\ R_2\ →\ P_2$</li>
+</ul>
+<h3 id="有环但无死锁">有环但无死锁<a hidden class="anchor" aria-hidden="true" href="#有环但无死锁">¶</a></h3>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7_03_CycleNoDeadlock.jpg" alt="img" style="zoom:1-0%;" /></center>
+<center>有环但无死锁</center>
+<p>有环但无死锁意图资源类型为：</p>
+<ul>
+<li>P = ${P_1,\ P_2,\ P_3,\ P_4}$</li>
+<li>R = ${R_1,\ R_2}$</li>
+<li>RE = ${P_1\ →\ R_1,\ P_3\ →\ R_2 }$</li>
+<li>AE = ${R_1\ →\ P_2,\ R_1\ →\ P_3,\ R_2\ →\ P_4,\ R_2\ →\ P_1}$
+<ul>
+<li>${P_1}$ 持有 ${R_2}$ 等待 ${R_1}$</li>
+<li>${P_2}$ 持有 ${R_1}$</li>
+<li>${P_3}$ 持有 ${R_1}$ 等待 $R_2$</li>
+<li>${P_4}$ 持有 ${R_2}$</li>
+</ul>
+</li>
+</ul>
+<p>此图中，$P_4$ 执行完会释放 $R_2$，$R_2$会被分配给 $P_3$，这样就跳出了循环</p>
+<h3 id="结论">结论<a hidden class="anchor" aria-hidden="true" href="#结论">¶</a></h3>
+<ul>
+<li>如果图中没有循环，则无死锁</li>
+<li>如果图中，一个资源仅包含一个实例，必然会发生死锁</li>
+<li>如果图中，一个资源包含多个实例，则可能会发生死锁</li>
+</ul>
+<h2 id="死锁特性">死锁特性<a hidden class="anchor" aria-hidden="true" href="#死锁特性">¶</a></h2>
+<h3 id="必要条件">必要条件<a hidden class="anchor" aria-hidden="true" href="#必要条件">¶</a></h3>
+<ul>
+<li>实现死锁需要四个条件：
+<ul>
+<li><strong>Mutual Exclusion</strong>：至少一个资源必须以不可共享的方式持有；如果任何其他进程请求此资源，则该进程必须等待资源被释放。</li>
+<li><strong>Hold and Wait</strong>：一个进程必须同时持有至少一个资源并等待至少一个当前被其他进程持有的资源。</li>
+<li><strong>No preemption</strong>：一旦进程持有资源，则该资源不能从该进程中被抢占，直到该进程自愿释放。</li>
+<li><strong>Circular Wait</strong> ：一组等待的进程 ${P_0,\ P_1,\ P_2,\ &hellip;,\ P_N}$ 必须存在每个 $P[ i ] $ 都在等待 $P[ ( i + 1 ) % ( N + 1 )]$</li>
+</ul>
+</li>
+</ul>
+<h2 id="死锁处理方法">死锁处理方法<a hidden class="anchor" aria-hidden="true" href="#死锁处理方法">¶</a></h2>
+<ul>
+<li>确保系统永远不会进入死锁</li>
+<li>允许系统进入死锁状态，然后恢复</li>
+<li>忽略这个问题，假装系统中从来没有发生死锁，用于大多数操作系统,包括UNIX</li>
+</ul>
+<h3 id="死锁预防">死锁预防<a hidden class="anchor" aria-hidden="true" href="#死锁预防">¶</a></h3>
+<p>限制资源的申请方式</p>
+<ul>
+<li>
+<p>互斥</p>
+<ul>
+<li>对于只读文件资源来说不会引起死锁</li>
+<li>对于只允许单独访问的资源，需要互斥，如打印机</li>
+</ul>
+</li>
+<li>
+<p>等待：必须确保进程在访问资源时，没有持有其他资源</p>
+<ul>
+<li>要求对所有进程同时请求所有资源。这种情况下当一个资源被占用，导致等待很长时间，这可能会浪费系统资源。</li>
+<li>只有当进程能够获得旧的资源以及它请求新的资源，进程才可以执行</li>
+<li>这种情况资源利用率低，饥饿</li>
+</ul>
+</li>
+<li>
+<p>非抢占式：以下情况下可以防止死锁</p>
+<ul>
+<li>如果进程占有某些资源，并请求其他不能被立即分配的资源，则释放当前正占有的资源（可能资源浪费）</li>
+<li>当请求资源不可用时，并本身属于阻塞；这时资源会被抢占，添加到进程等待资源列表中</li>
+</ul>
+</li>
+<li>
+<p>循环等待</p>
+<ul>
+<li>对所有资源进行编号排序，并要求进程仅以严格的递增（递减）顺序请求资源（常见于嵌入式操作系统）</li>
+<li>如：为了请求资源 $R_j$，进程必须首先释放所有的 $R_i$，使得 $i &gt;= j$</li>
+<li>挑战性：如何确定不同资源的排序</li>
+</ul>
+</li>
+</ul>
+<h2 id="避免死锁">避免死锁<a hidden class="anchor" aria-hidden="true" href="#避免死锁">¶</a></h2>
+<p>死锁避免，与死锁预防的区别是，死锁预防是确保可以预防死锁必要条件的其中一个；死锁避免是确保进程不会导致死锁。</p>
+<p>要想防止死锁，就需要更多有关进程的信息，这样的话会导致系统资源利用率低（保守方法），根据不同的调度算法，会得到进程所需的资源的数量，还可以知道以什么顺序进行调度。</p>
+<p>调取器会根据资源分配状态检测将来是否出现死锁</p>
+<h3 id="安全状态">安全状态<a hidden class="anchor" aria-hidden="true" href="#安全状态">¶</a></h3>
+<p>如果系统可以分配所有进程的所有资源，而不进入死锁状态，则被称为安全状态。更严格来讲，存在安全的进程序列，则状态是<strong>安全</strong>的，（${P_0,\ P_1,\ P_2,\ &hellip;,\ P_N }$）</p>
+<ul>
+<li>
+<p>如果 $P_i$ 资源的需求不是立即可用，那么 $P_i$ 可以等到所有 $P_j$ 完成</p>
+</li>
+<li>
+<p>当 $i&gt;j$ 时，$P_i$ 要求的资源能够由 $当前可用的资源+所有的\ P_j\ 持有的资源$ 来满足；如果 $P_i$ 完成了并释放了所有资源，那么 $P_j$ 也能够完成</p>
+</li>
+</ul>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7_06_StateSpaces.jpg" alt="img" style="zoom:100%;" /></center>
+<p>如图所示：如果不存在安全序列，则系统处于不安全状态，这<strong>可能</strong>会导致死锁。（所有安全状态都是无死锁的，但并非所有不安全状态都会导致死锁。）</p>
+<p>例如：考虑一个具有 12 个磁带驱动器的系统，分配如下。这是一个安全的状态吗？安全顺序是什么？</p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Maximum Needs</th>
+<th>Current Allocation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$P_0$</td>
+<td>10</td>
+<td>5</td>
+</tr>
+<tr>
+<td>$P_1$</td>
+<td>4</td>
+<td>2</td>
+</tr>
+<tr>
+<td>$P_2$</td>
+<td>9</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>是安全的</p>
+<ul>
+<li>当 $t=0$ 时，$P_0$ 持有5个资源； $P_1$ 持有 2；$P_2$ 持有 2，此时是安全的；</li>
+</ul>
+<p>安全顺序为：</p>
+<ul>
+<li>$P_1$ 可以分配所有的资源；$P_1\ need = Total - Allocation = 12-9=3$，$P_1$ 需要4 ，已分配2，剩余3，可以分配给 $P_1$；当 $P_1$ 执行完成并释放，此时 $available=2+2+1 = 5$</li>
+<li>$P_0$，可用5，已分配5，需要5；此时 $P_2$ 也可以执行；释放 $available=5+5=10$</li>
+<li>$P_2$，可用10，已分配2，需要9；此时 $P_2$ 也可以执行；释放 $available=2+9+1=12$</li>
+</ul>
+<p>如果进程 P2 请求并被多分配一个磁带资源，会发生什么情况？</p>
+<ul>
+<li>会从安全状态变为不安全状态，$P_2$ 当前分配为3 ，此时 $P_1$ 还是可以执行，执行释放完之后，可用为4，不满足 $P_0$ 所需5 ，$P_2$ 所需的6，死锁</li>
+</ul>
+<h3 id="资源分配图-1">资源分配图<a hidden class="anchor" aria-hidden="true" href="#资源分配图-1">¶</a></h3>
+<p>当资源类别仅具有其资源单实例，可以通过资源分配图中循环来检测死锁。这种情况下，使用声明边缘 （<code>claim  edge</code>  根据上下文翻译的，不知道对不对），指向了在未来所需要请求的资源，用虚线表示，来避免不安全状态</p>
+<ul>
+<li>声明边缘 <code>claim edge</code>：未来需要请求的资源</li>
+<li>请求边缘 <code>request edge</code>：请求的资源</li>
+<li>进程在请求资源会从 <code>claim edge</code> 转为 <code>request edge</code></li>
+<li>进程释放资源会从 <code>assignment edge</code> 转为  <code>claim edge</code></li>
+</ul>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7_07_DeadlockAvoidance.jpg" alt="img" style="zoom:100%;" /></center>
+<p>此方法的工作原理是，拒绝会在资源分配图中产生循环的请求，从而使声明边缘生效</p>
+<center><img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/7_08_UnsafeState.jpg" alt="img" style="zoom:100%;" /></center>
+<center>图：当生成的资源分配中会形成一个循环，此资源申请无法授予</center>
+<blockquote>
+<p>Reference</p>
+<p><a href="https://www.cs.uic.edu/~jbell/CourseNotes/OperatingSystems/7_Deadlocks.html">Deadlocks</a></p>
+<p><a href="https://angom.myweb.cs.uwindsor.ca/teaching/cs330/ch7.pdf">ch7 deadlock</a></p>
+</blockquote>
+<h2 id="银行家算法">银行家算法<a hidden class="anchor" aria-hidden="true" href="#银行家算法">¶</a></h2>
+<p>银行家算法 <strong>The Banker&rsquo;s algorithm</strong>，是一种资源分配和避免死锁的算法，是通过模拟所有资源的一种”预测“最大可能需求来为进程分配资源是否 安全；这个成为 <code>safe state check</code></p>
+<h3 id="为何被命名为银行家算法">为何被命名为银行家算法？<a hidden class="anchor" aria-hidden="true" href="#为何被命名为银行家算法">¶</a></h3>
+<p>银行家算法与银行使用相同的手法来检查资金是否可以批给贷款客户，假设一家银行有 <code>N</code> 个账户持有人，他们存入银行的总金额为 <code>M</code>。在分配任何贷款金额之前，银行会检查在从银行的总金额中减去贷款金额后，剩余的钱是否大于 <code>M</code>，大于 <code>M</code> 则分配这笔贷款是安全的，否则不是。</p>
+<p>而银行家算法是，在一个进程启动时，必须事先声明它可能请求的最大资源分配数，最高可达系统上可用的数量；在发出请求后，调度器确定分配给该进程资源是否会使系统处于不安全状态。如果是，则该进程等待，直到分配后系统处于安全状态。</p>
+<h3 id="银行家算法的数据结构">银行家算法的数据结构<a hidden class="anchor" aria-hidden="true" href="#银行家算法的数据结构">¶</a></h3>
+<ul>
+<li>
+<p><code>n</code> ：进程数</p>
+</li>
+<li>
+<p><code>m</code>：资源数</p>
+</li>
+<li>
+<p>$Available[ m ]$：当前每种类型有多少资源可用。</p>
+</li>
+<li>
+<p>$Max[n][m]$：每个资源的每个进程的最大需求。</p>
+</li>
+<li>
+<p>$Allocation[n][m]$：分配给每个进程的每个资源类别的数量。</p>
+</li>
+<li>
+<p>$Need[n][m]$：每个进程每个类型所需的剩余资源。</p>
+</li>
+<li>
+<p>$Need[ i ][ j ] = Max[ i ][ j ] - Allocation[ i ][ j ]$</p>
+</li>
+</ul>
+<blockquote>
+<p>银行家算法需要实现知道每个进程所需的最大资源个数</p>
+</blockquote>
+<h3 id="银行家算法应用">银行家算法应用<a hidden class="anchor" aria-hidden="true" href="#银行家算法应用">¶</a></h3>
+<p>首先需要一个算法来确定特定状态是否安全；算法会根据以下步骤确定系统的当前状态是否安全：</p>
+<ul>
+<li>⑴  <code>Work</code> 和 <code>Finish</code> 分别是长度为 <code>m</code> 和 <code>n</code> 的向量。
+<ul>
+<li><code>Work</code> 是 <code>available</code> 的副本，将在分析期间进行修改。</li>
+<li><code>finish</code> 是一个布尔值的向量，表示进程是否完成</li>
+<li>初始化时，所有 $Work=Available$ ；$Finish = false$</li>
+</ul>
+</li>
+<li>⑵  运行时，找到满足 $Finish[i] == false$；$Need[i]&lt;Work[i]$；此时可以分配，如果不存在转4</li>
+<li>⑶  完成时，设置 $Work = Work + Allocation[i]$，代表释放资源回到 2</li>
+<li>⑷ 如果所有的 $finish[ i ] == true$，则状态是安全的，因为已经完成并有安全序列</li>
+</ul>
+<p>有了具体的规范，就需要看银行家算法本身如何执行，算法确定新请求是否安全，当发出请求时，对其做满足推定（假装被授予），查看结果是否安全，安全则批准，不安全则拒绝，如：</p>
+<ul>
+<li>$Request[ n ][ m ]$，代表当前请求需要的资源数，如果 $Request[ i ] &gt; Need[ i ]$ 则拒绝</li>
+<li>如果 $Request[ i ] &gt; Available[i]$，那么则需要等待可用。</li>
+<li>方法是满足推论，会检查结构是否安全，如果是，授予；如果否，则进程等待，直到请求可以被安全授予</li>
+</ul>
+<p>整个过程的计算方式是：</p>
+<ul>
+<li>$Available = Available - Request$</li>
+<li>$Allocation = Allocation + Request$</li>
+<li>$Need = Need - Request$</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Processes</th>
+<th>Allocation<br>A B C</th>
+<th>Max<br>A B C</th>
+<th>Available<br>A B C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$P_0$</td>
+<td>1 1 2</td>
+<td>4 3 3</td>
+<td>2 1 0</td>
+</tr>
+<tr>
+<td>$P_1$</td>
+<td>2 1 2</td>
+<td>3 2 2</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_2$</td>
+<td>4 0 1</td>
+<td>9 0 2</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_3$</td>
+<td>0 2 0</td>
+<td>7 5 3</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_4$</td>
+<td>1 1 2</td>
+<td>1 1 2</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>计算每个进程Need，列出矩阵图</p>
+<p>$Need = Max – Allocation$</p>
+<table>
+<thead>
+<tr>
+<th>Processes</th>
+<th>Allocation<br>A B C</th>
+<th>Max<br>A B C</th>
+<th>Available<br>A B C</th>
+<th>Need<br>A B C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$P_0$</td>
+<td>1 1 2</td>
+<td>4 3 3</td>
+<td>2 1 0</td>
+<td>3 2 1</td>
+</tr>
+<tr>
+<td>$P_1$</td>
+<td>2 1 2</td>
+<td>3 2 2</td>
+<td></td>
+<td>1 1 0</td>
+</tr>
+<tr>
+<td>$P_2$</td>
+<td>4 0 1</td>
+<td>9 0 2</td>
+<td></td>
+<td>5 0 1</td>
+</tr>
+<tr>
+<td>$P_3$</td>
+<td>0 2 0</td>
+<td>7 5 3</td>
+<td></td>
+<td>7 3 3</td>
+</tr>
+<tr>
+<td>$P_4$</td>
+<td>1 1 2</td>
+<td>1 1 2</td>
+<td></td>
+<td>0 0 0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>这个是否安全？</strong></p>
+<ul>
+<li>
+<p>$P_0$ 需要 $(3\ 2\ 1)$，Available为 $(2\ 1\ 0)$；则 $Need &lt;=Available = False$</p>
+</li>
+<li>
+<p>$P_1$ 需要 $(1\ 1\ 0)$，Available为 $(2\ 1\ 0)$；则 ==$Need &lt;= Available = True$==</p>
+<ul>
+<li>$P_1$ 可以授予，执行结束后，$Available = Available +Allocation$</li>
+<li>$(2, 1, 0) + (2, 1, 2)$ = $(4, 2, 2)$</li>
+</ul>
+</li>
+<li>
+<p>$P_2$ 需要 $(5\ 0\ 1)$，Available为 $(4\ 2\ 2)$；则 $Need &lt;=Available = False$.</p>
+</li>
+<li>
+<p>$P_3$ 需要 $(7\ 3\ 3)$，Available为 $(4\ 2\ 2)$；则 $Need &lt;=Available = False$</p>
+</li>
+<li>
+<p>$P_4$ 需要 $(0\ 0\ 0)$，Available为 $(4\ 2\ 2)$；则 ==$Need &lt;= Available = True$==</p>
+<ul>
+<li>$P_1$ 可以授予，执行结束后，$Available = Available +Allocation$</li>
+<li>$(4, 2, 2) + (1, 1, 2)$ = $ (5, 3, 4)$</li>
+</ul>
+</li>
+<li>
+<p>$P_2$ 需要 $(5\ 0\ 1)$，Available为 $(5\ 3\ 4)$；则 ==$Need &lt;= Available = True$==.</p>
+<ul>
+<li>$Available = Available +Allocation$</li>
+<li>$ (5, 3, 4) + (4, 0, 1)$ = $ (9, 3, 5) $</li>
+</ul>
+</li>
+<li>
+<p>$P_3$ 需要 $(7\ 3\ 3)$，Available为 $(9\ 3\ 5)$；则 ==$Need &lt;=Available = True$==</p>
+<ul>
+<li>$Available = Available +Allocation$</li>
+<li>$(9, 3, 5) + (0, 2, 0) = (9, 5, 5)$</li>
+</ul>
+</li>
+<li>
+<p>$P_0$ 需要 $(3\ 2\ 1)$，Available为 $(9\ 5\ 5)$；则 ==$Need &lt;=Available = True$==</p>
+</li>
+</ul>
+<p>故序列是安全的，安全序列为 $P_1, P_4, P_2, P_3, P_0$</p>
+<p><a href="https://angom.myweb.cs.uwindsor.ca/teaching/cs330/ch7.pdf">https://angom.myweb.cs.uwindsor.ca/teaching/cs330/ch7.pdf</a></p>
+<h2 id="死锁检测">死锁检测<a hidden class="anchor" aria-hidden="true" href="#死锁检测">¶</a></h2>
+<p>死锁检测是指如果在不能避免死锁的情况下，检测死锁何时发生，并以某些方式恢复。</p>
+<p>对死锁检测会对性能造成影响，除此以外，还必须有策略（算法）来从死锁中恢复，当进程必须被终止或抢占时，那进程工作会丢失</p>
+<h3 id="每个资源类型单一实例">每个资源类型单一实例<a hidden class="anchor" aria-hidden="true" href="#每个资源类型单一实例">¶</a></h3>
+<center><img src="../../images/ch11 deadlock/7_09_TwoGraphs.jpg" alt="img" style="zoom:80%;" /></center>
+<center>(a) 资源分配图&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(b) 进程等待图</center>
+<p>如图所示：等待图是资料类型的图的变种</p>
+<ul>
+<li>等待图中从 $P_i\ →\ P_j$ 的线表示进程 $P_i$ 正在等待进程 $P_j$ 持有的资源。</li>
+<li>等待图中的循环表示死锁</li>
+<li>算法必须可以做到维护一个等待图，并定期检测死锁循环</li>
+</ul>
+<h3 id="死锁检测算法">死锁检测算法<a hidden class="anchor" aria-hidden="true" href="#死锁检测算法">¶</a></h3>
+<p>死锁检测算法与银行家算法基本相同，但有两个差别：</p>
+<ul>
+<li>银行家算法步骤一中，初始将所有 $Finish[i] = false$。而改算法仅 $Allocation[ i ]  \ne 0$，才将 $Finish[ i ] = false$。如果进程分配资源为0，则 $Finish[i] = true$。
+<ul>
+<li>假设如果所有其他进程都可以完成，那么这个进程也可以完成。此外，算法会寻找哪些进程涉及死锁情况，没有分配任何资源的进程不能参与死锁。</li>
+</ul>
+</li>
+<li>步骤2, 3 与银行家算法一致</li>
+<li>银行家算法中，如果 $Finish[ i ] == true$ 则不存在死锁。该算法中，如果存在 $Finish[ i ] == false$ ，则检测到死锁。</li>
+</ul>
+<p><strong>如：有5个进程 $P_0$ ~ $P_4$；三种资源 $A=7$，$B=2$，$C=6$</strong></p>
+<table>
+<thead>
+<tr>
+<th>Processes</th>
+<th>Allocation<br>A B C</th>
+<th>Request<br>A B C</th>
+<th>Available<br>A B C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>$P_0$</td>
+<td>0 1 0</td>
+<td>0 0 0</td>
+<td>0 0 0</td>
+</tr>
+<tr>
+<td>$P_1$</td>
+<td>2 0 0</td>
+<td>2 0 2</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_2$</td>
+<td>3 0 3</td>
+<td>0 0 0</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_3$</td>
+<td>2 1 1</td>
+<td>1 0 0</td>
+<td></td>
+</tr>
+<tr>
+<td>$P_4$</td>
+<td>0 0 2</td>
+<td>0 0 2</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p><strong>这个是否安全？</strong></p>
+<ul>
+<li>
+<p>$P_0$ request  $(0\ 0\ 0)$，执行释放后</p>
+<ul>
+<li>
+<p>$Available = Available +Allocation$</p>
+</li>
+<li>
+<p>$(0, 0, 0) + (0, 1, 0)$ = $(0, 1, 0)$</p>
+</li>
+</ul>
+</li>
+<li>
+<p>$P_2$  同 $P_0$</p>
+<ul>
+<li>$(0, 1, 0) + (0, 1, 0)$ = $(3, 1, 3)$</li>
+</ul>
+</li>
+<li>
+<p>$P_1$ request  $(2\ 0\ 0)$，执行释放后</p>
+<ul>
+<li>$(3, 1, 3) + (2, 0, 0)$ = $(5, 1, 3)$</li>
+</ul>
+</li>
+<li>
+<p>$P_3$ request  $(2\ 1\ 1)$，执行释放后</p>
+<ul>
+<li>$(5, 1, 3) + (2, 1, 1)$ = $(7, 2, 4)$</li>
+</ul>
+</li>
+<li>
+<p>$P_4$ request  $(0\ 0\ 2)$，执行释放后</p>
+<ul>
+<li>$(7, 2, 4) + (0, 0, 2)$ = $(7, 2, 6)$</li>
+</ul>
+</li>
+</ul>
+<p>估是安全的</p>
+<h3 id="检测算法使用">检测算法使用<a hidden class="anchor" aria-hidden="true" href="#检测算法使用">¶</a></h3>
+<p>何时，使用什么样的频率来检测依赖于:</p>
+<ul>
+<li>死锁多久可能会发生？</li>
+<li>多少进程需要被回滚？ one for each disjoint cycle</li>
+</ul>
+<p>这取决于预期死锁发生的频率，已经发生死锁后的后果，（如果发生死锁没有立即恢复，会越来越多的进程导致死锁后得不到资源阻塞）；通常情况下，常用方法：</p>
+<ul>
+<li>授予的资源分配后进行死锁检测，这样做可以立即检测到死锁；缺点是由于频繁检查死锁而导致性能下降。</li>
+<li>仅在可能发生死锁的边缘（进程对资源的请求的边）时才进行死锁检测，这样检查频率就会很低，缺点是无法检测到原来死锁所涉及的进程，会导致死锁复杂化，恢复过程复杂</li>
+<li>保留资源分配的历史日志定期检查死锁（如计时器、CPU资源利用率低）；通过追踪日志确定何时发生死锁以及哪些进程导致了最初的死锁</li>
+</ul>
+<h2 id="死锁恢复">死锁恢复<a hidden class="anchor" aria-hidden="true" href="#死锁恢复">¶</a></h2>
+<p>通常从死锁中恢复有三种方法：</p>
+<ul>
+<li>人工干预；终止所有的死锁进程</li>
+<li>终止一个或多个死锁进程，直到死锁消除</li>
+<li>抢占资源</li>
+</ul>
+<h3 id="进程终止">进程终止<a hidden class="anchor" aria-hidden="true" href="#进程终止">¶</a></h3>
+<p>基本可以恢复死锁的方法：</p>
+<ul>
+<li>终止所有涉及死锁的进程</li>
+<li>一个一个的终止进程，直到死锁被消除
+<ul>
+<li>这种情况下，很多因素都决定接下来要终止进程的顺序：</li>
+<li>优先级</li>
+<li>进程运行了多久，还需多久才可完成</li>
+<li>进程持有多少资源和什么类型的资源。</li>
+<li>进程完成还需多少资源</li>
+<li>需要终止多少个进程</li>
+<li>进程是交互式的还是批处理</li>
+<li>进程是否对任何资源进行了不可逆的更改</li>
+</ul>
+</li>
+</ul>
+<h3 id="资源抢占">资源抢占<a hidden class="anchor" aria-hidden="true" href="#资源抢占">¶</a></h3>
+<ul>
+<li><strong>选择受害者</strong>：选择一个进程进行资源抢占，最小成本</li>
+<li><strong>回滚</strong>：返回到一些安全状态,重启进程到安全状态</li>
+<li><strong>饥饿</strong>：同一进程可能一直被选作受害者，包括回滚的数量
+<ul>
+<li>使用优先级系统，并在每次进程资源被抢占时增加进程的优先级。最终，获得足够高的优先级，使其不再被抢占。</li>
+</ul>
+</li>
+</ul>
+
+
+    
+    
+
+
+<div class="copyrightBlock" >
+    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <p>链接：<a href="https://www.oomkill.com/2022/05/ch11-deadlock/" target="_blank">https://www.oomkill.com/2022/05/ch11-deadlock/</a></p>
+    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
+    </div>
+</div>
+  </div>
+
+  <footer class="post-footer">
+    
+<nav class="paginav">
+  <a class="prev" href="https://www.oomkill.com/2022/05/ch13-file-system/">
+    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
+      </polyline></svg>&nbsp; </span>
+    
+    <span>ch13 file system</span>
+  </a>
+  <a class="next" href="https://www.oomkill.com/2022/05/ch10-semaphore-and-monitors/" >
+    <span class="title"> </span>
+    
+    <span>ch10 信号量和监视器&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
+  </a>
+</nav>
+
+  </footer>
+
+  
+  <div class="pagination__title">
+    <span class="pagination__title-h"></span>
+  </div>
+  
+  
+  
+  
+    <div class="comments-separator"></div>
+    
+
+<h3>相关阅读</h3>
+<ul>
+	
+	<li><a href="/2022/05/ch10-semaphore-and-monitors/">ch10 信号量和监视器</a></li>
+	
+	<li><a href="/2022/04/ch8-cpu-scheduling-algorithms/">ch8 CPU调度算法</a></li>
+	
+	<li><a href="/2022/04/ch9-synchronization/">ch9 同步</a></li>
+	
+	<li><a href="/2022/04/ch7-process-management/">ch7 进程管理</a></li>
+	
+	<li><a href="/2022/04/ch6-page-replacement-algorithms/">ch6 页面置换算法</a></li>
+	
+</ul>
+
+  
+
+  
+    
+      <div class="comments-separator"></div>
+<div class="comments">
+    <script>
+    function loadComment() {
+        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
+        let s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
+        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
+        s.setAttribute('data-category', 'Announcements');
+        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
+        s.setAttribute('data-mapping', 'title');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '1');
+        s.setAttribute('data-input-position', 'top');
+        s.setAttribute('data-lang', 'zh-TW');
+        s.setAttribute('data-theme', theme);
+        s.setAttribute('crossorigin', 'anonymous');
+        s.setAttribute('async', '');
+        document.querySelector('div.comments').innerHTML = '';
+        document.querySelector('div.comments').appendChild(s);
+    }
+    loadComment();
+    </script>
+</div>
+</article>
+    </main>
+    
+<footer class="footer">
+  <p>
+  Copyright
+  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
+  <span style="display: inline-block; margin-left: 1em;">
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
+    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
+  </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+  (function() {
+     
+    const disableThemeToggle = '' == '1';
+    if (disableThemeToggle) {
+      return;
+    }
+
+    let button = document.getElementById("theme-toggle")
+    
+    button.removeEventListener('click', toggleThemeListener)
+    
+    button.addEventListener('click', toggleThemeListener)
+  })();
+</script>
+
+<script>
+  (function () {
+    let menu = document.getElementById('menu')
+    if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+    }
+
+    const disableSmoothScroll = '' == '1';
+    const enableInstantClick = '1' == '1';
+    
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
+      return;
+    }
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = this.getAttribute("href").substr(1);
+        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+          behavior: "smooth"
+        });
+        if (id === "top") {
+          history.replaceState(null, null, " ");
+        } else {
+          history.pushState(null, null, `#${id}`);
+        }
+      });
+    });
+  })();
+</script>
+
+<script>
+  document.addEventListener('scroll', function (e) {
+      const readProgress = document.getElementById("read_progress");
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+  })
+</script>
+
+<script>
+  var menu = document.getElementById('menu')
+  if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          var id = this.getAttribute("href").substr(1);
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                  behavior: "smooth"
+              });
+          } else {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+          }
+          if (id === "top") {
+              history.replaceState(null, null, " ");
+          } else {
+              history.pushState(null, null, `#${id}`);
+          }
+      });
+  });
+</script>
+<script>
+  var mybutton = document.getElementById("top-link");
+  window.onscroll = function () {
+      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+          mybutton.style.visibility = "visible";
+          mybutton.style.opacity = "1";
+      } else {
+          mybutton.style.visibility = "hidden";
+          mybutton.style.opacity = "0";
+      }
+  };
+</script>
+<script>
+  if (window.scrollListeners) {
+    
+    for (const listener of scrollListeners) {
+      window.removeEventListener('scroll', listener)
+    }
+  }
+  window.scrollListeners = []
+</script>
+
+
+
+<script src="/js/medium-zoom.min.js" data-no-instant
+></script>
+<script>
+  document.querySelectorAll('pre > code').forEach((codeblock) => {
+    const container = codeblock.parentNode.parentNode;
+
+    const copybutton = document.createElement('button');
+    copybutton.classList.add('copy-code');
+    copybutton.innerText = 'copy';
+
+    function copyingDone() {
+      copybutton.innerText = 'copied';
+      setTimeout(() => {
+        copybutton.innerText = 'copy';
+      }, 2000);
+    }
+
+    copybutton.addEventListener('click', (cb) => {
+      if ('clipboard' in navigator) {
+        navigator.clipboard.writeText(codeblock.textContent);
+        copyingDone();
+        return;
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(codeblock);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      try {
+        document.execCommand('copy');
+        copyingDone();
+      } catch (e) { };
+      selection.removeRange(range);
+    });
+
+    if (container.classList.contains("highlight")) {
+      container.appendChild(copybutton);
+    } else if (container.parentNode.firstChild == container) {
+      
+    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+      
+      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+    } else {
+      
+      codeblock.parentNode.appendChild(copybutton);
+    }
+  });
+</script>
+
+
+
+
+<script>
+  
+  
+  (function() {
+    const enableTocScroll = '1' == '1'
+    if (!enableTocScroll) {
+      return
+    }
+    if (!document.querySelector('.toc')) {
+      console.log('no toc found, ignore toc scroll')
+      return
+    }
+    
+
+    
+    const scrollListeners = window.scrollListeners
+    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
+    const activeClass = 'active';
+
+    
+    let activeHeading = headings[0];
+    getLinkByHeading(activeHeading).classList.add(activeClass);
+
+    const onScroll = () => {
+      const passedHeadings = [];
+      for (const h of headings) {
+        
+        if (getOffsetTop(h) < 5) {
+          passedHeadings.push(h)
+        } else {
+          break;
+        }
+      }
+      if (passedHeadings.length > 0) {
+        newActiveHeading = passedHeadings[passedHeadings.length - 1];
+      } else {
+        newActiveHeading = headings[0];
+      }
+      if (activeHeading != newActiveHeading) {
+        getLinkByHeading(activeHeading).classList.remove(activeClass);
+        activeHeading = newActiveHeading;
+        getLinkByHeading(activeHeading).classList.add(activeClass);
+      }
+    }
+
+    let timer = null;
+    const scrollListener = () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
+      timer = setTimeout(onScroll, 50)
+    }
+    window.addEventListener('scroll', scrollListener, false);
+    scrollListeners.push(scrollListener)
+
+    function getLinkByHeading(heading) {
+      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
+      return document.querySelector(`.toc ul li a[href="#${id}"]`);
+    }
+
+    function getOffsetTop(heading) {
+      if (!heading.getClientRects().length) {
+        return 0;
+      }
+      let rect = heading.getBoundingClientRect();
+      return rect.top
+    }
+  })();
+  </script>
+
+<script src="/js/instantclick.min.js" data-no-instant
+></script>
+<script data-no-instant>
+  
+  
+  
+  
+  
+  
+  InstantClick.init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
+<script>
+    mermaid.init(undefined, '.language-mermaid');
+</script>
+</body>
+
+</html>

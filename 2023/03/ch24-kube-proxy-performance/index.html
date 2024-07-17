@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>kube-proxy如何保证规则的一致性 | Cylon&#39;s Collection</title>
+<meta name="keywords" content="kube-proxy, kubernetes service, k8s一致性">
+<meta name="description" content="kube-proxy如何保证规则的一致性 - Cylon&#39;s Collection">
+<meta name="author" content="cylon">
+<link rel="canonical" href="https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.df0e7f0648f287aca44f5b657ff5602f436346895340daaa6589b3049a979f73.css" integrity="sha256-3w5/Bkjyh6ykT1tlf/VgL0NjRolTQNqqZYmzBJqXn3M=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.oomkill.com/favicon.ico">
+<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
+
+<meta name="twitter:title" content="kube-proxy如何保证规则的一致性 | Cylon&#39;s Collection" />
+<meta name="twitter:description" content="" />
+<meta property="og:title" content="kube-proxy如何保证规则的一致性 | Cylon&#39;s Collection" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/" />
+<meta property="article:section" content="posts" />
+  <meta property="article:published_time" content="2023-03-09T00:00:00&#43;00:00" />
+  <meta property="article:modified_time" content="2023-03-10T23:00:36&#43;08:00" />
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Posts",
+      "item": "https://www.oomkill.com/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  3 ,
+      "name": "kube-proxy如何保证规则的一致性",
+      "item": "https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "kube-proxy如何保证规则的一致性 | Cylon's Collection",
+  "name": "kube-proxy如何保证规则的一致性",
+  "description": "",
+  "keywords": [
+    "kube-proxy", "kubernetes service", "k8s一致性"
+  ],
+  "wordCount" : "2443",
+  "inLanguage": "zh",
+  "datePublished": "2023-03-09T00:00:00Z",
+  "dateModified": "2023-03-10T23:00:36+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "cylon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Cylon's Collection",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.oomkill.com/favicon.ico"
+    }
+  }
+}
+</script><script type="text/javascript"
+        async
+        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    displayMath: [['$$','$$'], ['\[\[','\]\]']],
+    processEscapes: true,
+    processEnvironments: true,
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+    TeX: { equationNumbers: { autoNumber: "AMS" },
+         extensions: ["AMSmath.js", "AMSsymbols.js"] }
+  }
+});
+
+MathJax.Hub.Queue(function() {
+    
+    
+    
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i = 0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+});
+</script>
+
+<style>
+code.has-jax {
+    font: inherit;
+    font-size: 100%;
+    background: inherit;
+    border: inherit;
+    color: #515151;
+}
+</style>
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary-bg: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list-page {
+                background: var(--theme);
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list-page:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+
+</head>
+
+<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
+function switchTheme(theme) {
+  switch (theme) {
+    case 'light':
+      document.body.classList.remove('dark');
+      break;
+    case 'dark':
+      document.body.classList.add('dark');
+      break;
+    
+    default:
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+      }
+  }
+}
+
+function isDarkTheme() {
+  return document.body.className.includes("dark");
+}
+
+function getPrefTheme() {
+  return localStorage.getItem("pref-theme");
+}
+
+function setPrefTheme(theme) {
+  switchTheme(theme)
+  localStorage.setItem("pref-theme", theme);
+}
+
+const toggleThemeCallbacks = {}
+toggleThemeCallbacks['main'] = (isDark) => {
+  
+  if (isDark) {
+    setPrefTheme('light');
+  } else {
+    setPrefTheme('dark');
+  }
+}
+
+
+
+
+window.addEventListener('toggle-theme', function() {
+  
+  const isDark = isDarkTheme()
+  for (const key in toggleThemeCallbacks) {
+    toggleThemeCallbacks[key](isDark)
+  }
+});
+
+
+function toggleThemeListener() {
+  
+  window.dispatchEvent(new CustomEvent('toggle-theme'));
+}
+
+</script>
+<script>
+  
+  (function() {
+    const defaultTheme = 'auto';
+    const prefTheme = getPrefTheme();
+    const theme = prefTheme ? prefTheme : defaultTheme;
+
+    switchTheme(theme);
+  })();
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
+            <span class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </span>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://www.oomkill.com/archives/" title="归档"
+                >归档
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/tags/" title="标签"
+                >标签
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
+                >搜索
+                </a>
+            </li>
+            <li>
+                <a href="https://www.oomkill.com/about/" title="关于"
+                >关于
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main post">
+
+<article class="post-single">
+  <header class="post-header"><h1 class="post-title">kube-proxy如何保证规则的一致性</h1>
+    <div class="post-meta"><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>2023-03-09</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
+  <span>Edited on 2023-03-10</span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
+  <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a><a href="https://www.oomkill.com/tags/kubernetes-develop/">kubernetes develop</a></span></span><span class="meta-item">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
+  <span>5 分钟</span></span>
+
+      
+      
+    </div>
+  </header> <div class="toc side right">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">目录</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e5%89%8d%e6%99%af" aria-label="前景">前景</a></li>
+                <li>
+                    <a href="#kube-proxy-%e5%a6%82%e4%bd%95%e5%81%9a%e5%88%b0%e7%9a%84crud" aria-label="kube-proxy 如何做到的CRUD">kube-proxy 如何做到的CRUD</a></li>
+                <li>
+                    <a href="#%e6%80%a7%e8%83%bd%e6%8f%90%e5%8d%87%e7%82%b91" aria-label="性能提升点1">性能提升点1</a></li>
+                <li>
+                    <a href="#%e5%a6%82%e4%bd%95%e9%80%9a%e8%bf%87%e4%b8%80%e4%b8%aa%e5%87%bd%e6%95%b0%e5%81%9acrud" aria-label="如何通过一个函数做CRUD">如何通过一个函数做CRUD</a></li>
+                <li>
+                    <a href="#crud%e5%ae%9e%e9%99%85%e5%ae%9e%e7%8e%b0" aria-label="CRUD实际实现">CRUD实际实现</a></li>
+                <li>
+                    <a href="#%e6%80%a7%e8%83%bd%e6%8f%90%e5%8d%87%e7%82%b92" aria-label="性能提升点2">性能提升点2</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content">
+    
+
+
+
+
+
+<div class="copyrightTopBlock">
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+</div><blockquote>
+</blockquote>
+<h2 id="前景">前景<a hidden class="anchor" aria-hidden="true" href="#前景">¶</a></h2>
+<p>这里谈 <code>kube-proxy</code> 如何保证规则的一致性以及提升 <code>kube-proxy</code> 性能点的地方，这也是 kubernetes 使用稳定性的一部分。</p>
+<h2 id="kube-proxy-如何做到的crud">kube-proxy 如何做到的CRUD<a hidden class="anchor" aria-hidden="true" href="#kube-proxy-如何做到的crud">¶</a></h2>
+<p><code>kube-proxy</code>  实际上与其他内置 controller 架构是相同的，实际上也属于一个 controller ，但它属于一个 service, endpoints 的可读可写的控制器，node的读控制器。对于CRUD方面，kube-proxy，在设计上分为 增/改 两方面。正如下面代码所示 <a href="pkg/proxy/ipvs/proxier.go">pkg/proxy/ipvs/proxier.go</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceAdd</span><span class="p">(</span><span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">proxier</span><span class="p">.</span><span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">service</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// OnServiceUpdate is called whenever modification of an existing service object is observed.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="nx">oldService</span><span class="p">,</span> <span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">serviceChanges</span><span class="p">.</span><span class="nf">Update</span><span class="p">(</span><span class="nx">oldService</span><span class="p">,</span> <span class="nx">service</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">isInitialized</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">proxier</span><span class="p">.</span><span class="nf">Sync</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// OnServiceDelete is called whenever deletion of an existing service object is observed.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceDelete</span><span class="p">(</span><span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">proxier</span><span class="p">.</span><span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="nx">service</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>可以看到代码最终调用的都是 <code>OnServiceUpdate</code>，最终 调用的是 <code>proxier.Sync()</code>。对于 Sync()，这里会调用在 Proxier 初始化时注入的那个函数，而 Sync() 本质上是 一个异步有限的函数管理器，这里将实现两个方面，一是，定时去触发执行这个函数；二是满足规则去触发这个函数；而 Sync() 属于条件2</p>
+<p>对于注入的函数，则是 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L490">proxier.syncProxyRules</a> ，由下列代码可以看到</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">proxier</span><span class="p">.</span><span class="nx">syncRunner</span> <span class="p">=</span> <span class="nx">async</span><span class="p">.</span><span class="nf">NewBoundedFrequencyRunner</span><span class="p">(</span><span class="s">&#34;sync-runner&#34;</span><span class="p">,</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">syncProxyRules</span><span class="p">,</span> <span class="nx">minSyncPeriod</span><span class="p">,</span> <span class="nx">syncPeriod</span><span class="p">,</span> <span class="nx">burstSyncs</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这样就是说，kube-proxy 通过 syncProxyRules 实现了整个 service 与 endpoint 的增删改查</p>
+<h2 id="性能提升点1">性能提升点1<a hidden class="anchor" aria-hidden="true" href="#性能提升点1">¶</a></h2>
+<p>由上面有限的函数管理器 runner，可以作为性能提升点，而该runner初始化时提供了minSyncPeriod, syncPeriod 两个函数，这两个函数代表的意思为，minSyncPeriod是runner允许你在最小多少时间内可以调用，如果你的集群规模大，那么则可以适当配置该参数小写，因为service的频繁更改会被这个参数限制。</p>
+<h2 id="如何通过一个函数做crud">如何通过一个函数做CRUD<a hidden class="anchor" aria-hidden="true" href="#如何通过一个函数做crud">¶</a></h2>
+<p>对于增改，存在三个资源，ClusterIP, NodePort, Ingress,当这些资源被触发时，会同步这个service与endpoint，如代码所示 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406">syncProxyRules</a></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">syncService</span><span class="p">(</span><span class="nx">svcNameString</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="kc">true</span><span class="p">,</span> <span class="nx">bindedAddresses</span><span class="p">);</span> <span class="nx">err</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">activeIPVSServices</span><span class="p">[</span><span class="nx">serv</span><span class="p">.</span><span class="nf">String</span><span class="p">()]</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">activeBindAddrs</span><span class="p">[</span><span class="nx">serv</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">()]</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">syncEndpoint</span><span class="p">(</span><span class="nx">svcName</span><span class="p">,</span> <span class="nx">svcInfo</span><span class="p">.</span><span class="nf">OnlyNodeLocalEndpoints</span><span class="p">(),</span> <span class="nx">serv</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to sync endpoint for service: %v, err: %v&#34;</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to sync service: %v, err: %v&#34;</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>由上面代码可知，所有的 service 与 endpoint 的更新，都会触发 <code>Sync()</code>，而 <code>Sync()</code> 执行的是 <code>syncProxyRules()</code> ，当service有变动时，就会通过 syncService/syncEndpoint 进行同步</p>
+<p>而对于删除动作来说，kube-proxy 提供了 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1626">cleanLegacyService</a> 函数在变动做完时，进行清理遗留的service规则，如下列代码所示。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">proxier</span><span class="p">.</span><span class="nf">cleanLegacyService</span><span class="p">(</span><span class="nx">activeIPVSServices</span><span class="p">,</span> <span class="nx">currentIPVSServices</span><span class="p">,</span> <span class="nx">legacyBindAddrs</span><span class="p">)</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>并且通过两个数组来维护两个 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094">activeIPVSServices</a> , 与 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094">currentIPVSServices</a> 为主，来维护删除的数据</p>
+<h2 id="crud实际实现">CRUD实际实现<a hidden class="anchor" aria-hidden="true" href="#crud实际实现">¶</a></h2>
+<p>上面了解到了删除与添加的逻辑，下面分析这些是如何进行的</p>
+<p>当添加被触发时，会触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1936-L1974">proxier.syncService()</a> ，首先会进行本机上ipvs规则是否存在这个规则，存在则更改，而后返回一个 error, 这个 error 取决于是否更新 endpoints，如下列代码所示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">syncService</span><span class="p">(</span><span class="nx">svcName</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">vs</span> <span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">,</span> <span class="nx">bindAddr</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">bindedAddresses</span> <span class="nx">sets</span><span class="p">.</span><span class="nx">String</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="o">||</span> <span class="p">!</span><span class="nx">appliedVirtualServer</span><span class="p">.</span><span class="nf">Equal</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// IPVS service is not found, create a new service
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Adding new service %q %s:%d/%s&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Port</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Protocol</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">AddVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to add IPVS service %q: %v&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// IPVS service was changed, update the existing one
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="c1">// During updates, service VIP will not go down
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;IPVS service %s was changed&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">UpdateVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to update IPVS service, err:%v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// bind service address to dummy interface
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nx">bindAddr</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// always attempt to bind if bindedAddresses is nil,
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// otherwise check if it&#39;s already binded and return early
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nx">bindedAddresses</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">bindedAddresses</span><span class="p">.</span><span class="nf">Has</span><span class="p">(</span><span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Bind addr %s&#34;</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">netlinkHandle</span><span class="p">.</span><span class="nf">EnsureAddressBind</span><span class="p">(</span><span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">(),</span> <span class="nx">DefaultDummyDevice</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to bind service address to dummy device %q: %v&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>接下来通过后会 触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1976-L2084">proxier.syncEndpoint()</a> 这里传入了当前的 service, 这里是为了与 IPVS 概念相吻合，如IPVS 中存在 RealServers/VirtualServers，首先会拿到本机这个VirtualServer下的所有RealServer，而后进行添加，而后对比 传入的 Endpoints 列表 与 本机这个VirtualServer下的所有RealServer，不相等的则被删除；删除的动作是一个异步操作。由 gracefuldeleteManager 维护</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">syncEndpoint</span><span class="p">(</span><span class="nx">svcPortName</span> <span class="nx">proxy</span><span class="p">.</span><span class="nx">ServicePortName</span><span class="p">,</span> <span class="nx">onlyNodeLocalEndpoints</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">vs</span> <span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">||</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to get IPVS service, error: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// curEndpoints represents IPVS destinations listed from current system.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">curEndpoints</span> <span class="o">:=</span> <span class="nx">sets</span><span class="p">.</span><span class="nf">NewString</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// newEndpoints represents Endpoints watched from API Server.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">newEndpoints</span> <span class="o">:=</span> <span class="nx">sets</span><span class="p">.</span><span class="nf">NewString</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">curDests</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetRealServers</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to list IPVS destinations, error: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">des</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">curDests</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">des</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">endpoints</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">endpointsMap</span><span class="p">[</span><span class="nx">svcPortName</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Service Topology will not be enabled in the following cases:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 1. externalTrafficPolicy=Local (mutually exclusive with service topology).
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 2. ServiceTopology is not enabled.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 3. EndpointSlice is not enabled (service topology depends on endpoint slice
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// to get topology information).
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="p">!</span><span class="nx">onlyNodeLocalEndpoints</span> <span class="o">&amp;&amp;</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">features</span><span class="p">.</span><span class="nx">ServiceTopology</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">features</span><span class="p">.</span><span class="nx">EndpointSliceProxying</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">endpoints</span> <span class="p">=</span> <span class="nx">proxy</span><span class="p">.</span><span class="nf">FilterTopologyEndpoint</span><span class="p">(</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">nodeLabels</span><span class="p">,</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">serviceMap</span><span class="p">[</span><span class="nx">svcPortName</span><span class="p">].</span><span class="nf">TopologyKeys</span><span class="p">(),</span> <span class="nx">endpoints</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">epInfo</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">endpoints</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">onlyNodeLocalEndpoints</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">epInfo</span><span class="p">.</span><span class="nf">GetIsLocal</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">newEndpoints</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">epInfo</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Create new endpoints
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ep</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">newEndpoints</span><span class="p">.</span><span class="nf">List</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">ip</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nf">SplitHostPort</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">portNum</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Atoi</span><span class="p">(</span><span class="nx">port</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint port %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">newDest</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">RealServer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Address</span><span class="p">:</span> <span class="nx">net</span><span class="p">.</span><span class="nf">ParseIP</span><span class="p">(</span><span class="nx">ip</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Port</span><span class="p">:</span>    <span class="nb">uint16</span><span class="p">(</span><span class="nx">portNum</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Weight</span><span class="p">:</span>  <span class="mi">1</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Has</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// check if newEndpoint is in gracefulDelete list, if true, delete this ep immediately
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">uniqueRS</span> <span class="o">:=</span> <span class="nf">GetUniqueRSName</span><span class="p">(</span><span class="nx">vs</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="p">!</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">InTerminationList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">5</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;new ep %q is in graceful delete list&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">MoveRSOutofGracefulDeleteList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete endpoint: %v in gracefulDeleteQueue, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="p">=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">AddRealServer</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to add destination: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Delete old endpoints
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ep</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Difference</span><span class="p">(</span><span class="nx">newEndpoints</span><span class="p">).</span><span class="nf">UnsortedList</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// if curEndpoint is in gracefulDelete, skip
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">uniqueRS</span> <span class="o">:=</span> <span class="nx">vs</span><span class="p">.</span><span class="nf">String</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;/&#34;</span> <span class="o">+</span> <span class="nx">ep</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">InTerminationList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">ip</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nf">SplitHostPort</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">portNum</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Atoi</span><span class="p">(</span><span class="nx">port</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint port %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">delDest</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">RealServer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Address</span><span class="p">:</span> <span class="nx">net</span><span class="p">.</span><span class="nf">ParseIP</span><span class="p">(</span><span class="nx">ip</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Port</span><span class="p">:</span>    <span class="nb">uint16</span><span class="p">(</span><span class="nx">portNum</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">5</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Using graceful delete to delete: %v&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="p">=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">GracefulDeleteRS</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">delDest</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete destination: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>删除 service 将删除所有的 RealServer，这点上面提到过，kube-proxy 通过 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L2086-L2114">cleanLegacyService</a> 进行删除，如下列代码所示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">cleanLegacyService</span><span class="p">(</span><span class="nx">activeServices</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">,</span> <span class="nx">currentServices</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">,</span> <span class="nx">legacyBindAddrs</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">isIPv6</span> <span class="o">:=</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">IsIPv6</span><span class="p">(</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">nodeIP</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">cs</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">currentServices</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">svc</span> <span class="o">:=</span> <span class="nx">currentServices</span><span class="p">[</span><span class="nx">cs</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">isIPInExcludeCIDRs</span><span class="p">(</span><span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">IsIPv6</span><span class="p">(</span><span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">)</span> <span class="o">!=</span> <span class="nx">isIPv6</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// Not our family
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">continue</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">activeServices</span><span class="p">[</span><span class="nx">cs</span><span class="p">];</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Delete service %s&#34;</span><span class="p">,</span> <span class="nx">svc</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">DeleteVirtualServer</span><span class="p">(</span><span class="nx">svc</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete service %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">svc</span><span class="p">.</span><span class="nf">String</span><span class="p">(),</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">addr</span> <span class="o">:=</span> <span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">legacyBindAddrs</span><span class="p">[</span><span class="nx">addr</span><span class="p">];</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Unbinding address %s&#34;</span><span class="p">,</span> <span class="nx">addr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">netlinkHandle</span><span class="p">.</span><span class="nf">UnbindAddress</span><span class="p">(</span><span class="nx">addr</span><span class="p">,</span> <span class="nx">DefaultDummyDevice</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to unbind service addr %s from dummy interface %s: %v&#34;</span><span class="p">,</span> <span class="nx">addr</span><span class="p">,</span> <span class="nx">DefaultDummyDevice</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="c1">// In case we delete a multi-port service, avoid trying to unbind multiple times
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>					<span class="nb">delete</span><span class="p">(</span><span class="nx">legacyBindAddrs</span><span class="p">,</span> <span class="nx">addr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="性能提升点2">性能提升点2<a hidden class="anchor" aria-hidden="true" href="#性能提升点2">¶</a></h2>
+<p>由上面的讲解可知，CRUD动作是每一个事件 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406">syncProxyRules</a> 被触发时都会进行执行，而删除动作存在多组循环（如构建维护的两个列表；进行循环删除）即每一次 Endpoints 变动也会触发 大量的 Service 的循环，从而检测 是否由遗留的Service资源，而这个操作保留到kubernetes 1.26版本</p>
+<p>假设你的集群节点是5000个，service资源是两万个，那么当你更新一个Service资源循环的次数，会至少循环多达数万次（Service, EndpointSpilt, currentServices, NodeIP, Ingress）其中无用的为currentServices，因为这个只有在删除Service本身才会有效（如果存在20000个service，其中currentServices在构建与对比的过程超过4万次）</p>
+
+
+    
+    
+
+
+<div class="copyrightBlock" >
+    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
+    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
+    <p>链接：<a href="https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/" target="_blank">https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/</a></p>
+    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
+    </div>
+</div>
+  </div>
+
+  <footer class="post-footer">
+    
+<nav class="paginav">
+  <a class="prev" href="https://www.oomkill.com/2023/03/design-patterns/">
+    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
+      </polyline></svg>&nbsp; </span>
+    
+    <span>Go设计模式</span>
+  </a>
+  <a class="next" href="https://www.oomkill.com/2023/02/kubernetes-lb/" >
+    <span class="title"> </span>
+    
+    <span>扫盲Kubernetes负载均衡 - 从Ingress聊到LB&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
+  </a>
+</nav>
+
+  </footer>
+
+  
+  <div class="pagination__title">
+    <span class="pagination__title-h"></span>
+  </div>
+  
+  
+  
+  
+    <div class="comments-separator"></div>
+    
+
+<h3>相关阅读</h3>
+<ul>
+	
+	<li><a href="/2023/02/ch19-kube-proxy-code/">深入理解Kubernetes service - kube-proxy架构分析</a></li>
+	
+	<li><a href="/2023/02/ch23-extend-kube-proxy/">深入理解Kubernetes service - 如何扩展现有的kube-proxy架构？</a></li>
+	
+	<li><a href="/2023/02/ch17-service-controller/">深入理解Kubernetes service - 你真的理解service吗？</a></li>
+	
+</ul>
+
+  
+
+  
+    
+      <div class="comments-separator"></div>
+<div class="comments">
+    <script>
+    function loadComment() {
+        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
+        let s = document.createElement('script');
+        s.src = 'https://giscus.app/client.js';
+        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
+        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
+        s.setAttribute('data-category', 'Announcements');
+        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
+        s.setAttribute('data-mapping', 'title');
+        s.setAttribute('data-reactions-enabled', '1');
+        s.setAttribute('data-emit-metadata', '1');
+        s.setAttribute('data-input-position', 'top');
+        s.setAttribute('data-lang', 'zh-TW');
+        s.setAttribute('data-theme', theme);
+        s.setAttribute('crossorigin', 'anonymous');
+        s.setAttribute('async', '');
+        document.querySelector('div.comments').innerHTML = '';
+        document.querySelector('div.comments').appendChild(s);
+    }
+    loadComment();
+    </script>
+</div>
+</article>
+    </main>
+    
+<footer class="footer">
+  <p>
+  Copyright
+  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
+  <span style="display: inline-block; margin-left: 1em;">
+    Powered by
+    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
+    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
+  </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <span class="topInner">
+        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+            <path d="M12 6H0l6-6z"/>
+        </svg>
+        <span id="read_progress"></span>
+    </span>
+</a>
+
+<script>
+  (function() {
+     
+    const disableThemeToggle = '' == '1';
+    if (disableThemeToggle) {
+      return;
+    }
+
+    let button = document.getElementById("theme-toggle")
+    
+    button.removeEventListener('click', toggleThemeListener)
+    
+    button.addEventListener('click', toggleThemeListener)
+  })();
+</script>
+
+<script>
+  (function () {
+    let menu = document.getElementById('menu')
+    if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+    }
+
+    const disableSmoothScroll = '' == '1';
+    const enableInstantClick = '1' == '1';
+    
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
+      return;
+    }
+    
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+        e.preventDefault();
+        var id = this.getAttribute("href").substr(1);
+        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+          behavior: "smooth"
+        });
+        if (id === "top") {
+          history.replaceState(null, null, " ");
+        } else {
+          history.pushState(null, null, `#${id}`);
+        }
+      });
+    });
+  })();
+</script>
+
+<script>
+  document.addEventListener('scroll', function (e) {
+      const readProgress = document.getElementById("read_progress");
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
+  })
+</script>
+
+<script>
+  var menu = document.getElementById('menu')
+  if (menu) {
+      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+      menu.onscroll = function () {
+          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+      }
+  }
+
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          var id = this.getAttribute("href").substr(1);
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                  behavior: "smooth"
+              });
+          } else {
+              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+          }
+          if (id === "top") {
+              history.replaceState(null, null, " ");
+          } else {
+              history.pushState(null, null, `#${id}`);
+          }
+      });
+  });
+</script>
+<script>
+  var mybutton = document.getElementById("top-link");
+  window.onscroll = function () {
+      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+          mybutton.style.visibility = "visible";
+          mybutton.style.opacity = "1";
+      } else {
+          mybutton.style.visibility = "hidden";
+          mybutton.style.opacity = "0";
+      }
+  };
+</script>
+<script>
+  if (window.scrollListeners) {
+    
+    for (const listener of scrollListeners) {
+      window.removeEventListener('scroll', listener)
+    }
+  }
+  window.scrollListeners = []
+</script>
+
+
+
+<script src="/js/medium-zoom.min.js" data-no-instant
+></script>
+<script>
+  document.querySelectorAll('pre > code').forEach((codeblock) => {
+    const container = codeblock.parentNode.parentNode;
+
+    const copybutton = document.createElement('button');
+    copybutton.classList.add('copy-code');
+    copybutton.innerText = 'copy';
+
+    function copyingDone() {
+      copybutton.innerText = 'copied';
+      setTimeout(() => {
+        copybutton.innerText = 'copy';
+      }, 2000);
+    }
+
+    copybutton.addEventListener('click', (cb) => {
+      if ('clipboard' in navigator) {
+        navigator.clipboard.writeText(codeblock.textContent);
+        copyingDone();
+        return;
+      }
+
+      const range = document.createRange();
+      range.selectNodeContents(codeblock);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      try {
+        document.execCommand('copy');
+        copyingDone();
+      } catch (e) { };
+      selection.removeRange(range);
+    });
+
+    if (container.classList.contains("highlight")) {
+      container.appendChild(copybutton);
+    } else if (container.parentNode.firstChild == container) {
+      
+    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+      
+      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+    } else {
+      
+      codeblock.parentNode.appendChild(copybutton);
+    }
+  });
+</script>
+
+
+
+
+<script>
+  
+  
+  (function() {
+    const enableTocScroll = '1' == '1'
+    if (!enableTocScroll) {
+      return
+    }
+    if (!document.querySelector('.toc')) {
+      console.log('no toc found, ignore toc scroll')
+      return
+    }
+    
+
+    
+    const scrollListeners = window.scrollListeners
+    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
+    const activeClass = 'active';
+
+    
+    let activeHeading = headings[0];
+    getLinkByHeading(activeHeading).classList.add(activeClass);
+
+    const onScroll = () => {
+      const passedHeadings = [];
+      for (const h of headings) {
+        
+        if (getOffsetTop(h) < 5) {
+          passedHeadings.push(h)
+        } else {
+          break;
+        }
+      }
+      if (passedHeadings.length > 0) {
+        newActiveHeading = passedHeadings[passedHeadings.length - 1];
+      } else {
+        newActiveHeading = headings[0];
+      }
+      if (activeHeading != newActiveHeading) {
+        getLinkByHeading(activeHeading).classList.remove(activeClass);
+        activeHeading = newActiveHeading;
+        getLinkByHeading(activeHeading).classList.add(activeClass);
+      }
+    }
+
+    let timer = null;
+    const scrollListener = () => {
+      if (timer !== null) {
+        clearTimeout(timer)
+      }
+      timer = setTimeout(onScroll, 50)
+    }
+    window.addEventListener('scroll', scrollListener, false);
+    scrollListeners.push(scrollListener)
+
+    function getLinkByHeading(heading) {
+      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
+      return document.querySelector(`.toc ul li a[href="#${id}"]`);
+    }
+
+    function getOffsetTop(heading) {
+      if (!heading.getClientRects().length) {
+        return 0;
+      }
+      let rect = heading.getBoundingClientRect();
+      return rect.top
+    }
+  })();
+  </script>
+
+<script src="/js/instantclick.min.js" data-no-instant
+></script>
+<script data-no-instant>
+  
+  
+  
+  
+  
+  
+  InstantClick.init();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
+<script>
+    mermaid.init(undefined, '.language-mermaid');
+</script>
+</body>
+
+</html>

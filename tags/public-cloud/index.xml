@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>public cloud on Cylon&#39;s Collection</title>
+    <link>https://www.oomkill.com/tags/public-cloud/</link>
+    <description>Recent content in public cloud on Cylon&#39;s Collection</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-cn</language>
+    <lastBuildDate>Sat, 01 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/public-cloud/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>使用docker管理谷歌物件仓库gcr上的镜像</title>
+      <link>https://www.oomkill.com/2024/06/docker-push-gcr/</link>
+      <pubDate>Sat, 01 Jun 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/06/docker-push-gcr/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<h2 id="创建服务账户">创建服务账户</h2>
+<p>首先可以到「 IAM管理 -&gt; 服务帐户」新增帐户。在新增完成后，会得到一把 key，将它下载后请妥善保管，因为所有相关的身份认证都会用到，这个 key 在下载后就无法继续下载了。</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240602000041487.png" alt="image-20240602000041487"  /></p>
+<h2 id="授权">授权</h2>
+<p>接着到「IAM -&gt; 新增」成员，并且选择角色，这里选择「Cloud Storage -&gt; 储存空间物件检视者」，让此帐户具备有 read（读取） storage 的功能。</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240602000120347.png" alt="image-20240602000120347"  /></p>
+<h2 id="登录">登录</h2>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat KEY-FILE <span class="p">|</span> docker login -u KEY-TYPE --password-stdin <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	https://LOCATION-docker.pkg.dev
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>GCP 的 KEY-TYPE 通为 <code>json_key</code>，但这里包含两种类型 <code>_json_key</code> 和 <code>_json_key_base64</code></p>
+<p>KEY-FILE 就是下载的 Service account key 的文件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat KEY-FILE <span class="p">|</span> docker login -u _json_key --password-stdin <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>	https://LOCATION-docker.pkg.dev
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>通常 Service account key 文件内容如下</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;service_account&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;project_id&#34;: </span><span class="s2">&#34;project2024-0101&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;private_key_id&#34;: </span><span class="s2">&#34;bdfsd612779509406bb8452c3ek12d730ed547e722d&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;private_key&#34;: </span><span class="s2">&#34;-----BEGIN PRIVATE KEY----....-----END PRIVATE KEY-----\n&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;client_email&#34;: </span><span class="s2">&#34;gcr@project2024-0101.iam.gserviceaccount.com&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;client_id&#34;: </span><span class="s2">&#34;206651723512339084907274&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;auth_uri&#34;: </span><span class="s2">&#34;https://accounts.google.com/o/oauth2/auth&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;token_uri&#34;: </span><span class="s2">&#34;https://oauth2.googleapis.com/token&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;auth_provider_x509_cert_url&#34;: </span><span class="s2">&#34;https://www.googleapis.com/oauth2/v1/certs&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;client_x509_cert_url&#34;: </span><span class="s2">&#34;https://www.googleapis.com/robot/v1/metadata/x509/manager-image%40project2024-0101.iam.gserviceaccount.com&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;universe_domain&#34;: </span><span class="s2">&#34;googleapis.com&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div>]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>GKE - 为GKE集群增加VPC防火墙规则</title>
+      <link>https://www.oomkill.com/2024/05/gke-firewall/</link>
+      <pubDate>Thu, 02 May 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/05/gke-firewall/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>GKE添加VPC防火墙规则有与GCE有一些区别，必须找到GKE的”网络标记“才可以，如下</p>
+<p>选择 Kubernetes Engine =&gt; 选择 ”集群“ 进入 GKE 集群主页</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223015955.png" alt="image-20240502223015955"  /></p>
+<p>随便选择一个集群，进入集群详细页面</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223103493.png" alt="image-20240502223103493"  /></p>
+<p>选择集群中的任意一个节点池</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223145834.png" alt="image-20240502223145834"  /></p>
+<p>找到节点池中任意一个节点，点击进入</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223502091.png" alt="image-20240502223502091"  /></p>
+<p>进入后向下拉找到”网络标记“部分，这个网络标记可以标记这个集群的所有节点</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223532561.png" alt="image-20240502223532561"  /></p>
+<p>如果想自定义”网络标记“的名称，可以在集群首页选择标记进行修改</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240502223634324.png" alt="image-20240502223634324"  /></p>
+]]></content:encoded>
+    </item>
+    
+  </channel>
+</rss>
