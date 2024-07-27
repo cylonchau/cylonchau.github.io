@@ -6,13 +6,563 @@
     <description>Recent content in cicd on Cylon&#39;s Collection</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Wed, 13 Dec 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/cicd/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 27 Jul 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/cicd/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Spinnaker 基于判断的条件分支流水线</title>
+      <link>https://www.oomkill.com/2024/07/spinnaker-branching-judgment/</link>
+      <pubDate>Sat, 27 Jul 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/07/spinnaker-branching-judgment/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<h2 id="manual-judgment-stage">Manual Judgment Stage</h2>
+<p>“Manual Judgment Stage” 是 Spinnaker Pipeline 中的一种阶段 (&ldquo;Stage&rdquo;) 类型，该类型可以作为流水线的门户，作为带外 (Out-of-Bound) 流水线检查，等待手动检查，并且判断结果会终止或继续流水线的执行。</p>
+<h2 id="创建一个基于manual-judgment的流水线">创建一个基于Manual Judgment的流水线</h2>
+<p>创建一个流水线，添加一个新的 Stage，选择 “Manual Judgment”</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727214647330.png" alt="image-20240727214647330"  /></p>
+<center>图：Manual Judgment创建页面</center>
+<p>Jugement Inputs 部分添加对应的选项，选项可以带入变量 $judgment 中</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727214823060.png" alt="image-20240727214823060"  /></p>
+<center>图：Manual Judgment 在执行时 Jugement Inputs Option 的展示</center>
+<p>或者是不添加任何选项，那么这个时候就会只有 Stop 和 Continue 两个按钮</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727214900751.png" alt="image-20240727214900751"  /></p>
+<center>图：当 Manual Judgment 没有配置Jugement Inputs Option 的展示</center>
+<p>如果添加了选项，可以根据 “选项” 来判断执行的分支</p>
+<p>判断可以使用每个阶段内的条件表达式 ”Conditional on Expression“，或者 Check Precondition 类型的阶段</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727215003287.png" alt="image-20240727215003287"  /></p>
+<center>图：根据 “Stage Conditional on Expression” 来定义的选项</center>
+<p>“Check Precondition” 是 Spinnaker 流水线中的一个阶段，它可以先前条件并且判断是否继续，这里主要检查该流水线之前所有的流水线你定义要检查的内容，并继续执行接下分支或者阶段</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727215159515.png" alt="image-20240727215159515"  /></p>
+<center>图：“Check Precondition” 的三种类型</center>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727215059019.png" alt="image-20240727215059019"  /></p>
+ <center>图：“Check Precondition” 选择添加表达式的页面</center>
+<p>这里选择使用 表达式 (Expression) 来判断前置条件，例如我判断前置 Stage 的选择是否为 “aaaa”</p>
+<p><code>${#judgment(&quot;Ask for next step&quot;) == 'aaa'}</code></p>
+<p>接下来根据正常的流水线来创建即可，例如要 Deploy K8S 资源</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727215534084.png" alt="image-20240727215534084"  /></p>
+ <center>图：“Deploy” 类型的阶段配置页面</center>
+<h2 id="reference">Reference</h2>
+<p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/guides/tutorials/codelabs/safe-deployments/#changing-pipeline-behavior-based-on-selected-judgment">Changing pipeline behavior based on selected judgment</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Spinnaker 自定义Pipeline模板思路</title>
+      <link>https://www.oomkill.com/2024/07/spinnaker-custom-template/</link>
+      <pubDate>Sat, 27 Jul 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/07/spinnaker-custom-template/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<h2 id="流水线模板组合思路">流水线模板组合思路</h2>
+<p>官方流水线示例中没有给出完整的流水线模板和完整的字段，只给出了一个大致的 schema <sup><a href="#1">[1]</a></sup>，如下所示</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;schema&#34;</span><span class="p">:</span> <span class="s2">&#34;v2&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;variables&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;type&gt;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;defaultValue&#34;</span><span class="p">:</span> <span class="err">&lt;value&gt;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;description&gt;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;varName&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;templateName&gt;&#34;</span><span class="p">,</span>           <span class="err">#</span> <span class="err">The</span> <span class="err">pipeline</span> <span class="err">instance</span> <span class="err">references</span> <span class="err">the</span> <span class="err">template</span> <span class="err">using</span> <span class="err">this</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;protect&#34;</span><span class="p">:</span> <span class="err">&lt;</span><span class="kc">true</span> <span class="err">|</span> <span class="kc">false</span><span class="err">&gt;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;metadata&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;displayName&#34;</span><span class="p">,</span>          <span class="err">#</span> <span class="err">The</span> <span class="err">display</span> <span class="err">name</span> <span class="err">shown</span> <span class="err">in</span> <span class="err">Deck</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;description&gt;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;owner&#34;</span><span class="p">:</span> <span class="s2">&#34;example@example.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;scopes&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;global&#34;</span><span class="p">]</span>            <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;pipeline&#34;</span><span class="p">:</span> <span class="p">{</span>                     <span class="err">#</span> <span class="err">Contains</span> <span class="err">the</span> <span class="err">templatized</span> <span class="err">pipeline</span> <span class="err">itself</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;lastModifiedBy&#34;</span><span class="p">:</span> <span class="s2">&#34;anonymous&#34;</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;updateTs&#34;</span><span class="p">:</span> <span class="s2">&#34;0&#34;</span><span class="p">,</span>                <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;parameterConfig&#34;</span><span class="p">:</span> <span class="p">[],</span>          <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;limitConcurrent&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>        <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;keepWaitingPipelines&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&#34;</span><span class="p">,</span>              <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;triggers&#34;</span><span class="p">:</span> <span class="p">[],</span>                 <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;notifications&#34;</span><span class="p">:</span> <span class="p">[],</span>            <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;stages&#34;</span><span class="p">:</span> <span class="p">[</span>                     <span class="err">#</span> <span class="err">Contains</span> <span class="err">the</span> <span class="err">templated</span> <span class="err">stages</span>
+</span></span><span class="line"><span class="cl">      <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="err">#</span> <span class="err">This</span> <span class="err">one</span> <span class="err">is</span> <span class="err">an</span> <span class="err">example</span> <span class="err">stage:</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;waitTime&#34;</span><span class="p">:</span> <span class="s2">&#34;${ templateVariables.waitTime }&#34;</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Templated</span> <span class="err">field.</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;My Wait Stage&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;wait&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;refId&#34;</span><span class="p">:</span> <span class="s2">&#34;wait1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;requisiteStageRefIds&#34;</span><span class="p">:</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">      <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这个流水线模板的 Schema 只包含了大的框架，但是 Spinnaker 的每种类型的 Stage 的 Schema 并没有包含里面，需要自行定义，最好的一个思路就是，先手动先创建一个 {ipeline，然后编辑这个 Pipeline 的 Json 复制出想要的 Stage 的内容，然后再根据 Pipeline Template 的模板进行填充。</p>
+<p>例如，我们想顶一个选择 “多路分支” 的流水线，那么流水线类型如下</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212507497.png" alt="image-20240727212507497"  /></p>
+<center>图：spinnaker流水线结构</center>
+<p>然后选择 “Edit stage as Json” 或者选择 “Pipeline Actions” 中 “Edit as JSON” 可以查看到该 Stage 或该 Pipelin 完整的 JSON 格式数据。</p>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212652058.png" alt="image-20240727212652058"  /></p>
+<center>图：Pipeline Stage JSON</center>
+<p>
+  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212803192.png" alt="image-20240727212803192"  /></p>
+<center>图：Pipeline JSON</center>
+<p>最后将 Stage 的 JSON 复制 到 template Stage 的 数组中即可，下面是一个  Check Precondition  类型的 State 的 JSON</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;completeOtherBranchesThenFail&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;continuePipeline&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;failPipeline&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;选择禁用是否启用配置注册&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;notifications&#34;</span><span class="p">:</span> <span class="p">[],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;preconditions&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;context&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&#34;expression&#34;</span><span class="p">:</span> <span class="s2">&#34;${ #judgment(&#39;check condition&#39;) == &#39;disable&#39; }&#34;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">},</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;failPipeline&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;expression&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;checkPreconditions&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="完整的基于分支判断的流水线模板示例">完整的基于分支判断的流水线模板示例</h2>
+<p>该模板是一个为 k8s deployment 启用/禁用 HPA 功能的流水线模板</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span><span class="lnt">119
+</span><span class="lnt">120
+</span><span class="lnt">121
+</span><span class="lnt">122
+</span><span class="lnt">123
+</span><span class="lnt">124
+</span><span class="lnt">125
+</span><span class="lnt">126
+</span><span class="lnt">127
+</span><span class="lnt">128
+</span><span class="lnt">129
+</span><span class="lnt">130
+</span><span class="lnt">131
+</span><span class="lnt">132
+</span><span class="lnt">133
+</span><span class="lnt">134
+</span><span class="lnt">135
+</span><span class="lnt">136
+</span><span class="lnt">137
+</span><span class="lnt">138
+</span><span class="lnt">139
+</span><span class="lnt">140
+</span><span class="lnt">141
+</span><span class="lnt">142
+</span><span class="lnt">143
+</span><span class="lnt">144
+</span><span class="lnt">145
+</span><span class="lnt">146
+</span><span class="lnt">147
+</span><span class="lnt">148
+</span><span class="lnt">149
+</span><span class="lnt">150
+</span><span class="lnt">151
+</span><span class="lnt">152
+</span><span class="lnt">153
+</span><span class="lnt">154
+</span><span class="lnt">155
+</span><span class="lnt">156
+</span><span class="lnt">157
+</span><span class="lnt">158
+</span><span class="lnt">159
+</span><span class="lnt">160
+</span><span class="lnt">161
+</span><span class="lnt">162
+</span><span class="lnt">163
+</span><span class="lnt">164
+</span><span class="lnt">165
+</span><span class="lnt">166
+</span><span class="lnt">167
+</span><span class="lnt">168
+</span><span class="lnt">169
+</span><span class="lnt">170
+</span><span class="lnt">171
+</span><span class="lnt">172
+</span><span class="lnt">173
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;id&#34;: </span><span class="s2">&#34;a422e02d0ab94ce23jk92a6d2bf8ff9c&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;lastModifiedBy&#34;: </span><span class="s2">&#34;cylon&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;metadata&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;启用或停用 HPA&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;HPA Turn on or Turn off&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;owner&#34;: </span><span class="s2">&#34;cylonchau@outlook.com&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;scopes&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="s2">&#34;global&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;pipeline&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;expectedArtifacts&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;defaultArtifact&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;artifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;reference&#34;: </span><span class="s2">&#34;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;gitlab/file&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;version&#34;: </span><span class="s2">&#34;master&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;displayName&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa-file&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;id&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;matchArtifact&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;artifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;gitlab/file&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;useDefaultArtifact&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;usePriorArtifact&#34;: </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;keepWaitingPipelines&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;limitConcurrent&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;parameterConfig&#34;: </span><span class="p">[],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;stages&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;instructions&#34;: </span><span class="s2">&#34;请选择条件: \n\tenable 启用 ${ templateVariables.appName } HPA Autoscaler\n\tdisable 禁用HPA Autoscaler\n&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;judgmentInputs&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;value&#34;: </span><span class="s2">&#34;enable&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;value&#34;: </span><span class="s2">&#34;disable&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;Apply&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;notifications&#34;: </span><span class="p">[],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;propagateAuthenticationContext&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;7&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;manualJudgment&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;选择禁用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;preconditions&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;context&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">&#34;expression&#34;: </span><span class="s2">&#34;${ #judgment(&#39;Apply&#39;) == &#39;disable&#39; }&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;expression&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;9&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;7&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;checkPreconditions&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;选择启用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;preconditions&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;context&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">&#34;expression&#34;: </span><span class="s2">&#34;${ #judgment(&#39;Apply HPA&#39;) == &#39;enable&#39; }&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;expression&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;10&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;7&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;checkPreconditions&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;account&#34;: </span><span class="s2">&#34;${ templateVariables.dcName }&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;app&#34;: </span><span class="s2">&#34;${ templateVariables.appName }&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;cloudProvider&#34;: </span><span class="s2">&#34;kubernetes&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;isNew&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;location&#34;: </span><span class="s2">&#34; ${ templateVariables.appLocation }&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestName&#34;: </span><span class="s2">&#34;horizontalpodautoscaler ${ templateVariables.appName }-autoscaler&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;mode&#34;: </span><span class="s2">&#34;static&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;禁用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;options&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;cascading&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;gracePeriodSeconds&#34;: </span><span class="m">300</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;12&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;9&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;deleteManifest&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;account&#34;: </span><span class="s2">&#34;${ templateVariables.dcName }&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;cloudProvider&#34;: </span><span class="s2">&#34;kubernetes&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestArtifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestArtifactId&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;moniker&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;app&#34;: </span><span class="s2">&#34;${ templateVariables.appName }&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;启用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;11&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;10&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;skipExpressionEvaluation&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;source&#34;: </span><span class="s2">&#34;artifact&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;stageTimeoutMs&#34;: </span><span class="m">500000</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;trafficManagement&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;enabled&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;options&#34;: </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;enableTraffic&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;services&#34;: </span><span class="p">[]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;deployManifest&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">],</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;triggers&#34;: </span><span class="p">[]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;protect&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;schema&#34;: </span><span class="s2">&#34;v2&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;tag&#34;: </span><span class="kc">null</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;updateTs&#34;: </span><span class="s2">&#34;1701832158029&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;variables&#34;: </span><span class="p">[</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;要部署到的集群&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;dcName&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;模块名称&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;appName&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;public&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;名称空间&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;appLocation&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>}<span class="w">
+</span></span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="reference">Reference</h2>
+<p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/reference/pipeline/templates/#pipeline-template-json">Pipeline template JSON</a></p>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>使用Spinnaker进行金丝雀分析</title>
-      <link>https://www.oomkill.com/2023/12/04-spinnaker-canary/</link>
+      <link>https://www.oomkill.com/2023/12/spinnaker-canary/</link>
       <pubDate>Wed, 13 Dec 2023 00:00:00 +0000</pubDate>
       
-      <guid>https://www.oomkill.com/2023/12/04-spinnaker-canary/</guid>
+      <guid>https://www.oomkill.com/2023/12/spinnaker-canary/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>2018 年，Kayenta（一种用于自动化金丝雀分析的开源工具）作为 Spinnaker 项目的一部分推出。在本文中，我们描述了如何将 Kayenta 集成到我们现有的部署设施中，极大地提高了部署管道的可靠性并为自动化生产部署创造了先决条件。</p>
 <h2 id="概念理解">概念理解</h2>
@@ -551,965 +1101,11 @@
     </item>
     
     <item>
-      <title>什么是Spinnaker中的应用 - Application</title>
-      <link>https://www.oomkill.com/2023/07/ch03-spinnaker-application/</link>
-      <pubDate>Tue, 18 Jul 2023 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.oomkill.com/2023/07/ch03-spinnaker-application/</guid>
-      <description></description>
-      <content:encoded><![CDATA[<h2 id="概念理解">概念理解</h2>
-<p>Applicaiton 在 Spinnaker 中可以理解为是要部署的微服务，但是又不完全是，而这个 Application 可以分为两个维度：管理与部署，通常包括下面部分组成：</p>
-<ul>
-<li>Pipeline</li>
-<li>承载运行服务的基础设施，是 Spinnaker 用于描述服务的概念
-<ul>
-<li>Cluster：实例的集合</li>
-<li>Server Group：运行实例的集合（可以是VM，可以是Pod）；例如集群组由DEV,PROD 等环境组成</li>
-<li>Firewall：流量控制</li>
-<li>Load Blalencer：实例间的流量控制，例如 Kubernetes中是 Service</li>
-</ul>
-</li>
-<li>金丝雀</li>
-</ul>
-<h2 id="project">Project</h2>
-<p>在 Spinnaker WEB UI 有一个 Project，Project 概念可以理解为业务（项目），而 Project 包含的内容就是 Application 中与 Cluster；这么理解的话就是“对应业务的不同集群”，如下图所示</p>
-<h2 id="安装执行步骤">安装执行步骤</h2>
-<h3 id="安装-halyard">安装 Halyard</h3>
-<p>可以直接使用 Docker 方式安装，这个没什么必要性，就是管理工具而已，参考附录1 <sup><a href="#1">[1]</a></sup></p>
-<p>首先创建映射目录</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mkdir ~/.hal -pv
-</span></span><span class="line"><span class="cl">mkdir ~/.kubeconfig -pv
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>然后执行 docker run 运行容器</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker run -d -p 8084:8084 -p 9000:9000 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --name halyard --rm <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v ~/.hal:/home/spinnaker/.hal <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v ~/.kubeconfig:/home/spinnaker/.kube <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v /usr/local/bin:/usr/local/sbin <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v /etc/kubernetes/auth/admin.conf:/home/spinnaker/.kube/config <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    us-docker.pkg.dev/spinnaker-community/docker/halyard:stable
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>因为 docker 环境不能重启服务，需要修改配置文件，这里可以在外部创建一个配置文件来映射进去，这里后面会说到 GCS 的问题</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ docker run -it --rm us-docker.pkg.dev/spinnaker-community/docker/halyard:stable cat /opt/halyard/config/halyard.yml &gt; /tmp/halyard.yml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改 spinnaker 部分的配置，将 <code>enabled: true</code> ，改为 <code>enabled: false</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">spinnaker</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">debian</span><span class="p">:</span><span class="w"> </span><span class="l">https://us-apt.pkg.dev/projects/spinnaker-community</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">docker</span><span class="p">:</span><span class="w"> </span><span class="l">us-docker.pkg.dev/spinnaker-community/docker</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">config</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">gcs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">writerEnabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="l">halconfig</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>然后将输出的配置文件保存到宿主机，而后映射到容器内即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker run -d -p 8084:8084 -p 9000:9000 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --name halyard --rm <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v ~/.hal:/home/spinnaker/.hal <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v ~/.kubeconfig:/home/spinnaker/.kube <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v /usr/local/bin:/usr/local/sbin <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v /etc/kubernetes/auth/admin.conf:/home/spinnaker/.kube/config <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v /tmp/halyard.yml:/opt/halyard/config/halyard.yml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    us-docker.pkg.dev/spinnaker-community/docker/halyard:stable
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="安装kubectl">安装kubectl</h3>
-<blockquote>
-<p>这部分在上一章中注明了挂载 kubectl 的路径</p>
-</blockquote>
-<p>使用 Docker 运行的 Halyard 可以直接挂在 kubectl 到 容器内就可以了，halyard 默认的路径在 <code>/usr/local/bin</code>  只要避免和这个路径冲突就可以了。</p>
-<blockquote>
-<p>halyard 中附带的 kubectl 不一定与你的集群版本一致</p>
-</blockquote>
-<p>最后进入容器就可以管理 spinnaker 了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker <span class="nb">exec</span> -it halyard bash
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="生成一个-halyard-config-supa-href33asup">生成一个 Halyard config <sup><a href="#3">[3]</a></sup></h3>
-<p>离线安装时，需要生成一个 Halyard config 文件，默认在 <code>~/.hal/config</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">hal config version edit --version local:1.19.2
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Notes:</p>
-<ul>
-<li>如果是选择离线安装或者 Local 方式安装，那么 local 关键字必须加</li>
-<li>如果主机没有网，此时需要指定参数 <code>--no-validate</code> 来控制关闭验证，验证通常要联网</li>
-<li>对于执行大部分的 hal 命令都会在 <code>~/.hal/config</code> 生成配置文件</li>
-</ul>
-</blockquote>
-<h3 id="选择云供应商">选择云供应商</h3>
-<p>这里可以指选择一个 Kubernetes 集群将其添加到 Halyard config 中</p>
-<blockquote>
-<p>注意，这里需要时 Kubectl 可以正常请求集群，即需要 kubectl 与 kubeconfig</p>
-</blockquote>
-<p>但在选择 Kubernetes 作为 Halyard 的 provider 之前，可以在 Kubernetes 中创建一个新的 service 以在 Halyard 中使用。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># Run in Halyard container</span>
-</span></span><span class="line"><span class="cl"><span class="nv">CONTEXT</span><span class="o">=</span><span class="k">$(</span>kubectl config current-context<span class="k">)</span>
-</span></span><span class="line"><span class="cl">kubectl apply --context <span class="nv">$CONTEXT</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -f https://spinnaker.io/downloads/kubernetes/service-account.yml
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nv">TOKEN</span><span class="o">=</span><span class="k">$(</span>kubectl get secret --context <span class="nv">$CONTEXT</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>   <span class="k">$(</span>kubectl get serviceaccount spinnaker-service-account <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>       --context <span class="nv">$CONTEXT</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>       -n spinnaker <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>       -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.secrets[0].name}&#39;</span><span class="k">)</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>   -n spinnaker <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>   -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.data.token}&#39;</span> <span class="p">|</span> base64 --decode<span class="k">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">kubectl config set-credentials <span class="si">${</span><span class="nv">CONTEXT</span><span class="si">}</span>-token-user --token <span class="nv">$TOKEN</span>
-</span></span><span class="line"><span class="cl">kubectl config set-context <span class="nv">$CONTEXT</span> --user <span class="si">${</span><span class="nv">CONTEXT</span><span class="si">}</span>-token-user
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>启用 kubernetes，并配置使用的 kubernetes 用户</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># Run in Halyard container</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">hal config provider kubernetes <span class="nb">enable</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nv">ACCOUNT</span><span class="o">=</span><span class="s2">&#34;my-k8s-account&#34;</span>
-</span></span><span class="line"><span class="cl">hal config provider kubernetes account add <span class="si">${</span><span class="nv">ACCOUNT</span><span class="si">}</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --context <span class="si">${</span><span class="nv">CONTEXT</span><span class="si">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Halyard 有几种部署 Spinnaker 服务的选项，例如Local, git 和 Distributed，这里使用 Distributed 模式，将 Spinnaker 以分布式方式部署到 Kubernetes内。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">hal config deploy edit --type distributed --account-name <span class="nv">$ACCOUNT</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置s3存储">配置S3存储</h3>
-<p>Spinnaker 需要外部存储，例如 S3 对象存储置，为此，我使用 Minio 作为外部存储服务。这里使用 docker 进行部署，作为学习，也可以使用 minIO 官方提供的 minIO-dev <sup><a href="#4">[4]</a></sup>，可以快速在 Kubernetes 集群上部署一个单实例的 minIO</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># System</span>
-</span></span><span class="line"><span class="cl"><span class="nv">MINIO_ROOT_USER</span><span class="o">=</span><span class="k">$(</span>&lt; /dev/urandom tr -dc a-z <span class="p">|</span> head -c<span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">4</span><span class="si">}</span><span class="k">)</span>
-</span></span><span class="line"><span class="cl"><span class="nv">MINIO_ROOT_PASSWORD</span><span class="o">=</span><span class="k">$(</span>&lt; /dev/urandom tr -dc _A-Z-a-z-0-9 <span class="p">|</span> head -c<span class="si">${</span><span class="nv">1</span><span class="k">:-</span><span class="nv">8</span><span class="si">}</span><span class="k">)</span>
-</span></span><span class="line"><span class="cl"><span class="nv">MINIO_PORT</span><span class="o">=</span><span class="s2">&#34;9010&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># Start the container</span>
-</span></span><span class="line"><span class="cl">docker run -it -d --rm -v ~/.minio-data/:/data --name minio-4-spinnaker -p <span class="si">${</span><span class="nv">MINIO_PORT</span><span class="si">}</span>:<span class="si">${</span><span class="nv">MINIO_PORT</span><span class="si">}</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>-e <span class="nv">MINIO_ROOT_USER</span><span class="o">=</span><span class="si">${</span><span class="nv">MINIO_ROOT_USER</span><span class="si">}</span> -e  <span class="nv">MINIO_ROOT_PASSWORD</span><span class="o">=</span><span class="si">${</span><span class="nv">MINIO_ROOT_PASSWORD</span><span class="si">}</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span> minio/minio  server /data --address :<span class="si">${</span><span class="nv">MINIO_PORT</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># This information is used in next {.1}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s2">MINIO_ROOT_USER=</span><span class="si">${</span><span class="nv">MINIO_ROOT_USER</span><span class="si">}</span><span class="s2">
-</span></span></span><span class="line"><span class="cl"><span class="s2">MINIO_ROOT_PASSWORD=</span><span class="si">${</span><span class="nv">MINIO_ROOT_PASSWORD</span><span class="si">}</span><span class="s2">
-</span></span></span><span class="line"><span class="cl"><span class="s2">ENDPOINT=http://</span><span class="k">$(</span>docker inspect -f <span class="s1">&#39;{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}&#39;</span> minio-4-spinnaker<span class="k">)</span><span class="s2">:</span><span class="si">${</span><span class="nv">MINIO_PORT</span><span class="si">}</span><span class="s2">
-</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果需要开启，那么需要在目录 <code>~/.hal/default/profiles/front50-local.yml</code> 创建文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">spinnaker:
-</span></span><span class="line"><span class="cl">  s3:
-</span></span><span class="line"><span class="cl">    versioning: <span class="nb">false</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>然后使用以下命令进行配置到 halyard config 文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">ENDPOINT</span><span class="o">=</span>http://10.0.2.4:9000
-</span></span><span class="line"><span class="cl"><span class="nv">MINIO_ACCESS_KEY</span><span class="o">=</span>minio
-</span></span><span class="line"><span class="cl"><span class="nv">MINIO_SECRET_KEY</span><span class="o">=</span>minio123
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="nv">$MINIO_SECRET_KEY</span> <span class="p">|</span> hal config storage s3 edit --endpoint <span class="nv">$ENDPOINT</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --access-key-id <span class="nv">$MINIO_ACCESS_KEY</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --secret-access-key
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">hal config storage edit --type s3
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="生成一个bom文件">生成一个BOM文件</h3>
-<p>找一台有外网的主机，执行下列命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">hal version bom 1.19.2 -q -o yaml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Note: 如果开启了 <code>gcs.enabled: true</code> 需要重新启动一个容器，因为这个步骤需要联网查询</p>
-</blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ <span class="nv">DOCKERID</span><span class="o">=</span><span class="sb">`</span>docker run -d --rm <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    -v ~/.hal:/home/spinnaker/.hal <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    us-docker.pkg.dev/spinnaker-community/docker/halyard:stable<span class="sb">`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ docker <span class="nb">exec</span> -it <span class="si">${</span><span class="nv">DOCKERID</span><span class="si">}</span> hal version bom 1.19.2 -q -o yaml <span class="o">&amp;&amp;</span> docker stop <span class="si">${</span><span class="nv">DOCKERID</span><span class="si">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>将输出的文件保存在 halyard 容器内 <code>~/.hal/.boms/bom/{version}.yml</code> ，将 <code>{version}</code> 替换为你安装的版本，例如这里为 1.19.2</p>
-<p>其次，要在本地执行此操作的容器内，需要在 <code>halconfig</code> 目录下有对应的 BOM 清单，清单格式如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ tree ~/.hal/.boms/
-</span></span><span class="line"><span class="cl">/root/.hal/.boms/
-</span></span><span class="line"><span class="cl">├── bom
-</span></span><span class="line"><span class="cl">│   └── 1.19.2.yml
-</span></span><span class="line"><span class="cl">├── clouddriver
-</span></span><span class="line"><span class="cl">│   └── clouddriver.yml
-</span></span><span class="line"><span class="cl">├── deck
-</span></span><span class="line"><span class="cl">│   └── settings.js
-</span></span><span class="line"><span class="cl">├── <span class="nb">echo</span>
-</span></span><span class="line"><span class="cl">│   └── echo.yml
-</span></span><span class="line"><span class="cl">├── fiat
-</span></span><span class="line"><span class="cl">│   └── fiat.yml
-</span></span><span class="line"><span class="cl">├── front50
-</span></span><span class="line"><span class="cl">│   └── front50.yml
-</span></span><span class="line"><span class="cl">├── gate
-</span></span><span class="line"><span class="cl">│   └── gate.yml
-</span></span><span class="line"><span class="cl">├── igor
-</span></span><span class="line"><span class="cl">│   └── igor.yml
-</span></span><span class="line"><span class="cl">├── kayenta
-</span></span><span class="line"><span class="cl">│   └── kayenta.yml
-</span></span><span class="line"><span class="cl">├── orca
-</span></span><span class="line"><span class="cl">│   └── orca.yml
-</span></span><span class="line"><span class="cl">└── rosco
-</span></span><span class="line"><span class="cl">    └── rosco.yml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这些文件夹需要自行创建，并且里面的配置文件也需要自行创建，如果不知道格式如何，可以参考 Spinnaker github 仓库上，每一个上面的文件夹都是一个项目仓库，而这些仓库的根目录都存在一个 <em><strong>halconfig</strong></em> 目录，此时需要你将对应的文件保存到对应目录下，例如，clouddriver 文件夹需要选择 <a href="https://github.com/spinnaker/clouddriver/tree/master/halconfig">github.com/spinnaker/clouddriver</a> 项目，而配置文件需要选择 <code>{service_name}.yml</code> 为命名的，例如 clouddriver 就需要选择 clouddriver.yml，这个需要自行下载。</p>
-<p>可以使用下列脚本进行生成这些配置文件（需要上网）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span><span class="lnt">108
-</span><span class="lnt">109
-</span><span class="lnt">110
-</span><span class="lnt">111
-</span><span class="lnt">112
-</span><span class="lnt">113
-</span><span class="lnt">114
-</span><span class="lnt">115
-</span><span class="lnt">116
-</span><span class="lnt">117
-</span><span class="lnt">118
-</span><span class="lnt">119
-</span><span class="lnt">120
-</span><span class="lnt">121
-</span><span class="lnt">122
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="cp">#!/bin/bash
-</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="c1">####################################################################################</span>
-</span></span><span class="line"><span class="cl"><span class="c1">#                         Install Spinnaker scripts for CentOS                     #</span>
-</span></span><span class="line"><span class="cl"><span class="c1">####################################################################################</span>
-</span></span><span class="line"><span class="cl"><span class="nb">set</span> -e
-</span></span><span class="line"><span class="cl"><span class="nv">START_TIME</span><span class="o">=</span><span class="sb">`</span>date +%s<span class="sb">`</span>
-</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">ROOT</span><span class="o">=</span><span class="k">$(</span><span class="nb">cd</span> <span class="k">$(</span>dirname <span class="nv">$0</span><span class="k">)</span><span class="p">;</span> <span class="nb">pwd</span><span class="k">)</span>
-</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">BASE_URL</span><span class="o">=</span><span class="s2">&#34;https://raw.githubusercontent.com/spinnaker&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">DECK_FILE_NAME</span><span class="o">=</span><span class="s2">&#34;halconfig/settings.js&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">FILE_PREFIX</span><span class="o">=</span><span class="s2">&#34;halconfig&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">usage<span class="o">(){</span>
-</span></span><span class="line"><span class="cl">	cat <span class="s">&lt;&lt;EOF
-</span></span></span><span class="line"><span class="cl"><span class="s">Usage: $CMD &lt;bom_file&gt; &lt;output_dir&gt;
-</span></span></span><span class="line"><span class="cl"><span class="s">    $CMD ~/.hal/.boms/bom/1.20.0.yml ~/.hal/.boms
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">function</span> install_json_tools<span class="o">(){</span>
-</span></span><span class="line"><span class="cl">    which jq <span class="p">&amp;</span>&gt; /dev/null <span class="o">||</span> sudo yum install jq -y
-</span></span><span class="line"><span class="cl">    which yq <span class="o">||</span> <span class="o">(</span> wget https://github.com/mikefarah/yq/releases/download/v4.16.2/yq_linux_amd64 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    <span class="o">&amp;&amp;</span> chmod +x yq_linux_amd64 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    <span class="o">&amp;&amp;</span> mv yq_linux_amd64 /usr/local/bin/yq <span class="o">)</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">function</span> remove_json_tools<span class="o">(){</span>
-</span></span><span class="line"><span class="cl">   rm -f a/usr/local/bin/yq
-</span></span><span class="line"><span class="cl">   rpm -e jq --force
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">function</span> pull_packer<span class="o">(){</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">##check paramter##</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="o">[[</span> <span class="si">${#}</span> -ne <span class="m">1</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then</span>
-</span></span><span class="line"><span class="cl">        <span class="nb">echo</span> -e <span class="s2">&#34;\033[32m Paramter amount error. \033[0m&#34;</span> <span class="o">&amp;&amp;</span> <span class="nb">exit</span> <span class="si">${</span><span class="nv">MALFORMEDPARAMTER</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">    <span class="k">fi</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="nb">export</span> <span class="nv">SPIN_TMP_DIR</span><span class="o">=</span><span class="si">${</span><span class="nv">ROOT</span><span class="si">}</span>/spin_installer
-</span></span><span class="line"><span class="cl">    <span class="o">[</span> -d <span class="si">${</span><span class="nv">SPIN_TMP_DIR</span><span class="si">}</span> <span class="o">]</span> <span class="o">||</span> mkdir -pv <span class="si">${</span><span class="nv">SPIN_TMP_DIR</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nb">cd</span> <span class="si">${</span><span class="nv">SPIN_TMP_DIR</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">    git init
-</span></span><span class="line"><span class="cl">    <span class="c1"># 配置远程仓库地址</span>
-</span></span><span class="line"><span class="cl">    git remote add origin https://github.com/spinnaker/rosco
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># 启用 sparse checkout</span>
-</span></span><span class="line"><span class="cl">    git config core.sparsecheckout <span class="nb">true</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># 指定要克隆的目录</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">echo</span> <span class="s2">&#34;halconfig/packer&#34;</span> &gt;&gt; .git/info/sparse-checkout
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># 拉取远程仓库的内容</span>
-</span></span><span class="line"><span class="cl">    git pull origin <span class="si">${</span><span class="nv">1</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">    tar zcf packer.tar.gz -C ./halconfig packer
-</span></span><span class="line"><span class="cl">    mv packer.tar.gz <span class="si">${</span><span class="nv">BOM_PATH_I</span><span class="si">}</span>/
-</span></span><span class="line"><span class="cl">    <span class="c1"># clean work dir</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">cd</span> <span class="si">${</span><span class="nv">ROOT</span><span class="si">}</span> <span class="o">&amp;&amp;</span> rm -fr <span class="si">${</span><span class="nv">SPIN_TMP_DIR</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">function</span> gererate_bom<span class="o">(){</span>
-</span></span><span class="line"><span class="cl">    yq <span class="nb">eval</span> -o json <span class="si">${</span><span class="nv">BOM_FILE_NAME</span><span class="si">}</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">    jq <span class="s1">&#39;.services&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">    jq <span class="s1">&#39;del(.defaultArtifact ,.[&#34;monitoring-third-party&#34;], .[&#34;monitoring-daemon&#34;])&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">    jq -r <span class="s1">&#39;to_entries[] | &#34;\(.key)=\(.value)&#34;&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="nv">IFS</span><span class="o">=</span><span class="s2">&#34;=&#34;</span> <span class="nb">read</span> -r key value<span class="p">;</span> <span class="k">do</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">VERSION</span><span class="o">=</span><span class="s2">&#34;version-`echo </span><span class="nv">$value</span><span class="s2"> | jq &#39;.version&#39;|awk -F &#39;=&#39; &#39;{print </span><span class="nv">$1</span><span class="s2">}&#39; | awk -F &#39;-&#39; &#39;{print </span><span class="nv">$1</span><span class="s2">}&#39;| tr -d &#39;&#34;</span><span class="s1">&#39;`&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">        
-</span></span></span><span class="line"><span class="cl"><span class="s1">        export BOM_PATH_I=${BOM_PATH}/${key}
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">        [ -d ${BOM_PATH_I} ] || mkdir -pv ${BOM_PATH_I}; chmod 777 ${BOM_PATH_I}
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">        case ${key} in
-</span></span></span><span class="line"><span class="cl"><span class="s1">            &#34;deck&#34;)
-</span></span></span><span class="line"><span class="cl"><span class="s1">                curl &#34;${BASE_URL}/${key}/${VERSION}/${FILE_PREFIX}/settings.js&#34; -o ${BOM_PATH_I}/settings.js
-</span></span></span><span class="line"><span class="cl"><span class="s1">                ;;
-</span></span></span><span class="line"><span class="cl"><span class="s1">            &#34;rosco&#34;)
-</span></span></span><span class="line"><span class="cl"><span class="s1">                curl &#34;${BASE_URL}/${key}/${VERSION}/${FILE_PREFIX}/${key}.yml&#34; -o ${BOM_PATH_I}/${key}.yml
-</span></span></span><span class="line"><span class="cl"><span class="s1">                curl &#34;${BASE_URL}/${key}/${VERSION}/${FILE_PREFIX}/images.yml&#34; -o ${BOM_PATH_I}/images.yml
-</span></span></span><span class="line"><span class="cl"><span class="s1">                pull_packer ${VERSION}
-</span></span></span><span class="line"><span class="cl"><span class="s1">                ;;
-</span></span></span><span class="line"><span class="cl"><span class="s1">            *)
-</span></span></span><span class="line"><span class="cl"><span class="s1">                curl &#34;${BASE_URL}/${key}/${VERSION}/${FILE_PREFIX}/${key}.yml&#34;  -o ${BOM_PATH_I}/${key}.yml
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">        esac
-</span></span></span><span class="line"><span class="cl"><span class="s1">    done
-</span></span></span><span class="line"><span class="cl"><span class="s1">    chmod 777 ${BOM_PATH} -R
-</span></span></span><span class="line"><span class="cl"><span class="s1">}
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">function MAIN(){
-</span></span></span><span class="line"><span class="cl"><span class="s1">    ##check user##
-</span></span></span><span class="line"><span class="cl"><span class="s1">    if [[ $UID != 0 ]];then
-</span></span></span><span class="line"><span class="cl"><span class="s1">        echo -e &#34;\033[41;05m Sorry, this script must be run as root! \033[0m&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">        exit ${ILLEGALUSER}
-</span></span></span><span class="line"><span class="cl"><span class="s1">    fi
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">    ##check paramter##
-</span></span></span><span class="line"><span class="cl"><span class="s1">    if [[ ${#} -lt 2 ]]; then
-</span></span></span><span class="line"><span class="cl"><span class="s1">        usage &amp;&amp; exit ${MALFORMEDPARAMTER}
-</span></span></span><span class="line"><span class="cl"><span class="s1">    fi
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">    export BOM_FILE_NAME=$1; shift
-</span></span></span><span class="line"><span class="cl"><span class="s1">    export BOM_PATH=$1; shift
-</span></span></span><span class="line"><span class="cl"><span class="s1">    
-</span></span></span><span class="line"><span class="cl"><span class="s1">    ##cheking command line##
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">    install_json_tools
-</span></span></span><span class="line"><span class="cl"><span class="s1">    
-</span></span></span><span class="line"><span class="cl"><span class="s1">    ##processing bom##
-</span></span></span><span class="line"><span class="cl"><span class="s1">    gererate_bom
-</span></span></span><span class="line"><span class="cl"><span class="s1">
-</span></span></span><span class="line"><span class="cl"><span class="s1">	END_TIME=`date +%s`
-</span></span></span><span class="line"><span class="cl"><span class="s1">	EXECUTING_TIME=`expr $END_TIME - $START_TIME`
-</span></span></span><span class="line"><span class="cl"><span class="s1">	echo -e &#34;\033[42;30m Time had spent $EXECUTING_TIME seconds. \033[0m&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">	echo -e &#34;\033[40;34m ######################################################### \033[0m&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">	echo -e &#39;</span><span class="se">\n</span><span class="err">&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">MAIN <span class="nv">$1</span> <span class="nv">$2</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>在执行脚本时需要在容器运行的宿主机进行，如果这台主机没有网络，那么可以在其他机器执行</p>
-</blockquote>
-<h3 id="额外下载一个-packertargz">额外下载一个 packer.tar.gz</h3>
-<p>这里 进入文件夹 <code>rosco/master </code> <code>rosco</code> 有一个文件夹叫packer，这将其移至文件夹并解压缩为 <code>packer.tar.gz </code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mv ~/.hal/.boms/rosco/master/packer.tar.gz ~/.hal/.boms/rosco
-</span></span><span class="line"><span class="cl"><span class="nb">cd</span> ~/.hal/.boms/rosco
-</span></span><span class="line"><span class="cl">tar xvf packer.tar.gz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="为bom服务配置local关键字">为BOM服务配置local关键字</h3>
-<p>对于离线安装，我们需要为 BOM 中的每个服务使用的镜像名称都增加一个 <code>local:</code> 前缀，这是官方的固定格式 <sup><a href="#5">[5]</a></sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">dependencies</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">consul</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="m">0.7.5</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">redis</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="p">:</span><span class="m">2.8.4-2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">vault</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="m">0.7.0</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">services</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clouddriver</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">commit</span><span class="p">:</span><span class="w"> </span><span class="l">024b9220a1322f80ed732de9f58aec2768e93d1b</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l">local:6.4.3-20191210131345</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">...</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置镜像获取源">配置镜像获取源</h3>
-<p>这里可以选择 直接 docker 导入镜像到每个 Kubernetes worker 节点上，也可以选择配置私有镜像仓库。</p>
-<p>如果需要使用私有镜像，那么需要修改  <code>VERSION.yml</code> 中的dockerRegistry 选项，将其修改为你自己的镜像仓库</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">artifactSources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">debianRepository</span><span class="p">:</span><span class="w"> </span><span class="l">https://dl.bintray.com/spinnaker-releases/debians</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c">#dockerRegistry: gcr.io/spinnaker-marketplace</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">dockerRegistry</span><span class="p">:</span><span class="w"> </span><span class="l">private-docker-registry/repository-name</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">gitPrefix</span><span class="p">:</span><span class="w"> </span><span class="l">https://github.com/spinnaker</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">googleImageProject</span><span class="p">:</span><span class="w"> </span><span class="l">marketplace-spinnaker-release</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>或者使用 <code>docker save</code> 通过命令导出镜像为 <code>tar.gz</code> 文件，然后导入到所有的 Kubernetes 的工作节点上</p>
-<h3 id="部署">部署</h3>
-<p>可以直接执行 <code>hal deploy</code> 命令可以进行部署，更新，删除等操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">hal deploy apply <span class="c1"># 部署</span>
-</span></span><span class="line"><span class="cl">hal deploy clean <span class="c1"># 一键清理已经部署的服务</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="could-not-load-versionsyml-from-config-bucket-xx-supa-href22asup">Could not load &ldquo;versions.yml&rdquo; from config bucket: xx <sup><a href="#2">[2]</a></sup></h3>
-<p>这是因为默认情况下从GCS读取配置文件，可以通过修改配置文件 <code>/opt/spinanker/config/halyard-local.yml</code> 关闭 gcs 功能（或 <code>/opt/halyard/config/halyard.yml </code>）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">server</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">8064</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">...</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spinnaker</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">debian</span><span class="p">:</span><span class="w"> </span><span class="l">https://us-apt.pkg.dev/projects/spinnaker-community</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">docker</span><span class="p">:</span><span class="w"> </span><span class="l">us-docker.pkg.dev/spinnaker-community/docker</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">config</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">gcs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">writerEnabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="l">halconfig</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Notes: 修改完成后需要重启进程，并且修改时需要使用root用户进入容器内</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">docker exec -it 4f3c037d2e3c bash
-</span></span><span class="line"><span class="cl">hal shutdown
-</span></span></code></pre></td></tr></table>
-</div>
-</div></blockquote>
-<h3 id="unable-to-retrieve-profile-clouddriveryml">Unable to retrieve profile &ldquo;clouddriver.yml&rdquo;</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Validation in Global:
-</span></span><span class="line"><span class="cl">! ERROR Unable to retrieve profile <span class="s2">&#34;clouddriver.yml&#34;</span>: connect timed out
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：BOM需要按照固定格式，创建对应每个配置文件的清单</p>
-<h3 id="unable-to-retrieve-profile-versionsyml">Unable to retrieve profile &ldquo;versions.yml&rdquo;</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Validation in Global:
-</span></span><span class="line"><span class="cl">! ERROR Unable to retrieve profile <span class="s2">&#34;versions.yml&#34;</span>: connect timed out
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：关闭 GCS 即可</p>
-<h3 id="no-persistent-storage-type-was-configured">No persistent storage type was configured</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Validation in Global:
-</span></span><span class="line"><span class="cl">! ERROR No persistent storage <span class="nb">type</span> was configured.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：<code>hal config storage s3 edit</code></p>
-<h3 id="error-retirveing-contentes-of-archive-packertargz">Error retirveing contentes of archive packer.tar.gz</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Validation in Global:
-</span></span><span class="line"><span class="cl">! ERROR Error retirveing contentes of archive packer.tar.gz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：拷贝对应服务的 github 仓库中的 packer 文件夹</p>
-<h3 id="no-profile-reader-exists-to-read">No profile reader exists to read</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">! ERROR No profile reader exists to <span class="nb">read</span> <span class="s1">&#39;6.7.1-20200319123809&#39;</span>.
-</span></span><span class="line"><span class="cl">  Consider setting <span class="s1">&#39;spinnaker.config.input.gcs.enabled: true&#39;</span> in
-</span></span><span class="line"><span class="cl">  /opt/spinnaker/config/halyard.yml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：因为 bom 文件中镜像没有设置 <code>local</code></p>
-<h3 id="-error-no-persistent-storage-type-was-configured">! ERROR No persistent storage type was configured.</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">  Failure
-</span></span><span class="line"><span class="cl">Validation in Global:
-</span></span><span class="line"><span class="cl">! ERROR No persistent storage <span class="nb">type</span> was configured.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：<code>hal config storage edit --type s3 --no-validate</code></p>
-<h3 id="cors-error">CORS error</h3>
-<p>如下图所示：</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230719230037546.png" alt="image-20230719230037546"  /></p>
-<p>官方给出的检查方法是“排查 gate 服务的可用性” <sup><a href="#8">[8]</a></sup>，但检查 gate 日志没有问题，service ip 请求也是通的</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">2023-07-19 15:01:05.150  INFO <span class="m">1</span> --- <span class="o">[</span>applications-10<span class="o">]</span> c.n.s.g.s.internal.ClouddriverService    : ---&gt; HTTP GET http://spin-clouddriver.spinnaker:7002/applications?restricted<span class="o">=</span>false<span class="p">&amp;</span><span class="nv">expand</span><span class="o">=</span><span class="nb">true</span>
-</span></span><span class="line"><span class="cl">2023-07-19 15:01:05.186  INFO <span class="m">1</span> --- <span class="o">[</span>applications-10<span class="o">]</span> c.n.s.g.s.internal.ClouddriverService    : &lt;--- HTTP <span class="m">200</span> http://spin-clouddriver.spinnaker:7002/applications?restricted<span class="o">=</span>false<span class="p">&amp;</span><span class="nv">expand</span><span class="o">=</span><span class="nb">true</span> <span class="o">(</span>31ms<span class="o">)</span>
-</span></span><span class="line"><span class="cl">2023-07-19 15:01:05.227  INFO <span class="m">1</span> --- <span class="o">[</span>-applications-9<span class="o">]</span> c.n.s.g.s.internal.Front50Service        : &lt;--- HTTP <span class="m">200</span> http://spin-front50.spinnaker:8080/v2/applications?restricted<span class="o">=</span><span class="nb">false</span> <span class="o">(</span>83ms<span class="o">)</span>
-</span></span><span class="line"><span class="cl">2023-07-19 15:01:08.343  INFO <span class="m">1</span> --- <span class="o">[</span>TaskScheduler-6<span class="o">]</span> c.n.s.gate.plugins.deck.DeckPluginCache  : Refreshing plugin cache
-</span></span><span class="line"><span class="cl">2023-07-19 15:01:08.343  INFO <span class="m">1</span> --- <span class="o">[</span>TaskScheduler-6<span class="o">]</span> c.n.s.gate.plugins.deck.DeckPluginCache  : Cached <span class="m">0</span> deck plugins
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>请求 service ip + port</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ curl 10.111.192.125:8084 -vv
-</span></span><span class="line"><span class="cl">* About to connect<span class="o">()</span> to 10.111.192.125 port <span class="m">8084</span> <span class="o">(</span><span class="c1">#0)</span>
-</span></span><span class="line"><span class="cl">*   Trying 10.111.192.125...
-</span></span><span class="line"><span class="cl">* Connected to 10.111.192.125 <span class="o">(</span>10.111.192.125<span class="o">)</span> port <span class="m">8084</span> <span class="o">(</span><span class="c1">#0)</span>
-</span></span><span class="line"><span class="cl">&gt; GET / HTTP/1.1
-</span></span><span class="line"><span class="cl">&gt; User-Agent: curl/7.29.0
-</span></span><span class="line"><span class="cl">&gt; Host: 10.111.192.125:8084
-</span></span><span class="line"><span class="cl">&gt; Accept: */*
-</span></span><span class="line"><span class="cl">&gt; 
-</span></span><span class="line"><span class="cl">&lt; HTTP/1.1 <span class="m">302</span> 
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Allow-Credentials: <span class="nb">true</span>
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Allow-Origin: *
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Allow-Methods: POST, GET, OPTIONS, DELETE, PUT, PATCH
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Max-Age: <span class="m">3600</span>
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Allow-Headers: x-requested-with, content-type, authorization, X-RateLimit-App, X-Spinnaker-Priority
-</span></span><span class="line"><span class="cl">&lt; Access-Control-Expose-Headers: X-AUTH-REDIRECT-URL
-</span></span><span class="line"><span class="cl">&lt; X-SPINNAKER-REQUEST-ID: 6b96a924-9bcb-496c-9389-12cc6834aff7
-</span></span><span class="line"><span class="cl">&lt; X-Content-Type-Options: nosniff
-</span></span><span class="line"><span class="cl">&lt; X-XSS-Protection: 1<span class="p">;</span> <span class="nv">mode</span><span class="o">=</span>block
-</span></span><span class="line"><span class="cl">&lt; Cache-Control: no-cache, no-store, max-age<span class="o">=</span>0, must-revalidate
-</span></span><span class="line"><span class="cl">&lt; Pragma: no-cache
-</span></span><span class="line"><span class="cl">&lt; Expires: <span class="m">0</span>
-</span></span><span class="line"><span class="cl">&lt; X-Frame-Options: DENY
-</span></span><span class="line"><span class="cl">&lt; Location: http://spin-deck.spinnaker:9000
-</span></span><span class="line"><span class="cl">&lt; Content-Length: <span class="m">0</span>
-</span></span><span class="line"><span class="cl">&lt; Date: Wed, <span class="m">19</span> Jul <span class="m">2023</span> 15:01:28 GMT
-</span></span><span class="line"><span class="cl">&lt; 
-</span></span><span class="line"><span class="cl">* Connection <span class="c1">#0 to host 10.111.192.125 left intact</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>浏览器访问 gate url 也是正常的</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230719230307938.png" alt="image-20230719230307938"  /></p>
-<h2 id="reference">Reference</h2>
-<blockquote>
-<p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/setup/install/halyard/#install-halyard-on-docker">Install Halyard on Docker</a></p>
-<p><sup id="2">[2]</sup> <a href="https://github.com/spinnaker/spinnaker/issues/3920">ERROR Could not load &ldquo;versions.yml&rdquo; from config bucket: 403 #3920</a></p>
-<p><sup id="3">[3]</sup> <a href="https://stackoverflow.com/questions/54947839/spinnaker-how-to-bring-custom-boms-into-spinnaker-pod-to-be-able-to-deploy-it-w">Spinnaker: How to bring custom boms into spinnaker pod to be able to deploy it with hal?</a></p>
-<p><sup id="4">[4]</sup> <a href="https://min.io/docs/minio/kubernetes/upstream/index.html#procedure">MinIO Object Storage for Kubernetes</a></p>
-<p><sup id="5">[5]</sup> <a href="https://spinnaker.io/docs/guides/operator/custom-boms/#boms-and-configuration-on-your-filesystem">BOMs and Configuration on your Filesystem</a></p>
-<p><sup id="6">[6]</sup> <a href="https://github.com/spinnaker/spinnaker/issues/5875">! ERROR No persistent storage type was configured.  #5875</a></p>
-<p><sup id="7">[7]</sup> <a href="https://kimmj.github.io/spinnaker/installation/install-in-air-gaped-environment/">Install in Air Gaped Environment</a></p>
-<p><sup id="8">[8]</sup> <a href="https://spinnaker.io/docs/setup/install/faq/#i-cant-load-the-applications-screen">I can’t load the Applications screen</a></p>
-<p><sup id="9">[9]</sup> <a href="https://github.com/spinnaker/spinnaker/issues/4689">use k8s cluster private, how to access? not use localhost! #4689</a></p>
-</blockquote>
-]]></content:encoded>
-    </item>
-    
-    <item>
       <title>无互联网环境下安装Spinnaker - Offline Install Spinnaker</title>
-      <link>https://www.oomkill.com/2023/07/ch02-offline-installtation/</link>
+      <link>https://www.oomkill.com/2023/07/offline-installtation/</link>
       <pubDate>Mon, 10 Jul 2023 00:00:00 +0000</pubDate>
       
-      <guid>https://www.oomkill.com/2023/07/ch02-offline-installtation/</guid>
+      <guid>https://www.oomkill.com/2023/07/offline-installtation/</guid>
       <description></description>
       <content:encoded><![CDATA[<h2 id="prerequisites">Prerequisites</h2>
 <ul>
@@ -2449,7 +2045,6 @@
 </span></span></span></code></pre></td></tr></table>
 </div>
 </div><h2 id="reference">Reference</h2>
-<blockquote>
 <p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/setup/install/halyard/#install-halyard-on-docker">Install Halyard on Docker</a></p>
 <p><sup id="2">[2]</sup> <a href="https://github.com/spinnaker/spinnaker/issues/3920">ERROR Could not load &ldquo;versions.yml&rdquo; from config bucket: 403 #3920</a></p>
 <p><sup id="3">[3]</sup> <a href="https://stackoverflow.com/questions/54947839/spinnaker-how-to-bring-custom-boms-into-spinnaker-pod-to-be-able-to-deploy-it-w">Spinnaker: How to bring custom boms into spinnaker pod to be able to deploy it with hal?</a></p>
@@ -2459,111 +2054,7 @@
 <p><sup id="7">[7]</sup> <a href="https://kimmj.github.io/spinnaker/installation/install-in-air-gaped-environment/">Install in Air Gaped Environment</a></p>
 <p><sup id="8">[8]</sup> <a href="https://spinnaker.io/docs/setup/install/faq/#i-cant-load-the-applications-screen">I can’t load the Applications screen</a></p>
 <p><sup id="9">[9]</sup> <a href="https://github.com/spinnaker/spinnaker/issues/4689">use k8s cluster private, how to access? not use localhost! #4689</a></p>
-</blockquote>
 ]]></content:encoded>
-    </item>
-    
-    <item>
-      <title>初识 Spinnaker</title>
-      <link>https://www.oomkill.com/2023/06/ch01-spinnaker-introduction/</link>
-      <pubDate>Sun, 18 Jun 2023 00:00:00 +0000</pubDate>
-      
-      <guid>https://www.oomkill.com/2023/06/ch01-spinnaker-introduction/</guid>
-      <description></description>
-      <content:encoded><![CDATA[<h2 id="介绍">介绍</h2>
-<p>Spinnaker 是一个由 Netflix 和 Google 领导开发的开源持续交付系统，用于管理不同计算平台上的应用部署。</p>
-<p>开源，多云持续交付平台，可以帮助快速而稳定的发布软件更改，主要提供两个核心功能：“应用管理” 与 “应用程序部署”。</p>
-<p>目前支持的云供应商：</p>
-<ul>
-<li>Kubernetes</li>
-<li>Oracle</li>
-<li>GCP</li>
-<li>App Engine</li>
-<li>Kubernetes</li>
-<li>Microsoft</li>
-<li>Cloud Foundry</li>
-<li>Tencent</li>
-<li>&hellip;.</li>
-</ul>
-<p>Netflix曾经有一个零散的连续输送的故事。每个组织的交付系统都是专门为该组织构建的，因此其他组织通常无法从该工作中受益。团队认为自己与众不同，并与Asgard一起致力于詹金斯的工作。所有这些重复的工作不仅浪费，而且使团队难以掌握最新的交付最佳实践并保持最新状态。</p>
-<p>2014年，团队同意 Jenkins 之类的通用持续集成（CI）工具无法为构建具有所需安全性和灵活性的持续交付平台提供合适的基础。为此，一个新的工具诞生了。 Netflix 的交付工程团队与 Google 合作，构建了 Spinnaker，这是一个多云连续输送和基础架构管理工具，该工具可以集中管理并且足够灵活，可以让团队自定义交付内容，但是要进行标准化，以便为所有人带来最佳实践和安全性。 Spinnaker 汇集了数十年的经验，将软件编写和交付到每个人都可以使用的东西中，而无需经历同样的痛苦。</p>
-<p>自从 Spinnaker 在开源社区中被广泛采用以来，维护者一直在不断添加新功能和集成，从而使 Spinnaker 在 Netflix，Google，Airbnb，Pinterest和 Snap 等公司中变得更加有用和具有粘性。</p>
-<h2 id="spinnaker-功能">Spinnaker 功能</h2>
-<ul>
-<li>CI 工具集成：监听事件 , 收集制品。支持触发 Jenkins/TravisCI 管道。</li>
-<li>cli 配置管理工具:使用 halyard 安装、配置和更新 Spinnaker 实例。</li>
-<li>监控集成:使用指标进行金丝雕分析。支持Prometheus、Datadog等。</li>
-<li>部署策略:内置highlander、red/black、canary、自定义策略。</li>
-<li>基于角色访问控制:支持 oAuth、SAML、LDAP、X.509 证书等身份验证方式。</li>
-<li>事件通知:设置email、Slack、HipChat或SMS的事件通知。</li>
-<li>受限发布窗口:将阶段的执行限制在特定的时间范围内,确保在非高峰部署。</li>
-</ul>
-<h2 id="spinnaker-应用管理">Spinnaker 应用管理</h2>
-<p>Spinnaker 应用程序对此概念进行了建模。应用程序，集群和服务器组是Spinnaker用来描述服务的</p>
-<p>关键概念。负载均衡器和防火墙描述了服务如何向用户公开。</p>
-<ul>
-<li>应用：将要部罩的服务,该服务的所有配置以及将在其上运行的所有基础结构。可以通俗理解为，一个 Spiinaker 的应用程序，就是现实中的一个服务</li>
-<li>集群：实例的集合(这里的集群不是 k8s 集群)。</li>
-<li>服务器组：运行服务的实例(VM实例, Kubernetes容器)的集合。</li>
-<li>“负载均衡器”：实例之间的流量控制，对应集群中的service（Kubernetes中的service）。</li>
-<li>防火墙：网络流量的访问。它实际上是由IP范围(CIDR〉以及通信协议(例如TCP)和端口范围定义的一组防火墙规则。</li>
-</ul>
-<h2 id="应用部署">应用部署</h2>
-<p>使用Spinnaker的应用程序部署功能来构建和管理连续交付工作流程。由一系列阶段组成。可配置根据事件自动触发。管道消息通知。</p>
-<h2 id="spinnaker-架构组成">Spinnaker 架构组成</h2>
-<ul>
-<li>Deck：前端 web页面 “端口9000”</li>
-<li>Gate：AP1网关，所有程序通过 gate 与spinnaker通信。端口8084</li>
-<li>Orca：编排引攀,定义管道或任务，并管理阶段和任务，协调其他Spinnaker服务。端口8083</li>
-<li>Clouddriver：云厂商适配器，负责对云厂商的变更资源调用。端口7002</li>
-<li>Front50：用于保存应用程序、管道、项目和通知的元数据。端口8080</li>
-<li>Rosco：为各种运供应商生成不可变的VM镜像。端口80871</li>
-<li>Igor：持续集成系统集成,触发管道。端口8088</li>
-<li>Echo：消息通知,负责发送通知。端口8089</li>
-<li>Fiat：认证授权服务。端口7003</li>
-<li>Kayenta：自动化的金丝雕分析。端口8090</li>
-<li>Halyard：Spinnaker 生命周期配置管理工具。端口8064</li>
-</ul>
-<h2 id="halyard">Halyard</h2>
-<p>Halyard是用于配置,安装和更新Spinnaker的工具。</p>
-<p>Halconfig：是 Spinnaker 部署的所有配置的来源。它通常位于 “/.hal/config“，但可以通过<code>halyard.halconfig.directorySpring</code> 的 config 属性更改其目录。</p>
-<h2 id="安装-spinnaker">安装 Spinnaker</h2>
-<ol>
-<li>部署 Minio 存信服务(S3)</li>
-<li>配置Docker代理</li>
-<li>部署 Nalyard 容器并进行代理配置。</li>
-<li>使用 Nalyard 配置 Spinnaker</li>
-<li>使用 Nalyard 部署 Spinnaker</li>
-<li>检查 Spinnaker pod正常</li>
-<li>创建Ingress 访问</li>
-<li>备份配置</li>
-<li>删除安装</li>
-</ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">以 root 身 份 进 入 容 器 , 修 改 配 置 文 件
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">docker exec -i -u root halyard bash
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">vi /opt/halyard/bin/halyard
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">挂 找 到 DEFAULT_JVWL_0PTS 参 数 , 添 加 代 理 配 置 DEFAULT_IVMLOPTS=「“-Djava.security.egd=file:/dev/./urandom「“- Dspring.config.additional-location=/opt/spinnaker/config/““- Dhttp.proxyHost=192.168.1.289“ “-Dhttp.proxyPort=16879“-
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Dhttps .proxyHost=192.168.1.289““-Dhttps.proxyPort=1887““- Dhttp.nonProxyHostS=V“spinnaker-Spinnaker-halyard|localhost|*.Spinnaker.comyo 
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
     </item>
     
     <item>
