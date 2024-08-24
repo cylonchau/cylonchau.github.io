@@ -10,7 +10,7 @@
 <meta name="description" content="理解ldap应用 - Linux系统接入OpenLDAP做认证后端 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/09/ch10-linux-with-ldap/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "ldap", "linux", "Linux通过openldap认证"
   ],
-  "wordCount" : "3188",
+  "wordCount" : "3135",
   "inLanguage": "zh",
   "datePublished": "2019-09-30T00:00:00Z",
   "dateModified": "2022-11-28T23:00:36+08:00",
@@ -345,20 +345,17 @@ function toggleThemeListener() {
 <p>NSS (<em><strong>name service switch</strong></em>) 通俗理解为是一个数据库系统，他作用是用于如何将操作系统与各种名称的解析机制关联起来，例如主机名，用户名，组名等内容的查找；例如UID查找使用 <code>passwd</code> 库，GID的查找使用 <code>group</code> 库，并且还可以告知查找的来源，如文件，LDAP等</p>
 <p>PAM (<em><strong>Pluggable Authentication Modules</strong></em>) 全称是可插拔的认证模块，PAM在Linux中是位于用户数据库与应用之间的认证模块，它本身并不工作，并且本身也不提供或扩展现有数据库系统，当登陆shell时，依赖于由NSS提供的密码库与组库等信息，完成对应的查询</p>
 <p>例如下列两张图完整的阐述了PAM与NSS之间，在用户登陆时做了些什么</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112160527824.png" alt="image-20221112160527824"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112160527824.png" alt="image-20221112160527824" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：pam和nss工作示意图1</center>
 <center><em>Source：</em>https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e</center><br>
 <p>由图可以看出，当在进行 <code>ping</code> , <code>id</code> 等操作时，会通过nss找到 <code>passwd</code> 库找到用户id，以及通过nss确定是 hosts解析还是dns服务解析对应的域名</p>
 <p>如果这张图不明白可以看下一张图</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112160836827.png" alt="image-20221112160836827"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112160836827.png" alt="image-20221112160836827" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：pam和nss工作示意图2-1</center>
 <center><em>Source：</em>https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e</center><br>
 <p>图2-1 中使用了tom用户去登录pecan主机，此时在节点 <code>yam</code> 上，将寻找 pecan主机的IP，这是通过 <code>/etc/nsswitch.conf</code> 来确定是通过 <code>hosts</code> 还是 dns服务进行查找。</p>
 <p>接下来找到pecan的IP，这里会输入用户名与密码，这里将会被sshd服务接管，此时 pecan 主机的sshd接收到用户端请求连接后，将用户名通过nss进行识别，确定是否为合法用户，如果用户有效，则通过PAM进行认证。认证的源也将由 <code>/etc/nsswitch.conf</code>  中配置的对应 <code>passwd</code> 库来找到，例如ldap,file等。正如下图2-2所示</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112161605611.png" alt="image-20221112161605611"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221112161605611.png" alt="image-20221112161605611" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：pam和nss工作示意图2-2</center>
 <center><em>Source：</em>https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e</center><br>
 <h2 id="linux-with-ldap-supa-href11asup">Linux with LDAP <sup><a href="#1">[1]</a></sup><a hidden class="anchor" aria-hidden="true" href="#linux-with-ldap-supa-href11asup">¶</a></h2>
@@ -374,49 +371,27 @@ function toggleThemeListener() {
 <li>Debian/Ubuntu：<code>apt-get install libnss-ldapd</code></li>
 </ul>
 <p>配置 <em><strong>/etc/nsswitch.conf</strong></em> ，该文件保存了各数据库，需要对 <code>group</code> , <code>passwd </code> , <code>shadow </code> 库开启 ldap</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">passwd:     files sss ldap
-</span></span><span class="line"><span class="cl">shadow:     files sss ldap
-</span></span><span class="line"><span class="cl">group:      files sss ldap
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置pam">配置PAM<a hidden class="anchor" aria-hidden="true" href="#配置pam">¶</a></h3>
+<pre><code class="language-conf">passwd:     files sss ldap
+shadow:     files sss ldap
+group:      files sss ldap
+</code></pre>
+<h3 id="配置pam">配置PAM<a hidden class="anchor" aria-hidden="true" href="#配置pam">¶</a></h3>
 <ul>
 <li>CentOS/Redhat：<code>	yum install -y pam_ldap</code></li>
 <li>Debian/Ubuntu：<code>apt-get install libpam-ldapd</code></li>
 </ul>
 <p>要想通过本地 Sudo 实现 OpenLDAP 用户提权，可按以下步骤操作。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">authconfig <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enableldap <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enableldapauth <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--ldapserver<span class="o">=</span>ldap://10.0.0.10:389 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--ldapbasedn<span class="o">=</span><span class="s2">&#34;dc=test,dc=org&#34;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enablemkhomedir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--ldapbasedn<span class="o">=</span><span class="s2">&#34;ou=tvb,dc=test,dc=org&#34;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enableshadow <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--update <span class="se">\
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-sh">authconfig \
+--enableldap \
+--enableldapauth \
+--ldapserver=ldap://10.0.0.10:389 \
+--ldapbasedn=&quot;dc=test,dc=org&quot; \
+--enablemkhomedir \
+--ldapbasedn=&quot;ou=tvb,dc=test,dc=org&quot; \
+--enableshadow \
+--update \
+</code></pre>
+<blockquote>
 <p>Notes：</p>
 <ul>
 <li>
@@ -453,7 +428,8 @@ function toggleThemeListener() {
 <li>
 <p>通过转换 本地 sudoers 配置文件 为LDAP ldif格式文件</p>
 <ul>
-<li>OpenLDAP 提供的 perl脚本  <code>sudoers2ldif</code> ，通常会看到，如果没有可以从 <a href="https://github.com/lbt/sudo/blob/master/plugins/sudoers/sudoers2ldif">Github</a> 中下载</li>
+<li>OpenLDAP 提供的 perl脚本  <code>sudoers2ldif</code> ，通常会看到，如果没有可以从 <a href="https://github.com/lbt/sudo/blob/master/plugins/sudoers/sudoers2ldif" target="_blank"
+   rel="noopener nofollow noreferrer" >Github</a> 中下载</li>
 <li>sudo 提供的转换命令 <code>cvtsudoers</code></li>
 </ul>
 </li>
@@ -470,39 +446,21 @@ function toggleThemeListener() {
 </li>
 </ul>
 <h3 id="openldap服务端导入sudo-schema">OpenLDAP服务端导入sudo schema<a hidden class="anchor" aria-hidden="true" href="#openldap服务端导入sudo-schema">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="c1"># 找到sudo的openldap schema</span>
-</span></span><span class="line"><span class="cl">rpm -ql sudo <span class="p">|</span> grep schema
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 将其复制到openldap schema目录</span>
-</span></span><span class="line"><span class="cl">cp /usr/share/doc/sudo-1.8.23/schema.OpenLDAP /etc/openldap/schema/sudo.schema  
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 生成include sudo.ldif</span>
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;include   /etc/openldap/schema/sudo.schema&#34;</span> &gt;  /tmp/sudo.conf
-</span></span><span class="line"><span class="cl">slapcat -f /tmp/sudo.conf -F /tmp/ -n <span class="m">0</span> -s <span class="s2">&#34;cn={0}sudo,cn=schema,cn=config&#34;</span> &gt; /tmp/sudo.ldif
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 最后需要删除后面几行</span>
-</span></span><span class="line"><span class="cl">sed -i <span class="s2">&#34;s@{0}sudo@sudo@g&#34;</span> /tmp/sudo.ldif
-</span></span><span class="line"><span class="cl">head -n -8 /tmp/sudo.ldif &gt; /etc/openldap/schema/sudo.ldif
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>生成的对应schema在：<font color="#f8070d" size=3><code>/etc/openldap/slapd.d/cn=config/cn=schema/</code></font></p>
+<pre><code class="language-sh"># 找到sudo的openldap schema
+rpm -ql sudo | grep schema
+
+# 将其复制到openldap schema目录
+cp /usr/share/doc/sudo-1.8.23/schema.OpenLDAP /etc/openldap/schema/sudo.schema  
+
+# 生成include sudo.ldif
+echo &quot;include   /etc/openldap/schema/sudo.schema&quot; &gt;  /tmp/sudo.conf
+slapcat -f /tmp/sudo.conf -F /tmp/ -n 0 -s &quot;cn={0}sudo,cn=schema,cn=config&quot; &gt; /tmp/sudo.ldif
+
+# 最后需要删除后面几行
+sed -i &quot;s@{0}sudo@sudo@g&quot; /tmp/sudo.ldif
+head -n -8 /tmp/sudo.ldif &gt; /etc/openldap/schema/sudo.ldif
+</code></pre>
+<p>生成的对应schema在：<font color="#f8070d" size=3><code>/etc/openldap/slapd.d/cn=config/cn=schema/</code></font></p>
 <h3 id="为-openldap-创建-suers-容器">为 OpenLDAP 创建 suers 容器<a hidden class="anchor" aria-hidden="true" href="#为-openldap-创建-suers-容器">¶</a></h3>
 <p>创建ldap的sudoers容器，官网有给出提示，sudoers如果在ldap中使用必须放在 <code>ou=SUDOers</code> 中，其中 <code>cn=default</code> 为最先被查找的条目</p>
 <blockquote>
@@ -514,115 +472,50 @@ function toggleThemeListener() {
 <li>第二次查询匹配用户名或者用户所在的组（特殊标签 ALL 也在此次查询中匹配），如果没有找到相关匹配项，则发出第三次查询，此次查询返回所有包含用户组的条目并检查该用户是否存在于这些组中</li>
 </ul>
 <p>下面命令是创建一个 sudoers 在 ldap中的根容器 <code>ou=SUDOers</code> ，这个步骤总是需要手动执行，因为默认通过 <code>/etc/sudoers</code> 转换过来的 ldif 是不带这个域的</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ cat <span class="s">&lt;&lt; EOF | ldapadd -D &#34;cn=admin,dc=test,dc=com&#34; -w 111 -H ldap://10.0.0.10:389
-</span></span></span><span class="line"><span class="cl"><span class="s">dn: ou=SUDOers,dc=test,dc=com
-</span></span></span><span class="line"><span class="cl"><span class="s">objectclass: organizationalunit
-</span></span></span><span class="line"><span class="cl"><span class="s">ou: SUDOers
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>下面步骤是将 <code>/etc/sudoers</code> 转换为 ldap <code>ldif</code></p>
+<pre><code class="language-bash">$ cat &lt;&lt; EOF | ldapadd -D &quot;cn=admin,dc=test,dc=com&quot; -w 111 -H ldap://10.0.0.10:389
+dn: ou=SUDOers,dc=test,dc=com
+objectclass: organizationalunit
+ou: SUDOers
+EOF
+</code></pre>
+<p>下面步骤是将 <code>/etc/sudoers</code> 转换为 ldap <code>ldif</code></p>
 <p>创建一个环境变量 <code>SUDOERS_BASE</code> ，这个在perl脚本执行的必须条件。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">SUDOERS_BASE</span><span class="o">=</span><span class="s2">&#34;ou=SUDOers,dc=test,dc=com&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>接下来，使用sudo包中提供了一个命令 <code>cvtsudoers </code> 可以将  sudoers的配置文件 <code>/etc/sudoers</code> 转换为LDAP ldif格式文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cvtsudoers /etc/sudoers -f ldif -o sudoers_defaults.ldif
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>另外，通过脚本将 sudoers的配置文件 <code>/etc/sudoers</code> 转换为LDAP ldif格式的文件，将用这个来创建默认的<code>cn=default</code> 的sudoers</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">perl sudoers2ldif /etc/sudoers &gt; sudoers_defaults.ldif
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">export SUDOERS_BASE=&quot;ou=SUDOers,dc=test,dc=com&quot;
+</code></pre>
+<p>接下来，使用sudo包中提供了一个命令 <code>cvtsudoers </code> 可以将  sudoers的配置文件 <code>/etc/sudoers</code> 转换为LDAP ldif格式文件</p>
+<pre><code class="language-bash">cvtsudoers /etc/sudoers -f ldif -o sudoers_defaults.ldif
+</code></pre>
+<p>另外，通过脚本将 sudoers的配置文件 <code>/etc/sudoers</code> 转换为LDAP ldif格式的文件，将用这个来创建默认的<code>cn=default</code> 的sudoers</p>
+<pre><code class="language-bash">perl sudoers2ldif /etc/sudoers &gt; sudoers_defaults.ldif
+</code></pre>
+<blockquote>
 <p>Notes：openldap还有一种操作为 <em>ldif to schema</em>，通过下述命令可以完成 <sup><a href="#4">[4]</a></sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sed <span class="s1">&#39;/^dn: /d;/^objectClass: /d;/^cn: /d;s/olcAttributeTypes:/attributetype/g;s/olcObjectClasses:/objectclass/g&#39;</span> file.ldif &gt; file.schema
-</span></span></code></pre></td></tr></table>
-</div>
-</div></blockquote>
+<pre><code class="language-bash">sed '/^dn: /d;/^objectClass: /d;/^cn: /d;s/olcAttributeTypes:/attributetype/g;s/olcObjectClasses:/objectclass/g' file.ldif &gt; file.schema
+</code></pre>
+</blockquote>
 <p>接下来将这些配置导入到ldap中</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ldapadd -D <span class="s2">&#34;cn=admin,dc=test,dc=com&#34;</span> -w <span class="m">111</span> -H ldap://10.0.0.10:389 -f sudoers_defaults.ldif
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置客户端主机支持sudo-over-ldap">配置客户端主机支持sudo over ldap<a hidden class="anchor" aria-hidden="true" href="#配置客户端主机支持sudo-over-ldap">¶</a></h3>
+<pre><code class="language-bash">ldapadd -D &quot;cn=admin,dc=test,dc=com&quot; -w 111 -H ldap://10.0.0.10:389 -f sudoers_defaults.ldif
+</code></pre>
+<h3 id="配置客户端主机支持sudo-over-ldap">配置客户端主机支持sudo over ldap<a hidden class="anchor" aria-hidden="true" href="#配置客户端主机支持sudo-over-ldap">¶</a></h3>
 <p>在客户端，需要两个额外步骤。</p>
 <p><strong>需要添加</strong>：<font color="#f8070d" size=3><code> /etc/nsswitch.conf</code></font></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"> <span class="c1">## 增加</span>
-</span></span><span class="line"><span class="cl"> sudoers:    ldap files
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl"> <span class="nb">echo</span> <span class="s1">&#39;sudoers:    ldap files&#39;</span> &gt;&gt; /etc/nsswitch.conf
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>需要提供</strong>：<font color="#f8070d" size=3><code>/etc/sudo-ldap.conf</code></font></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">binddn <span class="nv">cn</span><span class="o">=</span>clientsearch,ou<span class="o">=</span>admin,dc<span class="o">=</span>cylon,dc<span class="o">=</span>org
-</span></span><span class="line"><span class="cl">bindpw <span class="m">111</span>
-</span></span><span class="line"><span class="cl">uri ldap://10.0.0.20
-</span></span><span class="line"><span class="cl">sudoers_base <span class="nv">ou</span><span class="o">=</span>sudoers,dc<span class="o">=</span>cylon,dc<span class="o">=</span>org
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
+<pre><code class="language-sh"> ## 增加
+ sudoers:    ldap files
+ 
+ echo 'sudoers:    ldap files' &gt;&gt; /etc/nsswitch.conf
+</code></pre>
+<p><strong>需要提供</strong>：<font color="#f8070d" size=3><code>/etc/sudo-ldap.conf</code></font></p>
+<pre><code class="language-sh">binddn cn=clientsearch,ou=admin,dc=cylon,dc=org
+bindpw 111
+uri ldap://10.0.0.20
+sudoers_base ou=sudoers,dc=cylon,dc=org
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
 <p>错误：<code>invalid structural object class chain</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ldap_add: Object class violation <span class="o">(</span>65<span class="o">)</span>
-</span></span><span class="line"><span class="cl">	additional info: invalid structural object class chain <span class="o">(</span>groupOfUniqueNames/posixGroup<span class="o">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：在ldap中 <code>groupOfUniqueNames</code> / <code>posixGroup</code> / <code>inetOrgPerson</code> 实际上是同一种类型 <sup><a href="#6">[6]</a></sup> ，级别的对象组，其 <code>objectClass</code> 只能选择包含一个，要 <code>gidNumber</code> 就不能有 <code>memberOf</code> 了。</p>
+<pre><code class="language-bash">ldap_add: Object class violation (65)
+	additional info: invalid structural object class chain (groupOfUniqueNames/posixGroup)
+</code></pre>
+<p>原因：在ldap中 <code>groupOfUniqueNames</code> / <code>posixGroup</code> / <code>inetOrgPerson</code> 实际上是同一种类型 <sup><a href="#6">[6]</a></sup> ，级别的对象组，其 <code>objectClass</code> 只能选择包含一个，要 <code>gidNumber</code> 就不能有 <code>memberOf</code> 了。</p>
 <p><strong>问题出于</strong>：对于筛选来说，<code>posixGroup</code> 组并不支持  <code>memberOf</code>  属性，这种情况下可能无法做到权限的筛选与用户的筛选等，但是对于Linux 使用ldap管理用户权限时，普通的 <code>groupOfUniqueNames</code> 并不带有 <code>gidNumber</code> 属性，使得用户没有组，这时配置的组的权限，sudo实际不生效。</p>
 <p><strong>解决</strong>：</p>
 <ul>
@@ -632,49 +525,51 @@ function toggleThemeListener() {
 <li><code>posixGroup</code> 使用的是 <code>memberUid</code> 进行关联，在检索时，可以使用 <code>uid=memberUid</code> 进行过滤</li>
 <li>本质上 <code>posixGroup</code> 与  <code>groupOfUniqueNames</code> 只是对组，没有对用户</li>
 <li>需要配置 refint 解决引用关系一致性问题，正如下列给出配置一样
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dn: olcOverlay=refint,olcDatabase={1}mdb,cn=config
-</span></span><span class="line"><span class="cl">objectClass: olcConfig
-</span></span><span class="line"><span class="cl">objectClass: olcOverlayConfig
-</span></span><span class="line"><span class="cl">objectClass: olcRefintConfig
-</span></span><span class="line"><span class="cl">objectClass: top
-</span></span><span class="line"><span class="cl">olcOverlay: refint
-</span></span><span class="line"><span class="cl">olcRefintAttribute: memberUid uid
-</span></span><span class="line"><span class="cl">olcRefintNothing: cn=default,dc=test,dc=com
-</span></span></code></pre></td></tr></table>
-</div>
-</div></li>
+<pre><code class="language-ldif">dn: olcOverlay=refint,olcDatabase={1}mdb,cn=config
+objectClass: olcConfig
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+objectClass: top
+olcOverlay: refint
+olcRefintAttribute: memberUid uid
+olcRefintNothing: cn=default,dc=test,dc=com
+</code></pre>
+</li>
 </ul>
 </li>
 </ul>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://joeho.xyz/blog-posts/configure-openldap-login-for-centos7/"><em><strong>Configure OpenLDAP login for CentOS 7</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://www.sudo.ws/docs/man/sudoers.ldap.man/#SUDOers_LDAP_container"><em><strong>sudoers.ldap.man</strong></em></a></p>
-<p><sup id="3">[3]</sup> <a href="https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e"><em><strong>Understanding nss and pam using a ssh example</strong></em></a></p>
-<p><sup id="4">[4]</sup> <a href="https://serverfault.com/questions/818393/openldap-convert-ad-schema-from-ldif-to-schema"><em><strong>Convert AD-Schema from *.ldif to *.schema</strong></em></a></p>
-<p><sup id="5">[5]</sup> <a href="http://blog.oddbit.com/post/2013-07-22-generating-a-membero/"><em><strong>GENERATING A MEMBEROF ATTRIBUTE FOR POSIXGROUPS</strong></em></a></p>
-<p><sup id="6">[6]</sup> <a href="https://ldap.umich.narkive.com/4c1rn2Qz/how-to-fix-65-invalid-structural-object-class-chain-posixgroup-groupofnames"><em><strong>how to fix (65) invalid structural object class chain (posixGroup/groupOfNames)?</strong></em></a></p>
-<p><sup id="7">[7]</sup> <a href="https://joeho.xyz/blog-posts/configure-openldap-login-for-centos7/"><em><strong>Configure OpenLDAP login for CentOS 7</strong></em></a></p>
-<p><sup id="8">[8]</sup> <a href="https://linuxhint.com/linux-ldap-authentication-2/"><em><strong>Linux LDAP Authentication</strong></em></a></p>
-<p><sup id="9">[9]</sup> <a href="https://www.vennedey.net/resources/1-Linux-user-management-with-LDAP"><em><strong>Linux user management with LDAP</strong></em></a></p>
-<p><sup id="10">[10]</sup> <a href="https://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/pamnss.html"><em><strong>2. LDAP authentication using pam_ldap and nss_ldap</strong></em></a></p>
-<p><sup id="11">[11]</sup> <a href="https://kifarunix.com/how-to-configure-sudo-via-openldap-server/"><em><strong>How to Configure SUDO via OpenLDAP Server</strong></em></a></p>
-<p><sup id="12">[12]</sup> <a href="http://pig.made-it.com/ldap-sudoers.html"><em><strong>SUDOers from OpenLDAP</strong></em></a></p>
-<p><sup id="13">[13]</sup> <a href="https://wiki.shileizcc.com/confluence/pages/viewpage.action?pageId=40566794#OpenLDAPSudo%E6%9D%83%E9%99%90%E8%AE%B2%E8%A7%A3-OpenLDAPSudo%E6%9D%83%E9%99%90%E8%AE%B2%E8%A7%A3"><em><strong>OpenLDAPSudo权限讲解-OpenLDAPSudo权限讲解</strong></em></a></p>
-<p><sup id="14">[14]</sup> <a href="https://linux.die.net/man/8/authconfig"><em><strong>authconfig</strong></em></a></p>
-<p><sup id="15">[15]</sup> <a href="https://mariadb.com/kb/en/configuring-pam-authentication-and-user-mapping-with-ldap-authentication/"><em><strong>Configuring PAM Authentication and User Mapping with LDAP Authentication</strong></em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://joeho.xyz/blog-posts/configure-openldap-login-for-centos7/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Configure OpenLDAP login for CentOS 7</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://www.sudo.ws/docs/man/sudoers.ldap.man/#SUDOers_LDAP_container" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>sudoers.ldap.man</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="https://medium.com/@fengliplatform/understanding-nss-and-pam-using-a-ssh-example-80512eb0f39e" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Understanding nss and pam using a ssh example</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://serverfault.com/questions/818393/openldap-convert-ad-schema-from-ldif-to-schema" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Convert AD-Schema from *.ldif to *.schema</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="http://blog.oddbit.com/post/2013-07-22-generating-a-membero/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>GENERATING A MEMBEROF ATTRIBUTE FOR POSIXGROUPS</strong></em></a></p>
+<p><sup id="6">[6]</sup> <a href="https://ldap.umich.narkive.com/4c1rn2Qz/how-to-fix-65-invalid-structural-object-class-chain-posixgroup-groupofnames" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>how to fix (65) invalid structural object class chain (posixGroup/groupOfNames)?</strong></em></a></p>
+<p><sup id="7">[7]</sup> <a href="https://joeho.xyz/blog-posts/configure-openldap-login-for-centos7/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Configure OpenLDAP login for CentOS 7</strong></em></a></p>
+<p><sup id="8">[8]</sup> <a href="https://linuxhint.com/linux-ldap-authentication-2/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Linux LDAP Authentication</strong></em></a></p>
+<p><sup id="9">[9]</sup> <a href="https://www.vennedey.net/resources/1-Linux-user-management-with-LDAP" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Linux user management with LDAP</strong></em></a></p>
+<p><sup id="10">[10]</sup> <a href="https://tldp.org/HOWTO/archived/LDAP-Implementation-HOWTO/pamnss.html" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>2. LDAP authentication using pam_ldap and nss_ldap</strong></em></a></p>
+<p><sup id="11">[11]</sup> <a href="https://kifarunix.com/how-to-configure-sudo-via-openldap-server/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>How to Configure SUDO via OpenLDAP Server</strong></em></a></p>
+<p><sup id="12">[12]</sup> <a href="http://pig.made-it.com/ldap-sudoers.html" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>SUDOers from OpenLDAP</strong></em></a></p>
+<p><sup id="13">[13]</sup> <a href="https://wiki.shileizcc.com/confluence/pages/viewpage.action?pageId=40566794#OpenLDAPSudo%e6%9d%83%e9%99%90%e8%ae%b2%e8%a7%a3-OpenLDAPSudo%e6%9d%83%e9%99%90%e8%ae%b2%e8%a7%a3" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>OpenLDAPSudo权限讲解-OpenLDAPSudo权限讲解</strong></em></a></p>
+<p><sup id="14">[14]</sup> <a href="https://linux.die.net/man/8/authconfig" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>authconfig</strong></em></a></p>
+<p><sup id="15">[15]</sup> <a href="https://mariadb.com/kb/en/configuring-pam-authentication-and-user-mapping-with-ldap-authentication/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Configuring PAM Authentication and User Mapping with LDAP Authentication</strong></em></a></p>
 </blockquote>
 
 

@@ -10,7 +10,7 @@
 <meta name="description" content="利用kubernetes中的leader选举机制自定义HA应用 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/06/ch28-leader-election-eg/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "k8s自定义ha应用"
   ],
-  "wordCount" : "1499",
+  "wordCount" : "1264",
   "inLanguage": "zh",
   "datePublished": "2022-06-29T00:00:00Z",
   "dateModified": "2022-06-29T00:00:00Z",
@@ -337,510 +337,255 @@ function toggleThemeListener() {
 <h2 id="implementation">Implementation<a hidden class="anchor" aria-hidden="true" href="#implementation">¶</a></h2>
 <h3 id="代码实现">代码实现<a hidden class="anchor" aria-hidden="true" href="#代码实现">¶</a></h3>
 <p>如果仅仅是使用Kubernetes中的锁，实现的代码也只有几行而已。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span><span class="lnt">108
-</span><span class="lnt">109
-</span><span class="lnt">110
-</span><span class="lnt">111
-</span><span class="lnt">112
-</span><span class="lnt">113
-</span><span class="lnt">114
-</span><span class="lnt">115
-</span><span class="lnt">116
-</span><span class="lnt">117
-</span><span class="lnt">118
-</span><span class="lnt">119
-</span><span class="lnt">120
-</span><span class="lnt">121
-</span><span class="lnt">122
-</span><span class="lnt">123
-</span><span class="lnt">124
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;context&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;flag&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;os&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;os/signal&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;syscall&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span> <span class="s">&#34;k8s.io/apimachinery/pkg/apis/meta/v1&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">clientset</span> <span class="s">&#34;k8s.io/client-go/kubernetes&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/client-go/rest&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/client-go/tools/clientcmd&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/client-go/tools/leaderelection&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/client-go/tools/leaderelection/resourcelock&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/klog/v2&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">buildConfig</span><span class="p">(</span><span class="nx">kubeconfig</span> <span class="kt">string</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">rest</span><span class="p">.</span><span class="nx">Config</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">kubeconfig</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">cfg</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">clientcmd</span><span class="p">.</span><span class="nf">BuildConfigFromFlags</span><span class="p">(</span><span class="s">&#34;&#34;</span><span class="p">,</span> <span class="nx">kubeconfig</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">cfg</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">cfg</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">rest</span><span class="p">.</span><span class="nf">InClusterConfig</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">cfg</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">InitFlags</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">kubeconfig</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">leaseLockName</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">leaseLockNamespace</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">id</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 初始化客户端的部分
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">flag</span><span class="p">.</span><span class="nf">StringVar</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">kubeconfig</span><span class="p">,</span> <span class="s">&#34;kubeconfig&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;absolute path to the kubeconfig file&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">flag</span><span class="p">.</span><span class="nf">StringVar</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">id</span><span class="p">,</span> <span class="s">&#34;id&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;the holder identity name&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">flag</span><span class="p">.</span><span class="nf">StringVar</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">leaseLockName</span><span class="p">,</span> <span class="s">&#34;lease-lock-name&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;the lease lock resource name&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">flag</span><span class="p">.</span><span class="nf">StringVar</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">leaseLockNamespace</span><span class="p">,</span> <span class="s">&#34;lease-lock-namespace&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;the lease lock resource namespace&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">flag</span><span class="p">.</span><span class="nf">Parse</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">leaseLockName</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;unable to get lease lock resource name (missing lease-lock-name flag).&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">leaseLockNamespace</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;unable to get lease lock resource namespace (missing lease-lock-namespace flag).&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">config</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">buildConfig</span><span class="p">(</span><span class="nx">kubeconfig</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">client</span> <span class="o">:=</span> <span class="nx">clientset</span><span class="p">.</span><span class="nf">NewForConfigOrDie</span><span class="p">(</span><span class="nx">config</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">run</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// 实现的业务逻辑，这里仅仅为实验，就直接打印了
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">klog</span><span class="p">.</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Controller loop...&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;I am leader, I was working.&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="o">*</span> <span class="mi">5</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// use a Go context so we can tell the leaderelection code when we
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// want to step down
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ctx</span><span class="p">,</span> <span class="nx">cancel</span> <span class="o">:=</span> <span class="nx">context</span><span class="p">.</span><span class="nf">WithCancel</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nf">cancel</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 监听系统中断
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Signal</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">signal</span><span class="p">.</span><span class="nf">Notify</span><span class="p">(</span><span class="nx">ch</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Interrupt</span><span class="p">,</span> <span class="nx">syscall</span><span class="p">.</span><span class="nx">SIGTERM</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="o">&lt;-</span><span class="nx">ch</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Received termination, signaling shutdown&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">cancel</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 创建一个资源锁
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">lock</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">resourcelock</span><span class="p">.</span><span class="nx">LeaseLock</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">LeaseMeta</span><span class="p">:</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Name</span><span class="p">:</span>      <span class="nx">leaseLockName</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Namespace</span><span class="p">:</span> <span class="nx">leaseLockNamespace</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Client</span><span class="p">:</span> <span class="nx">client</span><span class="p">.</span><span class="nf">CoordinationV1</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">LockConfig</span><span class="p">:</span> <span class="nx">resourcelock</span><span class="p">.</span><span class="nx">ResourceLockConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Identity</span><span class="p">:</span> <span class="nx">id</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 开启一个选举的循环
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">leaderelection</span><span class="p">.</span><span class="nf">RunOrDie</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">leaderelection</span><span class="p">.</span><span class="nx">LeaderElectionConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Lock</span><span class="p">:</span>            <span class="nx">lock</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ReleaseOnCancel</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">LeaseDuration</span><span class="p">:</span>   <span class="mi">60</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">RenewDeadline</span><span class="p">:</span>   <span class="mi">15</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">RetryPeriod</span><span class="p">:</span>     <span class="mi">5</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Callbacks</span><span class="p">:</span> <span class="nx">leaderelection</span><span class="p">.</span><span class="nx">LeaderCallbacks</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">OnStartedLeading</span><span class="p">:</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="c1">// 当选举为leader后所运行的业务逻辑
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nf">run</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">},</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">OnStoppedLeading</span><span class="p">:</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="c1">// we can do cleanup here
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;leader lost: %s&#34;</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">os</span><span class="p">.</span><span class="nf">Exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">},</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">OnNewLeader</span><span class="p">:</span> <span class="kd">func</span><span class="p">(</span><span class="nx">identity</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// 申请一个选举时的动作
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="k">if</span> <span class="nx">identity</span> <span class="o">==</span> <span class="nx">id</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">					<span class="k">return</span>
-</span></span><span class="line"><span class="cl">				<span class="p">}</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;new leader elected: %s&#34;</span><span class="p">,</span> <span class="nx">identity</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-go">package main
+
+import (
+	&quot;context&quot;
+	&quot;flag&quot;
+	&quot;fmt&quot;
+	&quot;os&quot;
+	&quot;os/signal&quot;
+	&quot;syscall&quot;
+	&quot;time&quot;
+
+	metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+	clientset &quot;k8s.io/client-go/kubernetes&quot;
+	&quot;k8s.io/client-go/rest&quot;
+	&quot;k8s.io/client-go/tools/clientcmd&quot;
+	&quot;k8s.io/client-go/tools/leaderelection&quot;
+	&quot;k8s.io/client-go/tools/leaderelection/resourcelock&quot;
+	&quot;k8s.io/klog/v2&quot;
+)
+
+func buildConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != &quot;&quot; {
+		cfg, err := clientcmd.BuildConfigFromFlags(&quot;&quot;, kubeconfig)
+		if err != nil {
+			return nil, err
+		}
+		return cfg, nil
+	}
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func main() {
+	klog.InitFlags(nil)
+
+	var kubeconfig string
+	var leaseLockName string
+	var leaseLockNamespace string
+	var id string
+	// 初始化客户端的部分
+	flag.StringVar(&amp;kubeconfig, &quot;kubeconfig&quot;, &quot;&quot;, &quot;absolute path to the kubeconfig file&quot;)
+	flag.StringVar(&amp;id, &quot;id&quot;, &quot;&quot;, &quot;the holder identity name&quot;)
+	flag.StringVar(&amp;leaseLockName, &quot;lease-lock-name&quot;, &quot;&quot;, &quot;the lease lock resource name&quot;)
+	flag.StringVar(&amp;leaseLockNamespace, &quot;lease-lock-namespace&quot;, &quot;&quot;, &quot;the lease lock resource namespace&quot;)
+	flag.Parse()
+
+	if leaseLockName == &quot;&quot; {
+		klog.Fatal(&quot;unable to get lease lock resource name (missing lease-lock-name flag).&quot;)
+	}
+	if leaseLockNamespace == &quot;&quot; {
+		klog.Fatal(&quot;unable to get lease lock resource namespace (missing lease-lock-namespace flag).&quot;)
+	}
+	config, err := buildConfig(kubeconfig)
+	if err != nil {
+		klog.Fatal(err)
+	}
+	client := clientset.NewForConfigOrDie(config)
+
+	run := func(ctx context.Context) {
+		// 实现的业务逻辑，这里仅仅为实验，就直接打印了
+		klog.Info(&quot;Controller loop...&quot;)
+
+		for {
+			fmt.Println(&quot;I am leader, I was working.&quot;)
+			time.Sleep(time.Second * 5)
+		}
+	}
+
+	// use a Go context so we can tell the leaderelection code when we
+	// want to step down
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// 监听系统中断
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		&lt;-ch
+		klog.Info(&quot;Received termination, signaling shutdown&quot;)
+		cancel()
+	}()
+
+	// 创建一个资源锁
+	lock := &amp;resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      leaseLockName,
+			Namespace: leaseLockNamespace,
+		},
+		Client: client.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: id,
+		},
+	}
+
+	// 开启一个选举的循环
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   60 * time.Second,
+		RenewDeadline:   15 * time.Second,
+		RetryPeriod:     5 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				// 当选举为leader后所运行的业务逻辑
+				run(ctx)
+			},
+			OnStoppedLeading: func() {
+				// we can do cleanup here
+				klog.Infof(&quot;leader lost: %s&quot;, id)
+				os.Exit(0)
+			},
+			OnNewLeader: func(identity string) { // 申请一个选举时的动作
+				if identity == id {
+					return
+				}
+				klog.Infof(&quot;new leader elected: %s&quot;, identity)
+			},
+		},
+	})
+}
+</code></pre>
+<blockquote>
 <p>注：这种lease锁只能在in-cluster模式下运行，如果需要类似二进制部署的程序，可以选择endpoint类型的资源锁。</p>
 </blockquote>
 <h3 id="生成镜像">生成镜像<a hidden class="anchor" aria-hidden="true" href="#生成镜像">¶</a></h3>
 <p>这里已经制作好了镜像并上传到dockerhub（<code>cylonchau/leaderelection:v0.0.2</code>）上了，如果只要学习运行原理，则忽略此步骤</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-docker" data-lang="docker"><span class="line"><span class="cl"><span class="k">FROM</span><span class="s"> golang:alpine AS builder</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">MAINTAINER</span><span class="s"> cylon</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">WORKDIR</span><span class="s"> /election</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> . /election<span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ENV</span> GOPROXY https://goproxy.cn,direct<span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> <span class="nv">GOOS</span><span class="o">=</span>linux <span class="nv">GOARCH</span><span class="o">=</span>amd64 <span class="nv">CGO_ENABLED</span><span class="o">=</span><span class="m">0</span> go build -o elector main.go<span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">FROM</span><span class="s"> alpine AS runner</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">WORKDIR</span><span class="s"> /go/elector</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> --from<span class="o">=</span>builder /election/elector .<span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">VOLUME</span> <span class="p">[</span><span class="s2">&#34;/election&#34;</span><span class="p">]</span><span class="err">
-</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ENTRYPOINT</span> <span class="p">[</span><span class="s2">&#34;./elector&#34;</span><span class="p">]</span><span class="err">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="准备资源清单">准备资源清单<a hidden class="anchor" aria-hidden="true" href="#准备资源清单">¶</a></h3>
+<pre><code class="language-docker">FROM golang:alpine AS builder
+MAINTAINER cylon
+WORKDIR /election
+COPY . /election
+ENV GOPROXY https://goproxy.cn,direct
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o elector main.go
+
+FROM alpine AS runner
+WORKDIR /go/elector
+COPY --from=builder /election/elector .
+VOLUME [&quot;/election&quot;]
+ENTRYPOINT [&quot;./elector&quot;]
+</code></pre>
+<h3 id="准备资源清单">准备资源清单<a hidden class="anchor" aria-hidden="true" href="#准备资源清单">¶</a></h3>
 <p>默认情况下，Kubernetes运行的pod在请求Kubernetes集群内资源时，默认的账户是没有权限的，默认服务帐户无权访问协调 API，因此我们需要创建另一个serviceaccount并相应地设置 对应的RBAC权限绑定；在清单中配置上这个sa，此时所有的pod就会有协调锁的权限了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">sa-leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Role</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">apiGroups</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">coordination.k8s.io</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">leases</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s1">&#39;*&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">RoleBinding</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">roleRef</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">apiGroup</span><span class="p">:</span><span class="w"> </span><span class="l">rbac.authorization.k8s.io</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Role</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">subjects</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceAccount</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">sa-leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apps/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Deployment</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">default</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">leaderelection</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">cylonchau/leaderelection:v0.0.2</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">imagePullPolicy</span><span class="p">:</span><span class="w"> </span><span class="l">IfNotPresent</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;./elector&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">args</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="s2">&#34;-id=$(POD_NAME)&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="s2">&#34;-lease-lock-name=test&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="s2">&#34;-lease-lock-namespace=default&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">env</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">POD_NAME</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">valueFrom</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">fieldRef</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">fieldPath</span><span class="p">:</span><span class="w"> </span><span class="l">metadata.name</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">elector</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">serviceAccountName</span><span class="p">:</span><span class="w"> </span><span class="l">sa-leaderelection</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="集群中运行">集群中运行<a hidden class="anchor" aria-hidden="true" href="#集群中运行">¶</a></h3>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-leaderelection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: leaderelection
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - '*'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: leaderelection
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: leaderelection
+subjects:
+  - kind: ServiceAccount
+    name: sa-leaderelection
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: leaderelection
+  name: leaderelection
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: leaderelection
+  template:
+    metadata:
+      labels:
+        app: leaderelection
+    spec:
+      containers:
+        - image: cylonchau/leaderelection:v0.0.2
+          imagePullPolicy: IfNotPresent
+          command: [&quot;./elector&quot;]
+          args:
+          - &quot;-id=$(POD_NAME)&quot;
+          - &quot;-lease-lock-name=test&quot;
+          - &quot;-lease-lock-namespace=default&quot;
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          name: elector
+      serviceAccountName: sa-leaderelection
+</code></pre>
+<h3 id="集群中运行">集群中运行<a hidden class="anchor" aria-hidden="true" href="#集群中运行">¶</a></h3>
 <p>执行完清单后，当pod启动后，可以看到会创建出一个 lease</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get lease
-</span></span><span class="line"><span class="cl">NAME   HOLDER                            AGE
-</span></span><span class="line"><span class="cl"><span class="nb">test</span>   leaderelection-5644c5f84f-frs5n   1s
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ kubectl describe lease
-</span></span><span class="line"><span class="cl">Name:         <span class="nb">test</span>
-</span></span><span class="line"><span class="cl">Namespace:    default
-</span></span><span class="line"><span class="cl">Labels:       &lt;none&gt;
-</span></span><span class="line"><span class="cl">Annotations:  &lt;none&gt;
-</span></span><span class="line"><span class="cl">API Version:  coordination.k8s.io/v1
-</span></span><span class="line"><span class="cl">Kind:         Lease
-</span></span><span class="line"><span class="cl">Metadata:
-</span></span><span class="line"><span class="cl">  Creation Timestamp:  2022-06-28T16:39:45Z
-</span></span><span class="line"><span class="cl">  Managed Fields:
-</span></span><span class="line"><span class="cl">    API Version:  coordination.k8s.io/v1
-</span></span><span class="line"><span class="cl">    Fields Type:  FieldsV1
-</span></span><span class="line"><span class="cl">    fieldsV1:
-</span></span><span class="line"><span class="cl">      f:spec:
-</span></span><span class="line"><span class="cl">        f:acquireTime:
-</span></span><span class="line"><span class="cl">        f:holderIdentity:
-</span></span><span class="line"><span class="cl">        f:leaseDurationSeconds:
-</span></span><span class="line"><span class="cl">        f:leaseTransitions:
-</span></span><span class="line"><span class="cl">        f:renewTime:
-</span></span><span class="line"><span class="cl">    Manager:         elector
-</span></span><span class="line"><span class="cl">    Operation:       Update
-</span></span><span class="line"><span class="cl">    Time:            2022-06-28T16:39:45Z
-</span></span><span class="line"><span class="cl">  Resource Version:  <span class="m">131693</span>
-</span></span><span class="line"><span class="cl">  Self Link:         /apis/coordination.k8s.io/v1/namespaces/default/leases/test
-</span></span><span class="line"><span class="cl">  UID:               bef2b164-a117-44bd-bad3-3e651c94c97b
-</span></span><span class="line"><span class="cl">Spec:
-</span></span><span class="line"><span class="cl">  Acquire Time:            2022-06-28T16:39:45.931873Z
-</span></span><span class="line"><span class="cl">  Holder Identity:         leaderelection-5644c5f84f-frs5n
-</span></span><span class="line"><span class="cl">  Lease Duration Seconds:  <span class="m">60</span>
-</span></span><span class="line"><span class="cl">  Lease Transitions:       <span class="m">0</span>
-</span></span><span class="line"><span class="cl">  Renew Time:              2022-06-28T16:39:55.963537Z
-</span></span><span class="line"><span class="cl">Events:                    &lt;none&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过其持有者的信息查看对应pod（因为程序中对holder Identity设置的是pod的名称），实际上是工作的pod。</p>
+<pre><code class="language-bash">$ kubectl get lease
+NAME   HOLDER                            AGE
+test   leaderelection-5644c5f84f-frs5n   1s
+
+
+$ kubectl describe lease
+Name:         test
+Namespace:    default
+Labels:       &lt;none&gt;
+Annotations:  &lt;none&gt;
+API Version:  coordination.k8s.io/v1
+Kind:         Lease
+Metadata:
+  Creation Timestamp:  2022-06-28T16:39:45Z
+  Managed Fields:
+    API Version:  coordination.k8s.io/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:spec:
+        f:acquireTime:
+        f:holderIdentity:
+        f:leaseDurationSeconds:
+        f:leaseTransitions:
+        f:renewTime:
+    Manager:         elector
+    Operation:       Update
+    Time:            2022-06-28T16:39:45Z
+  Resource Version:  131693
+  Self Link:         /apis/coordination.k8s.io/v1/namespaces/default/leases/test
+  UID:               bef2b164-a117-44bd-bad3-3e651c94c97b
+Spec:
+  Acquire Time:            2022-06-28T16:39:45.931873Z
+  Holder Identity:         leaderelection-5644c5f84f-frs5n
+  Lease Duration Seconds:  60
+  Lease Transitions:       0
+  Renew Time:              2022-06-28T16:39:55.963537Z
+Events:                    &lt;none&gt;
+</code></pre>
+<p>通过其持有者的信息查看对应pod（因为程序中对holder Identity设置的是pod的名称），实际上是工作的pod。</p>
 <p>如上实例所述，这是利用Kubernetes集群完成的leader选举的方案，虽然这不是最完美解决方案，但这是一种简单的方法，因为可以无需在集群上部署更多东西或者进行大量的代码工作就可以利用Kubernetes集群来完成一个高可用的HA应用。</p>
 
 

@@ -10,7 +10,7 @@
 <meta name="description" content="记录一次ceph集群故障处理记录 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2024/02/10-2-troubeshooting-crash/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "cephfs"
   ],
-  "wordCount" : "1938",
+  "wordCount" : "1849",
   "inLanguage": "zh",
   "datePublished": "2024-02-13T00:00:00Z",
   "dateModified": "2024-02-13T23:10:36+08:00",
@@ -320,177 +320,87 @@ function toggleThemeListener() {
 <br><h2 id="处理记录">处理记录<a hidden class="anchor" aria-hidden="true" href="#处理记录">¶</a></h2>
 <p>Ceph版本：octopus</p>
 <p>首先遇到問題是，业务端无法挂在 cephfs 查看内核日志发现是 <code> bad authorize reply</code> ，以为是 ceph keyring被替换了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在排查完 keyring 后，手动尝试挂载 cephfs 提示 <code>Input/output error</code> ，此时看出是集群问题了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mount -t ceph 10.80.20.100:6789:/tmp /tmp/ceph -o <span class="nv">secret</span><span class="o">=</span><span class="nv">AQCoW0dgQk4qGhAAwayKv70OSyyWB3XpZ1JLYQ</span><span class="o">==</span>,name<span class="o">=</span>cephuser
-</span></span><span class="line"><span class="cl">mount error <span class="nv">5</span> <span class="o">=</span> Input/output error
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>因为一开始看到日志是 <em>bad authorize reply</em> 以为是认证错误，重新登录了一下发现是相同的提示，这时查看 ceph status 发现集群异常，除了下面报错外，还有一个 osd down 的状态。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl">HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data redundancy: 39560/118680 objects degraded (33.333%), 201 pgs degraded, 255 pgs undersized; 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">[WRN] CEPHADM_HOST_CHECK_FAIL: 1 hosts fail cephadm check
-</span></span><span class="line"><span class="cl">    host localhost failed check: [&#39;podman|docker (/bin/docker) is present&#39;, &#39;systemctl is present&#39;, &#39;lvcreate is present&#39;, &#34;No time sync service is running; checked for [&#39;chrony.service&#39;, &#39;chronyd.service&#39;, &#39;systemd-timesyncd.service&#39;, &#39;ntpd.service&#39;, &#39;ntp.service&#39;]&#34;, &#39;ERROR: No time synchronizetion is active&#39;]
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_METADATA_IO: 1 MDSs report slow metadata IOs
-</span></span><span class="line"><span class="cl">    mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 4830 secs
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_REQUEST: 1 MDSs report slow requests
-</span></span><span class="line"><span class="cl">    mds.cephfs.localhost.mhlzaj(mds.0): 14 slow metadata IOs are blocked &gt; 30 secs
-</span></span><span class="line"><span class="cl">[WRN] MON_CLOCK_SKEW: clock skew detected on mon.localhost, mon.localhost1
-</span></span><span class="line"><span class="cl">    mon.localhost clock skew 29357.8s &gt; max 0.05s (latency 0.0132089s)
-</span></span><span class="line"><span class="cl">    mon.localhost1 clock skew 29357.8s &gt; max 0.05s (latency 0.0117421s)
-</span></span><span class="line"><span class="cl">[WRN] PG_DEGRADED: Degraded data redundancy: 39501/118680 objects degraded (33.333%), 189 pgs degraded, 241 pgs undersized
-</span></span><span class="line"><span class="cl">    pg 1.0 is stuck undersized for 22m, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.8 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1b is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.9 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">[WRN] RECENT_CRASH: 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<pre><code>2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+</code></pre>
+<p>在排查完 keyring 后，手动尝试挂载 cephfs 提示 <code>Input/output error</code> ，此时看出是集群问题了</p>
+<pre><code class="language-bash">$ mount -t ceph 10.80.20.100:6789:/tmp /tmp/ceph -o secret=AQCoW0dgQk4qGhAAwayKv70OSyyWB3XpZ1JLYQ==,name=cephuser
+mount error 5 = Input/output error
+</code></pre>
+<p>因为一开始看到日志是 <em>bad authorize reply</em> 以为是认证错误，重新登录了一下发现是相同的提示，这时查看 ceph status 发现集群异常，除了下面报错外，还有一个 osd down 的状态。</p>
+<pre><code>$ ceph health detail
+HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data redundancy: 39560/118680 objects degraded (33.333%), 201 pgs degraded, 255 pgs undersized; 4 daemons have recently crashed
+[WRN] CEPHADM_HOST_CHECK_FAIL: 1 hosts fail cephadm check
+    host localhost failed check: ['podman|docker (/bin/docker) is present', 'systemctl is present', 'lvcreate is present', &quot;No time sync service is running; checked for ['chrony.service', 'chronyd.service', 'systemd-timesyncd.service', 'ntpd.service', 'ntp.service']&quot;, 'ERROR: No time synchronizetion is active']
+[WRN] MDS_SLOW_METADATA_IO: 1 MDSs report slow metadata IOs
+    mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 4830 secs
+[WRN] MDS_SLOW_REQUEST: 1 MDSs report slow requests
+    mds.cephfs.localhost.mhlzaj(mds.0): 14 slow metadata IOs are blocked &gt; 30 secs
+[WRN] MON_CLOCK_SKEW: clock skew detected on mon.localhost, mon.localhost1
+    mon.localhost clock skew 29357.8s &gt; max 0.05s (latency 0.0132089s)
+    mon.localhost1 clock skew 29357.8s &gt; max 0.05s (latency 0.0117421s)
+[WRN] PG_DEGRADED: Degraded data redundancy: 39501/118680 objects degraded (33.333%), 189 pgs degraded, 241 pgs undersized
+    pg 1.0 is stuck undersized for 22m, current state active+undersized+degraded, last acting [1]
+    pg 2.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.8 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1b is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.9 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+</code></pre>
+<ul>
 <li>
 <p>CEPHADM_HOST_CHECK_FAIL：一台或多台主机未通过基本 cephadm 主机检查，该检查验证 (1) 主机可访问并且可以在其中执行 cephadm，以及 (2) 主机满足基本先决条件，例如工作容器运行时（podman 或 docker）和工作时间同步。如果此测试失败，cephadm 将无法管理该主机上的服务。</p>
 </li>
@@ -513,52 +423,28 @@ function toggleThemeListener() {
 <li>cephfs no such file or director</li>
 <li>ceph orch 命令还是没有反应</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl">HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data 
-</span></span><span class="line"><span class="cl">[WRN] FS_DEGRADED: 1 filesystem is degraded
-</span></span><span class="line"><span class="cl">    fs cephfs is degraded
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_METADATA_IO: 1 MDSs slow metadata IOs
-</span></span><span class="line"><span class="cl">     mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 930 secs
-</span></span><span class="line"><span class="cl">[WRN] RECENT_CRASH: 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">[WRN] SLOW_OPS: 2 slow ops, oldset one blocked for 474 sec, mon.localhost has slow ops
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过 search 了一下，查询到 orch 是 MGR 模块</p>
+<pre><code>$ ceph health detail
+HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data 
+[WRN] FS_DEGRADED: 1 filesystem is degraded
+    fs cephfs is degraded
+[WRN] MDS_SLOW_METADATA_IO: 1 MDSs slow metadata IOs
+     mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 930 secs
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+[WRN] SLOW_OPS: 2 slow ops, oldset one blocked for 474 sec, mon.localhost has slow ops
+</code></pre>
+<p>通过 search 了一下，查询到 orch 是 MGR 模块</p>
 <blockquote>
 <p>The orchestrator is a MGR module, have you checked if the containers   are up and running <sup><a href="#1">[1]</a></sup></p>
 </blockquote>
 <p>此时操作登录对应ceph node，docker restart ceph-mgr的模块，并且重启 mds 模块</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl"><span class="o">[</span>WRN<span class="o">]</span> RECENT_CRASH: <span class="m">4</span> daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>此时集群恢复正常，cephfs 恢复</p>
+<pre><code class="language-bash">$ ceph health detail
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+</code></pre>
+<p>此时集群恢复正常，cephfs 恢复</p>
 <h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">¶</a></h2>
 <p>由于长期没有在处理 ceph 方向问题，对排查有以下生疏：</p>
 <ul>
@@ -566,9 +452,12 @@ function toggleThemeListener() {
 <li>对 ceph 故障代码没有了解过，如果有了解，可以很明确的定位问题，而不用耽误2小时。</li>
 </ul>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/2OSO26WYFBS4HZ4LPHNMBZUQ6Y3GI6GG/">ceph orch status hangs forever</a></p>
-<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/quincy/rados/operations/health-checks/">HEALTH CHECKS</a></p>
-<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/quincy/cephfs/health-messages/?highlight=MDS_SLOW_METADATA_IO">CEPHFS HEALTH MESSAGES</a></p>
+<p><sup id="1">[1]</sup> <a href="https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/2OSO26WYFBS4HZ4LPHNMBZUQ6Y3GI6GG/" target="_blank"
+   rel="noopener nofollow noreferrer" >ceph orch status hangs forever</a></p>
+<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/quincy/rados/operations/health-checks/" target="_blank"
+   rel="noopener nofollow noreferrer" >HEALTH CHECKS</a></p>
+<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/quincy/cephfs/health-messages/?highlight=MDS_SLOW_METADATA_IO" target="_blank"
+   rel="noopener nofollow noreferrer" >CEPHFS HEALTH MESSAGES</a></p>
 
 
     

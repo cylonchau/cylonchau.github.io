@@ -10,7 +10,7 @@
 <meta name="description" content="如何将systemd服务的输出重定向到指定文件 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2020/11/systemd-output/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "systemd"
   ],
-  "wordCount" : "745",
+  "wordCount" : "729",
   "inLanguage": "zh",
   "datePublished": "2020-11-13T00:00:00Z",
   "dateModified": "2023-03-22T23:00:36+08:00",
@@ -333,53 +333,27 @@ function toggleThemeListener() {
 </li>
 </ol>
 <p>单一条件处理。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">if $programname == &#39;programname&#39; then /var/log/programname.log
-</span></span><span class="line"><span class="cl"># 停止往其他文件内写入，如果不加此句，会继续往/var/log/message写入。
-</span></span><span class="line"><span class="cl">if $programname == &#39;programname&#39; then stop  
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>多条件处理</p>
+<pre><code class="language-conf">if $programname == 'programname' then /var/log/programname.log
+# 停止往其他文件内写入，如果不加此句，会继续往/var/log/message写入。
+if $programname == 'programname' then stop  
+</code></pre>
+<p>多条件处理</p>
 <p>　　会根据不同应用名称将不同的输出日志重定向到不同的文件内。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">if ($programname == &#39;apiserver&#39;) then {
-</span></span><span class="line"><span class="cl">   action(type=&#34;omfile&#34; file=&#34;/var/log/apiserver.log&#34;)
-</span></span><span class="line"><span class="cl">   stop
-</span></span><span class="line"><span class="cl">} else if ($programname == &#39;scheduler&#39;) then {
-</span></span><span class="line"><span class="cl">   action(type=&#34;omfile&#34; file=&#34;/var/log/scheduler.log&#34;)
-</span></span><span class="line"><span class="cl">   stop
-</span></span><span class="line"><span class="cl">} else if ($programname == &#39;controller-manager&#39;) then {
-</span></span><span class="line"><span class="cl">   action(type=&#34;omfile&#34; file=&#34;/var/log/controller-manager.log&#34;)
-</span></span><span class="line"><span class="cl">   stop
-</span></span><span class="line"><span class="cl">} else if ($programname == &#39;etcd&#39;) then {
-</span></span><span class="line"><span class="cl">   action(type=&#34;omfile&#34; file=&#34;/var/log/etcd.log&#34;)
-</span></span><span class="line"><span class="cl">   stop
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-conf">if ($programname == 'apiserver') then {
+   action(type=&quot;omfile&quot; file=&quot;/var/log/apiserver.log&quot;)
+   stop
+} else if ($programname == 'scheduler') then {
+   action(type=&quot;omfile&quot; file=&quot;/var/log/scheduler.log&quot;)
+   stop
+} else if ($programname == 'controller-manager') then {
+   action(type=&quot;omfile&quot; file=&quot;/var/log/controller-manager.log&quot;)
+   stop
+} else if ($programname == 'etcd') then {
+   action(type=&quot;omfile&quot; file=&quot;/var/log/etcd.log&quot;)
+   stop
+}
+</code></pre>
+<ol start="3">
 <li>
 <p><strong>检查语法是否正确</strong> <code>rsyslogd -N1 -f file_name.conf</code></p>
 </li>
@@ -390,9 +364,12 @@ function toggleThemeListener() {
 <p>　　完成以上步骤后，应用的 <code>stdout</code> <code>stderr</code>被重定向到对应的日志文件内了，而非<code>/var/log/message</code>，并且仍然可以通过通过<code>journalctl</code>获得对应的<code>stdout</code> <code>stderr</code> （systemd参数机制）。</p>
 <blockquote>
 <p><strong>reference</strong></p>
-<p><a href="http://www.jinbuguo.com/systemd/systemd.exec.html#StandardOutput=">systemd</a></p>
-<p><a href="https://rsyslog-mm.readthedocs.io/en/v7.4_stable/config/conditionals.html">rsyslog-conditional</a></p>
-<p><a href="https://stackoverflow.com/questions/44772640/redirecting-specific-logs-from-systemd-service-to-a-separate-file-doesnt-work">rsyslog</a></p>
+<p><a href="http://www.jinbuguo.com/systemd/systemd.exec.html#StandardOutput=" target="_blank"
+   rel="noopener nofollow noreferrer" >systemd</a></p>
+<p><a href="https://rsyslog-mm.readthedocs.io/en/v7.4_stable/config/conditionals.html" target="_blank"
+   rel="noopener nofollow noreferrer" >rsyslog-conditional</a></p>
+<p><a href="https://stackoverflow.com/questions/44772640/redirecting-specific-logs-from-systemd-service-to-a-separate-file-doesnt-work" target="_blank"
+   rel="noopener nofollow noreferrer" >rsyslog</a></p>
 </blockquote>
 
 

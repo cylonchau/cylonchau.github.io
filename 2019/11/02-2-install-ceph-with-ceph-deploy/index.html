@@ -10,7 +10,7 @@
 <meta name="description" content="Ceph集群安装 - ceph-deploy - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/11/02-2-install-ceph-with-ceph-deploy/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "Install Ceph with ceph-deploy on Centos7", "在Centos7上使用ceph-deploy安装ceph集群", "ceph-deploy", "ceph install"
   ],
-  "wordCount" : "5840",
+  "wordCount" : "5585",
   "inLanguage": "zh",
   "datePublished": "2019-11-18T00:00:00Z",
   "dateModified": "2023-09-10T23:10:36+08:00",
@@ -388,8 +388,7 @@ function toggleThemeListener() {
 <br><h2 id="环境配置">环境配置<a hidden class="anchor" aria-hidden="true" href="#环境配置">¶</a></h2>
 <p>Ceph 是一个开源去中心化存储平台，专为满足现代存储需求而设计。  Ceph可扩展至 EB 级，并且设计为无单点故障，使其成为需要高度可用的灵活存储的应用程序的理想选择。</p>
 <p>下图显示了具有 Ceph 存储的示例 3 节点集群的布局。   两个网络接口可用于增加带宽和冗余，这有助于保持足够的带宽来满足存储要求，而不影响客户端应用程序。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230910161024448.png" alt="image-20230910161024448"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230910161024448.png" alt="image-20230910161024448" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Ceph存储集群</center>
 <center><em>Source：</em>https://www.jamescoyle.net/how-to/1244-create-a-3-node-ceph-storage-cluster</center><br>
 <p>图中架构表示了一个无单点故障的 3 节点 Ceph 集群，以提供高度冗余的存储。   每个节点都配置了两个磁盘；   一台运行 Linux 操作系统，另一台将用于 Ceph 存储。   下面的输出显示了可用的存储空间，每个主机上的存储空间完全相同。   <strong>/dev/sda</strong> 是包含操作系统安装的根分区，  <strong>/dev/sdb</strong> 是一个未触及的分区，将用于部署 Ceph 集群，对应的硬件信息如下表所示。</p>
@@ -442,8 +441,7 @@ function toggleThemeListener() {
 </li>
 </ul>
 <p>下图是来自 ceph 官网的 <em>ceph-deploy</em> 部署工具的一个模型图</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230910164114089.png" alt="image-20230910164114089"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230910164114089.png" alt="image-20230910164114089" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：ceph-deploy部署模型</center>
 <center><em>Source：</em>https://docs.ceph.com/en/nautilus/start/quick-start-preflight/</center><br>
 <h3 id="ceph-集群拓扑及网络">CEPH 集群拓扑及网络<a hidden class="anchor" aria-hidden="true" href="#ceph-集群拓扑及网络">¶</a></h3>
@@ -459,127 +457,63 @@ function toggleThemeListener() {
 <ol>
 <li>添加 release key</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">wget -q -O- <span class="s1">&#39;https://download.ceph.com/keys/release.asc&#39;</span> <span class="p">|</span> sudo apt-key add -
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="2">
+<pre><code class="language-bash">wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
+</code></pre>
+<ol start="2">
 <li>将 Ceph deb添加到您的存储库。并替换为安装的 Ceph 版本（例如 nautilus）。例如：</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">CEPH_VERSION</span><span class="o">=</span>nautilus
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> deb https://download.ceph.com/debian-<span class="si">${</span><span class="nv">CEPH_VERSION</span><span class="si">}</span>/ <span class="k">$(</span>lsb_release -sc<span class="k">)</span> main <span class="p">|</span> sudo tee /etc/apt/sources.list.d/ceph.list
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-bash">export CEPH_VERSION=nautilus
+echo deb https://download.ceph.com/debian-${CEPH_VERSION}/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
+</code></pre>
+<ol start="3">
 <li>更新仓库并安装 <em>ceph-deploy</em></li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo apt update
-</span></span><span class="line"><span class="cl">sudo apt install ceph-deploy
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="rhelcentos">RHEL/CentOS<a hidden class="anchor" aria-hidden="true" href="#rhelcentos">¶</a></h3>
+<pre><code class="language-bash">sudo apt update
+sudo apt install ceph-deploy
+</code></pre>
+<h3 id="rhelcentos">RHEL/CentOS<a hidden class="anchor" aria-hidden="true" href="#rhelcentos">¶</a></h3>
 <ol>
 <li>安装 epel 源，这里方式很多可以任意选择 “<strong>你所在地区可用的 epel 源</strong>”</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="2">
+<pre><code class="language-bash">sudo yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+</code></pre>
+<ol start="2">
 <li>添加 Ceph rpm 仓库</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">CEPH_VERSION</span><span class="o">=</span>nautilus
-</span></span><span class="line"><span class="cl">cat <span class="s">&lt;&lt; EOF &gt; /etc/yum.repos.d/ceph.repo
-</span></span></span><span class="line"><span class="cl"><span class="s">[ceph]
-</span></span></span><span class="line"><span class="cl"><span class="s">name=Ceph packages for $basearch
-</span></span></span><span class="line"><span class="cl"><span class="s">baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/\$basearch
-</span></span></span><span class="line"><span class="cl"><span class="s">enabled=1
-</span></span></span><span class="line"><span class="cl"><span class="s">priority=2
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgcheck=1
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgkey=https://download.ceph.com/keys/release.asc
-</span></span></span><span class="line"><span class="cl"><span class="s">
-</span></span></span><span class="line"><span class="cl"><span class="s">[ceph-noarch]
-</span></span></span><span class="line"><span class="cl"><span class="s">name=Ceph noarch packages
-</span></span></span><span class="line"><span class="cl"><span class="s">baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/noarch
-</span></span></span><span class="line"><span class="cl"><span class="s">enabled=1
-</span></span></span><span class="line"><span class="cl"><span class="s">priority=2
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgcheck=1
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgkey=https://download.ceph.com/keys/release.asc
-</span></span></span><span class="line"><span class="cl"><span class="s">
-</span></span></span><span class="line"><span class="cl"><span class="s">[ceph-source]
-</span></span></span><span class="line"><span class="cl"><span class="s">name=Ceph source packages
-</span></span></span><span class="line"><span class="cl"><span class="s">baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/SRPMS
-</span></span></span><span class="line"><span class="cl"><span class="s">enabled=0
-</span></span></span><span class="line"><span class="cl"><span class="s">priority=2
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgcheck=1
-</span></span></span><span class="line"><span class="cl"><span class="s">gpgkey=https://download.ceph.com/keys/release.asc
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-bash">export CEPH_VERSION=nautilus
+cat &lt;&lt; EOF &gt; /etc/yum.repos.d/ceph.repo
+[ceph]
+name=Ceph packages for $basearch
+baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/\$basearch
+enabled=1
+priority=2
+gpgcheck=1
+gpgkey=https://download.ceph.com/keys/release.asc
+
+[ceph-noarch]
+name=Ceph noarch packages
+baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/noarch
+enabled=1
+priority=2
+gpgcheck=1
+gpgkey=https://download.ceph.com/keys/release.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl=https://download.ceph.com/rpm-${CEPH_VERSION}/el7/SRPMS
+enabled=0
+priority=2
+gpgcheck=1
+gpgkey=https://download.ceph.com/keys/release.asc
+EOF
+</code></pre>
+<ol start="3">
 <li>更新缓存并安装 <em>ceph-deploy</em></li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo yum clean all <span class="o">&amp;&amp;</span> sudo yum makecache
-</span></span><span class="line"><span class="cl">sudo yum install ceph-deploy
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="安装集群的预先条件---ceph-node">安装集群的预先条件 - CEPH NODE<a hidden class="anchor" aria-hidden="true" href="#安装集群的预先条件---ceph-node">¶</a></h2>
+<pre><code class="language-bash">sudo yum clean all &amp;&amp; sudo yum makecache
+sudo yum install ceph-deploy
+</code></pre>
+<h2 id="安装集群的预先条件---ceph-node">安装集群的预先条件 - CEPH NODE<a hidden class="anchor" aria-hidden="true" href="#安装集群的预先条件---ceph-node">¶</a></h2>
 <ul>
 <li>管理节点必须拥有所有 ceph node 的无密码登录权限</li>
 <li>ntp</li>
@@ -593,263 +527,129 @@ function toggleThemeListener() {
 <ol>
 <li>在每个 Ceph Node 创建一个用户</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">CEPH_USERNAME</span><span class="o">=</span>ceph
-</span></span><span class="line"><span class="cl">sudo useradd -d /home/<span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span> -m <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> 1<span class="p">|</span>sudo passwd <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span> --stdin
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="2">
+<pre><code class="language-bash">export CEPH_USERNAME=ceph
+sudo useradd -d /home/${CEPH_USERNAME} -m ${CEPH_USERNAME}
+echo 1|sudo passwd ${CEPH_USERNAME} --stdin
+</code></pre>
+<ol start="2">
 <li>对于添加到每个 Ceph Node 的新用户，请确保该用户具有 sudo 权限。</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;</span><span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span><span class="s2"> ALL = (root) NOPASSWD:ALL&#34;</span> <span class="p">|</span> sudo tee /etc/sudoers.d/<span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>
-</span></span><span class="line"><span class="cl">sudo chmod <span class="m">0440</span> /etc/sudoers.d/<span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="启用-ssh-无密码登录">启用 SSH 无密码登录<a hidden class="anchor" aria-hidden="true" href="#启用-ssh-无密码登录">¶</a></h3>
+<pre><code class="language-bash">echo &quot;${CEPH_USERNAME} ALL = (root) NOPASSWD:ALL&quot; | sudo tee /etc/sudoers.d/${CEPH_USERNAME}
+sudo chmod 0440 /etc/sudoers.d/${CEPH_USERNAME}
+</code></pre>
+<h3 id="启用-ssh-无密码登录">启用 SSH 无密码登录<a hidden class="anchor" aria-hidden="true" href="#启用-ssh-无密码登录">¶</a></h3>
 <p>由于 ceph-deploy 不会提示输入密码，因此必须在管理节点上生成 SSH 密钥并将公钥分发到每个 Ceph 节点。 <em>ceph-deploy</em> 将尝试为初始 monitor 生成 SSH 密钥。</p>
 <ol>
 <li>生成 ssh key，不要使用 sudo 或者是 root 用户</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ssh-keygen
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Generating public/private key pair.
-</span></span><span class="line"><span class="cl">Enter file in which to save the key <span class="o">(</span>/ceph-admin/.ssh/id_rsa<span class="o">)</span>:
-</span></span><span class="line"><span class="cl">Enter passphrase <span class="o">(</span>empty <span class="k">for</span> no passphrase<span class="o">)</span>:
-</span></span><span class="line"><span class="cl">Enter same passphrase again:
-</span></span><span class="line"><span class="cl">Your identification has been saved in /ceph-admin/.ssh/id_rsa.
-</span></span><span class="line"><span class="cl">Your public key has been saved in /ceph-admin/.ssh/id_rsa.pub.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="2">
+<pre><code class="language-bash">$ ssh-keygen
+
+Generating public/private key pair.
+Enter file in which to save the key (/ceph-admin/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /ceph-admin/.ssh/id_rsa.
+Your public key has been saved in /ceph-admin/.ssh/id_rsa.pub.
+</code></pre>
+<ol start="2">
 <li>将 SSH 密钥复制到每个 Ceph Node，将变量 “CEPH_USERNAME” 替换为创建 Ceph 部署用户创建的用户名。</li>
 </ol>
 <blockquote>
 <p>通常情况下，主机名需要解析的，如果没有需要配置在 /etc/hosts 内</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus01
-</span></span><span class="line"><span class="cl">ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus02
-</span></span><span class="line"><span class="cl">ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus03
-</span></span><span class="line"><span class="cl"><span class="c1"># 如果是 root 用户执行下面命令</span>
-</span></span><span class="line"><span class="cl">sudo -u <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span> ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus01
-</span></span><span class="line"><span class="cl">sudo -u <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span> ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus02
-</span></span><span class="line"><span class="cl">sudo -u <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span> ssh-copy-id <span class="si">${</span><span class="nv">CEPH_USERNAME</span><span class="si">}</span>@ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-bash">ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus01
+ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus02
+ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus03
+# 如果是 root 用户执行下面命令
+sudo -u ${CEPH_USERNAME} ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus01
+sudo -u ${CEPH_USERNAME} ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus02
+sudo -u ${CEPH_USERNAME} ssh-copy-id ${CEPH_USERNAME}@ceph-nautilus03
+</code></pre>
+<ol start="3">
 <li>添加主机名到 /etc/hosts (可选)</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ tee &gt;&gt; /etc/hosts <span class="s">&lt;&lt; EOF
-</span></span></span><span class="line"><span class="cl"><span class="s">10.0.0.50 ceph-nautilus01
-</span></span></span><span class="line"><span class="cl"><span class="s">10.0.0.51 ceph-nautilus02
-</span></span></span><span class="line"><span class="cl"><span class="s">10.0.0.52 ceph-nautilus03
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="网卡开机自启动">网卡开机自启动<a hidden class="anchor" aria-hidden="true" href="#网卡开机自启动">¶</a></h3>
+<pre><code class="language-bash">$ tee &gt;&gt; /etc/hosts &lt;&lt; EOF
+10.0.0.50 ceph-nautilus01
+10.0.0.51 ceph-nautilus02
+10.0.0.52 ceph-nautilus03
+EOF
+</code></pre>
+<h3 id="网卡开机自启动">网卡开机自启动<a hidden class="anchor" aria-hidden="true" href="#网卡开机自启动">¶</a></h3>
 <p>Ceph OSD Peer 并通过网络向 Ceph monitor 报告。如果默认情况下网络处于关闭状态，则在启用网络之前，Ceph 集群无法在启动期间联机。</p>
 <p>在一些 Linux 发行版下（例如 CentOS）上的默认配置默认关闭网络接口。确保在启动过程中网络接口打开，以便 Ceph 守护进程可以通过网络进行通信。(如果你的系统是新装的)</p>
 <h3 id="开放所需端口">开放所需端口<a hidden class="anchor" aria-hidden="true" href="#开放所需端口">¶</a></h3>
 <p>Ceph Monitor (ceph-mon) 默认使用端口 <strong>6789</strong> 进行通信。默认情况下，Ceph OSD 在 <strong>6800:7300</strong> 端口范围内进行通信。详细信息请参见网络配置参考 <sup><a href="#1">[1]</a></sup>。</p>
 <h3 id="确保关闭-selinux">确保关闭 SELinux<a hidden class="anchor" aria-hidden="true" href="#确保关闭-selinux">¶</a></h3>
 <p>在 CentOS 和 RHEL 上，SELinux 默认设置为“Enforcing”。为了简化您的安装，我们建议将 SELinux 设置为 Permissive 或完全禁用，这是 Ceph 官方给出的建议</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo setenforce <span class="m">0</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>要持久配置 SELinux（如果 SELinux 存在问题，则建议这样做），请修改 <code>/etc/selinux/config</code> 中的配置文件。</p>
+<pre><code class="language-bash">sudo setenforce 0
+</code></pre>
+<p>要持久配置 SELinux（如果 SELinux 存在问题，则建议这样做），请修改 <code>/etc/selinux/config</code> 中的配置文件。</p>
 <h3 id="preferences">Preferences<a hidden class="anchor" aria-hidden="true" href="#preferences">¶</a></h3>
 <p>确保您的 “包管理器” 已安装并启用 “priority/preferences”。在 CentOS 上，您可能需要安装 EPEL。在 RHEL 上，您可能需要启用可选存储库。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sudo yum install yum-plugin-priorities
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>例如，在 RHEL 7 服务器上，执行以下命令安装 yum-plugin-priorities 并启用 rhel-7-server-optional-rpms 存储库：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">sudo yum install yum-plugin-priorities --enablerepo=rhel-7-server-optional-rpms
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="初始化新的-ceph-集群">初始化新的 CEPH 集群<a hidden class="anchor" aria-hidden="true" href="#初始化新的-ceph-集群">¶</a></h2>
+<pre><code class="language-bash">sudo yum install yum-plugin-priorities
+</code></pre>
+<p>例如，在 RHEL 7 服务器上，执行以下命令安装 yum-plugin-priorities 并启用 rhel-7-server-optional-rpms 存储库：</p>
+<pre><code class="language-bsah">sudo yum install yum-plugin-priorities --enablerepo=rhel-7-server-optional-rpms
+</code></pre>
+<h2 id="初始化新的-ceph-集群">初始化新的 CEPH 集群<a hidden class="anchor" aria-hidden="true" href="#初始化新的-ceph-集群">¶</a></h2>
 <p>在这里我们创建一个包含一个 Ceph Monitor (<em>ceph-mon</em>) 和 三个 Ceph OSD (<em>osd daemon</em>) 的 Ceph 集群。通常使用 <em>ceph-deploy</em> 部署集群，最佳方式是在 “管理节点” 上创建一个目录，用于维护 ceph-deploy 为集群生成的配置文件和密钥。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mkdir ceph-cluster <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ceph-cluster
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>需要注意的是，<em>ceph-deploy</em> 将文件输出到当前目录。执行 ceph-deploy 时需要确保位于此目录中。</p>
+<pre><code class="language-bash">mkdir ceph-cluster &amp;&amp; cd ceph-cluster
+</code></pre>
+<p>需要注意的是，<em>ceph-deploy</em> 将文件输出到当前目录。执行 ceph-deploy 时需要确保位于此目录中。</p>
 <p>还需要注意的是，需要使用 “<strong>SSH 免密的那个用户</strong>”</p>
 <h3 id="确保集群节点清洁性">确保集群节点清洁性<a hidden class="anchor" aria-hidden="true" href="#确保集群节点清洁性">¶</a></h3>
 <p>如果在任何时候遇到问题后并想重新开始，可以执行下列命令清除所有安装包和配置：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy purge <span class="o">{</span>ceph-node<span class="o">}</span> <span class="o">[{</span>ceph-node<span class="o">}]</span>
-</span></span><span class="line"><span class="cl">ceph-deploy purgedata <span class="o">{</span>ceph-node<span class="o">}</span> <span class="o">[{</span>ceph-node<span class="o">}]</span>
-</span></span><span class="line"><span class="cl">ceph-deploy forgetkeys
-</span></span><span class="line"><span class="cl">rm ceph.*
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>需要注意的是，执行 ceph-deploy，必须执行第四条命令 <code>rm ceph.*</code></p>
+<pre><code class="language-bash">ceph-deploy purge {ceph-node} [{ceph-node}]
+ceph-deploy purgedata {ceph-node} [{ceph-node}]
+ceph-deploy forgetkeys
+rm ceph.*
+</code></pre>
+<p>需要注意的是，执行 ceph-deploy，必须执行第四条命令 <code>rm ceph.*</code></p>
 <h3 id="创建集群">创建集群<a hidden class="anchor" aria-hidden="true" href="#创建集群">¶</a></h3>
 <p>创建集群会生成配置文件保存到当前工作目录中，使用 ceph-deploy 执行命令新建一个集群。</p>
 <ol>
 <li>创建集群</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 语法</span>
-</span></span><span class="line"><span class="cl">ceph-deploy new <span class="o">{</span>initial-monitor-node<span class="o">(</span>s<span class="o">)}</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例, 指定节点的 hostname, fqdn or hostname:fqdn</span>
-</span></span><span class="line"><span class="cl">ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>ceph-deploy 会输出到当前文件夹下的文件包含，Ceph 配置文件 (ceph.conf)、ceph-mon 的 keyring 文件 (ceph.mon.keyring) 以及新集群的日志文件。</p>
+<pre><code class="language-bash"># 语法
+ceph-deploy new {initial-monitor-node(s)}
+# 示例, 指定节点的 hostname, fqdn or hostname:fqdn
+ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
+</code></pre>
+<p>ceph-deploy 会输出到当前文件夹下的文件包含，Ceph 配置文件 (ceph.conf)、ceph-mon 的 keyring 文件 (ceph.mon.keyring) 以及新集群的日志文件。</p>
 <ol start="2">
 <li>如果主机存在多个网络接口（即公共网络和集群网络是分开的），需要在 Ceph 配置文件的 [global] 部分下添加公共网络设置。</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">public <span class="nv">network</span> <span class="o">=</span> <span class="o">{</span>ip-address<span class="o">}</span>/<span class="o">{</span>bits<span class="o">}</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例</span>
-</span></span><span class="line"><span class="cl">public <span class="nv">network</span> <span class="o">=</span> 10.1.2.0/24
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>或者通过命令指定两个网络的 IP</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--cluster-network 172.18.0.0/24 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--public-network 10.0.0.0/24
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-bash">public network = {ip-address}/{bits}
+# 示例
+public network = 10.1.2.0/24
+</code></pre>
+<p>或者通过命令指定两个网络的 IP</p>
+<pre><code class="language-bash">ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03 \
+	--cluster-network 172.18.0.0/24 \
+	--public-network 10.0.0.0/24
+</code></pre>
+<ol start="3">
 <li>如果在 IPv6 环境中部署，请将以下内容添加到本地目录中的 ceph.conf 中：</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> ms <span class="nb">bind</span> <span class="nv">ipv6</span> <span class="o">=</span> <span class="nb">true</span> &gt;&gt; ceph.conf
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="4">
+<pre><code class="language-bash">echo ms bind ipv6 = true &gt;&gt; ceph.conf
+</code></pre>
+<ol start="4">
 <li>现在可以安装 ceph 软件包了，执行下列命令</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy install <span class="o">{</span>ceph-node<span class="o">}</span> <span class="o">[</span>...<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例</span>
-</span></span><span class="line"><span class="cl">ceph-deploy install ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在命令执行后，<em>ceph-deploy</em> 将在每个节点上安装 Ceph，所以要确保对应节点需要提前安装好了 ceph yum 仓库文件</p>
+<pre><code class="language-bash">ceph-deploy install {ceph-node} [...]
+# 示例
+ceph-deploy install ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
+</code></pre>
+<p>在命令执行后，<em>ceph-deploy</em> 将在每个节点上安装 Ceph，所以要确保对应节点需要提前安装好了 ceph yum 仓库文件</p>
 <p>也可以通过  <code>--release</code> 指定版本进行安装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy install --release<span class="o">=</span>nautilus ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="5">
+<pre><code class="language-bash">ceph-deploy install --release=nautilus ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
+</code></pre>
+<ol start="5">
 <li>部署 <em>ceph-mon</em> 并收集密钥：</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy mon create-initial
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>​	通常完成步骤5后，本地工作目录应具有以下 keyring 文件：</p>
+<pre><code class="language-bash">ceph-deploy mon create-initial
+</code></pre>
+<p>​	通常完成步骤5后，本地工作目录应具有以下 keyring 文件：</p>
 <ul>
 <li><code>ceph.client.admin.keyring</code></li>
 <li><code>ceph.bootstrap-mgr.keyring</code></li>
@@ -862,196 +662,95 @@ function toggleThemeListener() {
 <ol start="6">
 <li>使用 <em>ceph-deploy</em> 将配置文件和管理密钥复制到管理节点和 Ceph Node，以便可以在这些节点上使用 ceph CLI 时而无需在每次执行命令时指定 ceph-mon 地址和 keyring文件 (ceph.client.admin.keyring)。</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy admin <span class="o">{</span>ceph-node<span class="o">(</span>s<span class="o">)}</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例</span>
-</span></span><span class="line"><span class="cl">ceph-deploy admin ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="7">
+<pre><code class="language-bash">ceph-deploy admin {ceph-node(s)}
+# 示例
+ceph-deploy admin ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
+</code></pre>
+<ol start="7">
 <li>部署 CEPH MANAGER (ceph-mgr)，此步骤仅需要 ==luminous+== 以上版本</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy mgr create <span class="o">{</span>ceph-node<span class="o">(</span>s<span class="o">)}</span>  *Required only <span class="k">for</span> luminous+ builds, i.e &gt;<span class="o">=</span> 12.x builds*
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例</span>
-</span></span><span class="line"><span class="cl">ceph-deploy mgr create ceph-nautilus01
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="8">
+<pre><code class="language-bash">ceph-deploy mgr create {ceph-node(s)}  *Required only for luminous+ builds, i.e &gt;= 12.x builds*
+# 示例
+ceph-deploy mgr create ceph-nautilus01
+</code></pre>
+<ol start="8">
 <li>到步骤8时，只差 OSD 就完成了 RADOS 集群的安装，下面为集群添加 OSD</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph-deploy osd create --data <span class="o">{</span>device<span class="o">}</span> <span class="o">{</span>ceph-node<span class="o">}</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 示例</span>
-</span></span><span class="line"><span class="cl">ceph-deploy osd create --data /dev/sdb ceph-nautilus01
-</span></span><span class="line"><span class="cl">ceph-deploy osd create --data /dev/sdb ceph-nautilus02
-</span></span><span class="line"><span class="cl">ceph-deploy osd create --data /dev/sdb ceph-nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">ceph-deploy osd create --data {device} {ceph-node}
+# 示例
+ceph-deploy osd create --data /dev/sdb ceph-nautilus01
+ceph-deploy osd create --data /dev/sdb ceph-nautilus02
+ceph-deploy osd create --data /dev/sdb ceph-nautilus03
+</code></pre>
+<blockquote>
 <p>Note：如果要在 LVM 卷上创建 OSD，则 &ndash;data 的参数必须是 <code>{volume_group}/{lv_name}</code>，而不是卷的块设备的路径</p>
 </blockquote>
 <ol start="9">
 <li>检查集群状态</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ssh node1 sudo ceph health
-</span></span><span class="line"><span class="cl"><span class="c1"># or </span>
-</span></span><span class="line"><span class="cl">ceph -s
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
+<pre><code class="language-bash">ssh node1 sudo ceph health
+# or 
+ceph -s
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
 <h3 id="no-module-named-pkg_resources">No module named pkg_resources<a hidden class="anchor" aria-hidden="true" href="#no-module-named-pkg_resources">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
-</span></span><span class="line"><span class="cl">Traceback <span class="o">(</span>most recent call last<span class="o">)</span>:
-</span></span><span class="line"><span class="cl">  File <span class="s2">&#34;/usr/bin/ceph-deploy&#34;</span>, line 18, in &lt;module&gt;
-</span></span><span class="line"><span class="cl">    from ceph_deploy.cli import main
-</span></span><span class="line"><span class="cl">  File <span class="s2">&#34;/usr/lib/python2.7/site-packages/ceph_deploy/cli.py&#34;</span>, line 1, in &lt;module&gt;
-</span></span><span class="line"><span class="cl">    import pkg_resources
-</span></span><span class="line"><span class="cl">ImportError: No module named pkg_resources
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：This issue can be solved by installing <code>yum install -y python-setuptools</code>.</p>
+<pre><code class="language-bash">$ ceph-deploy new ceph-nautilus01 ceph-nautilus02 ceph-nautilus03
+Traceback (most recent call last):
+  File &quot;/usr/bin/ceph-deploy&quot;, line 18, in &lt;module&gt;
+    from ceph_deploy.cli import main
+  File &quot;/usr/lib/python2.7/site-packages/ceph_deploy/cli.py&quot;, line 1, in &lt;module&gt;
+    import pkg_resources
+ImportError: No module named pkg_resources
+</code></pre>
+<p>解决：This issue can be solved by installing <code>yum install -y python-setuptools</code>.</p>
 <h3 id="runtimeerror-nosectionerror-no-section-ceph">RuntimeError: NoSectionError: No section: &lsquo;ceph&rsquo;<a hidden class="anchor" aria-hidden="true" href="#runtimeerror-nosectionerror-no-section-ceph">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,640<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span>   Installing : ceph-release-1-1.el7.noarch                                  1/1 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,640<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span> warning: /etc/yum.repos.d/ceph.repo created as /etc/yum.repos.d/ceph.repo.rpmnew
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span>   Verifying  : ceph-release-1-1.el7.noarch                                  1/1 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span> 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span> Installed:
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span>   ceph-release.noarch 0:1-1.el7                                                 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span> 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>DEBUG <span class="o">]</span> Complete!
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,759<span class="o">][</span>ceph-nautilus01<span class="o">][</span>WARNING<span class="o">]</span> ensuring that /etc/yum.repos.d/ceph.repo contains a high priority
-</span></span><span class="line"><span class="cl"><span class="o">[</span>2019-09-11 05:31:42,767<span class="o">][</span>ceph_deploy<span class="o">][</span>ERROR <span class="o">]</span> RuntimeError: NoSectionError: No section: <span class="s1">&#39;ceph&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：CEPH Node 上不要安装 yum 仓库，<em>ceph-deploy</em> 会自动安装，如果存在新的文件会被命名为 <code>ceph.repo.rpmnew</code></p>
+<pre><code class="language-bash">[2019-09-11 05:31:42,640][ceph-nautilus01][DEBUG ]   Installing : ceph-release-1-1.el7.noarch                                  1/1 
+[2019-09-11 05:31:42,640][ceph-nautilus01][DEBUG ] warning: /etc/yum.repos.d/ceph.repo created as /etc/yum.repos.d/ceph.repo.rpmnew
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ]   Verifying  : ceph-release-1-1.el7.noarch                                  1/1 
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ] 
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ] Installed:
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ]   ceph-release.noarch 0:1-1.el7                                                 
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ] 
+[2019-09-11 05:31:42,759][ceph-nautilus01][DEBUG ] Complete!
+[2019-09-11 05:31:42,759][ceph-nautilus01][WARNING] ensuring that /etc/yum.repos.d/ceph.repo contains a high priority
+[2019-09-11 05:31:42,767][ceph_deploy][ERROR ] RuntimeError: NoSectionError: No section: 'ceph'
+</code></pre>
+<p>解决：CEPH Node 上不要安装 yum 仓库，<em>ceph-deploy</em> 会自动安装，如果存在新的文件会被命名为 <code>ceph.repo.rpmnew</code></p>
 <h2 id="向-rados-集群添加-osd">向 RADOS 集群添加 OSD<a hidden class="anchor" aria-hidden="true" href="#向-rados-集群添加-osd">¶</a></h2>
 <h4 id="列出并擦净磁盘">列出并擦净磁盘<a hidden class="anchor" aria-hidden="true" href="#列出并擦净磁盘">¶</a></h4>
 <p><em>ceph-deploy disk</em> 命令可以检查并列出OSD节点上所有可用的磁盘相关的信息。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy disk list stor01 stor02 stor03 stor04
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果遇到 <code>Running command: sudo fdisk -l</code> 无输出，原因为系统问中文，修改 <em>en_us.utf8</em> 后可正常显示。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph-deploy disk list stor01
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.conf<span class="o">][</span>DEBUG <span class="o">]</span> found configuration file at: /home/cephadmin/.cephdeploy.conf
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span> Invoked <span class="o">(</span>2.0.1<span class="o">)</span>: /bin/ceph-deploy disk list stor01
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span> ceph-deploy options:
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  username                      : None
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  verbose                       : False
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  debug                         : False
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  overwrite_conf                : False
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  subcommand                    : list
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  quiet                         : False
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x7fab61201488&gt;
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  cluster                       : ceph
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  host                          : <span class="o">[</span><span class="s1">&#39;stor01&#39;</span><span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  func                          : &lt;<span class="k">function</span> disk at 0x7fab6144e9b0&gt;
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  ceph_conf                     : None
-</span></span><span class="line"><span class="cl"><span class="o">[</span>ceph_deploy.cli<span class="o">][</span>INFO  <span class="o">]</span>  default_release               : False
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>DEBUG <span class="o">]</span> connection detected need <span class="k">for</span> sudo
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>DEBUG <span class="o">]</span> connected to host: stor01 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>DEBUG <span class="o">]</span> detect platform information from remote host
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>DEBUG <span class="o">]</span> detect machine <span class="nb">type</span>
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>DEBUG <span class="o">]</span> find the location of an executable
-</span></span><span class="line"><span class="cl"><span class="o">[</span>stor01<span class="o">][</span>INFO  <span class="o">]</span> Running command: sudo fdisk -l
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而后，在管理节点上使用 <em>ceph-deploy</em> 命令 擦除计划专用于OSD磁盘上的所有分区表和数据以便用于OSD，命令格式为<code>ceph-deploy disk zab {osd-server-name} {disk-name}</code>，需要注意的是此步会清除目标设备上的所有数据。</p>
+<pre><code class="language-sh">ceph-deploy disk list stor01 stor02 stor03 stor04
+</code></pre>
+<p>如果遇到 <code>Running command: sudo fdisk -l</code> 无输出，原因为系统问中文，修改 <em>en_us.utf8</em> 后可正常显示。</p>
+<pre><code class="language-bash">$ ceph-deploy disk list stor01
+[ceph_deploy.conf][DEBUG ] found configuration file at: /home/cephadmin/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /bin/ceph-deploy disk list stor01
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  debug                         : False
+[ceph_deploy.cli][INFO  ]  overwrite_conf                : False
+[ceph_deploy.cli][INFO  ]  subcommand                    : list
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x7fab61201488&gt;
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  host                          : ['stor01']
+[ceph_deploy.cli][INFO  ]  func                          : &lt;function disk at 0x7fab6144e9b0&gt;
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[stor01][DEBUG ] connection detected need for sudo
+[stor01][DEBUG ] connected to host: stor01 
+[stor01][DEBUG ] detect platform information from remote host
+[stor01][DEBUG ] detect machine type
+[stor01][DEBUG ] find the location of an executable
+[stor01][INFO  ] Running command: sudo fdisk -l
+</code></pre>
+<p>而后，在管理节点上使用 <em>ceph-deploy</em> 命令 擦除计划专用于OSD磁盘上的所有分区表和数据以便用于OSD，命令格式为<code>ceph-deploy disk zab {osd-server-name} {disk-name}</code>，需要注意的是此步会清除目标设备上的所有数据。</p>
 <p>擦除一个磁盘</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy disk zap
-</span></span><span class="line"><span class="cl">ceph-deploy disk zap <span class="o">{</span>ceph_node<span class="o">}</span> /dev/sdb
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-sh">ceph-deploy disk zap
+ceph-deploy disk zap {ceph_node} /dev/sdb
+</code></pre>
+<blockquote>
 <p>Note：如果是未格式化的块设备不需要额外擦除，ceph 集群要求 ceph 管理的块设备必须是未格式化的，如果格式化过的需要擦除</p>
 </blockquote>
 <p><em>ceph-deploy osd &ndash;help</em>：</p>
@@ -1065,17 +764,10 @@ function toggleThemeListener() {
 <h3 id="添加-osd">添加 OSD<a hidden class="anchor" aria-hidden="true" href="#添加-osd">¶</a></h3>
 <p>当一个 “基本集群” 部署好并运行，下一步就是扩展集群。通常会扩展集群，扩展集群存在两种类型，集群组件与OSD，这里主要围绕 扩展 OSD</p>
 <p>早期版本的ceph-deploy命令支持在将添加OSD的过程分为两个步骤：准备OSD，激活OSD，但新版本中，此种操作方式已被废除，添加OSD的步骤只能由命令 <em>ceph-deploy osd create create {node} &ndash;data {data-disk}</em> ，一次完成，默认存储引擎为 <strong>bluestore</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy osd create <span class="o">{</span>node<span class="o">}</span> --data /dev/sdb 
-</span></span><span class="line"><span class="cl">ceph-deploy osd create <span class="o">{</span>node<span class="o">}</span> --data /dev/sdc
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而后可使用 <em>ceph-deploy osd list {node}</em> 命令列出指定节点上的OSD：</p>
+<pre><code class="language-sh">ceph-deploy osd create {node} --data /dev/sdb 
+ceph-deploy osd create {node} --data /dev/sdc
+</code></pre>
+<p>而后可使用 <em>ceph-deploy osd list {node}</em> 命令列出指定节点上的OSD：</p>
 <h3 id="移除-osd-的">移除 OSD 的<a hidden class="anchor" aria-hidden="true" href="#移除-osd-的">¶</a></h3>
 <p>Ceph集群中的一个OSD通常对应一个设备，且运行于专用的守护进程。在某OSD设备出现故障，或管理员出于管理只需确实要移除特定的OSD设备时，需要先停止相关的守护进程，而后再进行移除操作。对于Luminous及其之后的版本来说，停止和移除命令的格式如下</p>
 <ul>
@@ -1084,17 +776,10 @@ function toggleThemeListener() {
 <li>移除设备: <em>ceph osd purge {id} &ndash;yes-i-really-mean-it</em></li>
 </ul>
 <p>若类似如下的OSD的设备信息存在于ceph.conf配置文件中，管理员在删除OSD之后手动将其删除。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[osd.1]
-</span></span><span class="line"><span class="cl">    host = {hostname}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>不过，对于 <em>Luminous</em> 之前的版本来说，管理员需要依次手动执行如下步骤删除OSD设备</p>
+<pre><code class="language-conf">[osd.1]
+    host = {hostname}
+</code></pre>
+<p>不过，对于 <em>Luminous</em> 之前的版本来说，管理员需要依次手动执行如下步骤删除OSD设备</p>
 <ul>
 <li>于CRUSH运行图中移除设备: <em>ceph osd crush remove {name}</em></li>
 <li>移除OSD的认证key: <em>ceph auth del osd.{osd-num}</em></li>
@@ -1103,321 +788,156 @@ function toggleThemeListener() {
 <h3 id="扩展-ceph-mon">扩展 ceph-mon<a hidden class="anchor" aria-hidden="true" href="#扩展-ceph-mon">¶</a></h3>
 <p>Ceph 集群需要至少一个 <em>Ceph Monitor</em> 和一个 <em>Ceph Manager</em>，生产环境中，为了实现高可用，Ceph集群通常运行多个监视器，以免单监视器整个存储集群崩溃。Ceph使用 Paxos 算法，改算法是需要至少需要板书以上的监视器（大于n/2，其中n为总监视器数量），才能形成法定人数，尽管此非必须，<strong>奇数个</strong> ceph-mon 往往更好。</p>
 <p>使用 <em>ceph-deploy mon add {nodes}</em> 命令可以一次添加一个 ceph-mon 到集群中。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy mon add nautilus02  <span class="c1">## 此处使用短格式名称，长格式名称会报错。</span>
-</span></span><span class="line"><span class="cl">ceph-deploy mon add nautilus03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>设置完成后，可以在ceph客户端上查看监视器及法定人数的相关信息:</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ceph quorum_status --format json-pretty
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;election_epoch&#34;</span>: 20,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;quorum&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        0,
-</span></span><span class="line"><span class="cl">        1,
-</span></span><span class="line"><span class="cl">        <span class="m">2</span>
-</span></span><span class="line"><span class="cl">    <span class="o">]</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;quorum_names&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;stor01&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;stor02&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;stor03&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="o">]</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;quorum_leader_name&#34;</span>: <span class="s2">&#34;stor01&#34;</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;monmap&#34;</span>: <span class="o">{</span> 
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;epoch&#34;</span>: 3,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;fsid&#34;</span>: <span class="s2">&#34;69fb9b55-3fb5-42d0-8cf7-239a3b569791&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;modified&#34;</span>: <span class="s2">&#34;2019-06-06 21:19:41.274199&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;created&#34;</span>: <span class="s2">&#34;2019-06-05 12:35:31.143594&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;features&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;persistent&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;kraken&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;luminous&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;mimic&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;osdmap-prune&#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="o">]</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;optional&#34;</span>: <span class="o">[]</span>
-</span></span><span class="line"><span class="cl">        <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;mons&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">            <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;rank&#34;</span>: 0,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;stor01&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;addr&#34;</span>: <span class="s2">&#34;10.0.0.4:6789/0&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;public_addr&#34;</span>: <span class="s2">&#34;10.0.0.4:6789/0&#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">            <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;rank&#34;</span>: 1,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;stor02&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;addr&#34;</span>: <span class="s2">&#34;10.0.0.5:6789/0&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;public_addr&#34;</span>: <span class="s2">&#34;10.0.0.5:6789/0&#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">            <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;rank&#34;</span>: 2,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;stor03&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;addr&#34;</span>: <span class="s2">&#34;10.0.0.6:6789/0&#34;</span>,
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;public_addr&#34;</span>: <span class="s2">&#34;10.0.0.6:6789/0&#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="o">}</span>
-</span></span><span class="line"><span class="cl">        <span class="o">]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="扩展-manager-节点">扩展 Manager 节点<a hidden class="anchor" aria-hidden="true" href="#扩展-manager-节点">¶</a></h3>
+<pre><code class="language-sh">ceph-deploy mon add nautilus02  ## 此处使用短格式名称，长格式名称会报错。
+ceph-deploy mon add nautilus03
+</code></pre>
+<p>设置完成后，可以在ceph客户端上查看监视器及法定人数的相关信息:</p>
+<pre><code class="language-sh">$ ceph quorum_status --format json-pretty
+
+{
+    &quot;election_epoch&quot;: 20,
+    &quot;quorum&quot;: [
+        0,
+        1,
+        2
+    ],
+    &quot;quorum_names&quot;: [
+        &quot;stor01&quot;,
+        &quot;stor02&quot;,
+        &quot;stor03&quot;
+    ],
+    &quot;quorum_leader_name&quot;: &quot;stor01&quot;,
+    &quot;monmap&quot;: { 
+        &quot;epoch&quot;: 3,
+        &quot;fsid&quot;: &quot;69fb9b55-3fb5-42d0-8cf7-239a3b569791&quot;,
+        &quot;modified&quot;: &quot;2019-06-06 21:19:41.274199&quot;,
+        &quot;created&quot;: &quot;2019-06-05 12:35:31.143594&quot;,
+        &quot;features&quot;: {
+            &quot;persistent&quot;: [
+                &quot;kraken&quot;,
+                &quot;luminous&quot;,
+                &quot;mimic&quot;,
+                &quot;osdmap-prune&quot;
+            ],
+            &quot;optional&quot;: []
+        },
+        &quot;mons&quot;: [
+            {
+                &quot;rank&quot;: 0,
+                &quot;name&quot;: &quot;stor01&quot;,
+                &quot;addr&quot;: &quot;10.0.0.4:6789/0&quot;,
+                &quot;public_addr&quot;: &quot;10.0.0.4:6789/0&quot;
+            },
+            {
+                &quot;rank&quot;: 1,
+                &quot;name&quot;: &quot;stor02&quot;,
+                &quot;addr&quot;: &quot;10.0.0.5:6789/0&quot;,
+                &quot;public_addr&quot;: &quot;10.0.0.5:6789/0&quot;
+            },
+            {
+                &quot;rank&quot;: 2,
+                &quot;name&quot;: &quot;stor03&quot;,
+                &quot;addr&quot;: &quot;10.0.0.6:6789/0&quot;,
+                &quot;public_addr&quot;: &quot;10.0.0.6:6789/0&quot;
+            }
+        ]
+    }
+}
+</code></pre>
+<h3 id="扩展-manager-节点">扩展 Manager 节点<a hidden class="anchor" aria-hidden="true" href="#扩展-manager-节点">¶</a></h3>
 <p>Ceph Manager (ceph-mgr) 以 <em>Active/Standy</em> 模式运行，部署其他 ceph-mgr 守护进程可确保在 Active 节点的 ceph-mgr 守护进程故障时，其中一个 Standby 实例可以在不中断服务的情况下接管其任务。</p>
 <p>mgr 就是无状态的 web 服务，一般来讲两个足够了。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy mgr create <span class="o">{</span>ceph_node<span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="启动-rgw">启动 RGW<a hidden class="anchor" aria-hidden="true" href="#启动-rgw">¶</a></h3>
+<pre><code class="language-sh">ceph-deploy mgr create {ceph_node}
+</code></pre>
+<h3 id="启动-rgw">启动 RGW<a hidden class="anchor" aria-hidden="true" href="#启动-rgw">¶</a></h3>
 <p>RGW (<strong>R</strong>ados <strong>G</strong>ateway) 必要组件，仅在需要用到对象存储兼容 “S3” 和 “Swift” 的 RESTful 接口时才需要部署 RGW 实例，相关的命令为<em>ceph-deploy rgw create (gateway-node)</em> 。</p>
 <p>radosgw需要用自用的存储池不能与RBD混合使用，RGW 会在创建时自动初始化出存储池来，RGW 需要有相应服务才能运行起来。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph-deploy rgw create nautilus02
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>添加完成后，<em>ceph -s</em>  命令的 service 一段中会输出相关信息：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ceph -s
-</span></span><span class="line"><span class="cl">  cluster:
-</span></span><span class="line"><span class="cl">    id:     69fb9b55-3fb5-42d0-8cf7-239a3b569791
-</span></span><span class="line"><span class="cl">    health: HEALTH_WARN
-</span></span><span class="line"><span class="cl">            application not enabled on <span class="m">1</span> pool<span class="o">(</span>s<span class="o">)</span>
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">  services:
-</span></span><span class="line"><span class="cl">    mon: <span class="m">3</span> daemons, quorum stor01,stor02,stor03
-</span></span><span class="line"><span class="cl">    mgr: stor01<span class="o">(</span>active<span class="o">)</span>, standbys: stor04
-</span></span><span class="line"><span class="cl">    osd: <span class="m">8</span> osds: <span class="m">8</span> up, <span class="m">8</span> in
-</span></span><span class="line"><span class="cl">    rgw: <span class="m">1</span> daemon active
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">  data:
-</span></span><span class="line"><span class="cl">    pools:   <span class="m">7</span> pools, <span class="m">160</span> pgs
-</span></span><span class="line"><span class="cl">    objects: <span class="m">196</span>  objects, 1.5 KiB
-</span></span><span class="line"><span class="cl">    usage:   <span class="m">21</span> GiB used, <span class="m">79</span> GiB / <span class="m">100</span> GiB avail
-</span></span><span class="line"><span class="cl">    pgs:     <span class="m">160</span> active+clean
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>默认情况下，RGW 实例监听于 TCP 协议的 7480 端口，需要修改，可以通过在运行 RGW 的节点上编辑其主配置文件 ceph.conf 进行修改，相关参数如下所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[client]
-</span></span><span class="line"><span class="cl">rgw_frontends = &#34;civetweb port=8080&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>RGW 会在 RADOWS 集群上生成包括如下存储池的一系列存储池</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$  ceph osd pool ls
-</span></span><span class="line"><span class="cl">mypool
-</span></span><span class="line"><span class="cl">rbdpool
-</span></span><span class="line"><span class="cl">testpool
-</span></span><span class="line"><span class="cl">.rgw.root
-</span></span><span class="line"><span class="cl">default.rgw.control
-</span></span><span class="line"><span class="cl">default.rgw.meta
-</span></span><span class="line"><span class="cl">default.rgw.log
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>RGW 提供的是兼容 S3 和 Swift 的 REST 接口，客户端通过 HTTP 进行交互，完成数据的增删改查等管理操作。</p>
+<pre><code class="language-sh">ceph-deploy rgw create nautilus02
+</code></pre>
+<p>添加完成后，<em>ceph -s</em>  命令的 service 一段中会输出相关信息：</p>
+<pre><code class="language-sh">$ ceph -s
+  cluster:
+    id:     69fb9b55-3fb5-42d0-8cf7-239a3b569791
+    health: HEALTH_WARN
+            application not enabled on 1 pool(s)
+ 
+  services:
+    mon: 3 daemons, quorum stor01,stor02,stor03
+    mgr: stor01(active), standbys: stor04
+    osd: 8 osds: 8 up, 8 in
+    rgw: 1 daemon active
+ 
+  data:
+    pools:   7 pools, 160 pgs
+    objects: 196  objects, 1.5 KiB
+    usage:   21 GiB used, 79 GiB / 100 GiB avail
+    pgs:     160 active+clean
+</code></pre>
+<p>默认情况下，RGW 实例监听于 TCP 协议的 7480 端口，需要修改，可以通过在运行 RGW 的节点上编辑其主配置文件 ceph.conf 进行修改，相关参数如下所示</p>
+<pre><code class="language-conf">[client]
+rgw_frontends = &quot;civetweb port=8080&quot;
+</code></pre>
+<p>RGW 会在 RADOWS 集群上生成包括如下存储池的一系列存储池</p>
+<pre><code class="language-sh">$  ceph osd pool ls
+mypool
+rbdpool
+testpool
+.rgw.root
+default.rgw.control
+default.rgw.meta
+default.rgw.log
+</code></pre>
+<p>RGW 提供的是兼容 S3 和 Swift 的 REST 接口，客户端通过 HTTP 进行交互，完成数据的增删改查等管理操作。</p>
 <h3 id="启用文件系统-cephfs-接口">启用文件系统 (CephFS) 接口<a hidden class="anchor" aria-hidden="true" href="#启用文件系统-cephfs-接口">¶</a></h3>
 <p>CephFS 需要至少运行一个 Metadata (MDS) 守护进程 (ceph-mds)，此进程管理与 CephFS 上存储的文件相关的元数据，并协调对 Ceph存储集群的访问。因此，若要使用 CephFS ，需要在存储集群中至少部署一个 MDS 实例，增加 MDS 可以使用命令 <em>ceph-deploy mds create {ceph-node}</em>  完成</p>
 <p>还需主义的是，每个 CephFS 都至少需要两个存储池，一个用来存放元数据 (Metadata Pool)，一个存放数据 (Data Pool)。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ceph-deploy mds create stor01
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看 MDS 的相关状态可以发现，刚添加的 MDS 处于 standby 状态</p>
+<pre><code class="language-sh">$ ceph-deploy mds create stor01
+</code></pre>
+<p>查看 MDS 的相关状态可以发现，刚添加的 MDS 处于 standby 状态</p>
 <p>在运行起来还不够，还没为其创建存储池，故其不能正常工作，处于standby模式。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph mds stat
-</span></span><span class="line"><span class="cl">, 1 up:standby
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>使用 CephFS 之前需要事先于集群中创建一个文件系统，并为其分别指定 “元数据” 和 “数据” 相关的存储池，下面创建一个名为 <em>cephfs</em> 的文件系统用于测试，使用cephfs-metadata为数据存储池，使用cephfs-data为数据存储池。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="c1"># 创建存储池</span>
-</span></span><span class="line"><span class="cl">ceph osd pool create cephfs-metadata <span class="m">64</span>
-</span></span><span class="line"><span class="cl">ceph osd pool create cephfs-data <span class="m">64</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 创建 cephfs</span>
-</span></span><span class="line"><span class="cl"><span class="c1">## 语法</span>
-</span></span><span class="line"><span class="cl">ceph fs new <span class="o">{</span>fs_name<span class="o">}</span> <span class="o">{</span>meatadata-pool<span class="o">}</span> <span class="o">{</span>data-pool<span class="o">}</span>
-</span></span><span class="line"><span class="cl"><span class="c1">## 示例</span>
-</span></span><span class="line"><span class="cl">ceph fs new cephfs cephfs-metadata cephfs-data
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<pre><code>$ ceph mds stat
+, 1 up:standby
+</code></pre>
+<p>使用 CephFS 之前需要事先于集群中创建一个文件系统，并为其分别指定 “元数据” 和 “数据” 相关的存储池，下面创建一个名为 <em>cephfs</em> 的文件系统用于测试，使用cephfs-metadata为数据存储池，使用cephfs-data为数据存储池。</p>
+<pre><code class="language-sh"># 创建存储池
+ceph osd pool create cephfs-metadata 64
+ceph osd pool create cephfs-data 64
+# 创建 cephfs
+## 语法
+ceph fs new {fs_name} {meatadata-pool} {data-pool}
+## 示例
+ceph fs new cephfs cephfs-metadata cephfs-data
+</code></pre>
+<ul>
 <li><em>ceph fs add_data_pool</em>： 额外添加数据池</li>
 <li><em>ceph fs new</em>： 创建新文件系统</li>
 <li><em>ceph fs status</em>： 查看CephFS 文件系统状态</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ceph fs status cephfs
-</span></span><span class="line"><span class="cl">cephfs - <span class="m">0</span> <span class="nv">clients</span>
-</span></span><span class="line"><span class="cl"><span class="o">======</span>
-</span></span><span class="line"><span class="cl">+------+--------+--------+---------------+-------+-------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Rank <span class="p">|</span> State  <span class="p">|</span>  MDS   <span class="p">|</span>    Activity   <span class="p">|</span>  dns  <span class="p">|</span>  inos <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+------+--------+--------+---------------+-------+-------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span>  <span class="m">0</span>   <span class="p">|</span> active <span class="p">|</span> stor02 <span class="p">|</span> Reqs:    <span class="m">0</span> /s <span class="p">|</span>   <span class="m">10</span>  <span class="p">|</span>   <span class="m">13</span>  <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+------+--------+--------+---------------+-------+-------+
-</span></span><span class="line"><span class="cl">+-----------------+----------+-------+-------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span>       Pool      <span class="p">|</span>   <span class="nb">type</span>   <span class="p">|</span>  used <span class="p">|</span> avail <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------+----------+-------+-------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> cephfs-metadata <span class="p">|</span> metadata <span class="p">|</span> <span class="m">2286</span>  <span class="p">|</span> 21.7G <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>   cephfs-data   <span class="p">|</span>   data   <span class="p">|</span>    <span class="m">0</span>  <span class="p">|</span> 21.7G <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------+----------+-------+-------+
-</span></span><span class="line"><span class="cl">+-------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Standby MDS <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-------------+
-</span></span><span class="line"><span class="cl">+-------------+
-</span></span><span class="line"><span class="cl">MDS version: ceph version 13.2.6 <span class="o">(</span>7b695f835b03642f85998b2ae7b6dd093d9fbce4<span class="o">)</span> mimic <span class="o">(</span>stable<span class="o">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://docs.ceph.com/en/nautilus/rados/configuration/network-config-ref/"><em><strong>Network Configuration Reference</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://unix.stackexchange.com/questions/379791/ceph-deployerror-runtimeerror-nosectionerror-no-section-ceph"><em><strong>ceph_deploy RuntimeError: NoSectionError: No section: &lsquo;ceph&rsquo;</strong></em></a></p>
+<pre><code class="language-sh">$ ceph fs status cephfs
+cephfs - 0 clients
+======
++------+--------+--------+---------------+-------+-------+
+| Rank | State  |  MDS   |    Activity   |  dns  |  inos |
++------+--------+--------+---------------+-------+-------+
+|  0   | active | stor02 | Reqs:    0 /s |   10  |   13  |
++------+--------+--------+---------------+-------+-------+
++-----------------+----------+-------+-------+
+|       Pool      |   type   |  used | avail |
++-----------------+----------+-------+-------+
+| cephfs-metadata | metadata | 2286  | 21.7G |
+|   cephfs-data   |   data   |    0  | 21.7G |
++-----------------+----------+-------+-------+
++-------------+
+| Standby MDS |
++-------------+
++-------------+
+MDS version: ceph version 13.2.6 (7b695f835b03642f85998b2ae7b6dd093d9fbce4) mimic (stable)
+</code></pre>
+<h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
+<p><sup id="1">[1]</sup> <a href="https://docs.ceph.com/en/nautilus/rados/configuration/network-config-ref/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Network Configuration Reference</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://unix.stackexchange.com/questions/379791/ceph-deployerror-runtimeerror-nosectionerror-no-section-ceph" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>ceph_deploy RuntimeError: NoSectionError: No section: &lsquo;ceph&rsquo;</strong></em></a></p>
 
 
     

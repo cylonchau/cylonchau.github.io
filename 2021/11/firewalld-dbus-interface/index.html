@@ -10,7 +10,7 @@
 <meta name="description" content="使用firewalld dbus接口配置iptables - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2021/11/firewalld-dbus-interface/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "dbus", "iptables"
   ],
-  "wordCount" : "1551",
+  "wordCount" : "1414",
   "inLanguage": "zh",
   "datePublished": "2021-11-18T00:00:00Z",
   "dateModified": "2023-03-22T23:00:36+08:00",
@@ -282,7 +282,7 @@ function toggleThemeListener() {
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
   <span class="post-tags"><a href="https://www.oomkill.com/tags/dbus/">dbus</a><a href="https://www.oomkill.com/tags/iptables/">iptables</a></span></span><span class="meta-item">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>4 分钟</span></span>
+  <span>3 分钟</span></span>
 
       
       
@@ -319,385 +319,178 @@ function toggleThemeListener() {
 <p>firewalld比旧的 iptable 机制有许多优势。值得注意的是，它解决了 iptable 要求每次更改时重新启动防火墙的问题，从而中断了任何状态连接。它还提供了丰富的 D-Bus 方法、信号和属性。</p>
 <p>这里并不是从firewalld操作使用方式来介绍firewalld的改名，想反，是介绍firewalld D-Bus API来检索信息或更改设置。</p>
 <p>firewalld被配置为系统 D-Bus 服务，注意看 systemd file中的&quot; <code>Type=dbus</code> &ldquo;参数。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ cat /usr/lib/systemd/system/firewalld.service
-</span></span><span class="line"><span class="cl">[Unit]
-</span></span><span class="line"><span class="cl">Description=firewalld - dynamic firewall daemon
-</span></span><span class="line"><span class="cl">Before=network-pre.target
-</span></span><span class="line"><span class="cl">Wants=network-pre.target
-</span></span><span class="line"><span class="cl">After=dbus.service
-</span></span><span class="line"><span class="cl">After=polkit.service
-</span></span><span class="line"><span class="cl">Conflicts=iptables.service ip6tables.service ebtables.service ipset.service
-</span></span><span class="line"><span class="cl">Documentation=man:firewalld(1)
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Service]
-</span></span><span class="line"><span class="cl">EnvironmentFile=-/etc/sysconfig/firewalld
-</span></span><span class="line"><span class="cl">ExecStart=/usr/sbin/firewalld --nofork --nopid $FIREWALLD_ARGS
-</span></span><span class="line"><span class="cl">ExecReload=/bin/kill -HUP $MAINPID
-</span></span><span class="line"><span class="cl"># supress to log debug and error output also to /var/log/messages
-</span></span><span class="line"><span class="cl">StandardOutput=null
-</span></span><span class="line"><span class="cl">StandardError=null
-</span></span><span class="line"><span class="cl">Type=dbus
-</span></span><span class="line"><span class="cl">BusName=org.fedoraproject.FirewallD1
-</span></span><span class="line"><span class="cl">KillMode=mixed
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Install]
-</span></span><span class="line"><span class="cl">WantedBy=multi-user.target
-</span></span><span class="line"><span class="cl">Alias=dbus-org.fedoraproject.FirewallD1.service
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>实际上，手动运行 <code>/usr/bin/python2 -Es /usr/sbin/firewalld --nofork --nopid --debug</code> 效果是一样的，这里的注册是通过dbus 高级API操作的。</p>
+<pre><code>$ cat /usr/lib/systemd/system/firewalld.service
+[Unit]
+Description=firewalld - dynamic firewall daemon
+Before=network-pre.target
+Wants=network-pre.target
+After=dbus.service
+After=polkit.service
+Conflicts=iptables.service ip6tables.service ebtables.service ipset.service
+Documentation=man:firewalld(1)
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/firewalld
+ExecStart=/usr/sbin/firewalld --nofork --nopid $FIREWALLD_ARGS
+ExecReload=/bin/kill -HUP $MAINPID
+# supress to log debug and error output also to /var/log/messages
+StandardOutput=null
+StandardError=null
+Type=dbus
+BusName=org.fedoraproject.FirewallD1
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+Alias=dbus-org.fedoraproject.FirewallD1.service
+</code></pre>
+<p>实际上，手动运行 <code>/usr/bin/python2 -Es /usr/sbin/firewalld --nofork --nopid --debug</code> 效果是一样的，这里的注册是通过dbus 高级API操作的。</p>
 <p>此时由于已经了解到了，firewalld 服务 是基于D-Bus接口的，所以需要找到对应的 dbus interface</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --dest=org.freedesktop.DBus \
-</span></span><span class="line"><span class="cl">	--type=method_call --print-reply \
-</span></span><span class="line"><span class="cl">	/org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep FirewallD
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>org.fedoraproject.FirewallD1</code> 这个就是firewalld注册的dbus interface了。</p>
+<pre><code>dbus-send --system --dest=org.freedesktop.DBus \
+	--type=method_call --print-reply \
+	/org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep FirewallD
+</code></pre>
+<p><code>org.fedoraproject.FirewallD1</code> 这个就是firewalld注册的dbus interface了。</p>
 <p><code>dbus-send</code> 命令可以向 D-Bus消息总线发送消息并显示该消息的返回结果。有两个众所周知的消息总线：system bus（<code>Option -System</code>） 和每个用户session bus（ <code>-session</code>）。使用 <code>firewall-cmd</code> 也是通过 dbus interface 进行交互的。在使用<code>dbus-send</code> 时，必须指定其对应的消息接口 <code> -dest</code>，该参数是连接到对应总线上的接口名称，以将消息发送到对应的dbus firewalld-server进行对应iptables规则的翻译。</p>
 <p>现在有了dbus接口，需要了解改接口支持的方法 <code>methods</code>，属性 <code>properties </code>，信号<code>signals </code> 等信息。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过上述输出列出了通过防火墙 D-Bus 接口提供的所有方法、单一和属性。这是基于D-Bus DTD 的输出格式。所有 dbus服务都需要实现 <code>org.freedesktop.DBus.Introspectable.Introspect </code> 方法。</p>
+<pre><code>dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply \
+	/org/fedoraproject/FirewallD1 \
+	org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<p>通过上述输出列出了通过防火墙 D-Bus 接口提供的所有方法、单一和属性。这是基于D-Bus DTD 的输出格式。所有 dbus服务都需要实现 <code>org.freedesktop.DBus.Introspectable.Introspect </code> 方法。</p>
 <p>知道了 方法 属性 信号，就可以直接对firewalld进行一个操作了。现在开始第一个例子。获取默认zone。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --get-default-zone
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \ 
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.getDefaultZone
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>通过dbus接口来检索区域列表</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --get-zones
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \ 
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.zone.getZones
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>最常用的命令：查看当前zone所有策略</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --zone=public --list-all
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.getZoneSettings string:&#34;public&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>获得inerface的properties</strong></p>
+<pre><code>$ firewall-cmd --get-default-zone
+
+dbus-send --system --dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \ 
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.getDefaultZone
+</code></pre>
+<p><strong>通过dbus接口来检索区域列表</strong></p>
+<pre><code>$ firewall-cmd --get-zones
+
+dbus-send --system \
+	--dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \ 
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.zone.getZones
+</code></pre>
+<p><strong>最常用的命令：查看当前zone所有策略</strong></p>
+<pre><code>$ firewall-cmd --zone=public --list-all
+
+dbus-send --system \
+	--dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.getZoneSettings string:&quot;public&quot;
+</code></pre>
+<p><strong>获得inerface的properties</strong></p>
 <p>其实这里在命令行根本用不到，但是在封装时却会可以用到。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--print-reply --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.freedesktop.DBus.Properties.GetAll string:&#34;org.fedoraproject.FirewallD1&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>还可以通过其他的接口来查看对应的属性值</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --print-reply 
-</span></span><span class="line"><span class="cl">--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;version&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;interface_version&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;state&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply=literal \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;state&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="查询规则">查询规则<a hidden class="anchor" aria-hidden="true" href="#查询规则">¶</a></h3>
+<pre><code>dbus-send --system \
+	--print-reply --dest=org.fedoraproject.FirewallD1 \
+	/org/fedoraproject/FirewallD1 \
+	org.freedesktop.DBus.Properties.GetAll string:&quot;org.fedoraproject.FirewallD1&quot;
+</code></pre>
+<p>还可以通过其他的接口来查看对应的属性值</p>
+<pre><code>dbus-send --system --print-reply 
+--dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;version&quot;
+
+
+$ dbus-send --system --print-reply \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;interface_version&quot;
+
+
+$ dbus-send --system --print-reply \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;state&quot;
+
+$ dbus-send --system --print-reply=literal \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;state&quot;
+</code></pre>
+<h3 id="查询规则">查询规则<a hidden class="anchor" aria-hidden="true" href="#查询规则">¶</a></h3>
 <p><strong>查询接口</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">    --print-reply \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.zone.getZoneOfInterface \
-</span></span><span class="line"><span class="cl">    string:&#34;eth0&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>创建一个新zone</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --session \
-</span></span><span class="line"><span class="cl">    --dest=org.freedesktop.DBus \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    --print-reply /org/freedesktop/DBus  \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.config.addZone \
-</span></span><span class="line"><span class="cl">    string:&#34;testapi&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>获得一个zone的所有规则（<code>zonesettings</code>）</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1  \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    --print-reply /org/fedoraproject/FirewallD1  \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.getZoneSettings \
-</span></span><span class="line"><span class="cl">    string:&#34;public&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>添加一个port</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">    --print-reply --type=method_call \
-</span></span><span class="line"><span class="cl">    /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.zone.addPort \
-</span></span><span class="line"><span class="cl">    string:&#34;public&#34; \
-</span></span><span class="line"><span class="cl">    string:&#34;81&#34; \
-</span></span><span class="line"><span class="cl">    string:&#34;tcp&#34; \
-</span></span><span class="line"><span class="cl">    uint64:300 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>对应设置firewalld 面板所有属性的命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">firewall-cmd --zone=public --change-interface=eth0
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-masquerade
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=192.168.100.3
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=10.0.0.3
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-protocol=tcp
-</span></span><span class="line"><span class="cl">firewall-cmd --add-protocol=udp
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-blocks=icmp
-</span></span><span class="line"><span class="cl">firewall-cmd --set-target=DROP
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block=redirect
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block=network-unknown
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source-port=80/tcp
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source-port=100/tcp
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source=10.0.0.1
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source=10.0.0.2
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-rich-rule=&#39;rule family=ipv4 source address=192.168.1.101/32 service name=telnet limit value=1/m accept&#39;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block-inversion
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --new-zone=123 --permanen
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="执行远程命令">执行远程命令<a hidden class="anchor" aria-hidden="true" href="#执行远程命令">¶</a></h3>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1 \
+    --print-reply \
+    --type=method_call \
+    /org/fedoraproject/FirewallD1 \
+    org.fedoraproject.FirewallD1.zone.getZoneOfInterface \
+    string:&quot;eth0&quot;
+</code></pre>
+<p><strong>创建一个新zone</strong></p>
+<pre><code>dbus-send --session \
+    --dest=org.freedesktop.DBus \
+    --type=method_call \
+    --print-reply /org/freedesktop/DBus  \
+    org.fedoraproject.FirewallD1.config.addZone \
+    string:&quot;testapi&quot;
+</code></pre>
+<p><strong>获得一个zone的所有规则（<code>zonesettings</code>）</strong></p>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1  \
+    --type=method_call \
+    --print-reply /org/fedoraproject/FirewallD1  \
+    org.fedoraproject.FirewallD1.getZoneSettings \
+    string:&quot;public&quot;
+</code></pre>
+<p><strong>添加一个port</strong></p>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1 \
+    --print-reply --type=method_call \
+    /org/fedoraproject/FirewallD1 \
+    org.fedoraproject.FirewallD1.zone.addPort \
+    string:&quot;public&quot; \
+    string:&quot;81&quot; \
+    string:&quot;tcp&quot; \
+    uint64:300 
+</code></pre>
+<p>对应设置firewalld 面板所有属性的命令</p>
+<pre><code>firewall-cmd --zone=public --change-interface=eth0
+
+firewall-cmd --zone=public --add-masquerade
+firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=192.168.100.3
+firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=10.0.0.3
+
+firewall-cmd --add-protocol=tcp
+firewall-cmd --add-protocol=udp
+
+firewall-cmd --add-icmp-blocks=icmp
+firewall-cmd --set-target=DROP
+
+firewall-cmd --add-icmp-block=redirect
+firewall-cmd --add-icmp-block=network-unknown
+
+firewall-cmd --add-source-port=80/tcp
+firewall-cmd --add-source-port=100/tcp
+
+firewall-cmd --add-source=10.0.0.1
+firewall-cmd --add-source=10.0.0.2
+
+firewall-cmd --add-rich-rule='rule family=ipv4 source address=192.168.1.101/32 service name=telnet limit value=1/m accept'
+
+firewall-cmd --add-icmp-block-inversion
+
+firewall-cmd --new-zone=123 --permanen
+</code></pre>
+<h3 id="执行远程命令">执行远程命令<a hidden class="anchor" aria-hidden="true" href="#执行远程命令">¶</a></h3>
 <p>dbus接口支持远程命令的，通过dbus-send发送时，根据配置dbus的监听来完成远程的操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">DBUS_SESSION_BUS_ADDRESS=tcp:host=10.0.0.3,port=55557 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>根据上述，参考加上官方文档，了解如何通过D-Bus接口操作FirewallD，虽然此处是使用了 <code>dbus-send</code>，但是也可以通过 qt 或者 其他的来管理 基于 dbus api的应用了。</p>
+<pre><code>DBUS_SESSION_BUS_ADDRESS=tcp:host=10.0.0.3,port=55557 
+</code></pre>
+<p>根据上述，参考加上官方文档，了解如何通过D-Bus接口操作FirewallD，虽然此处是使用了 <code>dbus-send</code>，但是也可以通过 qt 或者 其他的来管理 基于 dbus api的应用了。</p>
 
 
     

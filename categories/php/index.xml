@@ -21,17 +21,10 @@
 <li>xcache</li>
 </ul>
 <h2 id="使用tmpfs作为缓存加速缓存的文件目录">使用tmpfs作为缓存加速缓存的文件目录</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mount -t tmpfs tmpfs /dev/shm -o <span class="nv">size</span><span class="o">=</span>256m
-</span></span><span class="line"><span class="cl">mount -t tmpfs /dev/shm/ /tmp/eaccelerator/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>利用好tmpfs</p>
+<pre><code class="language-bash">mount -t tmpfs tmpfs /dev/shm -o size=256m
+mount -t tmpfs /dev/shm/ /tmp/eaccelerator/
+</code></pre>
+<p>利用好tmpfs</p>
 <p>1.上传目录缩略图临时处理目录/tmp.</p>
 <p>2.其他加速器临时目录/tmp/eaccelerator/</p>
 <h2 id="phpini参数优化">php.ini参数优化</h2>
@@ -43,336 +36,151 @@
 <h3 id="打开php的安全模式">打开php的安全模式</h3>
 <p>php的安全模式是个非常重要的php内嵌的安全机制，能够控制一些php中的函数执行，比如<code>system()</code> ,同时把很多文件操作的函数进行了权限控制。<font style="background:#ffc104;" size=3>php5.4后弃用</font></p>
 <p>该参数配置如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">336 ; Safe Mode
-</span></span><span class="line"><span class="cl">337 ; http://php.net/safe-mode
-</span></span><span class="line"><span class="cl">338 safe_mode = Off
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="用户和安全组">用户和安全组</h3>
+<pre><code class="language-conf">336 ; Safe Mode
+337 ; http://php.net/safe-mode
+338 safe_mode = Off
+</code></pre>
+<h3 id="用户和安全组">用户和安全组</h3>
 <p>当safe_mode打开时，safe_mode_gid被关闭，那么php脚本能够对文件进行访问，而且相同组的用户也能够对文件进行访问。建议设置为safe_mode_gid=off;</p>
 <p>如果不进行设置，可能我们无法对我们服务器网站目录下的文件进行操作了，比如我们需要对文件进行操作的时候。<font style="background:#ffc104;" size=3>php5.3默认为 <code>safe_mode_gid=off;</code> </font>（新版弃用）</p>
 <h3 id="关闭危险函数">关闭危险函数</h3>
 <p>如果打开了安全模式，那么函数禁止是可以不需要的，但是我们为了安全还是考虑进去。比如，我们觉得不希望执行包括 <code>system()</code> 等在那的能够执行命令的php函数，或者能够查看php信息的 <code>phpinfo()</code> 等函数，那么我们就可以禁止他们，方法如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">disable_functions =  system,passthru,exec,shell_exec,popen,phpinfo
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果你要禁止任何文件和目录的操作，那么可以关闭很多文件操作。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">disable_functions =  chdir,chroot,getcwd,opendir,readdir,scandir,fopen,unlink,delete,copy,mkdir,rmdir,rename,file,file_get_contents,fputs,fwrite,chgrp,chmod,chown
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>以上只列出部分不叫常用的文件处理函数，你也可以把上面执行命令函数和这个函数结合，就能够地址大部分的phpshell了。该参数默认为 <code>disable_functions=</code>.</p>
+<pre><code class="language-conf">disable_functions =  system,passthru,exec,shell_exec,popen,phpinfo
+</code></pre>
+<p>如果你要禁止任何文件和目录的操作，那么可以关闭很多文件操作。</p>
+<pre><code class="language-conf">disable_functions =  chdir,chroot,getcwd,opendir,readdir,scandir,fopen,unlink,delete,copy,mkdir,rmdir,rename,file,file_get_contents,fputs,fwrite,chgrp,chmod,chown
+</code></pre>
+<p>以上只列出部分不叫常用的文件处理函数，你也可以把上面执行命令函数和这个函数结合，就能够地址大部分的phpshell了。该参数默认为 <code>disable_functions=</code>.</p>
 <h3 id="关闭php版本信息在http头中的泄露">关闭PHP版本信息在http头中的泄露</h3>
 <p>为了防止黑客获取服务器中php版本信息，可以关闭该信息泄露在http头中，该参数默认如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># 在http头中加上其签名，不会有安全上直接威胁，但使客户端知道PHP版本
-</span></span><span class="line"><span class="cl">expose_php = On
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"># 建议设置为Off
-</span></span><span class="line"><span class="cl">expose_php = Off
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>建议设置为Off，这样当黑客抓取头信息时，无法看到PHP的信息。</p>
+<pre><code class="language-conf"># 在http头中加上其签名，不会有安全上直接威胁，但使客户端知道PHP版本
+expose_php = On
+
+# 建议设置为Off
+expose_php = Off
+</code></pre>
+<p>建议设置为Off，这样当黑客抓取头信息时，无法看到PHP的信息。</p>
 <h3 id="关闭注册全局变量">关闭注册全局变量</h3>
 <p>在PHP中提交的变量，包括使用POST或者GET提交的变量，都将自动注册为全局变量，能够直接访问，这是对服务器非常不安全的，所以我们不能让它注册为全局变量，就把注册全局变量选项关闭（<font style="background:#ffc104;" size=3>5.4弃用</font>）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">register_globals = Off
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="打开magic_quotes_gpc来防止sql注入">打开magic_quotes_gpc来防止SQL注入</h3>
+<pre><code class="language-conf">register_globals = Off
+</code></pre>
+<h3 id="打开magic_quotes_gpc来防止sql注入">打开magic_quotes_gpc来防止SQL注入</h3>
 <p>SQL注入是非常危险的问题，轻则网站后台被入侵，重则整个服务器沦陷，php.ini 有一个设置，<font style="background:#ffc104;" size=3>5.4已移除</font></p>
 <h3 id="错误信息控制">错误信息控制</h3>
 <p>一般php在没有连接到数据库或者其他情况下会有提示错误，一般错误信息会包含php脚本当前距离信息或者查询的SQL语句等信息，这类信息提供给黑客后，是不安全的，所以一般服务器建议禁止错误提示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">display_errors = Off
-</span></span><span class="line"><span class="cl">; 是否将错误信息作为输出的一部分显示给终端用户。应用调试时，可以打开，方便查看错误.
-</span></span><span class="line"><span class="cl">; 在最终发布的web站点上，强烈建议你关掉这个特性，并使用错误日志代替（参看下面）.
-</span></span><span class="line"><span class="cl">; 在最终发布的web站点打开这个特性可能暴露一些安全信息.
-</span></span><span class="line"><span class="cl">; 例如你的web服务器上的文件路径、数据库规划或别的信息.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>设置为</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">display = Off # (php 5.3+默认即为Off)
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果你确实要显示错误信息，一定要设置显示错误级别，比如只显示警告以上的信息，当然最好是关闭错误提示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">error_reporting = E_WARNING &amp; E_ERROR
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="错误日志">错误日志</h3>
+<pre><code class="language-conf">display_errors = Off
+; 是否将错误信息作为输出的一部分显示给终端用户。应用调试时，可以打开，方便查看错误.
+; 在最终发布的web站点上，强烈建议你关掉这个特性，并使用错误日志代替（参看下面）.
+; 在最终发布的web站点打开这个特性可能暴露一些安全信息.
+; 例如你的web服务器上的文件路径、数据库规划或别的信息.
+</code></pre>
+<p>设置为</p>
+<pre><code class="language-conf">display = Off # (php 5.3+默认即为Off)
+</code></pre>
+<p>如果你确实要显示错误信息，一定要设置显示错误级别，比如只显示警告以上的信息，当然最好是关闭错误提示</p>
+<pre><code class="language-conf">error_reporting = E_WARNING &amp; E_ERROR
+</code></pre>
+<h3 id="错误日志">错误日志</h3>
 <p>建议在关闭display_errors后能够把错误信息记录下来，便于查找服务器运行的原因：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">log_errors = On
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>同时也要设置错误日志存放的目录，建议和Web日志存放在一起.</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># 文件必须允许web用户和组具有写权限
-</span></span><span class="line"><span class="cl">error_log = /app/logs/php_errors.log
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="部分资源限制参数优化">部分资源限制参数优化</h3>
+<pre><code class="language-conf">log_errors = On
+</code></pre>
+<p>同时也要设置错误日志存放的目录，建议和Web日志存放在一起.</p>
+<pre><code class="language-conf"># 文件必须允许web用户和组具有写权限
+error_log = /app/logs/php_errors.log
+</code></pre>
+<h3 id="部分资源限制参数优化">部分资源限制参数优化</h3>
 <h4 id="设置每个脚本运行的最长时间">设置每个脚本运行的最长时间</h4>
 <p>当无法上传较大的文件或者后台备份数据经常超时，此时需要调整如下设置：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_execution_time = 30
-</span></span><span class="line"><span class="cl">; 每个脚本允许最大执行时间（秒），0表示没有限制.
-</span></span><span class="line"><span class="cl">; 这个参数有助于组织劣质脚本无休止占用服务器资源.
-</span></span><span class="line"><span class="cl">; 该指令仅影响脚本本身的运行时间，任何其它华为在脚本运行之外的时间.
-</span></span><span class="line"><span class="cl">; 如用system()/sleep()函数的使用、数据库查询、文件上传等，都不包括在内.
-</span></span><span class="line"><span class="cl">; 在安全模式下，你不能用ini_set()在运行时改变这个位置.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="每个脚本使用的最大内存">每个脚本使用的最大内存</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">memory_limit = 128M
-</span></span><span class="line"><span class="cl">; 一个脚本能够申请到的最大内存字节数（可以使用K和M作为单位）.
-</span></span><span class="line"><span class="cl">; 这有助于防止劣质脚本消耗完服务器上所有内存.
-</span></span><span class="line"><span class="cl">; 要能够使用该指令碧玺在编译时使用“--enable-memory-limit”配置选项.
-</span></span><span class="line"><span class="cl">; 如果要取消内存限制，则必须将其设为-1.
-</span></span><span class="line"><span class="cl">; 设置了该指令后，memory_get_usage()函数变为可用.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="每个脚本等待输入数据最长时间">每个脚本等待输入数据最长时间</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_input_time = -1
-</span></span><span class="line"><span class="cl">; 每个脚本解析输入数据（POST,GET,upload）的最大允许时间（秒）
-</span></span><span class="line"><span class="cl">; -1 表示不限制
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="http://php.net/max-input-time">http://php.net/max-input-time</a></p>
+<pre><code class="language-conf">max_execution_time = 30
+; 每个脚本允许最大执行时间（秒），0表示没有限制.
+; 这个参数有助于组织劣质脚本无休止占用服务器资源.
+; 该指令仅影响脚本本身的运行时间，任何其它华为在脚本运行之外的时间.
+; 如用system()/sleep()函数的使用、数据库查询、文件上传等，都不包括在内.
+; 在安全模式下，你不能用ini_set()在运行时改变这个位置.
+</code></pre>
+<h4 id="每个脚本使用的最大内存">每个脚本使用的最大内存</h4>
+<pre><code class="language-conf">memory_limit = 128M
+; 一个脚本能够申请到的最大内存字节数（可以使用K和M作为单位）.
+; 这有助于防止劣质脚本消耗完服务器上所有内存.
+; 要能够使用该指令碧玺在编译时使用“--enable-memory-limit”配置选项.
+; 如果要取消内存限制，则必须将其设为-1.
+; 设置了该指令后，memory_get_usage()函数变为可用.
+</code></pre>
+<h4 id="每个脚本等待输入数据最长时间">每个脚本等待输入数据最长时间</h4>
+<pre><code class="language-conf">max_input_time = -1
+; 每个脚本解析输入数据（POST,GET,upload）的最大允许时间（秒）
+; -1 表示不限制
+</code></pre>
+<p><a href="http://php.net/max-input-time" target="_blank"
+   rel="noopener nofollow noreferrer" >http://php.net/max-input-time</a></p>
 <p>设置为</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">max_input_time = 60
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="上载文件的最大许可大小">上载文件的最大许可大小</h4>
+<pre><code class="language-conf">max_input_time = 60
+</code></pre>
+<h4 id="上载文件的最大许可大小">上载文件的最大许可大小</h4>
 <p>当上传较大文件时，需要调整如下参数：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 上载文件的最大许可大小
-</span></span><span class="line"><span class="cl">upload_max_filesize = 2M
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>详情：http://php.net/upload-max-filesize</p>
+<pre><code class="language-conf">; 上载文件的最大许可大小
+upload_max_filesize = 2M
+</code></pre>
+<p>详情：http://php.net/upload-max-filesize</p>
 <h3 id="部分安全参数优化">部分安全参数优化</h3>
 <h4 id="禁止打开远程地址">禁止打开远程地址</h4>
 <p>记得最近出的 <code>php include</code> 的那个漏洞吗？就是在一个php程序中include变量，那么入侵者就可以利用这个控制服务器在本地执行远程的一个php程序，例如phpshell，所以我们关闭这个。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; Whether to allow the treatment of URLs (like http:// or ftp://) as files.
-</span></span><span class="line"><span class="cl">allow_url_fopen = On
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>详情：http://php.net/allow-url-fopen</p>
+<pre><code class="language-conf">; Whether to allow the treatment of URLs (like http:// or ftp://) as files.
+allow_url_fopen = On
+</code></pre>
+<p>详情：http://php.net/allow-url-fopen</p>
 <h4 id="测试远程allow_url_include">测试远程allow_url_include</h4>
-<p><a href="https://www.remote.com/1.php">www.remote.com/1.php</a>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
-</span></span><span class="line"><span class="cl">	<span class="nv">$arr</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://www.httpd.com/1.php">www.httpd.com/1.php</a>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
-</span></span><span class="line"><span class="cl">	<span class="k">include</span><span class="p">(</span><span class="s1">&#39;http://www.remote.com:81/1.php&#39;</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">var_dump</span><span class="p">(</span><span class="nv">$arr</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>运行结果</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg" alt="img"  /></p>
+<p><a href="https://www.remote.com/1.php" target="_blank"
+   rel="noopener nofollow noreferrer" >www.remote.com/1.php</a>：</p>
+<pre><code class="language-php">&lt;?php
+	$arr = array(1,2,3,4,5);
+?&gt;
+</code></pre>
+<p><a href="https://www.httpd.com/1.php" target="_blank"
+   rel="noopener nofollow noreferrer" >www.httpd.com/1.php</a>：</p>
+<pre><code class="language-php">&lt;?php
+	include('http://www.remote.com:81/1.php');
+	var_dump($arr);
+?&gt;
+</code></pre>
+<p>运行结果</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/wpsA093.tmp.jpg" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h4 id="测试远程allow_url_fopen">测试远程allow_url_fopen</h4>
 <p>本地读取远端文件的脚本文件内容如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-php" data-lang="php"><span class="line"><span class="cl"><span class="o">&lt;?</span><span class="nx">php</span>
-</span></span><span class="line"><span class="cl"><span class="nv">$file</span> <span class="o">=</span> <span class="nx">fopen</span><span class="p">(</span><span class="s1">&#39;http://www.remote.com:81/1.php&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">);</span>		<span class="c1">// 读取远程文件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nv">$i</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span> 	<span class="c1">//初始化行号
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">while</span><span class="p">(</span> <span class="o">!</span><span class="nx">feof</span><span class="p">(</span><span class="nv">$file</span><span class="p">)</span> <span class="p">){</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">$row</span> <span class="o">=</span> <span class="nx">fgets</span><span class="p">(</span><span class="nv">$file</span><span class="p">);</span>	<span class="c1">//读取一行
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">echo</span> <span class="nv">$i</span> <span class="o">.</span> <span class="s1">&#39;--&#39;</span> <span class="o">.</span> <span class="nv">$row</span><span class="p">;</span>	<span class="c1">//输出
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nv">$i</span><span class="o">++</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="nx">fclose</span><span class="p">(</span><span class="nv">$file</span><span class="p">);</span>
-</span></span><span class="line"><span class="cl"><span class="cp">?&gt;</span><span class="err">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>执行脚本结果如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ /app/php/bin/php 2.php
-</span></span><span class="line"><span class="cl">1--&lt;?php
-</span></span><span class="line"><span class="cl">2--<span class="nv">$arr</span> <span class="o">=</span> array<span class="o">(</span>1,2,3,4,5<span class="o">)</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">3--?&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当在禁止后，再重新运行以上脚本文件会报如下错误</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Warning: include<span class="o">()</span> <span class="o">[[</span><span class="k">function</span>.include<span class="o">](</span>http://www.httpd.com/function.include<span class="o">)]</span>: http:// wrapper is disabled in the server configuration by <span class="nv">allow_url_fopen</span><span class="o">=</span><span class="m">0</span> 
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Warning: fopen<span class="o">()</span> <span class="o">[[</span><span class="k">function</span>.fopen<span class="o">](</span>http://www.httpd.com/function.fopen<span class="o">)]</span>: http:// wrapper is disabled in the server configuration by <span class="nv">allow_url_fopen</span><span class="o">=</span><span class="m">0</span> 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="调整php-session信息存放类型和位置">调整php session信息存放类型和位置</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 存储和检索会话关联的数据的处理器名字。默认为文件“file”
-</span></span><span class="line"><span class="cl">; 如果想要使用自定义的处理器（如基于数据库的处理器），可用“user”
-</span></span><span class="line"><span class="cl">; 设为&#34;memcache&#34;则可以使用memcache作为会话处理器（需要指定&#34;--enable-memcache-session&#34;编译选项）。
-</span></span><span class="line"><span class="cl">session.save_handler = files
-</span></span><span class="line"><span class="cl">; 传递给处理器的参数。对于files处理器，此值是创建会出数据文件的路径。
-</span></span><span class="line"><span class="cl">session.save_path = &#34;/tmp&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>web集群session贡献存储设置，默认php.ini中session的类型和配置路径：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">session.save_handler = &#34;tcp://192.168.2.8:11211&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="php-fpm参数优化">PHP-FPM参数优化</h2>
+<pre><code class="language-php">&lt;?php
+$file = fopen('http://www.remote.com:81/1.php', 'r');		// 读取远程文件
+$i=1; 	//初始化行号
+while( !feof($file) ){
+    $row = fgets($file);	//读取一行
+	echo $i . '--' . $row;	//输出
+	$i++;
+}
+fclose($file);
+?&gt;
+</code></pre>
+<p>执行脚本结果如下：</p>
+<pre><code class="language-bash">$ /app/php/bin/php 2.php
+1--&lt;?php
+2--$arr = array(1,2,3,4,5);
+3--?&gt;
+</code></pre>
+<p>当在禁止后，再重新运行以上脚本文件会报如下错误</p>
+<pre><code class="language-bash">Warning: include() [[function.include](http://www.httpd.com/function.include)]: http:// wrapper is disabled in the server configuration by allow_url_fopen=0 
+
+Warning: fopen() [[function.fopen](http://www.httpd.com/function.fopen)]: http:// wrapper is disabled in the server configuration by allow_url_fopen=0 
+</code></pre>
+<h3 id="调整php-session信息存放类型和位置">调整php session信息存放类型和位置</h3>
+<pre><code class="language-conf">; 存储和检索会话关联的数据的处理器名字。默认为文件“file”
+; 如果想要使用自定义的处理器（如基于数据库的处理器），可用“user”
+; 设为&quot;memcache&quot;则可以使用memcache作为会话处理器（需要指定&quot;--enable-memcache-session&quot;编译选项）。
+session.save_handler = files
+; 传递给处理器的参数。对于files处理器，此值是创建会出数据文件的路径。
+session.save_path = &quot;/tmp&quot;
+</code></pre>
+<p>web集群session贡献存储设置，默认php.ini中session的类型和配置路径：</p>
+<pre><code class="language-conf">session.save_handler = &quot;tcp://192.168.2.8:11211&quot;
+</code></pre>
+<h2 id="php-fpm参数优化">PHP-FPM参数优化</h2>
 <p>如果你的高负载网站使用PHP-FPM管理FastCGI，也许下面这些技巧对你有用</p>
 <ol>
 <li>
@@ -386,186 +194,99 @@
 </li>
 <li>
 <p>Linux下增加文件打开数，命令如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">; 增加 PHP-FPM 打开文件描述符的限制，此参数和php-fpm进程数有关
-</span></span><span class="line"><span class="cl">rlimit_files = 51200
-</span></span></code></pre></td></tr></table>
-</div>
-</div></li>
+<pre><code class="language-conf">; 增加 PHP-FPM 打开文件描述符的限制，此参数和php-fpm进程数有关
+rlimit_files = 51200
+</code></pre>
+</li>
 <li>
 <p>使用php代码加速器，例如 eAccelerator, XCache.在Linux平台上可以把 <code>cache_dir</code> 指向 <code>/dev/shm</code></p>
 </li>
 </ol>
 <p><strong>php-fpm.conf重要优化参数详解</strong>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span><span class="lnt">73
-</span><span class="lnt">74
-</span><span class="lnt">75
-</span><span class="lnt">76
-</span><span class="lnt">77
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">pm = dynamic
-</span></span><span class="line"><span class="cl">; pm参数指定了进程管理方式，有两种可供选择：static或dynamic，从字面意思不难理解，为静态或动态方式。如果是静态方式，那么在php-fpm启动的时候就创建了指定数目的进程，在运行过程中不会再有变化(并不是真的就永远不变)；而动态的则在运行过程中动态调整，当然并不是无限制的创建新进程，受pm.max_spare_servers参数影响；动态适合小内存机器，灵活分配进程，省内存。静态适用于大内存机器，动态创建回收进程对服务器资源也是一种消耗
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pm.max_children = 24
-</span></span><span class="line"><span class="cl">; static模式下创建的子进程数或dynamic模式下同一时刻允许最大的php-fpm子进程数量
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pm.start_servers = 16
-</span></span><span class="line"><span class="cl">; 动态方式下的起始php-fpm进程数量
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pm.min_spare_servers = 12
-</span></span><span class="line"><span class="cl">; 动态方式下服务器空闲时最小php-fpm进程数量
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pm.max_spare_servers = 24
-</span></span><span class="line"><span class="cl">; 动态方式下服务器空闲时最大php-fpm进程数量
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">log_level = error
-</span></span><span class="line"><span class="cl">; 错误级别. 可用级别为: alert（必须立即处理）, error（错误情况）, warning（警告情况）, notice
-</span></span><span class="line"><span class="cl">;（一般重要信息）, debug（调试信息）. 默认: notice.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">error_log = /app/run/log/php-fpm.log
-</span></span><span class="line"><span class="cl">; 错误日志，默认在安装目录中的var/log/php-fpm.log
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pid = /app/run/php/php-fpm  #&lt;==一般规划好目录与mysql nginx等在同目录下，方便管理
-</span></span><span class="line"><span class="cl">; pid设置，默认在安装目录中的var/run/php-fpm.pid，建议开启
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">emergency_restart_threshold = 0 
-</span></span><span class="line"><span class="cl">emergency_restart_interval = 0
-</span></span><span class="line"><span class="cl">; 表示在emergency_restart_interval所设值内出现SIGSEGV或者SIGBUS错误的php-cgi进程数如
-</span></span><span class="line"><span class="cl">; 果超过 emergency_restart_threshold个，php-fpm就会优雅重启。这两个选项一般保持默认值。
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">process_control_timeout = 0
-</span></span><span class="line"><span class="cl">; 设置子进程接受主进程复用信号的超时时间. 可用单位: s(秒), m(分), h(小时), 或者 d(天) 默认单位: s(秒). 默认值: 0.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">daemonize = yes
-</span></span><span class="line"><span class="cl">; 后台执行fpm,默认值为yes，如果为了调试可以改为no。在FPM中，可以使用不同的设置来运行多个进程池。 这些设置可以针对每个进程池单独设置.
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">listen = 127.0.0.1:9000
-</span></span><span class="line"><span class="cl">; fpm监听端口，即nginx中php处理的地址，一般默认值即可。可用格式为: &#39;ip:port&#39;, &#39;port&#39;, &#39;/path/to/unix/socket&#39;. 每个进程池都需要设置.
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">listen.backlog = -1
-</span></span><span class="line"><span class="cl">; backlog数，-1表示无限制，由操作系统决定，此行注释掉就行。backlog含义参考http://www.3gyou.cc/?p=41
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">listen.allowed_clients = 127.0.0.1
-</span></span><span class="line"><span class="cl">; 允许访问FastCGI进程的IP，设置any为不限制IP，如果要设置其他主机的nginx也能访问这台FPM进程，listen处要设置成本地可被访问的IP。默认值是any。每个地址是用逗号分隔. 如果没有设置或者为空，则允许任何服务器请求连接
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">listen.owner = www
-</span></span><span class="line"><span class="cl">listen.group = www
-</span></span><span class="line"><span class="cl">listen.mode = 0666
-</span></span><span class="line"><span class="cl">; unix socket设置选项，如果使用tcp方式访问，这里注释即可。
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">user = www
-</span></span><span class="line"><span class="cl">group = www
-</span></span><span class="line"><span class="cl">; 启动进程的帐户和组
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">pm.max_requests = 1000
-</span></span><span class="line"><span class="cl">; 设置每个子进程重生之前服务的请求数. 对于可能存在内存泄漏的第三方模块来说是非常有用的. 如果设置为 &#39;0&#39; 则一直接受请求. 等同于 PHP_FCGI_MAX_REQUESTS 环境变量. 默认值: 0.
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">pm.status_path = /status
-</span></span><span class="line"><span class="cl">; FPM状态页面的网址. 如果没有设置, 则无法访问状态页面. 默认值: none. munin监控会使用到
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">ping.path = /ping
-</span></span><span class="line"><span class="cl">; FPM监控页面的ping网址. 如果没有设置, 则无法访问ping页面. 该页面用于外部检测FPM是否存活并且可以响应请求. 请注意必须以斜线开头 (/)。
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">ping.response = pong
-</span></span><span class="line"><span class="cl">; 用于定义ping请求的返回相应. 返回为 HTTP 200 的 text/plain 格式文本. 默认值: pong.
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">request_terminate_timeout = 0
-</span></span><span class="line"><span class="cl">; 设置单个请求的超时中止时间. 该选项可能会对php.ini设置中的&#39;max_execution_time&#39;因为某些特殊原因没有中止运行的脚本有用. 设置为 &#39;0&#39; 表示 &#39;Off&#39;.当经常出现502错误时可以尝试更改此选项。
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">request_slowlog_timeout = 10s
-</span></span><span class="line"><span class="cl">; 当一个请求该设置的超时时间后，就会将对应的PHP调用堆栈信息完整写入到慢日志中. 设置为 &#39;0&#39; 表示 &#39;Off&#39;
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">slowlog = log/$pool.log.slow
-</span></span><span class="line"><span class="cl">; 慢请求的记录日志,配合request_slowlog_timeout使用
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">rlimit_files = 1024
-</span></span><span class="line"><span class="cl">; 设置文件打开描述符的rlimit限制. 默认值: 系统定义值默认可打开句柄是1024，可使用 ulimit -n查看，ulimit -n 2048修改。
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>一般 php-fpm 进程占用20~30m左右的内存就按 30m 算。如果单独跑 php-fpm，动态方式起始值可设置物理内存 $\frac{Mem}{30M}$，由于大家一般Nginx, MySQL都在一台机器上，于是预留一半给它们，即php-fpm进程数为 $\frac{mem}{2\times30M}$。</p>
+<pre><code class="language-conf">pm = dynamic
+; pm参数指定了进程管理方式，有两种可供选择：static或dynamic，从字面意思不难理解，为静态或动态方式。如果是静态方式，那么在php-fpm启动的时候就创建了指定数目的进程，在运行过程中不会再有变化(并不是真的就永远不变)；而动态的则在运行过程中动态调整，当然并不是无限制的创建新进程，受pm.max_spare_servers参数影响；动态适合小内存机器，灵活分配进程，省内存。静态适用于大内存机器，动态创建回收进程对服务器资源也是一种消耗
+
+pm.max_children = 24
+; static模式下创建的子进程数或dynamic模式下同一时刻允许最大的php-fpm子进程数量
+
+pm.start_servers = 16
+; 动态方式下的起始php-fpm进程数量
+
+pm.min_spare_servers = 12
+; 动态方式下服务器空闲时最小php-fpm进程数量
+
+pm.max_spare_servers = 24
+; 动态方式下服务器空闲时最大php-fpm进程数量
+
+log_level = error
+; 错误级别. 可用级别为: alert（必须立即处理）, error（错误情况）, warning（警告情况）, notice
+;（一般重要信息）, debug（调试信息）. 默认: notice.
+
+error_log = /app/run/log/php-fpm.log
+; 错误日志，默认在安装目录中的var/log/php-fpm.log
+
+pid = /app/run/php/php-fpm  #&lt;==一般规划好目录与mysql nginx等在同目录下，方便管理
+; pid设置，默认在安装目录中的var/run/php-fpm.pid，建议开启
+
+emergency_restart_threshold = 0 
+emergency_restart_interval = 0
+; 表示在emergency_restart_interval所设值内出现SIGSEGV或者SIGBUS错误的php-cgi进程数如
+; 果超过 emergency_restart_threshold个，php-fpm就会优雅重启。这两个选项一般保持默认值。
+
+process_control_timeout = 0
+; 设置子进程接受主进程复用信号的超时时间. 可用单位: s(秒), m(分), h(小时), 或者 d(天) 默认单位: s(秒). 默认值: 0.
+
+daemonize = yes
+; 后台执行fpm,默认值为yes，如果为了调试可以改为no。在FPM中，可以使用不同的设置来运行多个进程池。 这些设置可以针对每个进程池单独设置.
+ 
+listen = 127.0.0.1:9000
+; fpm监听端口，即nginx中php处理的地址，一般默认值即可。可用格式为: 'ip:port', 'port', '/path/to/unix/socket'. 每个进程池都需要设置.
+ 
+listen.backlog = -1
+; backlog数，-1表示无限制，由操作系统决定，此行注释掉就行。backlog含义参考http://www.3gyou.cc/?p=41
+ 
+listen.allowed_clients = 127.0.0.1
+; 允许访问FastCGI进程的IP，设置any为不限制IP，如果要设置其他主机的nginx也能访问这台FPM进程，listen处要设置成本地可被访问的IP。默认值是any。每个地址是用逗号分隔. 如果没有设置或者为空，则允许任何服务器请求连接
+ 
+listen.owner = www
+listen.group = www
+listen.mode = 0666
+; unix socket设置选项，如果使用tcp方式访问，这里注释即可。
+ 
+user = www
+group = www
+; 启动进程的帐户和组
+  
+pm.max_requests = 1000
+; 设置每个子进程重生之前服务的请求数. 对于可能存在内存泄漏的第三方模块来说是非常有用的. 如果设置为 '0' 则一直接受请求. 等同于 PHP_FCGI_MAX_REQUESTS 环境变量. 默认值: 0.
+ 
+pm.status_path = /status
+; FPM状态页面的网址. 如果没有设置, 则无法访问状态页面. 默认值: none. munin监控会使用到
+ 
+ping.path = /ping
+; FPM监控页面的ping网址. 如果没有设置, 则无法访问ping页面. 该页面用于外部检测FPM是否存活并且可以响应请求. 请注意必须以斜线开头 (/)。
+ 
+ping.response = pong
+; 用于定义ping请求的返回相应. 返回为 HTTP 200 的 text/plain 格式文本. 默认值: pong.
+ 
+request_terminate_timeout = 0
+; 设置单个请求的超时中止时间. 该选项可能会对php.ini设置中的'max_execution_time'因为某些特殊原因没有中止运行的脚本有用. 设置为 '0' 表示 'Off'.当经常出现502错误时可以尝试更改此选项。
+ 
+request_slowlog_timeout = 10s
+; 当一个请求该设置的超时时间后，就会将对应的PHP调用堆栈信息完整写入到慢日志中. 设置为 '0' 表示 'Off'
+ 
+slowlog = log/$pool.log.slow
+; 慢请求的记录日志,配合request_slowlog_timeout使用
+ 
+rlimit_files = 1024
+; 设置文件打开描述符的rlimit限制. 默认值: 系统定义值默认可打开句柄是1024，可使用 ulimit -n查看，ulimit -n 2048修改。
+</code></pre>
+<p>一般 php-fpm 进程占用20~30m左右的内存就按 30m 算。如果单独跑 php-fpm，动态方式起始值可设置物理内存 $\frac{Mem}{30M}$，由于大家一般Nginx, MySQL都在一台机器上，于是预留一半给它们，即php-fpm进程数为 $\frac{mem}{2\times30M}$。</p>
 <p>参考文章：</p>
-<p><a href="https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html">https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html</a></p>
-<p><a href="http://www.cnblogs.com/argb/p/3604340.html">http://www.cnblogs.com/argb/p/3604340.html</a></p>
+<p><a href="https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html" target="_blank"
+   rel="noopener nofollow noreferrer" >https://jingyan.baidu.com/article/fdbd4277c4dacbb89f3f4855.html</a></p>
+<p><a href="http://www.cnblogs.com/argb/p/3604340.html" target="_blank"
+   rel="noopener nofollow noreferrer" >http://www.cnblogs.com/argb/p/3604340.html</a></p>
 ]]></content:encoded>
     </item>
     
@@ -578,276 +299,125 @@
       <description></description>
       <content:encoded><![CDATA[<h2 id="编译错误">编译错误</h2>
 <h3 id="错误同时指定了fpm与aspxs2方式错误">错误：同时指定了fpm与aspxs2方式错误</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">You<span class="err">&#39;</span>ve configured multiple SAPIs to be build.You can build only one SAPI module 
-</span></span><span class="line"><span class="cl">and CLI binary at the same <span class="nb">time</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：导致的原因是我的配置参数中同时使用了&ndash;enable-fpm 与&ndash;with-apxs2，因此编译的时候出错了，去掉其中的任意一个参数编译成功。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214223427069.png" alt="image-20221214223427069"  /></p>
+<pre><code class="language-bash">You've configured multiple SAPIs to be build.You can build only one SAPI module 
+and CLI binary at the same time
+</code></pre>
+<p>原因：导致的原因是我的配置参数中同时使用了&ndash;enable-fpm 与&ndash;with-apxs2，因此编译的时候出错了，去掉其中的任意一个参数编译成功。</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214223427069.png" alt="image-20221214223427069" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h3 id="系统缺少libtool">系统缺少libtool</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">make ***<span class="o">[</span>libphp5.la<span class="o">]</span> Error <span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：在编译PHP版本时，产生错误 <code>make ***[libphp5.la] Error 1</code></p>
+<pre><code class="language-bash">make ***[libphp5.la] Error 1
+</code></pre>
+<p>解决方法：在编译PHP版本时，产生错误 <code>make ***[libphp5.la] Error 1</code></p>
 <p>错误原因：系统缺少libtool</p>
 <p>解决办法：<code>yum install libtool-ltdl-devel</code></p>
 <h2 id="make过程错误">make过程错误</h2>
 <h3 id="make--sapicliphp-error-1">make: *** [sapi/cli/php] Error 1</h3>
 <p>原因：在 「<code>./configure</code> 」 沒抓好一些环境变数值。错误发生点在建立「<code>-o sapi/cli/php</code>」是出错，没給到要 link 的 iconv 库参数。</p>
 <p>报错提示：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">libiconv.so.2: cannot open shared object file: No such file or directory mak
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/iconv/iconv.c:2591: undefined reference to <span class="sb">`</span>libiconv_open<span class="s1">&#39;
-</span></span></span><span class="line"><span class="cl"><span class="s1">ext/xmlrpc/libxmlrpc/.libs/encodings.o: In function `convert&#39;</span>:
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:74: undefined reference to <span class="sb">`</span>libiconv_open<span class="s1">&#39;
-</span></span></span><span class="line"><span class="cl"><span class="s1">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:82: undefined reference to `libiconv&#39;</span>
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:102: undefined reference to <span class="sb">`</span>libiconv_close<span class="err">&#39;</span>
-</span></span><span class="line"><span class="cl">collect2: ld returned <span class="m">1</span> <span class="nb">exit</span> status
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>sapi/cli/php<span class="o">]</span> Error <span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法1：编辑Makefile 我的php7.1.3在88行的地方:在最后加上 <code>-liconv</code>，或者编译时，编译参数指定 iconv 安装目录不会报此错误。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"> <span class="m">113</span> <span class="nv">EXTRA_LIBS</span> <span class="o">=</span> -lcrypt -lz -lexslt -lcrypt -lrt -lmcrypt -lpng -lz -ljpeg -lcurl -lz -lrt -lm -ldl -lnsl -lrt -lxml2 -l
-</span></span><span class="line"><span class="cl">     z -lm -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lssl -lcrypto -lcurl -lxml2 -lz -lm -lfreetype -lmysqlclient -lm -lr
-</span></span><span class="line"><span class="cl">     t -ldl -lxml2 -lz -lm -lxml2 -lz -lm -lcrypt -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxslt -lxml
-</span></span><span class="line"><span class="cl">     <span class="m">2</span> -lz -lm -lssl -lcrypto -lcrypt 「-liconv」
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法2：自己打包替换系统内的iconv包</p>
+<pre><code class="language-bash">libiconv.so.2: cannot open shared object file: No such file or directory mak
+
+/root/tools/php-7.1.3/ext/iconv/iconv.c:2591: undefined reference to `libiconv_open'
+ext/xmlrpc/libxmlrpc/.libs/encodings.o: In function `convert':
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:74: undefined reference to `libiconv_open'
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:82: undefined reference to `libiconv'
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:102: undefined reference to `libiconv_close'
+collect2: ld returned 1 exit status
+make: *** [sapi/cli/php] Error 1
+</code></pre>
+<p>解决方法1：编辑Makefile 我的php7.1.3在88行的地方:在最后加上 <code>-liconv</code>，或者编译时，编译参数指定 iconv 安装目录不会报此错误。</p>
+<pre><code class="language-bash"> 113 EXTRA_LIBS = -lcrypt -lz -lexslt -lcrypt -lrt -lmcrypt -lpng -lz -ljpeg -lcurl -lz -lrt -lm -ldl -lnsl -lrt -lxml2 -l
+     z -lm -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lssl -lcrypto -lcurl -lxml2 -lz -lm -lfreetype -lmysqlclient -lm -lr
+     t -ldl -lxml2 -lz -lm -lxml2 -lz -lm -lcrypt -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxslt -lxml
+     2 -lz -lm -lssl -lcrypto -lcrypt 「-liconv」
+</code></pre>
+<p>解决方法2：自己打包替换系统内的iconv包</p>
 <h3 id="make--extpharpharphp-error-127">make: *** [ext/phar/phar.php] Error 127</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/root/dev/php-5.3.6/sapi/cli/php: error <span class="k">while</span> loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>ext/phar/phar.php<span class="o">]</span> Error <span class="m">127</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：网上找到的解决办法是</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>照做后仍然报错，原因是该方法适用于32位系统，64位系统应使用下面的这行</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib64/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>另外：在编译的时候，不写mysql的路径，而使用mysqlnd代替，也可解决该问题的出现。</p>
+<pre><code class="language-bash">/root/dev/php-5.3.6/sapi/cli/php: error while loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
+make: *** [ext/phar/phar.php] Error 127
+</code></pre>
+<p>解决：网上找到的解决办法是</p>
+<pre><code class="language-bash">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib/
+</code></pre>
+<p>照做后仍然报错，原因是该方法适用于32位系统，64位系统应使用下面的这行</p>
+<pre><code class="language-bash">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib64/
+</code></pre>
+<p>另外：在编译的时候，不写mysql的路径，而使用mysqlnd代替，也可解决该问题的出现。</p>
 <p>参考：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;/app/mysql/lib/libmysqlclient.so.18&#34;</span> &gt;&gt;/etc/ld.so.conf
-</span></span><span class="line"><span class="cl">ldconfig
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="configure-error-dont-know-how-to-define-struct-flock-on-this-system-set---enable-opcacheno">configure: error: Don&rsquo;t know how to define struct flock on this system, set &ndash;enable-opcache=no</h3>
+<pre><code class="language-bash">echo &quot;/app/mysql/lib/libmysqlclient.so.18&quot; &gt;&gt;/etc/ld.so.conf
+ldconfig
+</code></pre>
+<h3 id="configure-error-dont-know-how-to-define-struct-flock-on-this-system-set---enable-opcacheno">configure: error: Don&rsquo;t know how to define struct flock on this system, set &ndash;enable-opcache=no</h3>
 <p>原因:目前不明</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">  checking <span class="k">for</span> sysvipc shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using MAP_ANON shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using /dev/zero shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using shm_open<span class="o">()</span> shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using regular file shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="s2">&#34;whether flock struct is linux ordered&#34;</span>... <span class="s2">&#34;no&#34;</span>
-</span></span><span class="line"><span class="cl">  checking <span class="s2">&#34;whether flock struct is BSD ordered&#34;</span>... <span class="s2">&#34;no&#34;</span>
-</span></span><span class="line"><span class="cl">  configure: error: Don<span class="err">&#39;</span>t know how to define struct flock on this system, <span class="nb">set</span> --enable-opcache<span class="o">=</span>no
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：执行如下后，重新编译即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/app/mysql/lib
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考资料：http://www.jianshu.com/p/0d6d188c2ddc</p>
+<pre><code class="language-bash">  checking for sysvipc shared memory support... no
+  checking for mmap() using MAP_ANON shared memory support... no
+  checking for mmap() using /dev/zero shared memory support... no
+  checking for mmap() using shm_open() shared memory support... no
+  checking for mmap() using regular file shared memory support... no
+  checking &quot;whether flock struct is linux ordered&quot;... &quot;no&quot;
+  checking &quot;whether flock struct is BSD ordered&quot;... &quot;no&quot;
+  configure: error: Don't know how to define struct flock on this system, set --enable-opcache=no
+</code></pre>
+<p>解决方法：执行如下后，重新编译即可</p>
+<pre><code class="language-bash">export LD_LIBRARY_PATH=/app/mysql/lib
+</code></pre>
+<p>参考资料：http://www.jianshu.com/p/0d6d188c2ddc</p>
 <h3 id="php55-mysql56">php5.5 mysql5.6</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Don<span class="err">&#39;</span>t know how to define struct flock on this system, <span class="nb">set</span> --enable-opcache<span class="o">=</span>no
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /app/mysql/lib/libmysqlclient.so /usr/lib
-</span></span><span class="line"><span class="cl">ln -s /app/mysql/lib/libmysqlclient.so.18.1.0 /usr/lib
-</span></span><span class="line"><span class="cl">vim /etc/ld.so.conf
-</span></span><span class="line"><span class="cl">/usr/lib
-</span></span><span class="line"><span class="cl">ldconfig -v 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="在虚拟机中编译php问题">在虚拟机中编译PHP问题</h3>
+<pre><code class="language-bash">Don't know how to define struct flock on this system, set --enable-opcache=no
+</code></pre>
+<p>解决方法：</p>
+<pre><code class="language-bash">ln -s /app/mysql/lib/libmysqlclient.so /usr/lib
+ln -s /app/mysql/lib/libmysqlclient.so.18.1.0 /usr/lib
+vim /etc/ld.so.conf
+/usr/lib
+ldconfig -v 
+</code></pre>
+<h3 id="在虚拟机中编译php问题">在虚拟机中编译PHP问题</h3>
 <p>错误 <em><strong>make: *** [ext/fileinfo/libmagic/apprentice.lo] Error 1</strong></em></p>
 <p>原因：这是由于内存小于1G所导致。</p>
 <p>解决办法：在./configure加上选项。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">--disable-fileinfo Disable  <span class="c1"># &lt;==fileinfo support 禁用 fileinfo</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="configure-error-cannot-find-libmysqlclient-under-appmysql">configure: error: Cannot find libmysqlclient under /app/mysql.</h3>
+<pre><code class="language-bash">--disable-fileinfo Disable  # &lt;==fileinfo support 禁用 fileinfo
+</code></pre>
+<h3 id="configure-error-cannot-find-libmysqlclient-under-appmysql">configure: error: Cannot find libmysqlclient under /app/mysql.</h3>
 <p>经查，问题是64位系统中 libmysqlclient 默认安装到了 /usr/lib64/mysql/ 目录下，而 <code>/usr/lib</code> 目录下没有相应文件，但是php编译时，要去 /usr/lib目录下查找</p>
 <p>解决：<code>ln -s /app/mysql/lib /app/mysql/lib64</code></p>
 <h2 id="make-install错误">make install错误</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/home/tools/php-5.3.27/sapi/cli/php: error <span class="k">while</span> loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
-</span></span><span class="line"><span class="cl">make<span class="o">[</span>1<span class="o">]</span>: *** <span class="o">[</span>install-pear-installer<span class="o">]</span> 错误 <span class="m">127</span>
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>install-pear<span class="o">]</span> 错误 <span class="m">2</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：mysql5.5的的lib路径跟之前的不一样
+<pre><code class="language-bash">/home/tools/php-5.3.27/sapi/cli/php: error while loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
+make[1]: *** [install-pear-installer] 错误 127
+make: *** [install-pear] 错误 2
+</code></pre>
+<p>原因：mysql5.5的的lib路径跟之前的不一样
 解决：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;/app/mysql/lib&#34;</span> &gt;&gt; /etc/ld.so.conf
-</span></span><span class="line"><span class="cl">ldconfig
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="make-install正确安装">make install正确安装</h2>
+<pre><code class="language-bash">echo &quot;/app/mysql/lib&quot; &gt;&gt; /etc/ld.so.conf
+ldconfig
+</code></pre>
+<h2 id="make-install正确安装">make install正确安装</h2>
 <p>PHP5.3</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/home/tools/php-5.3.27/build/shtool install -c ext/phar/phar.phar /app/php-5.3.27/bin
-</span></span><span class="line"><span class="cl">ln -s -f /app/php-5.3.27/bin/phar.phar /app/php-5.3.27/bin/phar
-</span></span><span class="line"><span class="cl">Installing PDO headers:          /app/php-5.3.27/include/php/ext/pdo/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>PHP5.5</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Thank you <span class="k">for</span> using PHP.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">config.status: creating php5.spec
-</span></span><span class="line"><span class="cl">config.status: creating main/build-defs.h
-</span></span><span class="line"><span class="cl">config.status: creating scripts/phpize
-</span></span><span class="line"><span class="cl">config.status: creating scripts/man1/phpize.1
-</span></span><span class="line"><span class="cl">config.status: creating scripts/php-config
-</span></span><span class="line"><span class="cl">config.status: creating scripts/man1/php-config.1
-</span></span><span class="line"><span class="cl">config.status: creating sapi/cli/php.1
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.conf
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/init.d.php-fpm
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.service
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.8
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/status.html
-</span></span><span class="line"><span class="cl">config.status: creating sapi/cgi/php-cgi.1
-</span></span><span class="line"><span class="cl">config.status: creating ext/phar/phar.1
-</span></span><span class="line"><span class="cl">config.status: creating ext/phar/phar.phar.1
-</span></span><span class="line"><span class="cl">config.status: creating main/php_config.h
-</span></span><span class="line"><span class="cl">config.status: executing default commands
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-bash">/home/tools/php-5.3.27/build/shtool install -c ext/phar/phar.phar /app/php-5.3.27/bin
+ln -s -f /app/php-5.3.27/bin/phar.phar /app/php-5.3.27/bin/phar
+Installing PDO headers:          /app/php-5.3.27/include/php/ext/pdo/
+</code></pre>
+<p>PHP5.5</p>
+<pre><code class="language-bash">Thank you for using PHP.
+
+config.status: creating php5.spec
+config.status: creating main/build-defs.h
+config.status: creating scripts/phpize
+config.status: creating scripts/man1/phpize.1
+config.status: creating scripts/php-config
+config.status: creating scripts/man1/php-config.1
+config.status: creating sapi/cli/php.1
+config.status: creating sapi/fpm/php-fpm.conf
+config.status: creating sapi/fpm/init.d.php-fpm
+config.status: creating sapi/fpm/php-fpm.service
+config.status: creating sapi/fpm/php-fpm.8
+config.status: creating sapi/fpm/status.html
+config.status: creating sapi/cgi/php-cgi.1
+config.status: creating ext/phar/phar.1
+config.status: creating ext/phar/phar.phar.1
+config.status: creating main/php_config.h
+config.status: executing default commands
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -865,680 +435,323 @@
 <li>官网：http://php.net/downloads.php</li>
 </ul>
 <h3 id="检查php所需的lib库">检查PHP所需的lib库</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">rpm -qa <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>zlib-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libxml2-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libjpeg-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libjpeg-turbo-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libiconv-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>freetype-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libpng-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>gd-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libcurl-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libxslt-devel
-</span></span></code></pre></td></tr></table>
-</div>
-</div><hr>
+<pre><code class="language-bash">rpm -qa \
+zlib-devel \
+libxml2-devel \
+libjpeg-devel \
+libjpeg-turbo-devel \
+libiconv-devel \
+freetype-devel \
+libpng-devel \
+gd-devel \
+libcurl-devel \
+libxslt-devel
+</code></pre>
+<hr>
 <p><strong><font color=#0215cd size=2>提示：libjpeg-turbo-devel是早期libjpeg-devel的新名字，libcurl-devel是早期curl的新名字。</font></strong></p>
 <hr>
 <p>每个lib一般都会存在对应的以“<em>-devel</em>”命名的包，安装lib对应的-devel包后，对应的lib包就会自动安装好，例如安装gd-devel时就会安装gd。</p>
 <p>这些lib库不是必须安装的，但是目前的企业环境下一般都需要安装。否则，PHP程序运行时会出现问题，例如验证码无法显示等。</p>
 <p>执行下面命令安装相关的lib软件包：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install -y <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>zlib-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libxml2-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libjpeg-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libjpeg-turbo-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>freetype-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libpng-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>gd-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>curl-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>libxslt-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>bzip2-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>gmp-devel <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>readline-devel
-</span></span></code></pre></td></tr></table>
-</div>
-</div><hr>
+<pre><code class="language-bash">yum install -y \
+zlib-devel \
+libxml2-devel \
+libjpeg-devel \
+libjpeg-turbo-devel \
+freetype-devel \
+libpng-devel \
+gd-devel \
+curl-devel \
+libxslt-devel \
+bzip2-devel \
+gmp-devel \
+readline-devel
+</code></pre>
+<hr>
 <p><strong><font color=#0215cd size=2> 提示：从安装上看，仅有libiconv-devel这个包没有安装，因为默认的yum源没有此包。可以一个一个地yum安装或通过源文件手工编译安装（这样效率慢）</font></strong></p>
 <hr>
 <h4 id="安装libiconv-devel">安装libiconv-devel</h4>
 <p>libiconv下载地址：http://ftp.gnu.org/pub/gnu/libiconv/</p>
 <p>可以将libiconv制作成rpm包，批量安装时，可放至本地yum源内</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure --prefix<span class="o">=</span>/usr/local/libiconv
-</span></span><span class="line"><span class="cl">make <span class="p">&amp;</span> make install
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="安装epel源">安装epel源</h4>
+<pre><code class="language-bash">./configure --prefix=/usr/local/libiconv
+make &amp; make install
+</code></pre>
+<h4 id="安装epel源">安装epel源</h4>
 <p>可以安装redhat官方yum源里没有的软件，epel源和官方源不冲突</p>
-<p>阿里镜像 <a href="http://mirrors.aliyun.com/">http://mirrors.aliyun.com/</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-6.repo
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Centos7</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="安装libmcrypt-devel">安装libmcrypt-devel</h3>
+<p>阿里镜像 <a href="http://mirrors.aliyun.com/" target="_blank"
+   rel="noopener nofollow noreferrer" >http://mirrors.aliyun.com/</a></p>
+<pre><code class="language-bash">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-6.repo
+</code></pre>
+<p>Centos7</p>
+<pre><code class="language-bash">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+</code></pre>
+<h3 id="安装libmcrypt-devel">安装libmcrypt-devel</h3>
 <p>这是一个使用动态加载的模块化的libmcrypt。libmcrypt对于在程序运行时添加/移除算法是有用的。limbcrypt-nm目前不再被官方支持，其软件地址为<code>http://mcrypt.hellug.gr/lib/</code>，编译PHP的过程中，libmcrypt库不是必须要安装的包。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install libmcrypt-devel -y
-</span></span><span class="line"><span class="cl"><span class="c1"># 安装成功后</span>
-</span></span><span class="line"><span class="cl">rpm -qa libmcrypt-devel
-</span></span><span class="line"><span class="cl">libmcrypt-devel-5.8-9.el6.x86_64
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="安装mhash加密扩展库">安装mhash加密扩展库</h3>
+<pre><code class="language-bash">yum install libmcrypt-devel -y
+# 安装成功后
+rpm -qa libmcrypt-devel
+libmcrypt-devel-5.8-9.el6.x86_64
+</code></pre>
+<h3 id="安装mhash加密扩展库">安装mhash加密扩展库</h3>
 <p>mhash是基于离散数学原理不可逆向的PHP加密方式扩展库，其在默认情况下不会开启。mhash可以用于创建校验数值、消息摘要、消息认证码，以及无需原文的关键信息保存（如密码）等。它为PHP提供了多种散列算法，如MD5、SHA1、GOST等。可以通过MHASH_hashname()查看其支持的算法有哪些。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install mhash -y
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="安装mcrypt">安装mcrypt</h3>
+<pre><code class="language-bash">yum install mhash -y
+</code></pre>
+<h3 id="安装mcrypt">安装mcrypt</h3>
 <p>PHP程序员在编写代码程序时，除了要保证代码的高性能之外，还有一点是非常重要的，那就是程序的安全性保障。PHP除了自带的几种加密函数外，还有功能更全面的PHP加密扩展库mcrypt和mhash。
 其中，mcrypt扩展库可以实现加密解密功能，就是既能将明文加密，也可以将密文还原。
 可以说，mcrypt是PHP里面重要的加密支持扩展库，该库在默认情况下不开启。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install mcrypt -y
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">yum install mcrypt mhash libmcrypt-devel -y
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>问：如果在不能联网的状态下怎么配置PHP环境？
+<pre><code class="language-bash">yum install mcrypt -y
+</code></pre>
+<pre><code class="language-bash">yum install mcrypt mhash libmcrypt-devel -y
+</code></pre>
+<p>问：如果在不能联网的状态下怎么配置PHP环境？
 答：在yum时，可以在yum配置文件中设置安装后不删除包
 vi /etc/yum.conf</p>
 <h3 id="编译php">编译PHP</h3>
 <h4 id="编译php参数详解">编译PHP参数详解</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure 
-</span></span><span class="line"><span class="cl">--prefix<span class="o">=</span>/app/php-7.  <span class="c1"># &lt;==指定PHP的安装目录</span>
-</span></span><span class="line"><span class="cl">--with-curl 	 			    <span class="c1"># &lt;==打开PHP curl扩展</span>
-</span></span><span class="line"><span class="cl">--with-curlwrappers 		<span class="c1"># &lt;==curl工具打开url流的测试版，不建议开启</span>
-</span></span><span class="line"><span class="cl">--with-freetype-dir 		<span class="c1"># &lt;== 打开freetype字体库支持</span>
-</span></span><span class="line"><span class="cl">--with-gd 					    <span class="c1"># &lt;==打开PHP GD库依赖</span>
-</span></span><span class="line"><span class="cl">--with-png-dir 			    <span class="c1"># &lt;==</span>
-</span></span><span class="line"><span class="cl">--with-jpeg-dir 			  <span class="c1"># &lt;==</span>
-</span></span><span class="line"><span class="cl">--enable-gd-native-ttf  <span class="c1"># &lt;==打开PHP GD库ttf</span>
-</span></span><span class="line"><span class="cl">--with-gettext 			    <span class="c1"># &lt;==打开PHP gettext库，多国语言时需要</span>
-</span></span><span class="line"><span class="cl">--with-iconv-dir<span class="o">=</span>/usr/local/lib 	<span class="c1"># &lt;==打开PHP iconv字符集转换格式时需要</span>
-</span></span><span class="line"><span class="cl">--with-kerberos 			  <span class="c1"># &lt;==PHP的一种加密方式 DES</span>
-</span></span><span class="line"><span class="cl">--with-libdir<span class="o">=</span>lib64 		<span class="c1"># &lt;==默认找/usr/lib下。64位需指定路径</span>
-</span></span><span class="line"><span class="cl">--with-libxml-dir 			<span class="c1"># &lt;==打开libxml2库的支持</span>
-</span></span><span class="line"><span class="cl">--enable-xml
-</span></span><span class="line"><span class="cl">--enable-safe-mode 		  <span class="c1"># &lt;==打开安全模式</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 需要指定mysql的安装路径,安装PHP需要的MySQL相关内容。</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 当然如果没有MySQL软件包，也可以不单独安装，</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 这样的情况可使用--with-mysql=mysqlnd替代--with-mysql=/app/mysql</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 因为PHP软件里面已经自带连接MySQL的客户端工具。PHP7遗弃</span>
-</span></span><span class="line"><span class="cl">--with-mysql<span class="o">=</span>/app/mysql/
-</span></span><span class="line"><span class="cl">--with-mysqli<span class="o">=</span>/app/mysql/bin/mysql_config 		<span class="c1"># &lt;==使用PHP mysqli扩展</span>
-</span></span><span class="line"><span class="cl">--with-pdo-mysql 			  <span class="c1"># &lt;==使用pdo mysql扩展 </span>
-</span></span><span class="line"><span class="cl">--with-pdo-sqlite 			<span class="c1"># &lt;==使用pdo sqlite扩展</span>
-</span></span><span class="line"><span class="cl">--with-openssl 			    <span class="c1"># &lt;==https需要</span>
-</span></span><span class="line"><span class="cl">--with-pcre-regex 			<span class="c1"># &lt;==使用pcre正则	</span>
-</span></span><span class="line"><span class="cl">--with-pear 				    <span class="c1"># &lt;==安装pear，一般没啥用	</span>
-</span></span><span class="line"><span class="cl">--with-xmlrpc 				  <span class="c1"># &lt;==打开xml-rpc的c语言</span>
-</span></span><span class="line"><span class="cl">--enable-libxml 
-</span></span><span class="line"><span class="cl">--disable-rpath 			  <span class="c1"># &lt;==关闭额外的运行库文件</span>
-</span></span><span class="line"><span class="cl">--with-xsl 					    <span class="c1"># &lt;==打开XSLT文件支持,扩展libXML2库,需要libxslt软件</span>
-</span></span><span class="line"><span class="cl">--with-zlib 				    <span class="c1"># &lt;==打开zlib库的支持,用于http压缩传输</span>
-</span></span><span class="line"><span class="cl">--enable-zip 				    <span class="c1"># &lt;==打开对zip的支持</span>
-</span></span><span class="line"><span class="cl">--enable-bcmath 			  <span class="c1"># &lt;==打开图片大小调整,用zabbix监控时会用到该模块</span>
-</span></span><span class="line"><span class="cl">--enable-inline-optimization 	<span class="c1"># &lt;==优化线程</span>
-</span></span><span class="line"><span class="cl">--enable-mbregex 			  <span class="c1"># &lt;==</span>
-</span></span><span class="line"><span class="cl">--enable-mbstring 			<span class="c1"># &lt;==支持mbstring</span>
-</span></span><span class="line"><span class="cl">--with-mcrypt 				  <span class="c1"># &lt;==编码函数库</span>
-</span></span><span class="line"><span class="cl">--with-mhash 				    <span class="c1"># &lt;==mhash算法的扩展</span>
-</span></span><span class="line"><span class="cl">--enable-opcache 			  <span class="c1"># &lt;==php自带的加速模块php5.5</span>
-</span></span><span class="line"><span class="cl">--enable-pcntl 			    <span class="c1"># &lt;==freeTDS需要用到,可能是链接mssql</span>
-</span></span><span class="line"><span class="cl">--enable-shmop 			    <span class="c1"># &lt;==</span>
-</span></span><span class="line"><span class="cl">--enable-soap 				  <span class="c1"># &lt;==soap模块的扩展</span>
-</span></span><span class="line"><span class="cl">--enable-sockets 		 	  <span class="c1"># &lt;==打开sockets支持</span>
-</span></span><span class="line"><span class="cl">--enable-sysvsem 		 	  <span class="c1"># &lt;==使用sysv信号机制,则打开此选项</span>
-</span></span><span class="line"><span class="cl">--enable-short-tags 		<span class="c1"># &lt;==开启短标签</span>
-</span></span><span class="line"><span class="cl">--with-fpm-user<span class="o">=</span>www 
-</span></span><span class="line"><span class="cl">--with-fpm-group<span class="o">=</span>www 
-</span></span><span class="line"><span class="cl">--enable-fpm 				    <span class="c1"># &lt;==表示激活PHP-FPM方式服务,即FactCGI方式运行PHP服务</span>
-</span></span><span class="line"><span class="cl">--with-apxs2<span class="o">=</span>/app/apache/bin/apxs <span class="c1"># &lt;==使httpd支持PHP</span>
-</span></span><span class="line"><span class="cl">--enable-json
-</span></span><span class="line"><span class="cl">--with-bz2
-</span></span><span class="line"><span class="cl">--enable-filter
-</span></span><span class="line"><span class="cl">--enable-session
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="公共编译参数">公共编译参数</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--prefix<span class="o">=</span>/app/php-5.5.38 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-curl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-freetype-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-gd <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-png-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-jpeg-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-gd-native-ttf <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-gettext <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-iconv-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-kerberos <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-libxml-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-xml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-safe-mode <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mysql<span class="o">=</span>/app/mysql/ <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mysqli<span class="o">=</span>/app/mysql/bin/mysql_config <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-pdo-mysql <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-pdo-sqlite <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-openssl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-pcre-regex <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-pear <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xmlrpc <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-libxml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--disable-rpath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xsl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-zlib <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-zip <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-bcmath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-inline-optimization <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbregex <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbstring <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mcrypt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mhash <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-opcache <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-pcntl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-shmop <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-soap <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sockets <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sysvsem <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-short-tags <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-json <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-bz2 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-filter <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-session <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-fpm-user<span class="o">=</span>www <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-fpm-group<span class="o">=</span>www <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-fpm <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-apxs2<span class="o">=</span>/app/apache/bin/apxs
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">configure: error: Cannot find libmysqlclient under /app/mysql/.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /app/mysql/lib /app/mysql/lib64
-</span></span><span class="line"><span class="cl">ln -s /app/mysql/lib/libmysqlclient.so.15./app/mysql/lib64/libmysqlclient_r.so
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="nginx-5327">nginx 5.3.27</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--prefix<span class="o">=</span>/app/php-5.3.27 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mysql<span class="o">=</span>/app/mysql <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-iconv-dir<span class="o">=</span>/usr/local/libiconv <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-freetype-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-jpeg-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-png-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-zlib-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-libxml-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-xml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--disable-rpath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-safe-mode <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-bcmath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-shmop <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sysvsem <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-inline-optimization <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-curl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbregex <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-fpm <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbstring <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mcrypt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-gd <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-gd-native-ttf <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-openssl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mhash <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-pcntl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sockets <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xmlrpc <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-zip <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-soap <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-short-tags <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-zend-multibyte <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-static <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xsl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-fpm-user<span class="o">=</span>nginx <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-fpm-group<span class="o">=</span>nginx <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-ftp
-</span></span></code></pre></td></tr></table>
-</div>
-</div><hr>
+<pre><code class="language-bash">./configure 
+--prefix=/app/php-7.  # &lt;==指定PHP的安装目录
+--with-curl 	 			    # &lt;==打开PHP curl扩展
+--with-curlwrappers 		# &lt;==curl工具打开url流的测试版，不建议开启
+--with-freetype-dir 		# &lt;== 打开freetype字体库支持
+--with-gd 					    # &lt;==打开PHP GD库依赖
+--with-png-dir 			    # &lt;==
+--with-jpeg-dir 			  # &lt;==
+--enable-gd-native-ttf  # &lt;==打开PHP GD库ttf
+--with-gettext 			    # &lt;==打开PHP gettext库，多国语言时需要
+--with-iconv-dir=/usr/local/lib 	# &lt;==打开PHP iconv字符集转换格式时需要
+--with-kerberos 			  # &lt;==PHP的一种加密方式 DES
+--with-libdir=lib64 		# &lt;==默认找/usr/lib下。64位需指定路径
+--with-libxml-dir 			# &lt;==打开libxml2库的支持
+--enable-xml
+--enable-safe-mode 		  # &lt;==打开安全模式
+# 需要指定mysql的安装路径,安装PHP需要的MySQL相关内容。
+# 当然如果没有MySQL软件包，也可以不单独安装，
+# 这样的情况可使用--with-mysql=mysqlnd替代--with-mysql=/app/mysql
+# 因为PHP软件里面已经自带连接MySQL的客户端工具。PHP7遗弃
+--with-mysql=/app/mysql/
+--with-mysqli=/app/mysql/bin/mysql_config 		# &lt;==使用PHP mysqli扩展
+--with-pdo-mysql 			  # &lt;==使用pdo mysql扩展 
+--with-pdo-sqlite 			# &lt;==使用pdo sqlite扩展
+--with-openssl 			    # &lt;==https需要
+--with-pcre-regex 			# &lt;==使用pcre正则	
+--with-pear 				    # &lt;==安装pear，一般没啥用	
+--with-xmlrpc 				  # &lt;==打开xml-rpc的c语言
+--enable-libxml 
+--disable-rpath 			  # &lt;==关闭额外的运行库文件
+--with-xsl 					    # &lt;==打开XSLT文件支持,扩展libXML2库,需要libxslt软件
+--with-zlib 				    # &lt;==打开zlib库的支持,用于http压缩传输
+--enable-zip 				    # &lt;==打开对zip的支持
+--enable-bcmath 			  # &lt;==打开图片大小调整,用zabbix监控时会用到该模块
+--enable-inline-optimization 	# &lt;==优化线程
+--enable-mbregex 			  # &lt;==
+--enable-mbstring 			# &lt;==支持mbstring
+--with-mcrypt 				  # &lt;==编码函数库
+--with-mhash 				    # &lt;==mhash算法的扩展
+--enable-opcache 			  # &lt;==php自带的加速模块php5.5
+--enable-pcntl 			    # &lt;==freeTDS需要用到,可能是链接mssql
+--enable-shmop 			    # &lt;==
+--enable-soap 				  # &lt;==soap模块的扩展
+--enable-sockets 		 	  # &lt;==打开sockets支持
+--enable-sysvsem 		 	  # &lt;==使用sysv信号机制,则打开此选项
+--enable-short-tags 		# &lt;==开启短标签
+--with-fpm-user=www 
+--with-fpm-group=www 
+--enable-fpm 				    # &lt;==表示激活PHP-FPM方式服务,即FactCGI方式运行PHP服务
+--with-apxs2=/app/apache/bin/apxs # &lt;==使httpd支持PHP
+--enable-json
+--with-bz2
+--enable-filter
+--enable-session
+</code></pre>
+<h4 id="公共编译参数">公共编译参数</h4>
+<pre><code class="language-bash">./configure \
+--prefix=/app/php-5.5.38 \
+--with-curl \
+--with-freetype-dir \
+--with-gd \
+--with-png-dir \
+--with-jpeg-dir \
+--enable-gd-native-ttf \
+--with-gettext \
+--with-iconv-dir \
+--with-kerberos \
+--with-libxml-dir \
+--enable-xml \
+--enable-safe-mode \
+--with-mysql=/app/mysql/ \
+--with-mysqli=/app/mysql/bin/mysql_config \
+--with-pdo-mysql \
+--with-pdo-sqlite \
+--with-openssl \
+--with-pcre-regex \
+--with-pear \
+--with-xmlrpc \
+--enable-libxml \
+--disable-rpath \
+--with-xsl \
+--with-zlib \
+--enable-zip \
+--enable-bcmath \
+--enable-inline-optimization \
+--enable-mbregex \
+--enable-mbstring \
+--with-mcrypt \
+--with-mhash \
+--enable-opcache \
+--enable-pcntl \
+--enable-shmop \
+--enable-soap \
+--enable-sockets \
+--enable-sysvsem \
+--enable-short-tags \
+--enable-json \
+--with-bz2 \
+--enable-filter \
+--enable-session \
+--with-fpm-user=www \
+--with-fpm-group=www \
+--enable-fpm \
+--with-apxs2=/app/apache/bin/apxs
+</code></pre>
+<pre><code class="language-bash">configure: error: Cannot find libmysqlclient under /app/mysql/.
+</code></pre>
+<p>解决：</p>
+<pre><code class="language-bash">ln -s /app/mysql/lib /app/mysql/lib64
+ln -s /app/mysql/lib/libmysqlclient.so.15./app/mysql/lib64/libmysqlclient_r.so
+</code></pre>
+<h4 id="nginx-5327">nginx 5.3.27</h4>
+<pre><code class="language-bash">./configure \
+--prefix=/app/php-5.3.27 \
+--with-mysql=/app/mysql \
+--with-iconv-dir=/usr/local/libiconv \
+--with-freetype-dir \
+--with-jpeg-dir \
+--with-png-dir \
+--with-zlib-dir \
+--with-libxml-dir \
+--enable-xml \
+--disable-rpath \
+--enable-safe-mode \
+--enable-bcmath \
+--enable-shmop \
+--enable-sysvsem \
+--enable-inline-optimization \
+--with-curl \
+--enable-mbregex \
+--enable-fpm \
+--enable-mbstring \
+--with-mcrypt \
+--with-gd \
+--enable-gd-native-ttf \
+--with-openssl \
+--with-mhash \
+--enable-pcntl \
+--enable-sockets \
+--with-xmlrpc \
+--enable-zip \
+--enable-soap \
+--enable-short-tags \
+--enable-zend-multibyte \
+--enable-static \
+--with-xsl \
+--with-fpm-user=nginx \
+--with-fpm-group=nginx \
+--enable-ftp
+</code></pre>
+<hr>
 <p><font color=#0215cd size=2>注：上述每行结尾的换行符反斜线（\）之后不能再有任何字符包括空格</font></p>
 <hr>
 <h4 id="apache-53">apache 5.3</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--prefix<span class="o">=</span>/app/php-5.3.27 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mysql<span class="o">=</span>/app/mysql <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-iconv-dir<span class="o">=</span>/usr/local/libiconv <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-apxs2<span class="o">=</span>/app/apache/bin/apxs <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-freetype-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-jpeg-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-png-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-zlib-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-libxml-dir <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-xml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--disable-rpath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-safe-mode <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-bcmath <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-shmop <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sysvsem <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-inline-optimization <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-curl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-curlwrappers <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbregex <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-mbstring <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mcrypt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-gd <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-gd-native-ttf <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-openssl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-mhash <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-pcntl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-sockets <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xmlrpc <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-zip <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-soap <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-short-tags <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-zend-multibyte <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-static <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-xsl <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--enable-ftp
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="配置phpini">配置php.ini</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/home/tools/php-5.3.27/php.ini-production
-</span></span><span class="line"><span class="cl">/home/tools/php-5.3.27/php.ini-development
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cp /home/tools/php-5.3.27/php.ini-production /app/php/lib/php.ini
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>开发环境更多的是开启日志、调试信息，而生产环境都是关闭状态。</p>
+<pre><code class="language-bash">./configure \
+--prefix=/app/php-5.3.27 \
+--with-mysql=/app/mysql \
+--with-iconv-dir=/usr/local/libiconv \
+--with-apxs2=/app/apache/bin/apxs \
+--with-freetype-dir \
+--with-jpeg-dir \
+--with-png-dir \
+--with-zlib-dir \
+--with-libxml-dir \
+--enable-xml \
+--disable-rpath \
+--enable-safe-mode \
+--enable-bcmath \
+--enable-shmop \
+--enable-sysvsem \
+--enable-inline-optimization \
+--with-curl \
+--with-curlwrappers \
+--enable-mbregex \
+--enable-mbstring \
+--with-mcrypt \
+--with-gd \
+--enable-gd-native-ttf \
+--with-openssl \
+--with-mhash \
+--enable-pcntl \
+--enable-sockets \
+--with-xmlrpc \
+--enable-zip \
+--enable-soap \
+--enable-short-tags \
+--enable-zend-multibyte \
+--enable-static \
+--with-xsl \
+--enable-ftp
+</code></pre>
+<h4 id="配置phpini">配置php.ini</h4>
+<pre><code class="language-bash">/home/tools/php-5.3.27/php.ini-production
+/home/tools/php-5.3.27/php.ini-development
+</code></pre>
+<pre><code class="language-bash">cp /home/tools/php-5.3.27/php.ini-production /app/php/lib/php.ini
+</code></pre>
+<p>开发环境更多的是开启日志、调试信息，而生产环境都是关闭状态。</p>
 <h4 id="配置phpfastcgi的配置文件php-fpmconf">配置PHP（FastCGI）的配置文件php-fpm.conf</h4>
 <ul>
 <li>PHP5位置：/app/php/etc/</li>
 <li>PHP7位置：/app/php/etc/和 php-fpm.d</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cp php-fpm.conf.default php-fpm.conf <span class="c1"># &lt;==PHP5只需要改它即可</span>
-</span></span><span class="line"><span class="cl">php-fpm.d/www.conf.default <span class="c1"># &lt;==PHP7还需要改这个文件</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="3-配置nginx支持php程序">3 配置Nginx支持PHP程序</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-nginx" data-lang="nginx"><span class="line"><span class="cl"><span class="c1"># 这里如果配置不好，很容易出现404错误，
-</span></span></span><span class="line"><span class="cl"><span class="c1"># 此处也可以吧两个localtion里的root html/blog合成一个 
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span> <span class="k">location</span>  <span class="p">~</span><span class="sr">.*\.(php|php5)?$</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kn">fastcgi_pass</span> <span class="n">127.0.0.1</span><span class="p">:</span><span class="mi">9000</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kn">fastcgi_index</span> <span class="s">index.php</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="kn">include</span> <span class="s">fastcgi.conf</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">  	<span class="kn">index</span>  <span class="s">index.html</span> <span class="s">index.htm</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"> <span class="p">}</span>  <span class="c1"># &lt;==可将所有location里的root提出到外面。
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-2022102522541352png" alt="image-20221025225413522"  /></p>
+<pre><code class="language-bash">cp php-fpm.conf.default php-fpm.conf # &lt;==PHP5只需要改它即可
+php-fpm.d/www.conf.default # &lt;==PHP7还需要改这个文件
+</code></pre>
+<h2 id="3-配置nginx支持php程序">3 配置Nginx支持PHP程序</h2>
+<pre><code class="language-nginx"># 这里如果配置不好，很容易出现404错误，
+# 此处也可以吧两个localtion里的root html/blog合成一个 
+ location  ~.*\.(php|php5)?$ {
+    fastcgi_pass 127.0.0.1:9000;
+    fastcgi_index index.php;
+    include fastcgi.conf;
+  	index  index.html index.htm;
+ }  # &lt;==可将所有location里的root提出到外面。
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-2022102522541352png" alt="image-20221025225413522" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>原因：local中没有路径，要么加路径，要么提出最外面</center>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225422603.png" alt="image-20221025225422603"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225422603.png" alt="image-20221025225422603" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h2 id="4-配置apache支持php">4 配置apache支持PHP</h2>
 <p>默认生成</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ grep libphp5 /app/apache/conf/httpd.conf
-</span></span><span class="line"><span class="cl">LoadModule php5_module        modules/libphp5.so
-</span></span><span class="line"><span class="cl">$ ll /app/apache/modules/
-</span></span><span class="line"><span class="cl">总用量 <span class="m">29620</span>
-</span></span><span class="line"><span class="cl">-rw-r--r--. <span class="m">1</span> root root     94月   <span class="m">8</span> 03:02 httpd.exp
-</span></span><span class="line"><span class="cl">-rwxr-xr-x. <span class="m">1</span> root root 303164月  <span class="m">21</span> 01:46 libphp5.so
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改311行</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">AddType application/x-httpd-php .php .phtml
-</span></span><span class="line"><span class="cl">AddType application/x-httpd-php-source .phps
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>更改daemon，更改用户是为了安全考虑</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-2022102522544554png" alt="image-20221025225445542"  /></p>
+<pre><code class="language-bash">$ grep libphp5 /app/apache/conf/httpd.conf
+LoadModule php5_module        modules/libphp5.so
+$ ll /app/apache/modules/
+总用量 29620
+-rw-r--r--. 1 root root     94月   8 03:02 httpd.exp
+-rwxr-xr-x. 1 root root 303164月  21 01:46 libphp5.so
+</code></pre>
+<p>修改311行</p>
+<pre><code class="language-bash">AddType application/x-httpd-php .php .phtml
+AddType application/x-httpd-php-source .phps
+</code></pre>
+<p>更改daemon，更改用户是为了安全考虑</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-2022102522544554png" alt="image-20221025225445542" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>打不开解决方法：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ lsof -i:80
-</span></span><span class="line"><span class="cl">COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
-</span></span><span class="line"><span class="cl">httpd    <span class="m">5</span>  root    4u  IPv6  <span class="m">69</span>      TCP *:http <span class="o">(</span>LISTEN<span class="o">)</span>
-</span></span><span class="line"><span class="cl">httpd   60apache    4u  IPv6  <span class="m">69</span>      TCP *:http <span class="o">(</span>LISTEN<span class="o">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ /app/apache/bin/apachectl restart
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225459373.png" alt="image-20221025225459373"  /></p>
+<pre><code class="language-bash">$ lsof -i:80
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+httpd    5  root    4u  IPv6  69      TCP *:http (LISTEN)
+httpd   60apache    4u  IPv6  69      TCP *:http (LISTEN)
+</code></pre>
+<pre><code class="language-bash">$ /app/apache/bin/apachectl restart
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225459373.png" alt="image-20221025225459373" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 ]]></content:encoded>
     </item>
     
@@ -1579,8 +792,7 @@ vi /etc/yum.conf</p>
 </li>
 </ol>
 <p>PHP缓存加速器解决的是上述第5步的问题，默认情况下PHP会将opcode内容执行后丢弃，这里却通过PHP缓存加速软件，将opcode内容缓存了下来，目的是当有重复请求时，不需要再重复编译解析PHP程序代码，因为在高并发高访问量的网站上，大量的重复编译会消耗很多的系统资源和时间，而这也就会成为瓶颈，既影响了处理速度，又加重了服务器的负载，为了解决此问题，PHP缓存加速器就这样诞生了。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224840040.png" alt="image-20221025224840040"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224840040.png" alt="image-20221025224840040" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图4-1是LAMP环境下PHP请求及操作码缓存过程的原理示意图</center>
 <h4 id="lnmp环境php缓存加速器的原理详解">LNMP环境PHP缓存加速器的原理详解</h4>
 <p>在LNMP环境中，PHP引擎不再使用libphp5.so模块了，而是启动了独立的FCGI即php-fpm进程，由它监听来自Nginx的PHP程序请求，并交给PHP引擎解析处理，整个执行流程大概如下：</p>
@@ -1624,17 +836,10 @@ vi /etc/yum.conf</p>
 <p><strong>eAccelerator插件安装过程</strong></p>
 </blockquote>
 <p>具体的安装命令集如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/app/php/bin/phpize
-</span></span><span class="line"><span class="cl">./configure --enable-eaccelerator<span class="o">=</span>shared --with-php-config<span class="o">=</span>/app/php/bin/php-config
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="安装php-xcache缓存加速模块">安装PHP XCache缓存加速模块</h4>
+<pre><code class="language-bash">/app/php/bin/phpize
+./configure --enable-eaccelerator=shared --with-php-config=/app/php/bin/php-config
+</code></pre>
+<h4 id="安装php-xcache缓存加速模块">安装PHP XCache缓存加速模块</h4>
 <blockquote>
 <p><strong>XCache缓存加速插件说明</strong></p>
 </blockquote>
@@ -1643,23 +848,17 @@ vi /etc/yum.conf</p>
 当前稳定版本为3.1.x（全面支持PHP 5.1~5.5）和3.2.x（2014年底发布，全面支持PHP 5.1~5.6）。</p>
 <blockquote>
 <p>XCache软件详情请参考：</p>
-<p><a href="http://xcache.lighttpd.net">http://xcache.lighttpd.net</a></p>
-<p><a href="http://xcache.lighttpd.net/wiki/Introduction">http://xcache.lighttpd.net/wiki/Introduction</a>。</p>
+<p><a href="http://xcache.lighttpd.net" target="_blank"
+   rel="noopener nofollow noreferrer" >http://xcache.lighttpd.net</a></p>
+<p><a href="http://xcache.lighttpd.net/wiki/Introduction" target="_blank"
+   rel="noopener nofollow noreferrer" >http://xcache.lighttpd.net/wiki/Introduction</a>。</p>
 </blockquote>
 <p><strong>XCache插件的安装过程</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/app/php/bin/phpize
-</span></span><span class="line"><span class="cl">./configure --enable-xcache   --with-php-config<span class="o">=</span>/application/php/bin/php-config
-</span></span><span class="line"><span class="cl">./configure --enable-xcache<span class="o">=</span>shared --with-php-config<span class="o">=</span>/app/php/bin/php-config
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="php官方加速插件zendopcache">PHP官方加速插件ZendOpcache</h4>
+<pre><code class="language-bash">/app/php/bin/phpize
+./configure --enable-xcache   --with-php-config=/application/php/bin/php-config
+./configure --enable-xcache=shared --with-php-config=/app/php/bin/php-config
+</code></pre>
+<h4 id="php官方加速插件zendopcache">PHP官方加速插件ZendOpcache</h4>
 <blockquote>
 <p><strong>ZendOpcache插件说明</strong></p>
 </blockquote>
@@ -1671,48 +870,25 @@ vi /etc/yum.conf</p>
 <p><strong>ZendOpcache插件安装过程</strong></p>
 </blockquote>
 <p>在PHP源码包ext目录下有一些扩展库，可直接安装，也可去官网下载扩展后安装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/application/php/bin/phpize
-</span></span><span class="line"><span class="cl">./configure --enable-opcache --with-php-config<span class="o">=</span>/application/php/bin/php-config
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>最后需要在php.ini里开启opcache模块才可使用</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>Zend Opcache<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">zend_extension</span> <span class="o">=</span> /app/php5.6.26/lib/php/extensions/no-debug-non-zts-20131226/opcache.so
-</span></span><span class="line"><span class="cl">opcache.memory_consumption<span class="o">=</span><span class="m">64</span>
-</span></span><span class="line"><span class="cl">opcache.interned_strings_buffer<span class="o">=</span><span class="m">8</span>
-</span></span><span class="line"><span class="cl">opcache.max_accelerated_files<span class="o">=</span><span class="m">4000</span>
-</span></span><span class="line"><span class="cl">opcache.force_restart_timeout<span class="o">=</span><span class="m">180</span>
-</span></span><span class="line"><span class="cl">opcache.revalidate_freq<span class="o">=</span><span class="m">60</span>
-</span></span><span class="line"><span class="cl">opcache.fast_shutdown<span class="o">=</span><span class="m">1</span>
-</span></span><span class="line"><span class="cl">opcache.enable_cli<span class="o">=</span><span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224933301.png" alt="image-20221025224933301"  /></p>
+<pre><code class="language-bash">/application/php/bin/phpize
+./configure --enable-opcache --with-php-config=/application/php/bin/php-config
+</code></pre>
+<p>最后需要在php.ini里开启opcache模块才可使用</p>
+<pre><code class="language-bash">[Zend Opcache]
+zend_extension = /app/php5.6.26/lib/php/extensions/no-debug-non-zts-20131226/opcache.so
+opcache.memory_consumption=64
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=4000
+opcache.force_restart_timeout=180
+opcache.revalidate_freq=60
+opcache.fast_shutdown=1
+opcache.enable_cli=1
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224933301.png" alt="image-20221025224933301" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h3 id="安装数据库缓存及其他php扩展插件">安装数据库缓存及其他PHP扩展插件</h3>
 <h4 id="安装php-memcached扩展插件">安装PHP Memcached扩展插件</h4>
 <center>图4-3是Memcached缓存架构逻辑图。</center>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224945336.png" alt="image-20221025224945336"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025224945336.png" alt="image-20221025224945336" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>PHP的Memcached扩展插件下载地址为：http://pecl.php.net/package/memcache。</p>
 <h4 id="安装pdo_mysql扩展模块">安装PDO_MYSQL扩展模块</h4>
 <blockquote>
@@ -1741,50 +917,32 @@ vi /etc/yum.conf</p>
 <li>取得一些图片的特性信息。</li>
 </ul>
 <p>它几乎包括了gimp可以实现的所有常规插件功能，甚至包括各种曲线参数的渲染功能。ImageMagick的下载地址为：</p>
-<p><a href="http://pecl.php.net/package/imagick">http://pecl.php.net/package/imagick</a></p>
-<p><a href="https://www.imagemagick.org/download/">https://www.imagemagick.org/download/</a></p>
+<p><a href="http://pecl.php.net/package/imagick" target="_blank"
+   rel="noopener nofollow noreferrer" >http://pecl.php.net/package/imagick</a></p>
+<p><a href="https://www.imagemagick.org/download/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://www.imagemagick.org/download/</a></p>
 <h4 id="imagemagick安装报错及解决方法">ImageMagick安装报错及解决方法。</h4>
 <p>以下错误是书上写的。我在两天centos6 与centos7共计4台测试并未发现任何错误</p>
 <p>问题1：make步骤出错。
 示例如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">cd</span> PerlMagick <span class="o">&amp;&amp;</span> /usr/bin/perl Makefile.PL
-</span></span><span class="line"><span class="cl">Can<span class="s1">&#39;t locate ExtUtils/MakeMaker.pm in @INC(@INC contains:/usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .)
-</span></span></span><span class="line"><span class="cl"><span class="s1">at Makefile.PL line 24.
-</span></span></span><span class="line"><span class="cl"><span class="s1">BEGIN failed--compilation aborted at Makefile.PL line 24.
-</span></span></span><span class="line"><span class="cl"><span class="s1">make[1]:*** [PerlMagick/Makefile] Error 2
-</span></span></span><span class="line"><span class="cl"><span class="s1">make[1]:Leaving directory `/home/oldboy/tools/ImageMagick-6.5.1-2&#39;</span>
-</span></span><span class="line"><span class="cl">make:*** <span class="o">[</span>all<span class="o">]</span> Error <span class="m">2</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以看到，上述内容中有Makefile.PL、/usr/lib64/perl5/vendor_perl和Perl语言的字样，因此可以试着使用 <code>yum install perl-devel -y</code> 命令安装相关包，看看是否可以解决问题。</p>
+<pre><code class="language-bash">cd PerlMagick &amp;&amp; /usr/bin/perl Makefile.PL
+Can't locate ExtUtils/MakeMaker.pm in @INC(@INC contains:/usr/local/lib64/perl5 /usr/local/share/perl5 /usr/lib64/perl5/vendor_perl /usr/share/perl5/vendor_perl /usr/lib64/perl5 /usr/share/perl5 .)
+at Makefile.PL line 24.
+BEGIN failed--compilation aborted at Makefile.PL line 24.
+make[1]:*** [PerlMagick/Makefile] Error 2
+make[1]:Leaving directory `/home/oldboy/tools/ImageMagick-6.5.1-2'
+make:*** [all] Error 2
+</code></pre>
+<p>可以看到，上述内容中有Makefile.PL、/usr/lib64/perl5/vendor_perl和Perl语言的字样，因此可以试着使用 <code>yum install perl-devel -y</code> 命令安装相关包，看看是否可以解决问题。</p>
 <h4 id="安装imagick-php扩展插件">安装imagick PHP扩展插件</h4>
 <p>imagick插件工作需要ImageMagick软件的支持，所以，必须要先安装ImageMagick，否则会报错。</p>
 <p>imagick插件是一个可以供PHP调用ImageMagick功能的扩展模块。使用这个扩展可以使PHP具备和ImageMagick相同的功能。</p>
 <p>安装了ImageMagick图像程序后，再安装PHP的扩展imagick插件，才能使用ImageMagick提供的api进行图片的创建与修改、压缩等操作，因为它们都集成在imagick这个PHP扩展中。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-php-config<span class="o">=</span>/app/php/bin/php-config <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--with-imagick<span class="o">=</span>/app/imagemag/	<span class="c1">#←如果编译安装的ImageMagick需要指定安装路径</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置php加速与缓存相关的扩展插件模块">配置PHP加速与缓存相关的扩展插件模块</h3>
+<pre><code class="language-bash">./configure \
+--with-php-config=/app/php/bin/php-config \
+--with-imagick=/app/imagemag/	#←如果编译安装的ImageMagick需要指定安装路径
+</code></pre>
+<h3 id="配置php加速与缓存相关的扩展插件模块">配置PHP加速与缓存相关的扩展插件模块</h3>
 <h4 id="配置xcachepdo_mysqlimagick模块生效">配置xcache/PDO_MYSQL/imagick模块生效</h4>
 <blockquote>
 <p><strong>修改PHP的配置文件php.ini</strong></p>
@@ -1797,77 +955,39 @@ vi /etc/yum.conf</p>
 <blockquote>
 <p><strong>在vim命令模式下按Shift+G键跳到文件结尾，增加如下几行，然后保存</strong>：</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">extension</span> <span class="o">=</span> memcache.so
-</span></span><span class="line"><span class="cl"><span class="nv">extension</span> <span class="o">=</span> pdo_mysql.so
-</span></span><span class="line"><span class="cl">..
-</span></span><span class="line"><span class="cl"><span class="nv">extension</span> <span class="o">=</span> imagick.so
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225007761.png" alt=""  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225016393.png" alt="image-20221025225016393"  /></p>
+<pre><code class="language-bash">extension = memcache.so
+extension = pdo_mysql.so
+..
+extension = imagick.so
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225007761.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225016393.png" alt="image-20221025225016393" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h4 id="配置eaccelerator插件生效并优化参数">配置eAccelerator插件生效并优化参数</h4>
 <blockquote>
 <p><strong>1 配置eAccelerator缓存目录</strong></p>
 </blockquote>
 <p>配置命令1：配置eAccelerator缓存目录：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mkdir -p /tmp/eaccelerator 	<span class="c1">#←此目录可以用tmpfs内存文件系统或SSD固态硬盘来存储。</span>
-</span></span><span class="line"><span class="cl">chown -R nginx.nginx /tmp/eaccelerator <span class="c1">#←chown后的用户是nginx的用户</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>配置命令2：配置eAccelerator参数，命令如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>eaccelerator<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">extension</span><span class="o">=</span>eaccelerator.so
-</span></span><span class="line"><span class="cl">eaccelerator.shm_size<span class="o">=</span><span class="s2">&#34;64&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.cache_dir<span class="o">=</span><span class="s2">&#34;/tmp/eaccelerator&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.enable<span class="o">=</span><span class="s2">&#34;1&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.optimizer<span class="o">=</span><span class="s2">&#34;1&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.check_mtime<span class="o">=</span><span class="s2">&#34;1&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.debug<span class="o">=</span><span class="s2">&#34;0&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.filter<span class="o">=</span><span class="s2">&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.shm_max<span class="o">=</span><span class="s2">&#34;0&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.shm_ttl<span class="o">=</span><span class="s2">&#34;3600&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.shm_prune_period<span class="o">=</span><span class="s2">&#34;3600&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.shm_only<span class="o">=</span><span class="s2">&#34;0&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.compress<span class="o">=</span><span class="s2">&#34;1&#34;</span>
-</span></span><span class="line"><span class="cl">eaccelerator.compress_level<span class="o">=</span><span class="s2">&#34;9&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">mkdir -p /tmp/eaccelerator 	#←此目录可以用tmpfs内存文件系统或SSD固态硬盘来存储。
+chown -R nginx.nginx /tmp/eaccelerator #←chown后的用户是nginx的用户
+</code></pre>
+<p>配置命令2：配置eAccelerator参数，命令如下：</p>
+<pre><code class="language-bash">[eaccelerator]
+extension=eaccelerator.so
+eaccelerator.shm_size=&quot;64&quot;
+eaccelerator.cache_dir=&quot;/tmp/eaccelerator&quot;
+eaccelerator.enable=&quot;1&quot;
+eaccelerator.optimizer=&quot;1&quot;
+eaccelerator.check_mtime=&quot;1&quot;
+eaccelerator.debug=&quot;0&quot;
+eaccelerator.filter=&quot;&quot;
+eaccelerator.shm_max=&quot;0&quot;
+eaccelerator.shm_ttl=&quot;3600&quot;
+eaccelerator.shm_prune_period=&quot;3600&quot;
+eaccelerator.shm_only=&quot;0&quot;
+eaccelerator.compress=&quot;1&quot;
+eaccelerator.compress_level=&quot;9&quot;
+</code></pre>
+<blockquote>
 <p><strong>2 eAccelerator配置参数的详细说明。</strong></p>
 </blockquote>
 <table>
@@ -1937,63 +1057,34 @@ vi /etc/yum.conf</p>
 </tbody>
 </table>
 <p>根据内容指定是否缓存到共享内存或磁盘的其他参数：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">eaccelerator.keys<span class="o">=</span><span class="s2">&#34;shm_and_disk&#34;</span> <span class="c1">#←控制keys缓存位置</span>
-</span></span><span class="line"><span class="cl">eaccelerator.sessions<span class="o">=</span><span class="s2">&#34;shm_and_disk&#34;</span> <span class="c1">#←控制sessions缓存位置</span>
-</span></span><span class="line"><span class="cl">eaccelerator.content<span class="o">=</span><span class="s2">&#34;shm_and_disk&#34;</span> <span class="c1">#←控制内容缓存位置上述3个参数可选的值为：</span>
-</span></span><span class="line"><span class="cl">shm_and_disk：cache data in shared memory and on disk<span class="o">(</span>default value<span class="o">)</span>
-</span></span><span class="line"><span class="cl">shm:cache data in shared memory or on disk <span class="k">if</span> shared memory is full or data size greater <span class="k">then</span> <span class="s2">&#34;eaccelerator.shm_max&#34;</span>
-</span></span><span class="line"><span class="cl">shm_only:cache data in shared memory 
-</span></span><span class="line"><span class="cl">disk_only:cache data on disk
-</span></span><span class="line"><span class="cl">none:don<span class="err">&#39;</span>t cache data
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>更多信息请参考 <a href="https://github.com/eaccelerator/eaccelerator/wiki/Settings">https://github.com/eaccelerator/eaccelerator/wiki/Settings</a>。</p>
+<pre><code class="language-bash">eaccelerator.keys=&quot;shm_and_disk&quot; #←控制keys缓存位置
+eaccelerator.sessions=&quot;shm_and_disk&quot; #←控制sessions缓存位置
+eaccelerator.content=&quot;shm_and_disk&quot; #←控制内容缓存位置上述3个参数可选的值为：
+shm_and_disk：cache data in shared memory and on disk(default value)
+shm:cache data in shared memory or on disk if shared memory is full or data size greater then &quot;eaccelerator.shm_max&quot;
+shm_only:cache data in shared memory 
+disk_only:cache data on disk
+none:don't cache data
+</code></pre>
+<p>更多信息请参考 <a href="https://github.com/eaccelerator/eaccelerator/wiki/Settings" target="_blank"
+   rel="noopener nofollow noreferrer" >https://github.com/eaccelerator/eaccelerator/wiki/Settings</a>。</p>
 <blockquote>
 <p><strong>3 访问PHP页面测试检查eAccelerator加速情况</strong></p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ find /tmp/eaccelerator/ -type f
-</span></span><span class="line"><span class="cl">/tmp/eaccelerator/48/0/1/eaccelerator-01aa58b81ae5ff3ed966dbbac55535a8
-</span></span><span class="line"><span class="cl">/tmp/eaccelerator/48/0/2/eaccelerator-02399225c2489318da660dc2213a940e
-</span></span><span class="line"><span class="cl">...
-</span></span><span class="line"><span class="cl">/tmp/eaccelerator/48/0/3/eaccelerator-03621af70cbe37e82c125a39bdb8c0b9
-</span></span><span class="line"><span class="cl">/tmp/eaccelerator/48/0/3/eaccelerator-03ad092ef38eaae48de869a58a893a16
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">$ find /tmp/eaccelerator/ -type f
+/tmp/eaccelerator/48/0/1/eaccelerator-01aa58b81ae5ff3ed966dbbac55535a8
+/tmp/eaccelerator/48/0/2/eaccelerator-02399225c2489318da660dc2213a940e
+...
+/tmp/eaccelerator/48/0/3/eaccelerator-03621af70cbe37e82c125a39bdb8c0b9
+/tmp/eaccelerator/48/0/3/eaccelerator-03ad092ef38eaae48de869a58a893a16
+</code></pre>
+<blockquote>
 <p><strong>4 使用tmpfs优化eAccelerator缓存目录</strong></p>
 </blockquote>
 <p>tmpfs是一种基于内存的文件系统，通常使用tmpfs作为数据临时存储，比本地磁盘存储快很多，此方法适用于临时使用的各类缓存场景。例如：上传图片时很多软件默认在/tmp下临时缓存切图、存放session数据，则可以让/tmp使用tmpfs文件系统来加快访问效率。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mount -t tmpfs  -o <span class="nv">size</span><span class="o">=</span>16m tmpfs /tmp/eaccelerator
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="配置xcache插件加速">配置XCache插件加速</h3>
+<pre><code class="language-bash">mount -t tmpfs  -o size=16m tmpfs /tmp/eaccelerator
+</code></pre>
+<h3 id="配置xcache插件加速">配置XCache插件加速</h3>
 <p><strong>XCache配置文件参数</strong></p>
 <table>
 <thead>
@@ -2063,132 +1154,60 @@ vi /etc/yum.conf</p>
 </table>
 <p>更多参数请参考官方文档：http://xcache.lighttpd.net/wiki/XcacheIni</p>
 <p><strong>编辑xcache.ini，修改XCache的配置参数</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">xcache.size<span class="o">=</span>256M
-</span></span><span class="line"><span class="cl">xcache.count<span class="o">=</span><span class="m">2</span>
-</span></span><span class="line"><span class="cl">xcache.ttl<span class="o">=</span>86# 24小时
-</span></span><span class="line"><span class="cl">xcache.gc_interval<span class="o">=</span><span class="m">3600</span>
-</span></span><span class="line"><span class="cl">xcache.var_size<span class="o">=</span>64M
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>将修改后的xcache.ini合并到php.ini结尾。</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cat /home/oldboy/tools/xcache-3.2.0/xcache.ini &gt;&gt;php.ini
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>检查XCache加速情况配置</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Warning: Module <span class="s1">&#39;XCache&#39;</span> already loaded in Unknown on line <span class="m">0</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 出现这样的提示，应该是加载xcache原因 ，取消后提示消失</span>
-</span></span><span class="line"><span class="cl">/app/php/bin/php -v
-</span></span><span class="line"><span class="cl">PHP 5.5.20 <span class="o">(</span>cli<span class="o">)</span> <span class="o">(</span>built: Oct <span class="m">16</span> <span class="m">2016</span> 21:28:19<span class="o">)</span>
-</span></span><span class="line"><span class="cl">Copyright <span class="o">(</span>c<span class="o">)</span> 1997-2014 The PHP Group
-</span></span><span class="line"><span class="cl">Zend Engine v2.5.0, Copyright <span class="o">(</span>c<span class="o">)</span> 1998-2014 Zend Technologies
-</span></span><span class="line"><span class="cl">    with XCache v3.2.0, Copyright <span class="o">(</span>c<span class="o">)</span> 2005-2014, by mOo
-</span></span><span class="line"><span class="cl">    with XCache Cacher v3.2.0, Copyright <span class="o">(</span>c<span class="o">)</span> 2005-2014, by mOo
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>复制XCache软件下面的缓存加速管理PHP程序到站点目录下</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">cp -r ~/tools/xcache-3.2.0/htdocs /var/html/www/xadmin
-</span></span><span class="line"><span class="cl">chown -R www.www /var/html/www/xadmin
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>编辑php.ini文件，xcache.admin模块配置如下</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>xcache.admin<span class="o">]</span>
-</span></span><span class="line"><span class="cl">xcache.admin.enable_auth <span class="o">=</span> On
-</span></span><span class="line"><span class="cl">xcache.admin.user <span class="o">=</span> <span class="s2">&#34;admin&#34;</span>
-</span></span><span class="line"><span class="cl">xcache.admin.pass <span class="o">=</span> <span class="s2">&#34;111&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>MD5加密可用如下方法生成</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ <span class="nb">echo</span> 111<span class="p">|</span>md5sum
-</span></span><span class="line"><span class="cl">1181c1834012245d785120e3505ed169  - <span class="c1">#←这里生成的并不是md5生成的111，因为echo默认有换行</span>
-</span></span><span class="line"><span class="cl">$ <span class="nb">echo</span> -n 111<span class="p">|</span>md5sum
-</span></span><span class="line"><span class="cl">698d51a19d8a121ce581499d7b701668  -
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225045277.png" alt="image-20221025225045277"  /></p>
+<pre><code class="language-bash">xcache.size=256M
+xcache.count=2
+xcache.ttl=86# 24小时
+xcache.gc_interval=3600
+xcache.var_size=64M
+</code></pre>
+<p><strong>将修改后的xcache.ini合并到php.ini结尾。</strong></p>
+<pre><code class="language-bash">cat /home/oldboy/tools/xcache-3.2.0/xcache.ini &gt;&gt;php.ini
+</code></pre>
+<p><strong>检查XCache加速情况配置</strong></p>
+<pre><code class="language-bash">Warning: Module 'XCache' already loaded in Unknown on line 0
+# 出现这样的提示，应该是加载xcache原因 ，取消后提示消失
+/app/php/bin/php -v
+PHP 5.5.20 (cli) (built: Oct 16 2016 21:28:19)
+Copyright (c) 1997-2014 The PHP Group
+Zend Engine v2.5.0, Copyright (c) 1998-2014 Zend Technologies
+    with XCache v3.2.0, Copyright (c) 2005-2014, by mOo
+    with XCache Cacher v3.2.0, Copyright (c) 2005-2014, by mOo
+</code></pre>
+<p><strong>复制XCache软件下面的缓存加速管理PHP程序到站点目录下</strong></p>
+<pre><code class="language-bash">cp -r ~/tools/xcache-3.2.0/htdocs /var/html/www/xadmin
+chown -R www.www /var/html/www/xadmin
+</code></pre>
+<p><strong>编辑php.ini文件，xcache.admin模块配置如下</strong></p>
+<pre><code class="language-bash">[xcache.admin]
+xcache.admin.enable_auth = On
+xcache.admin.user = &quot;admin&quot;
+xcache.admin.pass = &quot;111&quot;
+</code></pre>
+<p><strong>MD5加密可用如下方法生成</strong></p>
+<pre><code class="language-bash">$ echo 111|md5sum
+1181c1834012245d785120e3505ed169  - #←这里生成的并不是md5生成的111，因为echo默认有换行
+$ echo -n 111|md5sum
+698d51a19d8a121ce581499d7b701668  -
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225045277.png" alt="image-20221025225045277" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h4 id="配置zendopcache插件加速">配置ZendOpcache插件加速</h4>
 <blockquote>
 <p><strong>1 配置ZendOpcache参数</strong></p>
 </blockquote>
 <p>在php.ini里添加如下配置：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>opcache<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">extension</span><span class="o">=</span>opcache.so    <span class="c1">#←这种方法不能用了</span>
-</span></span><span class="line"><span class="cl"><span class="nv">zend_extension</span><span class="o">=</span>/application/php5.3.27/lib/php/extensions/no-debug-non-zts-
-</span></span><span class="line"><span class="cl">20090626/opcache.so<span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="nv">extension</span><span class="o">=</span>opcache.so
-</span></span><span class="line"><span class="cl">opcache.memory_consumption<span class="o">=</span><span class="m">32</span>
-</span></span><span class="line"><span class="cl">opcache.interned_strings_buffer<span class="o">=</span><span class="m">8</span>
-</span></span><span class="line"><span class="cl">opcache.max_accelerated_files<span class="o">=</span><span class="m">1000</span>
-</span></span><span class="line"><span class="cl">opcache.revalidate_freq<span class="o">=</span><span class="m">60</span>
-</span></span><span class="line"><span class="cl">opcache.fast_shutdown<span class="o">=</span><span class="m">1</span>
-</span></span><span class="line"><span class="cl">opcache.enable_cli<span class="o">=</span><span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225121076.png" alt="image-20221025225121076"  /></p>
+<pre><code class="language-bash">[opcache]
+extension=opcache.so    #←这种方法不能用了
+zend_extension=/application/php5.3.27/lib/php/extensions/no-debug-non-zts-
+20090626/opcache.so;
+extension=opcache.so
+opcache.memory_consumption=32
+opcache.interned_strings_buffer=8
+opcache.max_accelerated_files=1000
+opcache.revalidate_freq=60
+opcache.fast_shutdown=1
+opcache.enable_cli=1
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221025225121076.png" alt="image-20221025225121076" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <blockquote>
 <p><strong>2 ZendOpcache配置参数说明</strong></p>
 </blockquote>
@@ -2310,54 +1329,26 @@ vi /etc/yum.conf</p>
       <guid>https://www.oomkill.com/2016/06/apache-php/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>默认生成</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ grep libphp5 /app/apache/conf/httpd.conf
-</span></span><span class="line"><span class="cl">LoadModule php5_module        modules/libphp5.so
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ll /app/apache/modules/
-</span></span><span class="line"><span class="cl">总用量 <span class="m">29620</span>
-</span></span><span class="line"><span class="cl">-rw-r--r--. <span class="m">1</span> root root     <span class="m">9115</span> 4月   <span class="m">8</span> 03:02 httpd.exp
-</span></span><span class="line"><span class="cl">-rwxr-xr-x. <span class="m">1</span> root root <span class="m">30316906</span> 4月  <span class="m">21</span> 01:46 libphp5.so
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改httpd配置文件311行</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">AddType application/x-httpd-php .php .phtml
-</span></span><span class="line"><span class="cl">AddType application/x-httpd-php-source .phps
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>更改daemon，更改用户是为了安全考虑</p>
+<pre><code class="language-bash">$ grep libphp5 /app/apache/conf/httpd.conf
+LoadModule php5_module        modules/libphp5.so
+
+$ ll /app/apache/modules/
+总用量 29620
+-rw-r--r--. 1 root root     9115 4月   8 03:02 httpd.exp
+-rwxr-xr-x. 1 root root 30316906 4月  21 01:46 libphp5.so
+</code></pre>
+<p>修改httpd配置文件311行</p>
+<pre><code class="language-conf">AddType application/x-httpd-php .php .phtml
+AddType application/x-httpd-php-source .phps
+</code></pre>
+<p>更改daemon，更改用户是为了安全考虑</p>
 <p>常用的httpd支持php的编译参数</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">./configure --enable-xcache=shared --with-php-config=/app/php/bin/php-config
-</span></span><span class="line"><span class="cl">./configure --enable-eaccelerator=shared --with-php-config=/app/php/bin/php-config
-</span></span><span class="line"><span class="cl">./configure --with-php-config=/app/php/bin/php-config --with-pdo-mysql=/app/mysql
-</span></span><span class="line"><span class="cl">./configure --with-php-config=/app/php/bin/php-config  --with-imagick=/app/imagemag/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>sysconfdir 指定php配置文件路径</p>
+<pre><code class="language-conf">./configure --enable-xcache=shared --with-php-config=/app/php/bin/php-config
+./configure --enable-eaccelerator=shared --with-php-config=/app/php/bin/php-config
+./configure --with-php-config=/app/php/bin/php-config --with-pdo-mysql=/app/mysql
+./configure --with-php-config=/app/php/bin/php-config  --with-imagick=/app/imagemag/
+</code></pre>
+<p>sysconfdir 指定php配置文件路径</p>
 ]]></content:encoded>
     </item>
     

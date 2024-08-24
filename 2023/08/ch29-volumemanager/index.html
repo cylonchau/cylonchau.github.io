@@ -10,7 +10,7 @@
 <meta name="description" content="深入理解kubelet - VolumeManager源码解析 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/08/ch29-volumemanager/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "develop", "kubelet", "volume manager", "kubelet挂载原理"
   ],
-  "wordCount" : "3623",
+  "wordCount" : "3492",
   "inLanguage": "zh",
   "datePublished": "2023-08-20T00:00:00Z",
   "dateModified": "2023-08-24T23:00:36+08:00",
@@ -282,7 +282,7 @@ function toggleThemeListener() {
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
   <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes-develop/">kubernetes develop</a><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a></span></span><span class="meta-item">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>8 分钟</span></span>
+  <span>7 分钟</span></span>
 
       
       
@@ -367,83 +367,47 @@ function toggleThemeListener() {
 <li>populator：填充器</li>
 <li>cache：包含 ”desiredStateOfWorld“ 和 ”actualStateOfWorld“</li>
 </ul>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230820221712742.png" alt="image-20230820221712742"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230820221712742.png" alt="image-20230820221712742" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：VM的目录组成</center>
-<p>在代码结构上，<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/volume_manager.go#L216-L257">volumeManager</a> 如下所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// volumeManager implements the VolumeManager interface
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">volumeManager</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// DesiredStateOfWorldPopulator 用来与 API 服务器通信以获取 PV 和 PVC 对象的 API 客户端
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">kubeClient</span> <span class="nx">clientset</span><span class="p">.</span><span class="nx">Interface</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c1">// VolumePluginMgr 是用于访问 VolumePlugin 插件的 VolumePlugin 管理器。它必须预初始化。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">volumePluginMgr</span> <span class="o">*</span><span class="nx">volume</span><span class="p">.</span><span class="nx">VolumePluginMgr</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// desiredStateOfWorld 是一个数据结构，包含根据 VM 所需的状态：即应附加哪些卷以及 &#34;哪些pod” 正在引用这些卷。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 使用 kubelet pod manager 根据 world populator 的所需状态填充数据结构。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">desiredStateOfWorld</span> <span class="nx">cache</span><span class="p">.</span><span class="nx">DesiredStateOfWorld</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 与 desiredStateOfWorld 相似，是实际状态：即哪些卷被 attacted 到该 Node 以及 volume 被 mounted 到哪些 pod。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 成功完成 reconciler attach,detach, mount, 和 unmount 操作后，将填充数据结构。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">actualStateOfWorld</span> <span class="nx">cache</span><span class="p">.</span><span class="nx">ActualStateOfWorld</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// operationExecutor 用于启动异步 attach,detach, mount, 和 unmount 操作。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">operationExecutor</span> <span class="nx">operationexecutor</span><span class="p">.</span><span class="nx">OperationExecutor</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// reconciler reconciler 运行异步周期性循环，通过使用操作执行器触发 attach,detach, mount, 和 unmount操作
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 来协调 desiredStateOfWorld 与 actualStateOfWorld。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">reconciler</span> <span class="nx">reconciler</span><span class="p">.</span><span class="nx">Reconciler</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// desiredStateOfWorldPopulator 运行异步周期性循环以使用 kubelet Pod Manager 填充desiredStateOfWorld。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">desiredStateOfWorldPopulator</span> <span class="nx">populator</span><span class="p">.</span><span class="nx">DesiredStateOfWorldPopulator</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// csiMigratedPluginManager keeps track of CSI migration status of plugins
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">csiMigratedPluginManager</span> <span class="nx">csimigration</span><span class="p">.</span><span class="nx">PluginManager</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// intreeToCSITranslator translates in-tree volume specs to CSI
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">intreeToCSITranslator</span> <span class="nx">csimigration</span><span class="p">.</span><span class="nx">InTreeToCSITranslator</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="vm的初始化">VM的初始化<a hidden class="anchor" aria-hidden="true" href="#vm的初始化">¶</a></h3>
+<p>在代码结构上，<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/volume_manager.go#L216-L257" target="_blank"
+   rel="noopener nofollow noreferrer" >volumeManager</a> 如下所示</p>
+<pre><code class="language-go">// volumeManager implements the VolumeManager interface
+type volumeManager struct {
+    // DesiredStateOfWorldPopulator 用来与 API 服务器通信以获取 PV 和 PVC 对象的 API 客户端
+	kubeClient clientset.Interface
+    
+    // VolumePluginMgr 是用于访问 VolumePlugin 插件的 VolumePlugin 管理器。它必须预初始化。
+	volumePluginMgr *volume.VolumePluginMgr
+
+    // desiredStateOfWorld 是一个数据结构，包含根据 VM 所需的状态：即应附加哪些卷以及 &quot;哪些pod” 正在引用这些卷。
+    // 使用 kubelet pod manager 根据 world populator 的所需状态填充数据结构。
+	desiredStateOfWorld cache.DesiredStateOfWorld
+
+	// 与 desiredStateOfWorld 相似，是实际状态：即哪些卷被 attacted 到该 Node 以及 volume 被 mounted 到哪些 pod。
+    // 成功完成 reconciler attach,detach, mount, 和 unmount 操作后，将填充数据结构。
+	actualStateOfWorld cache.ActualStateOfWorld
+
+	// operationExecutor 用于启动异步 attach,detach, mount, 和 unmount 操作。
+	operationExecutor operationexecutor.OperationExecutor
+
+	// reconciler reconciler 运行异步周期性循环，通过使用操作执行器触发 attach,detach, mount, 和 unmount操作
+    // 来协调 desiredStateOfWorld 与 actualStateOfWorld。
+	reconciler reconciler.Reconciler
+
+    // desiredStateOfWorldPopulator 运行异步周期性循环以使用 kubelet Pod Manager 填充desiredStateOfWorld。
+	desiredStateOfWorldPopulator populator.DesiredStateOfWorldPopulator
+
+	// csiMigratedPluginManager keeps track of CSI migration status of plugins
+	csiMigratedPluginManager csimigration.PluginManager
+
+	// intreeToCSITranslator translates in-tree volume specs to CSI
+	intreeToCSITranslator csimigration.InTreeToCSITranslator
+}
+</code></pre>
+<h3 id="vm的初始化">VM的初始化<a hidden class="anchor" aria-hidden="true" href="#vm的初始化">¶</a></h3>
 <ul>
-<li>入口：“volumeManager”(vm) 的 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/kubelet.go#L1436">初始化</a> 操作发生在 kubelet Run 时被作为一个异步进程启动。</li>
+<li>入口：“volumeManager”(vm) 的 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/kubelet.go#L1436" target="_blank"
+   rel="noopener nofollow noreferrer" >初始化</a> 操作发生在 kubelet Run 时被作为一个异步进程启动。</li>
 <li>VM 初始化：
 <ul>
 <li>如代码1所示，VM在初始化阶段创建了两个 cache 对象 “desiredStateOfWorld”（dsw）和“actualStateOfWorld”（asw）以及一个 “operationExecutor”，用于启动异步的线程操作 attach,detach, mount, 和 unmount</li>
@@ -456,164 +420,86 @@ function toggleThemeListener() {
 </li>
 </ul>
 <p>代码1</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">vm</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">volumeManager</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">kubeClient</span><span class="p">:</span>          <span class="nx">kubeClient</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">volumePluginMgr</span><span class="p">:</span>     <span class="nx">volumePluginMgr</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">desiredStateOfWorld</span><span class="p">:</span> <span class="nx">cache</span><span class="p">.</span><span class="nf">NewDesiredStateOfWorld</span><span class="p">(</span><span class="nx">volumePluginMgr</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">actualStateOfWorld</span><span class="p">:</span>  <span class="nx">cache</span><span class="p">.</span><span class="nf">NewActualStateOfWorld</span><span class="p">(</span><span class="nx">nodeName</span><span class="p">,</span> <span class="nx">volumePluginMgr</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">operationExecutor</span><span class="p">:</span> <span class="nx">operationexecutor</span><span class="p">.</span><span class="nf">NewOperationExecutor</span><span class="p">(</span><span class="nx">operationexecutor</span><span class="p">.</span><span class="nf">NewOperationGenerator</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">kubeClient</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">volumePluginMgr</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">recorder</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">checkNodeCapabilitiesBeforeMount</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">blockVolumePathHandler</span><span class="p">)),</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>代码2：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">vm</span><span class="p">.</span><span class="nx">intreeToCSITranslator</span> <span class="p">=</span> <span class="nx">intreeToCSITranslator</span>
-</span></span><span class="line"><span class="cl"><span class="nx">vm</span><span class="p">.</span><span class="nx">csiMigratedPluginManager</span> <span class="p">=</span> <span class="nx">csiMigratedPluginManager</span>
-</span></span><span class="line"><span class="cl"><span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorldPopulator</span> <span class="p">=</span> <span class="nx">populator</span><span class="p">.</span><span class="nf">NewDesiredStateOfWorldPopulator</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">kubeClient</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">desiredStateOfWorldPopulatorLoopSleepPeriod</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">desiredStateOfWorldPopulatorGetPodStatusRetryDuration</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">podManager</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">podStatusProvider</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorld</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">actualStateOfWorld</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">kubeContainerRuntime</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">keepTerminatedPodVolumes</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">csiMigratedPluginManager</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">intreeToCSITranslator</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">vm</span><span class="p">.</span><span class="nx">reconciler</span> <span class="p">=</span> <span class="nx">reconciler</span><span class="p">.</span><span class="nf">NewReconciler</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">kubeClient</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">controllerAttachDetachEnabled</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">reconcilerLoopSleepPeriod</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">waitForAttachTimeout</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">nodeName</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorld</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">actualStateOfWorld</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorldPopulator</span><span class="p">.</span><span class="nx">HasAddedPods</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">vm</span><span class="p">.</span><span class="nx">operationExecutor</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">mounter</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">hostutil</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">volumePluginMgr</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">kubeletPodsDir</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="vm-的-run">VM 的 Run<a hidden class="anchor" aria-hidden="true" href="#vm-的-run">¶</a></h3>
+<pre><code class="language-go">vm := &amp;volumeManager{
+    kubeClient:          kubeClient,
+    volumePluginMgr:     volumePluginMgr,
+    desiredStateOfWorld: cache.NewDesiredStateOfWorld(volumePluginMgr),
+    actualStateOfWorld:  cache.NewActualStateOfWorld(nodeName, volumePluginMgr),
+    operationExecutor: operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
+        kubeClient,
+        volumePluginMgr,
+        recorder,
+        checkNodeCapabilitiesBeforeMount,
+        blockVolumePathHandler)),
+}
+</code></pre>
+<p>代码2：</p>
+<pre><code class="language-go">vm.intreeToCSITranslator = intreeToCSITranslator
+vm.csiMigratedPluginManager = csiMigratedPluginManager
+vm.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
+    kubeClient,
+    desiredStateOfWorldPopulatorLoopSleepPeriod,
+    desiredStateOfWorldPopulatorGetPodStatusRetryDuration,
+    podManager,
+    podStatusProvider,
+    vm.desiredStateOfWorld,
+    vm.actualStateOfWorld,
+    kubeContainerRuntime,
+    keepTerminatedPodVolumes,
+    csiMigratedPluginManager,
+    intreeToCSITranslator)
+vm.reconciler = reconciler.NewReconciler(
+    kubeClient,
+    controllerAttachDetachEnabled,
+    reconcilerLoopSleepPeriod,
+    waitForAttachTimeout,
+    nodeName,
+    vm.desiredStateOfWorld,
+    vm.actualStateOfWorld,
+    vm.desiredStateOfWorldPopulator.HasAddedPods,
+    vm.operationExecutor,
+    mounter,
+    hostutil,
+    volumePluginMgr,
+    kubeletPodsDir)
+</code></pre>
+<h3 id="vm-的-run">VM 的 Run<a hidden class="anchor" aria-hidden="true" href="#vm-的-run">¶</a></h3>
 <p>VM 是在 Kubelet 启动时作为异步线程启动，如代码1所示</p>
 <p>如下面代码2所示，VM 在运行时会启动 <strong>三个</strong> 异步线程</p>
 <ul>
-<li>第一个调用是 第二个是调用 “dswp” 填充其的“ <a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/kubelet/volumemanager/volume_manager.go#L268">Run</a> ”，这里主要做的操作是从 API 拿到 Pod 列表，根据对应条件来决定 attach,detach, mount, 和 unmount</li>
+<li>第一个调用是 第二个是调用 “dswp” 填充其的“ <a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/kubelet/volumemanager/volume_manager.go#L268" target="_blank"
+   rel="noopener nofollow noreferrer" >Run</a> ”，这里主要做的操作是从 API 拿到 Pod 列表，根据对应条件来决定 attach,detach, mount, 和 unmount</li>
 <li>第二个调用的是，reconciler 来协调应该安装的卷是否已安装以及应该卸载的卷是否已卸载。</li>
 <li>第三个调用的是，volumePluginMgr，启用 CSI  informer</li>
 </ul>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/kubelet.go#L1435-L1436">代码1</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">// Start volume manager
-</span></span><span class="line"><span class="cl">go kl.volumeManager.Run(kl.sourcesReady, wait.NeverStop)
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/volume_manager.go#L259-L277">代码2</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">vm</span> <span class="o">*</span><span class="nx">volumeManager</span><span class="p">)</span> <span class="nf">Run</span><span class="p">(</span><span class="nx">sourcesReady</span> <span class="nx">config</span><span class="p">.</span><span class="nx">SourcesReady</span><span class="p">,</span> <span class="nx">stopCh</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">runtime</span><span class="p">.</span><span class="nf">HandleCrash</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorldPopulator</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">sourcesReady</span><span class="p">,</span> <span class="nx">stopCh</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">2</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;The desired_state_of_world populator starts&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Starting Kubelet Volume Manager&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">reconciler</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">stopCh</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">metrics</span><span class="p">.</span><span class="nf">Register</span><span class="p">(</span><span class="nx">vm</span><span class="p">.</span><span class="nx">actualStateOfWorld</span><span class="p">,</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">desiredStateOfWorld</span><span class="p">,</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">volumePluginMgr</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">vm</span><span class="p">.</span><span class="nx">kubeClient</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// start informer for CSIDriver
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">vm</span><span class="p">.</span><span class="nx">volumePluginMgr</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">stopCh</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="o">&lt;-</span><span class="nx">stopCh</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Shutting down Kubelet Volume Manager&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="vm-的调用流程">VM 的调用流程<a hidden class="anchor" aria-hidden="true" href="#vm-的调用流程">¶</a></h3>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/kubelet.go#L1435-L1436" target="_blank"
+   rel="noopener nofollow noreferrer" >代码1</a></p>
+<pre><code>// Start volume manager
+go kl.volumeManager.Run(kl.sourcesReady, wait.NeverStop)
+</code></pre>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/volume_manager.go#L259-L277" target="_blank"
+   rel="noopener nofollow noreferrer" >代码2</a></p>
+<pre><code class="language-go">func (vm *volumeManager) Run(sourcesReady config.SourcesReady, stopCh &lt;-chan struct{}) {
+	defer runtime.HandleCrash()
+
+	go vm.desiredStateOfWorldPopulator.Run(sourcesReady, stopCh)
+	klog.V(2).Infof(&quot;The desired_state_of_world populator starts&quot;)
+
+	klog.Infof(&quot;Starting Kubelet Volume Manager&quot;)
+	go vm.reconciler.Run(stopCh)
+
+	metrics.Register(vm.actualStateOfWorld, vm.desiredStateOfWorld, vm.volumePluginMgr)
+
+	if vm.kubeClient != nil {
+		// start informer for CSIDriver
+		vm.volumePluginMgr.Run(stopCh)
+	}
+
+	&lt;-stopCh
+	klog.Infof(&quot;Shutting down Kubelet Volume Manager&quot;)
+}
+</code></pre>
+<h3 id="vm-的调用流程">VM 的调用流程<a hidden class="anchor" aria-hidden="true" href="#vm-的调用流程">¶</a></h3>
 <h4 id="desiredstateofworldpopulator">desiredStateOfWorldPopulator<a hidden class="anchor" aria-hidden="true" href="#desiredstateofworldpopulator">¶</a></h4>
 <p><code>DesiredStateOfWorldPopulator</code> 是一个周期 Loop，会定期循环遍历 Active Pod 列表，并确保每个 Pod 都处于所需状态（如果有卷，World state）。它还会验证 World cache 中处于所需状态的 pod 是否仍然存在，如果不存在，则会将其删除。</p>
 <p>desiredStateOfWorldPopulator 结构包含两个方法，ReprocessPod 和 HasAddedPods；<strong><code>ReprocessPod</code></strong> 负责将 processedPods 中指定 pod 的值设置为false，强制重新处理它。这是在 Pod 更新时启用重新挂载卷所必需的。而 <strong><code>HasAddedPods</code></strong> 返回 填充器 是否已循环遍历 Active Pod 列表并将它们添加到 world cache 的所需状态。</p>
@@ -623,99 +509,59 @@ function toggleThemeListener() {
 <li><code>findAndRemoveDeletedPods</code> 负责迭代 <em><code>desiredStateOfWorld</code></em> 下的所有 Pod，如果它们不再存在则将其删除</li>
 </ul>
 <h4 id="reconciler">reconciler<a hidden class="anchor" aria-hidden="true" href="#reconciler">¶</a></h4>
-<p>reconciler Run 的过程是通过一个 Loop 函数 <code>reconciliationLoopFunc</code> 完成的，正如下列 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/reconciler/reconciler.go#L128-L179">代码</a> 所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rc</span> <span class="o">*</span><span class="nx">reconciler</span><span class="p">)</span> <span class="nf">Run</span><span class="p">(</span><span class="nx">stopCh</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">wait</span><span class="p">.</span><span class="nf">Until</span><span class="p">(</span><span class="nx">rc</span><span class="p">.</span><span class="nf">reconciliationLoopFunc</span><span class="p">(),</span> <span class="nx">rc</span><span class="p">.</span><span class="nx">loopSleepDuration</span><span class="p">,</span> <span class="nx">stopCh</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rc</span> <span class="o">*</span><span class="nx">reconciler</span><span class="p">)</span> <span class="nf">reconciliationLoopFunc</span><span class="p">()</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">rc</span><span class="p">.</span><span class="nf">reconcile</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="c1">// Sync the state with the reality once after all existing pods are added to the desired state from all sources.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// Otherwise, the reconstruct process may clean up pods&#39; volumes that are still in use because
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// desired state of world does not contain a complete list of pods.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nx">rc</span><span class="p">.</span><span class="nf">populatorHasAddedPods</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">rc</span><span class="p">.</span><span class="nf">StatesHasBeenSynced</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Reconciler: start to sync state&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">rc</span><span class="p">.</span><span class="nf">sync</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rc</span> <span class="o">*</span><span class="nx">reconciler</span><span class="p">)</span> <span class="nf">reconcile</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">   <span class="c1">// Unmounts are triggered before mounts so that a volume that was
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// referenced by a pod that was deleted and is now referenced by another
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// pod is unmounted from the first pod before being mounted to the new
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// pod.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// 卸载会在挂载之前触发，以便已删除的 Pod 引用的卷现在被另一个 Pod 引用，
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// 然后再挂载到新 Pod 之前从第一个 Pod 中卸载。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">rc</span><span class="p">.</span><span class="nf">unmountVolumes</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">   <span class="c1">// Next we mount required volumes. This function could also trigger
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// attach if kubelet is responsible for attaching volumes.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// If underlying PVC was resized while in-use then this function also handles volume
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// resizing.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// 接下来我们安装所需的卷。如果 kubelet 负责附加卷，
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// 则此函数还可以触发附加。如果底层 PVC 在使用时调整了大小，则此函数还可以处理卷大小调整。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">rc</span><span class="p">.</span><span class="nf">mountAttachVolumes</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">   <span class="c1">// Ensure devices that should be detached/unmounted are detached/unmounted.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="c1">// 确保应 detached/unmounted 的设备已完成 detached/unmounted。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">rc</span><span class="p">.</span><span class="nf">unmountDetachDevices</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Reconciler <strong>是挂载部分最重要的角色</strong>，用于协调应该安装的卷是否已安装以及应该卸载的卷是否已卸载；对应的，实际上执行的为三个函数：“unmountVolumes”、“mountAttachVolumes” 和 “unmountDetachDevices”。</p>
+<p>reconciler Run 的过程是通过一个 Loop 函数 <code>reconciliationLoopFunc</code> 完成的，正如下列 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/reconciler/reconciler.go#L128-L179" target="_blank"
+   rel="noopener nofollow noreferrer" >代码</a> 所示</p>
+<pre><code class="language-go">func (rc *reconciler) Run(stopCh &lt;-chan struct{}) {
+	wait.Until(rc.reconciliationLoopFunc(), rc.loopSleepDuration, stopCh)
+}
+
+func (rc *reconciler) reconciliationLoopFunc() func() {
+	return func() {
+		rc.reconcile()
+
+		// Sync the state with the reality once after all existing pods are added to the desired state from all sources.
+		// Otherwise, the reconstruct process may clean up pods' volumes that are still in use because
+		// desired state of world does not contain a complete list of pods.
+		if rc.populatorHasAddedPods() &amp;&amp; !rc.StatesHasBeenSynced() {
+			klog.Infof(&quot;Reconciler: start to sync state&quot;)
+			rc.sync()
+		}
+	}
+}
+
+func (rc *reconciler) reconcile() {
+   // Unmounts are triggered before mounts so that a volume that was
+   // referenced by a pod that was deleted and is now referenced by another
+   // pod is unmounted from the first pod before being mounted to the new
+   // pod.
+   // 卸载会在挂载之前触发，以便已删除的 Pod 引用的卷现在被另一个 Pod 引用，
+   // 然后再挂载到新 Pod 之前从第一个 Pod 中卸载。
+   rc.unmountVolumes()
+
+   // Next we mount required volumes. This function could also trigger
+   // attach if kubelet is responsible for attaching volumes.
+   // If underlying PVC was resized while in-use then this function also handles volume
+   // resizing.
+   // 接下来我们安装所需的卷。如果 kubelet 负责附加卷，
+   // 则此函数还可以触发附加。如果底层 PVC 在使用时调整了大小，则此函数还可以处理卷大小调整。
+   rc.mountAttachVolumes()
+
+   // Ensure devices that should be detached/unmounted are detached/unmounted.
+   // 确保应 detached/unmounted 的设备已完成 detached/unmounted。
+   rc.unmountDetachDevices()
+}
+</code></pre>
+<p>Reconciler <strong>是挂载部分最重要的角色</strong>，用于协调应该安装的卷是否已安装以及应该卸载的卷是否已卸载；对应的，实际上执行的为三个函数：“unmountVolumes”、“mountAttachVolumes” 和 “unmountDetachDevices”。</p>
 <h5 id="mountattachvolumes">mountAttachVolumes<a hidden class="anchor" aria-hidden="true" href="#mountattachvolumes">¶</a></h5>
 <ol>
 <li>
-<p>首先，“<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/reconciler/reconciler.go#L202-L292">mountAttachVolumes</a>” 会调用 “dsw” (desiredStateOfWorld) 的函数 “GetVolumesToMount” 来检索所有 “volumesToMount” 并迭代它们，这里主要是为了确保 “volumes” 应完成了 “attached/mounted”</p>
+<p>首先，“<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/reconciler/reconciler.go#L202-L292" target="_blank"
+   rel="noopener nofollow noreferrer" >mountAttachVolumes</a>” 会调用 “dsw” (desiredStateOfWorld) 的函数 “GetVolumesToMount” 来检索所有 “volumesToMount” 并迭代它们，这里主要是为了确保 “volumes” 应完成了 “attached/mounted”</p>
 </li>
 <li>
-<p>接下来这个循环做的工作是，对于每个 Volume 和 Pod，都会检查该 Volume 或 Pod 是否存在于 “asw” 的 “attachedVolumes” 中。如果 Volume 不存在，则“asw”返回 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/cache/actual_state_of_world.go#L662">newVolumeNotAttachedError</a> ”，否则它检查指定的 pod 是否存在并根据状态返回结果。这里存在 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L400-L409">三个状态</a>，返回也是根据这个状态返回。<strong>这里主要为了得到挂载路径和是否挂载</strong></p>
+<p>接下来这个循环做的工作是，对于每个 Volume 和 Pod，都会检查该 Volume 或 Pod 是否存在于 “asw” 的 “attachedVolumes” 中。如果 Volume 不存在，则“asw”返回 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/kubelet/volumemanager/cache/actual_state_of_world.go#L662" target="_blank"
+   rel="noopener nofollow noreferrer" >newVolumeNotAttachedError</a> ”，否则它检查指定的 pod 是否存在并根据状态返回结果。这里存在 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L400-L409" target="_blank"
+   rel="noopener nofollow noreferrer" >三个状态</a>，返回也是根据这个状态返回。<strong>这里主要为了得到挂载路径和是否挂载</strong></p>
 <ul>
 <li>
 <p>VolumeMounted：表示 Volume 已挂载到 pod 的本地路径中</p>
@@ -729,10 +575,15 @@ function toggleThemeListener() {
 </ul>
 </li>
 <li>
-<p>当“ asw” 返回 “ <a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/kubelet/volumemanager/reconciler/reconciler.go#L207">newVolumeNotAttachedError</a> ” 时，“reconciler” 会检查 “controllerAttachDetachEnabled” 是否启用，或 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L336">volumeToMount</a>” 没有实现了对应插件，这里面如果其中任何一个为 true，“reconciler” 将调用 “operationExecutor” 来执行操作“ ，走到这里代表了 Volume 没有被 attach，或者没有实现 attacher，例如 cephfs 没有实现 attacher；或者是 kubelet 禁用了 attach  <sup><a href="#1">[1]</a></sup> （默认是开启状态），将进入 “ <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L909-L921">VerifyControllerAttachedVolume</a> ”</p>
+<p>当“ asw” 返回 “ <a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/kubelet/volumemanager/reconciler/reconciler.go#L207" target="_blank"
+   rel="noopener nofollow noreferrer" >newVolumeNotAttachedError</a> ” 时，“reconciler” 会检查 “controllerAttachDetachEnabled” 是否启用，或 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L336" target="_blank"
+   rel="noopener nofollow noreferrer" >volumeToMount</a>” 没有实现了对应插件，这里面如果其中任何一个为 true，“reconciler” 将调用 “operationExecutor” 来执行操作“ ，走到这里代表了 Volume 没有被 attach，或者没有实现 attacher，例如 cephfs 没有实现 attacher；或者是 kubelet 禁用了 attach  <sup><a href="#1">[1]</a></sup> （默认是开启状态），将进入 “ <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L909-L921" target="_blank"
+   rel="noopener nofollow noreferrer" >VerifyControllerAttachedVolume</a> ”</p>
 <ul>
 <li>
-<p>在此期间，“operationExecutor” 生成一个名为 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L1278-L1352">verifyControllerAttachedVolumeFunc</a>” 的函数来实际实现。在此函数中，如果 “volumeToMount” 的 “PluginIsAttachable” 为 <em>false</em>（没有实现），则假设其已经实现并标记 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L1288C17-L1301">attached</a>，标记出错时进行重试（这是一个函数用于后面的调用，这里只是定义）</p>
+<p>在此期间，“operationExecutor” 生成一个名为 “<a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L1278-L1352" target="_blank"
+   rel="noopener nofollow noreferrer" >verifyControllerAttachedVolumeFunc</a>” 的函数来实际实现。在此函数中，如果 “volumeToMount” 的 “PluginIsAttachable” 为 <em>false</em>（没有实现），则假设其已经实现并标记 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L1288C17-L1301" target="_blank"
+   rel="noopener nofollow noreferrer" >attached</a>，标记出错时进行重试（这是一个函数用于后面的调用，这里只是定义）</p>
 </li>
 <li>
 <p>如果还没有将 Node attached 到 Volume 节点列表状态中，则返回错误进行重试（这是一个函数用于后面的调用，这里只是定义）</p>
@@ -751,25 +602,33 @@ function toggleThemeListener() {
 </ul>
 </li>
 <li>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L798-L958">步骤5</a> 表示 3, 4 条件均不满足，也就是 Attached，目前状态为 ”未挂载“  或者 ”已挂载“，将执行这个步骤，未挂载的进行挂载，已挂载的进行 remount</p>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_executor.go#L798-L958" target="_blank"
+   rel="noopener nofollow noreferrer" >步骤5</a> 表示 3, 4 条件均不满足，也就是 Attached，目前状态为 ”未挂载“  或者 ”已挂载“，将执行这个步骤，未挂载的进行挂载，已挂载的进行 remount</p>
 </li>
 <li>
-<p>在该分支中（也就是 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L489-L694">步骤5</a> 执行的）执行的是名为 “<a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/volume/util/operationexecutor/operation_generator.go#L500">GenerateMountVolumeFunc</a>“ 的函数，在此函数中，会获取 Plugin ，并通过 Plugin 创建出一个 volumeMounter，在通过 Plugin 获取一个 deviceMouter（能够挂载块设备的）；当然我们这里挂载的是 ”cephfs“ 所以没有 ”deviceMouter“ 这里不被执行。</p>
+<p>在该分支中（也就是 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/util/operationexecutor/operation_generator.go#L489-L694" target="_blank"
+   rel="noopener nofollow noreferrer" >步骤5</a> 执行的）执行的是名为 “<a href="https://github.com/kubernetes/kubernetes/blob/v1.21.2/pkg/volume/util/operationexecutor/operation_generator.go#L500" target="_blank"
+   rel="noopener nofollow noreferrer" >GenerateMountVolumeFunc</a>“ 的函数，在此函数中，会获取 Plugin ，并通过 Plugin 创建出一个 volumeMounter，在通过 Plugin 获取一个 deviceMouter（能够挂载块设备的）；当然我们这里挂载的是 ”cephfs“ 所以没有 ”deviceMouter“ 这里不被执行。</p>
 <ul>
 <li>如果 ”deviceMounter“ 定义了，那么则执行这个 plugin 的 &ldquo;MountDevice&rdquo; 函数</li>
 <li>如果没有定义，那么执行 volumeMounter 的 SetUp 进行挂载（因为不是块设备）</li>
 </ul>
 </li>
 <li>
-<p>执行 SetUp 函数，通常 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/nfs/nfs.go#L240-L242">NFS</a>, <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/cephfs/cephfs.go#L223-L225">CephFS</a>, <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/local/local.go#L472-L474">HostPath</a>，都实现了这个函数，那么就会通过这个函数挂载到 Node 对应的目录</p>
+<p>执行 SetUp 函数，通常 <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/nfs/nfs.go#L240-L242" target="_blank"
+   rel="noopener nofollow noreferrer" >NFS</a>, <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/cephfs/cephfs.go#L223-L225" target="_blank"
+   rel="noopener nofollow noreferrer" >CephFS</a>, <a href="https://github.com/kubernetes/kubernetes/blob/1f3e19b7beb1cc0110255668c4238ed63dadb7ad/pkg/volume/local/local.go#L472-L474" target="_blank"
+   rel="noopener nofollow noreferrer" >HostPath</a>，都实现了这个函数，那么就会通过这个函数挂载到 Node 对应的目录</p>
 </li>
 <li>
 <p>最后通过 Overlay2 文件系统附加到容器里</p>
 </li>
 </ol>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/"><em>command-line-tools-reference kubelet</em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://shuanglu1993.medium.com/what-happens-when-volumemanager-in-the-kubelet-starts-1fea623ac6ce"><em>What happens when volumeManager in the kubelet starts?</em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>command-line-tools-reference kubelet</em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://shuanglu1993.medium.com/what-happens-when-volumemanager-in-the-kubelet-starts-1fea623ac6ce" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>What happens when volumeManager in the kubelet starts?</em></a></p>
 
 
     

@@ -10,7 +10,7 @@
 <meta name="description" content="kube-proxy如何保证规则的一致性 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/03/ch24-kube-proxy-performance/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kube-proxy", "kubernetes service", "k8s一致性"
   ],
-  "wordCount" : "2443",
+  "wordCount" : "2240",
   "inLanguage": "zh",
   "datePublished": "2023-03-09T00:00:00Z",
   "dateModified": "2023-03-10T23:00:36+08:00",
@@ -329,471 +329,242 @@ function toggleThemeListener() {
 <p>这里谈 <code>kube-proxy</code> 如何保证规则的一致性以及提升 <code>kube-proxy</code> 性能点的地方，这也是 kubernetes 使用稳定性的一部分。</p>
 <h2 id="kube-proxy-如何做到的crud">kube-proxy 如何做到的CRUD<a hidden class="anchor" aria-hidden="true" href="#kube-proxy-如何做到的crud">¶</a></h2>
 <p><code>kube-proxy</code>  实际上与其他内置 controller 架构是相同的，实际上也属于一个 controller ，但它属于一个 service, endpoints 的可读可写的控制器，node的读控制器。对于CRUD方面，kube-proxy，在设计上分为 增/改 两方面。正如下面代码所示 <a href="pkg/proxy/ipvs/proxier.go">pkg/proxy/ipvs/proxier.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceAdd</span><span class="p">(</span><span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">proxier</span><span class="p">.</span><span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">service</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// OnServiceUpdate is called whenever modification of an existing service object is observed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="nx">oldService</span><span class="p">,</span> <span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">serviceChanges</span><span class="p">.</span><span class="nf">Update</span><span class="p">(</span><span class="nx">oldService</span><span class="p">,</span> <span class="nx">service</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">isInitialized</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">proxier</span><span class="p">.</span><span class="nf">Sync</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// OnServiceDelete is called whenever deletion of an existing service object is observed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">OnServiceDelete</span><span class="p">(</span><span class="nx">service</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Service</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">proxier</span><span class="p">.</span><span class="nf">OnServiceUpdate</span><span class="p">(</span><span class="nx">service</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以看到代码最终调用的都是 <code>OnServiceUpdate</code>，最终 调用的是 <code>proxier.Sync()</code>。对于 Sync()，这里会调用在 Proxier 初始化时注入的那个函数，而 Sync() 本质上是 一个异步有限的函数管理器，这里将实现两个方面，一是，定时去触发执行这个函数；二是满足规则去触发这个函数；而 Sync() 属于条件2</p>
-<p>对于注入的函数，则是 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L490">proxier.syncProxyRules</a> ，由下列代码可以看到</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">proxier</span><span class="p">.</span><span class="nx">syncRunner</span> <span class="p">=</span> <span class="nx">async</span><span class="p">.</span><span class="nf">NewBoundedFrequencyRunner</span><span class="p">(</span><span class="s">&#34;sync-runner&#34;</span><span class="p">,</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">syncProxyRules</span><span class="p">,</span> <span class="nx">minSyncPeriod</span><span class="p">,</span> <span class="nx">syncPeriod</span><span class="p">,</span> <span class="nx">burstSyncs</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这样就是说，kube-proxy 通过 syncProxyRules 实现了整个 service 与 endpoint 的增删改查</p>
+<pre><code class="language-go">func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
+	proxier.OnServiceUpdate(nil, service)
+}
+
+// OnServiceUpdate is called whenever modification of an existing service object is observed.
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
+	if proxier.serviceChanges.Update(oldService, service) &amp;&amp; proxier.isInitialized() {
+		proxier.Sync()
+	}
+}
+
+// OnServiceDelete is called whenever deletion of an existing service object is observed.
+func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
+	proxier.OnServiceUpdate(service, nil)
+}
+</code></pre>
+<p>可以看到代码最终调用的都是 <code>OnServiceUpdate</code>，最终 调用的是 <code>proxier.Sync()</code>。对于 Sync()，这里会调用在 Proxier 初始化时注入的那个函数，而 Sync() 本质上是 一个异步有限的函数管理器，这里将实现两个方面，一是，定时去触发执行这个函数；二是满足规则去触发这个函数；而 Sync() 属于条件2</p>
+<p>对于注入的函数，则是 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L490" target="_blank"
+   rel="noopener nofollow noreferrer" >proxier.syncProxyRules</a> ，由下列代码可以看到</p>
+<pre><code class="language-go">proxier.syncRunner = async.NewBoundedFrequencyRunner(&quot;sync-runner&quot;, proxier.syncProxyRules, minSyncPeriod, syncPeriod, burstSyncs)
+</code></pre>
+<p>这样就是说，kube-proxy 通过 syncProxyRules 实现了整个 service 与 endpoint 的增删改查</p>
 <h2 id="性能提升点1">性能提升点1<a hidden class="anchor" aria-hidden="true" href="#性能提升点1">¶</a></h2>
 <p>由上面有限的函数管理器 runner，可以作为性能提升点，而该runner初始化时提供了minSyncPeriod, syncPeriod 两个函数，这两个函数代表的意思为，minSyncPeriod是runner允许你在最小多少时间内可以调用，如果你的集群规模大，那么则可以适当配置该参数小写，因为service的频繁更改会被这个参数限制。</p>
 <h2 id="如何通过一个函数做crud">如何通过一个函数做CRUD<a hidden class="anchor" aria-hidden="true" href="#如何通过一个函数做crud">¶</a></h2>
-<p>对于增改，存在三个资源，ClusterIP, NodePort, Ingress,当这些资源被触发时，会同步这个service与endpoint，如代码所示 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406">syncProxyRules</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">syncService</span><span class="p">(</span><span class="nx">svcNameString</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="kc">true</span><span class="p">,</span> <span class="nx">bindedAddresses</span><span class="p">);</span> <span class="nx">err</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">activeIPVSServices</span><span class="p">[</span><span class="nx">serv</span><span class="p">.</span><span class="nf">String</span><span class="p">()]</span> <span class="p">=</span> <span class="kc">true</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">activeBindAddrs</span><span class="p">[</span><span class="nx">serv</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">()]</span> <span class="p">=</span> <span class="kc">true</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">syncEndpoint</span><span class="p">(</span><span class="nx">svcName</span><span class="p">,</span> <span class="nx">svcInfo</span><span class="p">.</span><span class="nf">OnlyNodeLocalEndpoints</span><span class="p">(),</span> <span class="nx">serv</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to sync endpoint for service: %v, err: %v&#34;</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to sync service: %v, err: %v&#34;</span><span class="p">,</span> <span class="nx">serv</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>由上面代码可知，所有的 service 与 endpoint 的更新，都会触发 <code>Sync()</code>，而 <code>Sync()</code> 执行的是 <code>syncProxyRules()</code> ，当service有变动时，就会通过 syncService/syncEndpoint 进行同步</p>
-<p>而对于删除动作来说，kube-proxy 提供了 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1626">cleanLegacyService</a> 函数在变动做完时，进行清理遗留的service规则，如下列代码所示。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">proxier</span><span class="p">.</span><span class="nf">cleanLegacyService</span><span class="p">(</span><span class="nx">activeIPVSServices</span><span class="p">,</span> <span class="nx">currentIPVSServices</span><span class="p">,</span> <span class="nx">legacyBindAddrs</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>并且通过两个数组来维护两个 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094">activeIPVSServices</a> , 与 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094">currentIPVSServices</a> 为主，来维护删除的数据</p>
+<p>对于增改，存在三个资源，ClusterIP, NodePort, Ingress,当这些资源被触发时，会同步这个service与endpoint，如代码所示 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406" target="_blank"
+   rel="noopener nofollow noreferrer" >syncProxyRules</a></p>
+<pre><code class="language-go">if err := proxier.syncService(svcNameString, serv, true, bindedAddresses); err == nil {
+    activeIPVSServices[serv.String()] = true
+    activeBindAddrs[serv.Address.String()] = true
+    if err := proxier.syncEndpoint(svcName, svcInfo.OnlyNodeLocalEndpoints(), serv); err != nil {
+        klog.Errorf(&quot;Failed to sync endpoint for service: %v, err: %v&quot;, serv, err)
+    }
+} else {
+    klog.Errorf(&quot;Failed to sync service: %v, err: %v&quot;, serv, err)
+}
+</code></pre>
+<p>由上面代码可知，所有的 service 与 endpoint 的更新，都会触发 <code>Sync()</code>，而 <code>Sync()</code> 执行的是 <code>syncProxyRules()</code> ，当service有变动时，就会通过 syncService/syncEndpoint 进行同步</p>
+<p>而对于删除动作来说，kube-proxy 提供了 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1626" target="_blank"
+   rel="noopener nofollow noreferrer" >cleanLegacyService</a> 函数在变动做完时，进行清理遗留的service规则，如下列代码所示。</p>
+<pre><code class="language-go">proxier.cleanLegacyService(activeIPVSServices, currentIPVSServices, legacyBindAddrs)
+</code></pre>
+<p>并且通过两个数组来维护两个 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094" target="_blank"
+   rel="noopener nofollow noreferrer" >activeIPVSServices</a> , 与 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1091-L1094" target="_blank"
+   rel="noopener nofollow noreferrer" >currentIPVSServices</a> 为主，来维护删除的数据</p>
 <h2 id="crud实际实现">CRUD实际实现<a hidden class="anchor" aria-hidden="true" href="#crud实际实现">¶</a></h2>
 <p>上面了解到了删除与添加的逻辑，下面分析这些是如何进行的</p>
-<p>当添加被触发时，会触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1936-L1974">proxier.syncService()</a> ，首先会进行本机上ipvs规则是否存在这个规则，存在则更改，而后返回一个 error, 这个 error 取决于是否更新 endpoints，如下列代码所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">syncService</span><span class="p">(</span><span class="nx">svcName</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">vs</span> <span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">,</span> <span class="nx">bindAddr</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">bindedAddresses</span> <span class="nx">sets</span><span class="p">.</span><span class="nx">String</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="o">||</span> <span class="p">!</span><span class="nx">appliedVirtualServer</span><span class="p">.</span><span class="nf">Equal</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// IPVS service is not found, create a new service
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Adding new service %q %s:%d/%s&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Port</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Protocol</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">AddVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to add IPVS service %q: %v&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// IPVS service was changed, update the existing one
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="c1">// During updates, service VIP will not go down
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;IPVS service %s was changed&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">UpdateVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to update IPVS service, err:%v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// bind service address to dummy interface
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nx">bindAddr</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// always attempt to bind if bindedAddresses is nil,
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// otherwise check if it&#39;s already binded and return early
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nx">bindedAddresses</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">bindedAddresses</span><span class="p">.</span><span class="nf">Has</span><span class="p">(</span><span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Bind addr %s&#34;</span><span class="p">,</span> <span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">netlinkHandle</span><span class="p">.</span><span class="nf">EnsureAddressBind</span><span class="p">(</span><span class="nx">vs</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">(),</span> <span class="nx">DefaultDummyDevice</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to bind service address to dummy device %q: %v&#34;</span><span class="p">,</span> <span class="nx">svcName</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>接下来通过后会 触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1976-L2084">proxier.syncEndpoint()</a> 这里传入了当前的 service, 这里是为了与 IPVS 概念相吻合，如IPVS 中存在 RealServers/VirtualServers，首先会拿到本机这个VirtualServer下的所有RealServer，而后进行添加，而后对比 传入的 Endpoints 列表 与 本机这个VirtualServer下的所有RealServer，不相等的则被删除；删除的动作是一个异步操作。由 gracefuldeleteManager 维护</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span><span class="lnt">108
-</span><span class="lnt">109
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">syncEndpoint</span><span class="p">(</span><span class="nx">svcPortName</span> <span class="nx">proxy</span><span class="p">.</span><span class="nx">ServicePortName</span><span class="p">,</span> <span class="nx">onlyNodeLocalEndpoints</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">vs</span> <span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetVirtualServer</span><span class="p">(</span><span class="nx">vs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">||</span> <span class="nx">appliedVirtualServer</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to get IPVS service, error: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// curEndpoints represents IPVS destinations listed from current system.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">curEndpoints</span> <span class="o">:=</span> <span class="nx">sets</span><span class="p">.</span><span class="nf">NewString</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// newEndpoints represents Endpoints watched from API Server.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">newEndpoints</span> <span class="o">:=</span> <span class="nx">sets</span><span class="p">.</span><span class="nf">NewString</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">curDests</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">GetRealServers</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to list IPVS destinations, error: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">des</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">curDests</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">des</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">endpoints</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">endpointsMap</span><span class="p">[</span><span class="nx">svcPortName</span><span class="p">]</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Service Topology will not be enabled in the following cases:
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 1. externalTrafficPolicy=Local (mutually exclusive with service topology).
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 2. ServiceTopology is not enabled.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 3. EndpointSlice is not enabled (service topology depends on endpoint slice
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// to get topology information).
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="p">!</span><span class="nx">onlyNodeLocalEndpoints</span> <span class="o">&amp;&amp;</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">features</span><span class="p">.</span><span class="nx">ServiceTopology</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">features</span><span class="p">.</span><span class="nx">EndpointSliceProxying</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">endpoints</span> <span class="p">=</span> <span class="nx">proxy</span><span class="p">.</span><span class="nf">FilterTopologyEndpoint</span><span class="p">(</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">nodeLabels</span><span class="p">,</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">serviceMap</span><span class="p">[</span><span class="nx">svcPortName</span><span class="p">].</span><span class="nf">TopologyKeys</span><span class="p">(),</span> <span class="nx">endpoints</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">epInfo</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">endpoints</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">onlyNodeLocalEndpoints</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">epInfo</span><span class="p">.</span><span class="nf">GetIsLocal</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">newEndpoints</span><span class="p">.</span><span class="nf">Insert</span><span class="p">(</span><span class="nx">epInfo</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Create new endpoints
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ep</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">newEndpoints</span><span class="p">.</span><span class="nf">List</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ip</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nf">SplitHostPort</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">portNum</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Atoi</span><span class="p">(</span><span class="nx">port</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint port %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">newDest</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">RealServer</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Address</span><span class="p">:</span> <span class="nx">net</span><span class="p">.</span><span class="nf">ParseIP</span><span class="p">(</span><span class="nx">ip</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Port</span><span class="p">:</span>    <span class="nb">uint16</span><span class="p">(</span><span class="nx">portNum</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Weight</span><span class="p">:</span>  <span class="mi">1</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Has</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// check if newEndpoint is in gracefulDelete list, if true, delete this ep immediately
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">uniqueRS</span> <span class="o">:=</span> <span class="nf">GetUniqueRSName</span><span class="p">(</span><span class="nx">vs</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="p">!</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">InTerminationList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">5</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;new ep %q is in graceful delete list&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">MoveRSOutofGracefulDeleteList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete endpoint: %v in gracefulDeleteQueue, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="p">=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">AddRealServer</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to add destination: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">newDest</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Delete old endpoints
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ep</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">curEndpoints</span><span class="p">.</span><span class="nf">Difference</span><span class="p">(</span><span class="nx">newEndpoints</span><span class="p">).</span><span class="nf">UnsortedList</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// if curEndpoint is in gracefulDelete, skip
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">uniqueRS</span> <span class="o">:=</span> <span class="nx">vs</span><span class="p">.</span><span class="nf">String</span><span class="p">()</span> <span class="o">+</span> <span class="s">&#34;/&#34;</span> <span class="o">+</span> <span class="nx">ep</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">InTerminationList</span><span class="p">(</span><span class="nx">uniqueRS</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ip</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">net</span><span class="p">.</span><span class="nf">SplitHostPort</span><span class="p">(</span><span class="nx">ep</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">ep</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">portNum</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Atoi</span><span class="p">(</span><span class="nx">port</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to parse endpoint port %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">port</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">delDest</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">RealServer</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Address</span><span class="p">:</span> <span class="nx">net</span><span class="p">.</span><span class="nf">ParseIP</span><span class="p">(</span><span class="nx">ip</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Port</span><span class="p">:</span>    <span class="nb">uint16</span><span class="p">(</span><span class="nx">portNum</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">5</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Using graceful delete to delete: %v&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="p">=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">gracefuldeleteManager</span><span class="p">.</span><span class="nf">GracefulDeleteRS</span><span class="p">(</span><span class="nx">appliedVirtualServer</span><span class="p">,</span> <span class="nx">delDest</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete destination: %v, error: %v&#34;</span><span class="p">,</span> <span class="nx">uniqueRS</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>删除 service 将删除所有的 RealServer，这点上面提到过，kube-proxy 通过 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L2086-L2114">cleanLegacyService</a> 进行删除，如下列代码所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">proxier</span> <span class="o">*</span><span class="nx">Proxier</span><span class="p">)</span> <span class="nf">cleanLegacyService</span><span class="p">(</span><span class="nx">activeServices</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">,</span> <span class="nx">currentServices</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">utilipvs</span><span class="p">.</span><span class="nx">VirtualServer</span><span class="p">,</span> <span class="nx">legacyBindAddrs</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">bool</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">isIPv6</span> <span class="o">:=</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">IsIPv6</span><span class="p">(</span><span class="nx">proxier</span><span class="p">.</span><span class="nx">nodeIP</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">cs</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">currentServices</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">svc</span> <span class="o">:=</span> <span class="nx">currentServices</span><span class="p">[</span><span class="nx">cs</span><span class="p">]</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">proxier</span><span class="p">.</span><span class="nf">isIPInExcludeCIDRs</span><span class="p">(</span><span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">IsIPv6</span><span class="p">(</span><span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">)</span> <span class="o">!=</span> <span class="nx">isIPv6</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// Not our family
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">continue</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">activeServices</span><span class="p">[</span><span class="nx">cs</span><span class="p">];</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Delete service %s&#34;</span><span class="p">,</span> <span class="nx">svc</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">ipvs</span><span class="p">.</span><span class="nf">DeleteVirtualServer</span><span class="p">(</span><span class="nx">svc</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to delete service %s, error: %v&#34;</span><span class="p">,</span> <span class="nx">svc</span><span class="p">.</span><span class="nf">String</span><span class="p">(),</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">addr</span> <span class="o">:=</span> <span class="nx">svc</span><span class="p">.</span><span class="nx">Address</span><span class="p">.</span><span class="nf">String</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">legacyBindAddrs</span><span class="p">[</span><span class="nx">addr</span><span class="p">];</span> <span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Unbinding address %s&#34;</span><span class="p">,</span> <span class="nx">addr</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxier</span><span class="p">.</span><span class="nx">netlinkHandle</span><span class="p">.</span><span class="nf">UnbindAddress</span><span class="p">(</span><span class="nx">addr</span><span class="p">,</span> <span class="nx">DefaultDummyDevice</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to unbind service addr %s from dummy interface %s: %v&#34;</span><span class="p">,</span> <span class="nx">addr</span><span class="p">,</span> <span class="nx">DefaultDummyDevice</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">					<span class="c1">// In case we delete a multi-port service, avoid trying to unbind multiple times
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>					<span class="nb">delete</span><span class="p">(</span><span class="nx">legacyBindAddrs</span><span class="p">,</span> <span class="nx">addr</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="性能提升点2">性能提升点2<a hidden class="anchor" aria-hidden="true" href="#性能提升点2">¶</a></h2>
-<p>由上面的讲解可知，CRUD动作是每一个事件 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406">syncProxyRules</a> 被触发时都会进行执行，而删除动作存在多组循环（如构建维护的两个列表；进行循环删除）即每一次 Endpoints 变动也会触发 大量的 Service 的循环，从而检测 是否由遗留的Service资源，而这个操作保留到kubernetes 1.26版本</p>
+<p>当添加被触发时，会触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1936-L1974" target="_blank"
+   rel="noopener nofollow noreferrer" >proxier.syncService()</a> ，首先会进行本机上ipvs规则是否存在这个规则，存在则更改，而后返回一个 error, 这个 error 取决于是否更新 endpoints，如下列代码所示</p>
+<pre><code class="language-go">func (proxier *Proxier) syncService(svcName string, vs *utilipvs.VirtualServer, bindAddr bool, bindedAddresses sets.String) error {
+	appliedVirtualServer, _ := proxier.ipvs.GetVirtualServer(vs)
+	if appliedVirtualServer == nil || !appliedVirtualServer.Equal(vs) {
+		if appliedVirtualServer == nil {
+			// IPVS service is not found, create a new service
+			klog.V(3).Infof(&quot;Adding new service %q %s:%d/%s&quot;, svcName, vs.Address, vs.Port, vs.Protocol)
+			if err := proxier.ipvs.AddVirtualServer(vs); err != nil {
+				klog.Errorf(&quot;Failed to add IPVS service %q: %v&quot;, svcName, err)
+				return err
+			}
+		} else {
+			// IPVS service was changed, update the existing one
+			// During updates, service VIP will not go down
+			klog.V(3).Infof(&quot;IPVS service %s was changed&quot;, svcName)
+			if err := proxier.ipvs.UpdateVirtualServer(vs); err != nil {
+				klog.Errorf(&quot;Failed to update IPVS service, err:%v&quot;, err)
+				return err
+			}
+		}
+	}
+
+	// bind service address to dummy interface
+	if bindAddr {
+		// always attempt to bind if bindedAddresses is nil,
+		// otherwise check if it's already binded and return early
+		if bindedAddresses != nil &amp;&amp; bindedAddresses.Has(vs.Address.String()) {
+			return nil
+		}
+
+		klog.V(4).Infof(&quot;Bind addr %s&quot;, vs.Address.String())
+		_, err := proxier.netlinkHandle.EnsureAddressBind(vs.Address.String(), DefaultDummyDevice)
+		if err != nil {
+			klog.Errorf(&quot;Failed to bind service address to dummy device %q: %v&quot;, svcName, err)
+			return err
+		}
+	}
+
+	return nil
+}
+</code></pre>
+<p>接下来通过后会 触发 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1976-L2084" target="_blank"
+   rel="noopener nofollow noreferrer" >proxier.syncEndpoint()</a> 这里传入了当前的 service, 这里是为了与 IPVS 概念相吻合，如IPVS 中存在 RealServers/VirtualServers，首先会拿到本机这个VirtualServer下的所有RealServer，而后进行添加，而后对比 传入的 Endpoints 列表 与 本机这个VirtualServer下的所有RealServer，不相等的则被删除；删除的动作是一个异步操作。由 gracefuldeleteManager 维护</p>
+<pre><code class="language-go">func (proxier *Proxier) syncEndpoint(svcPortName proxy.ServicePortName, onlyNodeLocalEndpoints bool, vs *utilipvs.VirtualServer) error {
+	appliedVirtualServer, err := proxier.ipvs.GetVirtualServer(vs)
+	if err != nil || appliedVirtualServer == nil {
+		klog.Errorf(&quot;Failed to get IPVS service, error: %v&quot;, err)
+		return err
+	}
+
+	// curEndpoints represents IPVS destinations listed from current system.
+	curEndpoints := sets.NewString()
+	// newEndpoints represents Endpoints watched from API Server.
+	newEndpoints := sets.NewString()
+
+	curDests, err := proxier.ipvs.GetRealServers(appliedVirtualServer)
+	if err != nil {
+		klog.Errorf(&quot;Failed to list IPVS destinations, error: %v&quot;, err)
+		return err
+	}
+	for _, des := range curDests {
+		curEndpoints.Insert(des.String())
+	}
+
+	endpoints := proxier.endpointsMap[svcPortName]
+
+	// Service Topology will not be enabled in the following cases:
+	// 1. externalTrafficPolicy=Local (mutually exclusive with service topology).
+	// 2. ServiceTopology is not enabled.
+	// 3. EndpointSlice is not enabled (service topology depends on endpoint slice
+	// to get topology information).
+	if !onlyNodeLocalEndpoints &amp;&amp; utilfeature.DefaultFeatureGate.Enabled(features.ServiceTopology) &amp;&amp; utilfeature.DefaultFeatureGate.Enabled(features.EndpointSliceProxying) {
+		endpoints = proxy.FilterTopologyEndpoint(proxier.nodeLabels, proxier.serviceMap[svcPortName].TopologyKeys(), endpoints)
+	}
+
+	for _, epInfo := range endpoints {
+		if onlyNodeLocalEndpoints &amp;&amp; !epInfo.GetIsLocal() {
+			continue
+		}
+		newEndpoints.Insert(epInfo.String())
+	}
+
+	// Create new endpoints
+	for _, ep := range newEndpoints.List() {
+		ip, port, err := net.SplitHostPort(ep)
+		if err != nil {
+			klog.Errorf(&quot;Failed to parse endpoint: %v, error: %v&quot;, ep, err)
+			continue
+		}
+		portNum, err := strconv.Atoi(port)
+		if err != nil {
+			klog.Errorf(&quot;Failed to parse endpoint port %s, error: %v&quot;, port, err)
+			continue
+		}
+
+		newDest := &amp;utilipvs.RealServer{
+			Address: net.ParseIP(ip),
+			Port:    uint16(portNum),
+			Weight:  1,
+		}
+
+		if curEndpoints.Has(ep) {
+			// check if newEndpoint is in gracefulDelete list, if true, delete this ep immediately
+			uniqueRS := GetUniqueRSName(vs, newDest)
+			if !proxier.gracefuldeleteManager.InTerminationList(uniqueRS) {
+				continue
+			}
+			klog.V(5).Infof(&quot;new ep %q is in graceful delete list&quot;, uniqueRS)
+			err := proxier.gracefuldeleteManager.MoveRSOutofGracefulDeleteList(uniqueRS)
+			if err != nil {
+				klog.Errorf(&quot;Failed to delete endpoint: %v in gracefulDeleteQueue, error: %v&quot;, ep, err)
+				continue
+			}
+		}
+		err = proxier.ipvs.AddRealServer(appliedVirtualServer, newDest)
+		if err != nil {
+			klog.Errorf(&quot;Failed to add destination: %v, error: %v&quot;, newDest, err)
+			continue
+		}
+	}
+	// Delete old endpoints
+	for _, ep := range curEndpoints.Difference(newEndpoints).UnsortedList() {
+		// if curEndpoint is in gracefulDelete, skip
+		uniqueRS := vs.String() + &quot;/&quot; + ep
+		if proxier.gracefuldeleteManager.InTerminationList(uniqueRS) {
+			continue
+		}
+		ip, port, err := net.SplitHostPort(ep)
+		if err != nil {
+			klog.Errorf(&quot;Failed to parse endpoint: %v, error: %v&quot;, ep, err)
+			continue
+		}
+		portNum, err := strconv.Atoi(port)
+		if err != nil {
+			klog.Errorf(&quot;Failed to parse endpoint port %s, error: %v&quot;, port, err)
+			continue
+		}
+
+		delDest := &amp;utilipvs.RealServer{
+			Address: net.ParseIP(ip),
+			Port:    uint16(portNum),
+		}
+
+		klog.V(5).Infof(&quot;Using graceful delete to delete: %v&quot;, uniqueRS)
+		err = proxier.gracefuldeleteManager.GracefulDeleteRS(appliedVirtualServer, delDest)
+		if err != nil {
+			klog.Errorf(&quot;Failed to delete destination: %v, error: %v&quot;, uniqueRS, err)
+			continue
+		}
+	}
+	return nil
+}
+</code></pre>
+<p>删除 service 将删除所有的 RealServer，这点上面提到过，kube-proxy 通过 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L2086-L2114" target="_blank"
+   rel="noopener nofollow noreferrer" >cleanLegacyService</a> 进行删除，如下列代码所示</p>
+<pre><code class="language-go">func (proxier *Proxier) cleanLegacyService(activeServices map[string]bool, currentServices map[string]*utilipvs.VirtualServer, legacyBindAddrs map[string]bool) {
+	isIPv6 := utilnet.IsIPv6(proxier.nodeIP)
+	for cs := range currentServices {
+		svc := currentServices[cs]
+		if proxier.isIPInExcludeCIDRs(svc.Address) {
+			continue
+		}
+		if utilnet.IsIPv6(svc.Address) != isIPv6 {
+			// Not our family
+			continue
+		}
+		if _, ok := activeServices[cs]; !ok {
+			klog.V(4).Infof(&quot;Delete service %s&quot;, svc.String())
+			if err := proxier.ipvs.DeleteVirtualServer(svc); err != nil {
+				klog.Errorf(&quot;Failed to delete service %s, error: %v&quot;, svc.String(), err)
+			}
+			addr := svc.Address.String()
+			if _, ok := legacyBindAddrs[addr]; ok {
+				klog.V(4).Infof(&quot;Unbinding address %s&quot;, addr)
+				if err := proxier.netlinkHandle.UnbindAddress(addr, DefaultDummyDevice); err != nil {
+					klog.Errorf(&quot;Failed to unbind service addr %s from dummy interface %s: %v&quot;, addr, DefaultDummyDevice, err)
+				} else {
+					// In case we delete a multi-port service, avoid trying to unbind multiple times
+					delete(legacyBindAddrs, addr)
+				}
+			}
+		}
+	}
+}
+</code></pre>
+<h2 id="性能提升点2">性能提升点2<a hidden class="anchor" aria-hidden="true" href="#性能提升点2">¶</a></h2>
+<p>由上面的讲解可知，CRUD动作是每一个事件 <a href="https://github.com/kubernetes/kubernetes/blob/98d5dc5d36d34a7ee13368a7893dcb400ec4e566/pkg/proxy/ipvs/proxier.go#L1398-L1406" target="_blank"
+   rel="noopener nofollow noreferrer" >syncProxyRules</a> 被触发时都会进行执行，而删除动作存在多组循环（如构建维护的两个列表；进行循环删除）即每一次 Endpoints 变动也会触发 大量的 Service 的循环，从而检测 是否由遗留的Service资源，而这个操作保留到kubernetes 1.26版本</p>
 <p>假设你的集群节点是5000个，service资源是两万个，那么当你更新一个Service资源循环的次数，会至少循环多达数万次（Service, EndpointSpilt, currentServices, NodeIP, Ingress）其中无用的为currentServices，因为这个只有在删除Service本身才会有效（如果存在20000个service，其中currentServices在构建与对比的过程超过4万次）</p>
 
 

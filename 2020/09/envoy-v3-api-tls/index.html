@@ -10,7 +10,7 @@
 <meta name="description" content="Envoy V3APi 开启 TLS - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2020/09/envoy-v3-api-tls/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "envoy"
   ],
-  "wordCount" : "967",
+  "wordCount" : "850",
   "inLanguage": "zh",
   "datePublished": "2020-09-13T00:00:00Z",
   "dateModified": "2020-09-13T00:00:00Z",
@@ -326,19 +326,13 @@ function toggleThemeListener() {
 </div>
 <br><h2 id="方案架构">方案架构<a hidden class="anchor" aria-hidden="true" href="#方案架构">¶</a></h2>
 <p>本次实例与官方Envoy front_proxy Example相似，首先会有一个Envoy单独运行。ingress的工作是给其他地方提供一个入口。来自外部的传入连接请求到这里，前端代理将会决定他们在内部的转发路径。
-
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112723390-116429988.png" alt=""  /></p>
-<p>图源自Envoy官网文档 <a href="https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/front_proxy">front_proxy</a></p>
+<img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112723390-116429988.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p>图源自Envoy官网文档 <a href="https://www.envoyproxy.io/docs/envoy/latest/start/sandboxes/front_proxy" target="_blank"
+   rel="noopener nofollow noreferrer" >front_proxy</a></p>
 <h2 id="生成证书">生成证书<a hidden class="anchor" aria-hidden="true" href="#生成证书">¶</a></h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">openssl req -nodes -new -x509 -keyout certs/server.key -out certs/server.crt -days 365 -subj &#34;/C=CN/ST=Guangdong/L=Guangzhou/O=studyenvoy/OU=studyenvoy/CN=*.studyenvoy.cn&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="envoy配置说明">envoy配置说明<a hidden class="anchor" aria-hidden="true" href="#envoy配置说明">¶</a></h2>
+<pre><code>openssl req -nodes -new -x509 -keyout certs/server.key -out certs/server.crt -days 365 -subj &quot;/C=CN/ST=Guangdong/L=Guangzhou/O=studyenvoy/OU=studyenvoy/CN=*.studyenvoy.cn&quot;
+</code></pre>
+<h2 id="envoy配置说明">envoy配置说明<a hidden class="anchor" aria-hidden="true" href="#envoy配置说明">¶</a></h2>
 <p>v3 api中envoy去掉了<code>tls_context</code>的配置，配置tls首先需要熟悉envoy的如下两个术语</p>
 <ul>
 <li>Downstream：下游主机连接到 Envoy，发送请求并或获得响应。</li>
@@ -346,277 +340,141 @@ function toggleThemeListener() {
 </ul>
 <p>本次使用的是ingress的代理，需要配置的即为 <code>Downstream</code></p>
 <p>v3api中使用的是<code>transport_socket</code>，transport_socket为 <code>listeners</code> 当中某一个 <code>filter_chains</code> 中上线文中的配置。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913110632755-1017048487.png" alt=""  />
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913110632755-1017048487.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" />
 <code>transport_socket</code> 官方说明为：
 (config.core.v3.TransportSocket) Optional custom transport socket implementation to use for downstream connections. To setup TLS, set a transport socket with name tls and DownstreamTlsContext in the typed_config. If no transport socket configuration is specified, new connections will be set up with plaintext.</p>
-<p>查看官网的<a href="https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/transport_socket/transport_socket">transport_socket配置说明</a></p>
+<p>查看官网的<a href="https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/transport_socket/transport_socket" target="_blank"
+   rel="noopener nofollow noreferrer" >transport_socket配置说明</a></p>
 <p>这里使用的类型为DownstreamTlsContext</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913111110762-649402692.png" alt=""  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913111621651-669424319.png" alt=""  /></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"> transport_socket: # 设置tls
-</span></span><span class="line"><span class="cl">        name: envoy.transport_sockets.tls # 定义名称，不能为空
-</span></span><span class="line"><span class="cl">        typed_config: # 实现配置的类型
-</span></span><span class="line"><span class="cl">          &#34;@type&#34;: type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
-</span></span><span class="line"><span class="cl">          common_tls_context: # 设置tls上下文
-</span></span><span class="line"><span class="cl">            tls_certificates：
-</span></span><span class="line"><span class="cl">              certificate_chain： # 公钥设置 必须设置为，filename，inline_bytes
-</span></span><span class="line"><span class="cl">                filename: &#34;/etc/envoy/certs/server.crt&#34;
-</span></span><span class="line"><span class="cl">              private_key: # 私钥设置 必须设置为，filename，inline_bytes
-</span></span><span class="line"><span class="cl">                filename: &#34;/etc/envoy/certs/server.key&#34;         
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="准备envoy和后端服务运行环境">准备envoy和后端服务运行环境<a hidden class="anchor" aria-hidden="true" href="#准备envoy和后端服务运行环境">¶</a></h2>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913111110762-649402692.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913111621651-669424319.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<pre><code> transport_socket: # 设置tls
+        name: envoy.transport_sockets.tls # 定义名称，不能为空
+        typed_config: # 实现配置的类型
+          &quot;@type&quot;: type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context: # 设置tls上下文
+            tls_certificates：
+              certificate_chain： # 公钥设置 必须设置为，filename，inline_bytes
+                filename: &quot;/etc/envoy/certs/server.crt&quot;
+              private_key: # 私钥设置 必须设置为，filename，inline_bytes
+                filename: &quot;/etc/envoy/certs/server.key&quot;         
+</code></pre>
+<h2 id="准备envoy和后端服务运行环境">准备envoy和后端服务运行环境<a hidden class="anchor" aria-hidden="true" href="#准备envoy和后端服务运行环境">¶</a></h2>
 <h3 id="envoy配置文件">envoy配置文件<a hidden class="anchor" aria-hidden="true" href="#envoy配置文件">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">admin:
-</span></span><span class="line"><span class="cl">  access_log_path: /dev/null
-</span></span><span class="line"><span class="cl">  address:
-</span></span><span class="line"><span class="cl">    socket_address: { address: 0.0.0.0, port_value: 9901 }
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">static_resources:
-</span></span><span class="line"><span class="cl">  listeners:
-</span></span><span class="line"><span class="cl">  - name: listeners_http
-</span></span><span class="line"><span class="cl">    address:
-</span></span><span class="line"><span class="cl">      socket_address: { address: 0.0.0.0, port_value: 80 }
-</span></span><span class="line"><span class="cl">    filter_chains:
-</span></span><span class="line"><span class="cl">    - filters:
-</span></span><span class="line"><span class="cl">      - name: envoy.http_connenttion_manager
-</span></span><span class="line"><span class="cl">        typed_config:
-</span></span><span class="line"><span class="cl">          &#34;@type&#34;: type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-</span></span><span class="line"><span class="cl">          stat_prefix: ingress_http
-</span></span><span class="line"><span class="cl">          codec_type: AUTO
-</span></span><span class="line"><span class="cl">          route_config:
-</span></span><span class="line"><span class="cl">            name: local_route
-</span></span><span class="line"><span class="cl">            virtual_hosts:
-</span></span><span class="line"><span class="cl">            - name: local_service
-</span></span><span class="line"><span class="cl">              domains: [ &#34;*&#34; ]
-</span></span><span class="line"><span class="cl">              routes:
-</span></span><span class="line"><span class="cl">              - match: { prefix: &#34;/&#34; }
-</span></span><span class="line"><span class="cl">                redirect:
-</span></span><span class="line"><span class="cl">                  path_redirect: &#34;/&#34;
-</span></span><span class="line"><span class="cl">                  https_redirect: true
-</span></span><span class="line"><span class="cl">          http_filters:
-</span></span><span class="line"><span class="cl">          - name: envoy.router
-</span></span><span class="line"><span class="cl">  - name: listener_https
-</span></span><span class="line"><span class="cl">    address:
-</span></span><span class="line"><span class="cl">      socket_address: { address: 0.0.0.0, port_value: 443 }
-</span></span><span class="line"><span class="cl">    filter_chains:
-</span></span><span class="line"><span class="cl">    - filters:
-</span></span><span class="line"><span class="cl">      - name: envoy.http_connection_manager
-</span></span><span class="line"><span class="cl">        typed_config:
-</span></span><span class="line"><span class="cl">          &#34;@type&#34;: type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-</span></span><span class="line"><span class="cl">          stat_prefix: ingress_http
-</span></span><span class="line"><span class="cl">          codec_type: AUTO
-</span></span><span class="line"><span class="cl">          route_config:
-</span></span><span class="line"><span class="cl">            name: local_route
-</span></span><span class="line"><span class="cl">            virtual_hosts:
-</span></span><span class="line"><span class="cl">            - name: local_service
-</span></span><span class="line"><span class="cl">              domains: [ &#34;*&#34; ]
-</span></span><span class="line"><span class="cl">              routes:
-</span></span><span class="line"><span class="cl">              - match: { prefix: &#34;/&#34; }
-</span></span><span class="line"><span class="cl">                route: { cluster: local_service }
-</span></span><span class="line"><span class="cl">          http_filters:
-</span></span><span class="line"><span class="cl">          - name: envoy.router
-</span></span><span class="line"><span class="cl">      transport_socket:
-</span></span><span class="line"><span class="cl">        name: envoy.transport_sockets.tls
-</span></span><span class="line"><span class="cl">        typed_config:
-</span></span><span class="line"><span class="cl">          &#34;@type&#34;: type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
-</span></span><span class="line"><span class="cl">          common_tls_context:
-</span></span><span class="line"><span class="cl">            tls_certificates:
-</span></span><span class="line"><span class="cl">              certificate_chain:
-</span></span><span class="line"><span class="cl">                filename: &#34;/etc/envoy/certs/server.crt&#34;
-</span></span><span class="line"><span class="cl">              private_key:
-</span></span><span class="line"><span class="cl">                filename: &#34;/etc/envoy/certs/server.key&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  clusters:
-</span></span><span class="line"><span class="cl">  - name: local_service
-</span></span><span class="line"><span class="cl">    connect_timeout: 0.25s
-</span></span><span class="line"><span class="cl">    type: STRICT_DNS
-</span></span><span class="line"><span class="cl">    lb_policy: ROUND_ROBIN
-</span></span><span class="line"><span class="cl">    load_assignment:
-</span></span><span class="line"><span class="cl">      cluster_name: local_service
-</span></span><span class="line"><span class="cl">      endpoints:
-</span></span><span class="line"><span class="cl">      - lb_endpoints:
-</span></span><span class="line"><span class="cl">        - endpoint:
-</span></span><span class="line"><span class="cl">            address:
-</span></span><span class="line"><span class="cl">              socket_address: { address: webservice, port_value: 90 }
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>docker-compose文件示例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">version: &#39;3&#39;
-</span></span><span class="line"><span class="cl">services:
-</span></span><span class="line"><span class="cl">  envoy:
-</span></span><span class="line"><span class="cl">    image: envoyproxy/envoy-alpine:v1.15-latest
-</span></span><span class="line"><span class="cl">    environment: 
-</span></span><span class="line"><span class="cl">    - ENVOY_UID=0
-</span></span><span class="line"><span class="cl">    ports:
-</span></span><span class="line"><span class="cl">    - 80:80
-</span></span><span class="line"><span class="cl">    - 443:443
-</span></span><span class="line"><span class="cl">    - 82:9901
-</span></span><span class="line"><span class="cl">    volumes:
-</span></span><span class="line"><span class="cl">    - ./envoy.yaml:/etc/envoy/envoy.yaml
-</span></span><span class="line"><span class="cl">    - ./certs:/etc/envoy/certs
-</span></span><span class="line"><span class="cl">    networks:
-</span></span><span class="line"><span class="cl">      envoymesh:
-</span></span><span class="line"><span class="cl">        aliases:
-</span></span><span class="line"><span class="cl">        - envoy
-</span></span><span class="line"><span class="cl">    depends_on:
-</span></span><span class="line"><span class="cl">    - webserver
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">  webserver:
-</span></span><span class="line"><span class="cl">    image: cylonchau/envoy-end:latest
-</span></span><span class="line"><span class="cl">    environment: 
-</span></span><span class="line"><span class="cl">    - COLORFUL=blue
-</span></span><span class="line"><span class="cl">    networks:
-</span></span><span class="line"><span class="cl">      envoymesh:
-</span></span><span class="line"><span class="cl">        aliases:
-</span></span><span class="line"><span class="cl">        - myservice
-</span></span><span class="line"><span class="cl">        - webservice
-</span></span><span class="line"><span class="cl">    expose:
-</span></span><span class="line"><span class="cl">    - 90
-</span></span><span class="line"><span class="cl">     
-</span></span><span class="line"><span class="cl">networks:
-</span></span><span class="line"><span class="cl">  envoymesh: {}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>容器启动正常</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112045636-1039144144.png" alt=""  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112211614-785514675.png" alt=""  /></p>
+<pre><code>admin:
+  access_log_path: /dev/null
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+static_resources:
+  listeners:
+  - name: listeners_http
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 80 }
+    filter_chains:
+    - filters:
+      - name: envoy.http_connenttion_manager
+        typed_config:
+          &quot;@type&quot;: type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          codec_type: AUTO
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: [ &quot;*&quot; ]
+              routes:
+              - match: { prefix: &quot;/&quot; }
+                redirect:
+                  path_redirect: &quot;/&quot;
+                  https_redirect: true
+          http_filters:
+          - name: envoy.router
+  - name: listener_https
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 443 }
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        typed_config:
+          &quot;@type&quot;: type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: ingress_http
+          codec_type: AUTO
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains: [ &quot;*&quot; ]
+              routes:
+              - match: { prefix: &quot;/&quot; }
+                route: { cluster: local_service }
+          http_filters:
+          - name: envoy.router
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          &quot;@type&quot;: type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+          common_tls_context:
+            tls_certificates:
+              certificate_chain:
+                filename: &quot;/etc/envoy/certs/server.crt&quot;
+              private_key:
+                filename: &quot;/etc/envoy/certs/server.key&quot;
+
+  clusters:
+  - name: local_service
+    connect_timeout: 0.25s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: local_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address: { address: webservice, port_value: 90 }
+</code></pre>
+<p>docker-compose文件示例</p>
+<pre><code>version: '3'
+services:
+  envoy:
+    image: envoyproxy/envoy-alpine:v1.15-latest
+    environment: 
+    - ENVOY_UID=0
+    ports:
+    - 80:80
+    - 443:443
+    - 82:9901
+    volumes:
+    - ./envoy.yaml:/etc/envoy/envoy.yaml
+    - ./certs:/etc/envoy/certs
+    networks:
+      envoymesh:
+        aliases:
+        - envoy
+    depends_on:
+    - webserver
+  
+  webserver:
+    image: cylonchau/envoy-end:latest
+    environment: 
+    - COLORFUL=blue
+    networks:
+      envoymesh:
+        aliases:
+        - myservice
+        - webservice
+    expose:
+    - 90
+     
+networks:
+  envoymesh: {}
+</code></pre>
+<p>容器启动正常</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112045636-1039144144.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112211614-785514675.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>证书使用者也为生成证书的信息一致</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112436873-1139571567.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200913112436873-1139571567.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 
 
     

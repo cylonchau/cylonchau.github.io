@@ -31,165 +31,90 @@
 <li>异常捕获 <code>APIException</code>。</li>
 </ul>
 <p>APIView implement</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="nd">@classmethod</span>
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">as_view</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">initkwargs</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="o">....</span>
-</span></span><span class="line"><span class="cl">	<span class="c1"># 调用父类的方法，Python 3 可以使用直接使用 super().xxx 代替 super(Class, self).xxx</span>
-</span></span><span class="line"><span class="cl">    <span class="n">view</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">APIView</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="n">as_view</span><span class="p">(</span><span class="o">**</span><span class="n">initkwargs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">view</span><span class="o">.</span><span class="n">cls</span> <span class="o">=</span> <span class="bp">cls</span>
-</span></span><span class="line"><span class="cl">	<span class="c1"># 并且生成一个新的request</span>
-</span></span><span class="line"><span class="cl">    <span class="n">view</span><span class="o">.</span><span class="n">initkwargs</span> <span class="o">=</span> <span class="n">initkwargs</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># Note: session based authentication is explicitly CSRF validated,</span>
-</span></span><span class="line"><span class="cl">    <span class="c1"># all other authentication is CSRF exempt.</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">csrf_exempt</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">## 父类的view会执行dispatch分配为对应的handle memory，通过method获得对应的方法处理请求</span>
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># Try to dispatch to the right method; if a method doesn&#39;t exist,</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># defer to the error handler. Also defer to the error handler if the</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># request method isn&#39;t on the approved list.</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_method_names</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">            <span class="n">handler</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_method_not_allowed</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">else</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">            <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_method_not_allowed</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">handler</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="what-is-genericapiview">What is GenericAPIView</h2>
+<pre><code class="language-python">@classmethod
+def as_view(cls, **initkwargs):
+    ....
+	# 调用父类的方法，Python 3 可以使用直接使用 super().xxx 代替 super(Class, self).xxx
+    view = super(APIView, cls).as_view(**initkwargs)
+    view.cls = cls
+	# 并且生成一个新的request
+    view.initkwargs = initkwargs
+
+    # Note: session based authentication is explicitly CSRF validated,
+    # all other authentication is CSRF exempt.
+    return csrf_exempt(view)
+
+## 父类的view会执行dispatch分配为对应的handle memory，通过method获得对应的方法处理请求
+    def dispatch(self, request, *args, **kwargs):
+        # Try to dispatch to the right method; if a method doesn't exist,
+        # defer to the error handler. Also defer to the error handler if the
+        # request method isn't on the approved list.
+        if request.method.lower() in self.http_method_names:
+            handler = getattr(self, request.method.lower(), self.http_method_not_allowed)
+        else:
+            handler = self.http_method_not_allowed
+        return handler(request, *args, **kwargs)
+</code></pre>
+<h2 id="what-is-genericapiview">What is GenericAPIView</h2>
 <p><code>GenericAPIView</code> 是继承与 <code>APIView</code>的子类，在 <code>APIView</code> 的基础上增加了对于视图的通用支持方法，用来简化用户代码的编写。主要增加了 <code>QuerySet</code> 与 <code>Serializers</code></p>
 <p><strong>GenericAPIView implement</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">GenericAPIView</span><span class="p">(</span><span class="n">views</span><span class="o">.</span><span class="n">APIView</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">    <span class="n">queryset</span> <span class="o">=</span> <span class="kc">None</span>
-</span></span><span class="line"><span class="cl">    <span class="n">serializer_class</span> <span class="o">=</span> <span class="kc">None</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">lookup_url_kwarg</span> <span class="o">=</span> <span class="kc">None</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"> 
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">get_queryset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">      <span class="o">...</span>
-</span></span><span class="line"><span class="cl">        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">queryset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;&#39;</span><span class="si">%s</span><span class="s2">&#39; should either include a `queryset` attribute, &#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;or override the `get_queryset()` method.&#34;</span>
-</span></span><span class="line"><span class="cl">            <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
-</span></span><span class="line"><span class="cl">        <span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="n">queryset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">queryset</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">queryset</span><span class="p">,</span> <span class="n">QuerySet</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">            <span class="c1"># Ensure queryset is re-evaluated on each request.</span>
-</span></span><span class="line"><span class="cl">            <span class="n">queryset</span> <span class="o">=</span> <span class="n">queryset</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">queryset</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="how-to-use">How to Use</h2>
+<pre><code class="language-python">class GenericAPIView(views.APIView):
+  
+    queryset = None
+    serializer_class = None
+
+    lookup_url_kwarg = None
+
+ 
+    def get_queryset(self):
+      ...
+        assert self.queryset is not None, (
+            &quot;'%s' should either include a `queryset` attribute, &quot;
+            &quot;or override the `get_queryset()` method.&quot;
+            % self.__class__.__name__
+        )
+
+        queryset = self.queryset
+        if isinstance(queryset, QuerySet):
+            # Ensure queryset is re-evaluated on each request.
+            queryset = queryset.all()
+        return queryset
+
+</code></pre>
+<h2 id="how-to-use">How to Use</h2>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://www.django-rest-framework.org/api-guide/views/">APIView</a></p>
-<p><a href="https://www.django-rest-framework.org/api-guide/generic-views/">GenericAPIView</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/views/" target="_blank"
+   rel="noopener nofollow noreferrer" >APIView</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/generic-views/" target="_blank"
+   rel="noopener nofollow noreferrer" >GenericAPIView</a></p>
 </blockquote>
 <p>使用<code>APIView</code>与使用<code>View</code>类似，像往常一样，请求会根据不同的方法被<code>dispatch</code>到对应的处理逻辑方法，例如<code>.get()</code>or <code>.post()</code></p>
 <p>引入</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework.views</span> <span class="kn">import</span> <span class="n">APIView</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework.response</span> <span class="kn">import</span> <span class="n">Response</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>使用<code>GenericAPIView</code> 是 <code>APIView</code> 的子类，是实现了<code>APIView</code> 的常用行为的一个类。一般情况下会与引入</p>
+<pre><code class="language-python">from rest_framework.views import APIView
+from rest_framework.response import Response
+</code></pre>
+<p>使用<code>GenericAPIView</code> 是 <code>APIView</code> 的子类，是实现了<code>APIView</code> 的常用行为的一个类。一般情况下会与引入</p>
 <ul>
 <li><code>queryset</code>：对象查询集，使用<code>GenericAPIView</code> 必须设置该属性，或者重写 <code>get_queryset()</code> 方法</li>
 <li><code>serializer_class</code>: 序列化器类，必须设置该属性或重写<code>get_serializer_class()</code>方法。</li>
 <li><code>lookup_field</code>: 查库时使用的条件字段，一般为传入的值，默认为pk</li>
 <li><code>pagination_class</code> ：分页</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework</span> <span class="kn">import</span> <span class="n">generics</span>
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">BookViewSet</span><span class="p">(</span><span class="n">generics</span><span class="o">.</span><span class="n">GenericAPIView</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">queryset</span> <span class="o">=</span> <span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">serializer_class</span> <span class="o">=</span> <span class="n">BookModelSerializer</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="n">book_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_queryset</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="n">book_serializers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_serializer</span><span class="p">(</span><span class="n">book_list</span><span class="p">,</span> <span class="n">many</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">book_serializers</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reques</span><span class="p">,</span> <span class="n">pk</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="n">book</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_object</span><span class="p">()</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">Response</span><span class="p">({</span><span class="s2">&#34;message&#34;</span><span class="p">:</span><span class="s2">&#34;success&#34;</span><span class="p">,</span> <span class="s2">&#34;status&#34;</span><span class="p">:</span><span class="mi">100</span><span class="p">})</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="五个视图扩展">五个视图扩展</h3>
+<pre><code class="language-python">from rest_framework import generics
+class BookViewSet(generics.GenericAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookModelSerializer
+
+    def get(self, request):
+        book_list = self.get_queryset()
+        book_serializers = self.get_serializer(book_list, many=True)
+        return Response(book_serializers.data)
+    def delete(self, reques, pk):
+        book = self.get_object().delete()
+        return Response({&quot;message&quot;:&quot;success&quot;, &quot;status&quot;:100})
+</code></pre>
+<h3 id="五个视图扩展">五个视图扩展</h3>
 <p>Mixin类：DRF提供的通用的增删改查行为，Mixin一般与<code>generics.GenericAPI</code> 混用，可以组成灵活的视图。</p>
 <ul>
 <li><code>CreateModelMixin</code>: 保存新对象实例
@@ -217,7 +142,8 @@
 <h3 id="九个视图集">九个视图集</h3>
 <blockquote>
 <p>在路由确定用于请求的控制器之后，您的控制器负责理解请求并产生适当的输出。</p>
-<p>— <a href="https://guides.rubyonrails.org/action_controller_overview.html">Ruby on Rails 文档</a>Django REST 框架允许您将一组相关视图的逻辑组</p>
+<p>— <a href="https://guides.rubyonrails.org/action_controller_overview.html" target="_blank"
+   rel="noopener nofollow noreferrer" >Ruby on Rails 文档</a>Django REST 框架允许您将一组相关视图的逻辑组</p>
 </blockquote>
 <p>视图集 <code>ViewSet</code> 是DRF基于view使用视图集ViewSet，可以将一系列逻辑相关的动作放到一个类中，如<code>.get()</code>或<code>.post()</code>则不在提供了，换为<code>.list()</code>和<code>.create()</code>的具体逻辑动作。</p>
 ]]></content:encoded>
@@ -235,309 +161,150 @@
 <p><code>DRF</code> 提供了一个<code>Serializer</code>类，它为您提供了种强大的通用方法来控制响应的输出，以及一个<code>ModelSerializer </code>类，它为创建处理 <code>model instance</code> 和 <code>serializers</code> 提供了一个序列化的快捷方式。</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://www.django-rest-framework.org/api-guide/serializers/">drf serializers manual</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/serializers/" target="_blank"
+   rel="noopener nofollow noreferrer" >drf serializers manual</a></p>
 </blockquote>
 <h2 id="how-to-declaring-serializers">How to Declaring Serializers?</h2>
 <p>序列化一个django model</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Comment</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">created</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">email</span>
-</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">content</span>
-</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">created</span> <span class="o">=</span> <span class="n">created</span> <span class="ow">or</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">comment</span> <span class="o">=</span> <span class="n">Comment</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="s1">&#39;leila@example.com&#39;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s1">&#39;foo bar&#39;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>声明Serializers，可以用来序列化与反序列化对象 <code>Comment</code>的属性及值。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework</span> <span class="kn">import</span> <span class="n">serializers</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">CommentSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">email</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">EmailField</span><span class="p">()</span> <span class="c1"># 属性名称与类Comment名校相同</span>
-</span></span><span class="line"><span class="cl">    <span class="n">content</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">created</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="序列化及反序列化">序列化及反序列化</h2>
+<pre><code class="language-python">class Comment:
+    def __init__(self, email, content, created=None):
+        self.email = email
+        self.content = content
+        self.created = created or datetime.now()
+
+comment = Comment(email='leila@example.com', content='foo bar')
+</code></pre>
+<p>声明Serializers，可以用来序列化与反序列化对象 <code>Comment</code>的属性及值。</p>
+<pre><code class="language-python">from rest_framework import serializers
+
+class CommentSerializer(serializers.Serializer):
+    email = serializers.EmailField() # 属性名称与类Comment名校相同
+    content = serializers.CharField(max_length=200)
+    created = serializers.DateTimeField()
+</code></pre>
+<h2 id="序列化及反序列化">序列化及反序列化</h2>
 <h2 id="序列化">序列化</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework</span> <span class="kn">import</span> <span class="n">serializers</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">CommentSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">email</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">EmailField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">content</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">created</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl"><span class="c1"># 上面类似于如下python中的操作</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework.renderers</span> <span class="kn">import</span> <span class="n">JSONRenderer</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">json</span> <span class="o">=</span> <span class="n">JSONRenderer</span><span class="p">()</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">serializer</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">json</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># b&#39;{&#34;email&#34;:&#34;leila@example.com&#34;,&#34;content&#34;:&#34;foo bar&#34;,&#34;created&#34;:&#34;2016-01-27T15:17:10.375877&#34;}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="反序列化">反序列化</h3>
+<pre><code class="language-python">from rest_framework import serializers
+
+class CommentSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    content = serializers.CharField(max_length=200)
+    created = serializers.DateTimeField()
+    
+# 上面类似于如下python中的操作
+from rest_framework.renderers import JSONRenderer
+
+json = JSONRenderer().render(serializer.data)
+json
+# b'{&quot;email&quot;:&quot;leila@example.com&quot;,&quot;content&quot;:&quot;foo bar&quot;,&quot;created&quot;:&quot;2016-01-27T15:17:10.375877&quot;}'
+</code></pre>
+<h3 id="反序列化">反序列化</h3>
 <p>反序列化是将json数据流解析为python的数据类型，后映射至对象</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">io</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework.parsers</span> <span class="kn">import</span> <span class="n">JSONParser</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">stream</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">json</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">data</span> <span class="o">=</span> <span class="n">JSONParser</span><span class="p">()</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span> <span class="o">=</span> <span class="n">CommentSerializer</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># True</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span><span class="o">.</span><span class="n">validated_data</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># {&#39;content&#39;: &#39;foo bar&#39;, &#39;email&#39;: &#39;leila@example.com&#39;, &#39;created&#39;: datetime.datetime(2012, 08, 22, 16, 20, 09, 822243)}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="数据的落地">数据的落地</h2>
+<pre><code class="language-python">import io
+from rest_framework.parsers import JSONParser
+
+stream = io.BytesIO(json)
+data = JSONParser().parse(stream)
+
+serializer = CommentSerializer(data=data)
+serializer.is_valid()
+# True
+serializer.validated_data
+# {'content': 'foo bar', 'email': 'leila@example.com', 'created': datetime.datetime(2012, 08, 22, 16, 20, 09, 822243)}
+</code></pre>
+<h2 id="数据的落地">数据的落地</h2>
 <p>如果需要对经过认证的数据进行保存入库，需要实现对应 serializer的 <code>create()</code> 和 <code>update()</code> 方法</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">CommentSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">email</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">EmailField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">content</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">created</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">validated_data</span><span class="p">):</span> <span class="c1"># validate_data 实际与 Comment一致，打散后为</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">Comment</span><span class="p">(</span><span class="o">**</span><span class="n">validated_data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">validated_data</span><span class="p">):</span> <span class="c1"># drf serializer实现了对应的实例，instance是该serializer，vilidated是对应的属性</span>
-</span></span><span class="line"><span class="cl">        <span class="n">instance</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">validated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="n">instance</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">validated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="n">instance</span><span class="o">.</span><span class="n">created</span> <span class="o">=</span> <span class="n">validated_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;created&#39;</span><span class="p">,</span> <span class="n">instance</span><span class="o">.</span><span class="n">created</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">instance</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">serializer = CommentSerializer(data={&#39;email&#39;: &#39;foobar&#39;, &#39;content&#39;: &#39;baz&#39;})
-</span></span><span class="line"><span class="cl">serializer.is_valid()
-</span></span><span class="line"><span class="cl"># False
-</span></span><span class="line"><span class="cl">serializer.errors
-</span></span><span class="line"><span class="cl"># {&#39;email&#39;: [&#39;Enter a valid e-mail address.&#39;], &#39;created&#39;: [&#39;This field is required.&#39;]}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="save">save()</h3>
+<pre><code class="language-python">class CommentSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    content = serializers.CharField(max_length=200)
+    created = serializers.DateTimeField()
+
+    def create(self, validated_data): # validate_data 实际与 Comment一致，打散后为
+        return Comment(**validated_data)
+
+    def update(self, instance, validated_data): # drf serializer实现了对应的实例，instance是该serializer，vilidated是对应的属性
+        instance.email = validated_data.get('email', instance.email)
+        instance.content = validated_data.get('content', instance.content)
+        instance.created = validated_data.get('created', instance.created)
+        return instance
+</code></pre>
+<pre><code>serializer = CommentSerializer(data={'email': 'foobar', 'content': 'baz'})
+serializer.is_valid()
+# False
+serializer.errors
+# {'email': ['Enter a valid e-mail address.'], 'created': ['This field is required.']}
+</code></pre>
+<h3 id="save">save()</h3>
 <p><code>save()</code> 可以创建或更新一个实例（实例是值库中的行）。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># .save() will create a new instance.</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span> <span class="o">=</span> <span class="n">CommentSerializer</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># .save() will update the existing `comment` instance.</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span> <span class="o">=</span> <span class="n">CommentSerializer</span><span class="p">(</span><span class="n">comment</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="how-to-use-validate">How to Use validate?</h2>
+<pre><code class="language-python"># .save() will create a new instance.
+serializer = CommentSerializer(data=data)
+
+# .save() will update the existing `comment` instance.
+serializer = CommentSerializer(comment, data=data)
+</code></pre>
+<h2 id="how-to-use-validate">How to Use validate?</h2>
 <p>validate是值在反序列化数据时，需要对数据进行验证（如，长度，值，类型），即在数据落地前，对其制定的规则进行验证。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">serializer</span> <span class="o">=</span> <span class="n">CommentSerializer</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;email&#39;</span><span class="p">:</span> <span class="s1">&#39;foobar&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">:</span> <span class="s1">&#39;baz&#39;</span><span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># False</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span><span class="o">.</span><span class="n">errors</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># {&#39;email&#39;: [&#39;Enter a valid e-mail address.&#39;], &#39;created&#39;: [&#39;This field is required.&#39;]}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>.is_valid()</code> 是对数据的验证。<code>raise_exception</code> 是一个可选参数，如果 <code>serializers.ValidationError</code>如果存在验证错误，将引发异常。异常由 REST framework 提供的默认异常处理程序自动处理，并<code>HTTP 400 Bad Request</code>默认返回响应。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># Return a 400 response if the data was invalid.</span>
-</span></span><span class="line"><span class="cl"><span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">raise_exception</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="字段的验证">字段的验证</h3>
+<pre><code class="language-python">serializer = CommentSerializer(data={'email': 'foobar', 'content': 'baz'})
+serializer.is_valid()
+# False
+serializer.errors
+# {'email': ['Enter a valid e-mail address.'], 'created': ['This field is required.']}
+</code></pre>
+<p><code>.is_valid()</code> 是对数据的验证。<code>raise_exception</code> 是一个可选参数，如果 <code>serializers.ValidationError</code>如果存在验证错误，将引发异常。异常由 REST framework 提供的默认异常处理程序自动处理，并<code>HTTP 400 Bad Request</code>默认返回响应。</p>
+<pre><code class="language-python"># Return a 400 response if the data was invalid.
+serializer.is_valid(raise_exception=True)
+</code></pre>
+<h3 id="字段的验证">字段的验证</h3>
 <h4 id="自定义验证">自定义验证</h4>
 <p><strong>单字段验证</strong></p>
 <p>通过子类 <code>.validate_&lt;field_name&gt;</code> 方法进行自定义验证方式，该方法需要返回验证的值或触发<code>serializers.ValidationError</code>. 例如：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework</span> <span class="kn">import</span> <span class="n">serializers</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">BlogPostSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">title</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">content</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">validate_title</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;&#34;&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s2">        Check that the blog post is about Django.
-</span></span></span><span class="line"><span class="cl"><span class="s2">        &#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="s1">&#39;django&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-</span></span><span class="line"><span class="cl">            <span class="k">raise</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ValidationError</span><span class="p">(</span><span class="s2">&#34;Blog post is not about Django&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">value</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>类级别验证</strong></p>
+<pre><code class="language-python">from rest_framework import serializers
+
+class BlogPostSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=100)
+    content = serializers.CharField()
+
+    def validate_title(self, value):
+        &quot;&quot;&quot;
+        Check that the blog post is about Django.
+        &quot;&quot;&quot;
+        if 'django' not in value.lower():
+            raise serializers.ValidationError(&quot;Blog post is not about Django&quot;)
+        return value
+</code></pre>
+<p><strong>类级别验证</strong></p>
 <p>如果需要对多个字段进行验证验证，需要在类中实现<code>validate()</code> 方法。该方法仅单个参数 <code>data</code>, 为验证的字段的字典。例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">rest_framework</span> <span class="kn">import</span> <span class="n">serializers</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">EventSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">description</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">start</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">finish</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateTimeField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;&#34;&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s2">        Check that start is before finish.
-</span></span></span><span class="line"><span class="cl"><span class="s2">        &#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;finish&#39;</span><span class="p">]:</span>
-</span></span><span class="line"><span class="cl">            <span class="k">raise</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ValidationError</span><span class="p">(</span><span class="s2">&#34;finish must occur after start&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">data</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="忽略验证">忽略验证</h4>
+<pre><code class="language-python">from rest_framework import serializers
+
+class EventSerializer(serializers.Serializer):
+    description = serializers.CharField(max_length=100)
+    start = serializers.DateTimeField()
+    finish = serializers.DateTimeField()
+
+    def validate(self, data):
+        &quot;&quot;&quot;
+        Check that start is before finish.
+        &quot;&quot;&quot;
+        if data['start'] &gt; data['finish']:
+            raise serializers.ValidationError(&quot;finish must occur after start&quot;)
+        return data
+</code></pre>
+<h4 id="忽略验证">忽略验证</h4>
 <p><strong>注意</strong>：如在Serializer 的<code>&lt;field_name&gt;</code> 声明了参数<code>required=False</code> 则该字段不会进行验证。</p>
 <h4 id="指定验证器">指定验证器</h4>
 <p>Serializer 的<code>&lt;field_name&gt;</code> 还可以声明 validator，例如，</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">multiple_of_ten</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">value</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="k">raise</span> <span class="n">serializers</span><span class="o">.</span><span class="n">ValidationError</span><span class="p">(</span><span class="s1">&#39;Not a multiple of ten&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">GameRecord</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">score</span> <span class="o">=</span> <span class="n">IntegerField</span><span class="p">(</span><span class="n">validators</span><span class="o">=</span><span class="p">[</span><span class="n">multiple_of_ten</span><span class="p">])</span>
-</span></span><span class="line"><span class="cl">    <span class="o">...</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-python">def multiple_of_ten(value):
+    if value % 10 != 0:
+        raise serializers.ValidationError('Not a multiple of ten')
+
+class GameRecord(serializers.Serializer):
+    score = IntegerField(validators=[multiple_of_ten])
+    ...
+</code></pre>
+<blockquote>
 <p>validator Reference</p>
-<p><a href="https://www.django-rest-framework.org/api-guide/validators/">validator</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/validators/" target="_blank"
+   rel="noopener nofollow noreferrer" >validator</a></p>
 </blockquote>
 <h2 id="modelserializer">ModelSerializer</h2>
 <p><code>ModelSerializer</code>，是drf为了方便实现好的可以直接用的Serializer。实现为：</p>
@@ -547,119 +314,65 @@
 <li>包括简单的实现默认的<code>.create()</code>和<code>.update()</code>。</li>
 </ul>
 <h3 id="modelserializer的声明">ModelSerializer的声明</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">AccountSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">ModelSerializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">model</span> <span class="o">=</span> <span class="n">Account</span>
-</span></span><span class="line"><span class="cl">        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="s1">&#39;account_name&#39;</span><span class="p">,</span> <span class="s1">&#39;users&#39;</span><span class="p">,</span> <span class="s1">&#39;created&#39;</span><span class="p">]</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="meta的说明">Meta的说明</h4>
+<pre><code class="language-python">class AccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Account
+        fields = ['id', 'account_name', 'users', 'created']
+</code></pre>
+<h4 id="meta的说明">Meta的说明</h4>
 <p><code>Meta</code> 类，如名称可知，这是设置Serializer的一些元数据。包含<code>Model</code>,<code>Filed</code>, <code>Validator</code>等信息，例如声明一个Meta类。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">EventSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">name</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">CharField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">room_number</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">,</span> <span class="mi">103</span><span class="p">,</span> <span class="mi">201</span><span class="p">])</span>
-</span></span><span class="line"><span class="cl">    <span class="n">date</span> <span class="o">=</span> <span class="n">serializers</span><span class="o">.</span><span class="n">DateField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">class</span> <span class="nc">Meta</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># 通过在内部Meta类中声明validators来包含，如下所示：</span>
-</span></span><span class="line"><span class="cl">        <span class="n">validators</span> <span class="o">=</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">            <span class="n">UniqueTogetherValidator</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">                <span class="n">queryset</span><span class="o">=</span><span class="n">Event</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">                <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;room_number&#39;</span><span class="p">,</span> <span class="s1">&#39;date&#39;</span><span class="p">]</span>
-</span></span><span class="line"><span class="cl">            <span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="p">]</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># 通过在内部Meta类中声明model来包含对应使用model，如下所示：</span>
-</span></span><span class="line"><span class="cl">        <span class="n">model</span> <span class="o">=</span> <span class="n">User</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># fields 可以指定要序列化的字段，&#39;__all__&#39;为model中的所有字段</span>
-</span></span><span class="line"><span class="cl">        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">,</span> <span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="s1">&#39;profile&#39;</span><span class="p">]</span>
-</span></span><span class="line"><span class="cl">        <span class="n">exclude</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span> <span class="c1"># exclude是要排除的字段</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-python">class EventSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    room_number = serializers.IntegerField(choices=[101, 102, 103, 201])
+    date = serializers.DateField()
+
+    class Meta:
+        # 通过在内部Meta类中声明validators来包含，如下所示：
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Event.objects.all(),
+                fields=['room_number', 'date']
+            )
+        ]
+        # 通过在内部Meta类中声明model来包含对应使用model，如下所示：
+        model = User
+        # fields 可以指定要序列化的字段，'__all__'为model中的所有字段
+        fields = ['username', 'email', 'profile']
+        exclude=['username'] # exclude是要排除的字段
+</code></pre>
+<blockquote>
 <p>注：从 3.3.0 版开始，<strong>必须</strong>提供以下属性之一<code>fields</code>或<code>exclude</code>.</p>
 </blockquote>
 <p>Serializer会在Meta中拿取自己对应的属性进行使用，例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">meta</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Meta&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">validators</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="s1">&#39;validators&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># assert &lt;condition&gt;,(..error message)</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 可以看到Meta和Meta.model必须要设置</span>
-</span></span><span class="line"><span class="cl"><span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;Meta&#39;</span><span class="p">),</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;Class </span><span class="si">{serializer_class}</span><span class="s1"> missing &#34;Meta&#34; attribute&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="n">serializer_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
-</span></span><span class="line"><span class="cl">    <span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Meta</span><span class="p">,</span> <span class="s1">&#39;model&#39;</span><span class="p">),</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;Class </span><span class="si">{serializer_class}</span><span class="s1"> missing &#34;Meta.model&#34; attribute&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="n">serializer_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
-</span></span><span class="line"><span class="cl">    <span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">model_meta</span><span class="o">.</span><span class="n">is_abstract_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Meta</span><span class="o">.</span><span class="n">model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;Cannot use ModelSerializer with Abstract Models.&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="其他用法">其他用法</h3>
+<pre><code class="language-python">meta = getattr(self, 'Meta', None)
+validators = getattr(meta, 'validators', None)
+
+# assert &lt;condition&gt;,(..error message)
+# 可以看到Meta和Meta.model必须要设置
+assert hasattr(self, 'Meta'), (
+    'Class {serializer_class} missing &quot;Meta&quot; attribute'.format(
+        serializer_class=self.__class__.__name__
+    )
+)
+assert hasattr(self.Meta, 'model'), (
+    'Class {serializer_class} missing &quot;Meta.model&quot; attribute'.format(
+        serializer_class=self.__class__.__name__
+    )
+)
+if model_meta.is_abstract_model(self.Meta.model):
+    raise ValueError(
+        'Cannot use ModelSerializer with Abstract Models.'
+    )
+</code></pre>
+<h3 id="其他用法">其他用法</h3>
 <p>设置只读字段：字段属性中添加 <code>read_only=True</code>, 或者在Meta类中添加属性 中指定字段 <code>read_only_fields</code> 为列表。</p>
-<p><a href="https://www.django-rest-framework.org/api-guide/serializers/#specifying-read-only-fields">readonly-field</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/serializers/#specifying-read-only-fields" target="_blank"
+   rel="noopener nofollow noreferrer" >readonly-field</a></p>
 <h2 id="serializer的字段与字段属性属性">Serializer的字段与字段属性属性</h2>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://www.django-rest-framework.org/api-guide/fields">fields</a></p>
+<p><a href="https://www.django-rest-framework.org/api-guide/fields" target="_blank"
+   rel="noopener nofollow noreferrer" >fields</a></p>
 </blockquote>
 <h3 id="字段属性">字段属性</h3>
 <ul>
@@ -700,144 +413,67 @@
       <description></description>
       <content:encoded><![CDATA[<h2 id="路由匹配">路由匹配</h2>
 <h3 id="django中默认匹配页">django中默认匹配页</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">url(r&#39;^$&#39;, views.login),
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="django中404匹配">django中404匹配</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">url(r&#39;^$&#39;, views.login), # 需要放置最后，不过一般不推荐，都是通过异常捕获处理
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="named-group-名称组">named group 名称组</h3>
-<p><a href="https://docs.djangoproject.com/en/1.11/topics/http/urls/#named-groups">https://docs.djangoproject.com/en/1.11/topics/http/urls/#named-groups</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">url(r&#39;^test[0-9]{4}&#39;,views.login) 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="反向解析">反向解析</h2>
+<pre><code>url(r'^$', views.login),
+</code></pre>
+<h3 id="django中404匹配">django中404匹配</h3>
+<pre><code>url(r'^$', views.login), # 需要放置最后，不过一般不推荐，都是通过异常捕获处理
+</code></pre>
+<h3 id="named-group-名称组">named group 名称组</h3>
+<p><a href="https://docs.djangoproject.com/en/1.11/topics/http/urls/#named-groups" target="_blank"
+   rel="noopener nofollow noreferrer" >https://docs.djangoproject.com/en/1.11/topics/http/urls/#named-groups</a></p>
+<pre><code>url(r'^test[0-9]{4}',views.login) 
+</code></pre>
+<h2 id="反向解析">反向解析</h2>
 <blockquote>
 <p>别名不能出现冲突</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">from django.shortcuts import reverse
-</span></span><span class="line"><span class="cl">reverse(xxx)
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="名称组反向解析">名称组反向解析</h3>
+<pre><code>from django.shortcuts import reverse
+reverse(xxx)
+</code></pre>
+<h3 id="名称组反向解析">名称组反向解析</h3>
 <p>无名分组</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 路由部分</span>
-</span></span><span class="line"><span class="cl"><span class="n">url</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^index/(\d+)/&#39;</span><span class="p">,</span> <span class="n">views</span><span class="o">.</span><span class="n">home</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;xxx&#39;</span><span class="p">)</span> 
-</span></span><span class="line"><span class="cl"><span class="c1"># 前端</span>
-</span></span><span class="line"><span class="cl"> <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s2">&#34;{</span><span class="si">% u</span><span class="s2">rl &#39;id&#39; obj.id %}&#34;</span> <span class="n">class</span><span class="o">=</span><span class="s2">&#34;btn btn-primary btn-xs&#34;</span><span class="o">&gt;</span><span class="n">remove</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span><span class="n">s</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 后端</span>
-</span></span><span class="line"><span class="cl"><span class="nb">print</span> <span class="n">reverse</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="nb">id</span><span class="p">,))</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>有名称分组</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 路由部分</span>
-</span></span><span class="line"><span class="cl">  <span class="n">url</span><span class="p">(</span><span class="sa">r</span><span class="s2">&#34;^userdel/(?P&lt;id&gt;\d+)/&#34;</span><span class="p">,</span><span class="n">views</span><span class="o">.</span><span class="n">UserDelete</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;id&#39;</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 前端</span>
-</span></span><span class="line"><span class="cl">  <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s2">&#34;{</span><span class="si">% u</span><span class="s2">rl &#39;id&#39; obj.id %}&#34;</span> <span class="n">class</span><span class="o">=</span><span class="s2">&#34;btn btn-primary btn-xs&#34;</span><span class="o">&gt;</span><span class="n">remove</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># or</span>
-</span></span><span class="line"><span class="cl">  <span class="o">&lt;</span><span class="n">a</span> <span class="n">href</span><span class="o">=</span><span class="s2">&#34;{</span><span class="si">% u</span><span class="s2">rl &#39;id&#39; id=obj.id %}&#34;</span> <span class="n">class</span><span class="o">=</span><span class="s2">&#34;btn btn-primary btn-xs&#34;</span><span class="o">&gt;</span><span class="n">remove</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span><span class="n">s</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 后端</span>
-</span></span><span class="line"><span class="cl">  <span class="nb">print</span> <span class="n">reverse</span><span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&#34;id&#34;</span><span class="p">:</span><span class="nb">id</span><span class="p">})</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="路由分发">路由分发</h2>
+<pre><code class="language-python"># 路由部分
+url(r'^index/(\d+)/', views.home, name='xxx') 
+# 前端
+ &lt;a href=&quot;{% url 'id' obj.id %}&quot; class=&quot;btn btn-primary btn-xs&quot;&gt;remove&lt;/a&gt;s
+# 后端
+print reverse('id', args=(id,))
+</code></pre>
+<p>有名称分组</p>
+<pre><code class="language-python"># 路由部分
+  url(r&quot;^userdel/(?P&lt;id&gt;\d+)/&quot;,views.UserDelete, name='id'),
+# 前端
+  &lt;a href=&quot;{% url 'id' obj.id %}&quot; class=&quot;btn btn-primary btn-xs&quot;&gt;remove&lt;/a&gt;
+# or
+  &lt;a href=&quot;{% url 'id' id=obj.id %}&quot; class=&quot;btn btn-primary btn-xs&quot;&gt;remove&lt;/a&gt;s
+# 后端
+  print reverse('id', kwargs={&quot;id&quot;:id})
+</code></pre>
+<h2 id="路由分发">路由分发</h2>
 <p>路由分发中，并不能识别出，名称分组并不能准确识别出对应的分组，这里需要增加namespace概念</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">django.conf.urls</span> <span class="kn">import</span> <span class="n">url</span><span class="p">,</span> <span class="n">include</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">django.contrib</span> <span class="kn">import</span> <span class="n">admin</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">memberserver</span> <span class="kn">import</span> <span class="n">urls</span> <span class="k">as</span> <span class="n">member_urls</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">urlpatterns</span> <span class="o">=</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="n">url</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;member&#39;</span><span class="p">,</span> <span class="n">include</span><span class="p">(</span><span class="n">member_urls</span><span class="p">)),</span>
-</span></span><span class="line"><span class="cl"><span class="p">]</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>路由分发中，并不能识别出，名称分组并不能准确识别出对应的分组，这里需要增加namespace概念</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">django.conf.urls</span> <span class="kn">import</span> <span class="n">url</span><span class="p">,</span> <span class="n">include</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">django.contrib</span> <span class="kn">import</span> <span class="n">admin</span>
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">memberserver</span> <span class="kn">import</span> <span class="n">urls</span> <span class="k">as</span> <span class="n">member_urls</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">urlpatterns</span> <span class="o">=</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="n">url</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;member&#39;</span><span class="p">,</span> <span class="n">include</span><span class="p">(</span><span class="n">member_urls</span><span class="p">,</span> <span class="n">namespace</span><span class="o">=</span><span class="s2">&#34;member&#34;</span><span class="p">)),</span>
-</span></span><span class="line"><span class="cl"><span class="p">]</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 在后端映射可以使用</span>
-</span></span><span class="line"><span class="cl"><span class="n">reverse</span><span class="p">(</span><span class="s2">&#34;member:id&#34;</span><span class="p">)</span> <span class="c1">## 来获得对应的路由</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 在前端可以使用 来获得对应的路由</span>
-</span></span><span class="line"><span class="cl"><span class="p">{</span><span class="o">%</span> <span class="n">url</span> <span class="s1">&#39;id&#39;</span> <span class="nb">id</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">id</span> <span class="o">%</span><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>伪静态</p>
+<pre><code class="language-python">from django.conf.urls import url, include
+from django.contrib import admin
+from memberserver import urls as member_urls
+
+urlpatterns = [
+    url(r'member', include(member_urls)),
+]
+</code></pre>
+<p>路由分发中，并不能识别出，名称分组并不能准确识别出对应的分组，这里需要增加namespace概念</p>
+<pre><code class="language-python">from django.conf.urls import url, include
+from django.contrib import admin
+from memberserver import urls as member_urls
+
+urlpatterns = [
+    url(r'member', include(member_urls, namespace=&quot;member&quot;)),
+]
+# 在后端映射可以使用
+reverse(&quot;member:id&quot;) ## 来获得对应的路由
+
+# 在前端可以使用 来获得对应的路由
+{% url 'id' id=obj.id %}
+</code></pre>
+<p>伪静态</p>
 <p>虚拟环境</p>
 ]]></content:encoded>
     </item>
@@ -849,72 +485,39 @@
       
       <guid>https://www.oomkill.com/2021/10/django-orm/</guid>
       <description></description>
-      <content:encoded><![CDATA[<p><a href="https://www.cnblogs.com/Dominic-Ji/p/11516152.html">https://www.cnblogs.com/Dominic-Ji/p/11516152.html</a></p>
+      <content:encoded><![CDATA[<p><a href="https://www.cnblogs.com/Dominic-Ji/p/11516152.html" target="_blank"
+   rel="noopener nofollow noreferrer" >https://www.cnblogs.com/Dominic-Ji/p/11516152.html</a></p>
 <p>对象关系映射（Object Relational Mapping，简称ORM）模式是一种为了解决面向对象与关系数据库存在的互不匹配的现象的技术。</p>
 <p>简单的说，ORM是通过使用描述对象和数据库之间映射的元数据，将程序中的对象自动持久化到关系数据库中。</p>
 <p>ORM在业务逻辑层和数据库层之间充当了桥梁的作用。</p>
 <h2 id="django中仅测试orm">django中仅测试ORM</h2>
 <p>导入model，然后直接使用对应对象进行ORM操作。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">import os
-</span></span><span class="line"><span class="cl">if __name__ == &#34;__main__&#34;:
-</span></span><span class="line"><span class="cl">    os.environ.setdefault(&#34;DJANGO_SETTINGS_MODULE&#34;, &#34;app.settings&#34;)
-</span></span><span class="line"><span class="cl">    import django
-</span></span><span class="line"><span class="cl">    django.setup()
-</span></span><span class="line"><span class="cl">    from xxx import models
-</span></span><span class="line"><span class="cl">    models.User.objects.all()
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="连接数据库">连接数据库</h2>
+<pre><code>import os
+if __name__ == &quot;__main__&quot;:
+    os.environ.setdefault(&quot;DJANGO_SETTINGS_MODULE&quot;, &quot;app.settings&quot;)
+    import django
+    django.setup()
+    from xxx import models
+    models.User.objects.all()
+</code></pre>
+<h2 id="连接数据库">连接数据库</h2>
 <p>django配置数据库</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">DATABASES</span> <span class="o">=</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;default&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;ENGINE&#39;</span><span class="p">:</span> <span class="s1">&#39;django.db.backends.mysql&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;USER&#39;</span><span class="p">:</span> <span class="s1">&#39;root&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;PASSWORD&#39;</span><span class="p">:</span> <span class="s1">&#39;111&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;HOST&#39;</span><span class="p">:</span><span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;NAME&#39;</span><span class="p">:</span> <span class="s1">&#39;book&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;CHARSET&#39;</span><span class="p">:</span> <span class="s1">&#39;utf8&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>可选</strong>：<code>pymysql</code> 使用模块连接MySQL数据库:：在项目中<code>__init__.py</code> 文件中添加配置：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">pymysql</span>
-</span></span><span class="line"><span class="cl"><span class="n">pymysql</span><span class="o">.</span><span class="n">install_as_MySQLdb</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="创建表对象">创建（表）对象</h2>
+<pre><code class="language-python">DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'USER': 'root',
+        'PASSWORD': '111',
+        'HOST':'127.0.0.1',
+        'NAME': 'book',
+        'CHARSET': 'utf8'
+    }
+}
+</code></pre>
+<p><strong>可选</strong>：<code>pymysql</code> 使用模块连接MySQL数据库:：在项目中<code>__init__.py</code> 文件中添加配置：</p>
+<pre><code class="language-python">import pymysql
+pymysql.install_as_MySQLdb()
+</code></pre>
+<h2 id="创建表对象">创建（表）对象</h2>
 <p>ORM中，<code>O</code> (Object)  代表&quot;对象&quot;，而<code>R</code>(Relational) 则代表&quot;关系&quot;。所以创建表即创建一个类，字段则是类的属性。类的每个实例则对应表中的一条记录。</p>
 <p>在Django中model就是你数据来源。通常，一个model映射到一个数据库表，一般情况下基本满足：</p>
 <ul>
@@ -929,25 +532,18 @@
 </li>
 </ul>
 <p>例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl"><span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">age</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">registration_time</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="字段类型">字段类型</h3>
+<pre><code class="language-python">class User(models.Model):
+name = models.CharField(max_length=32)
+age = models.IntegerField()
+registration_time = models.DateField()
+</code></pre>
+<h3 id="字段类型">字段类型</h3>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-types">字段类型说明</a></p>
-<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-options">字段选项说明</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-types" target="_blank"
+   rel="noopener nofollow noreferrer" >字段类型说明</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-options" target="_blank"
+   rel="noopener nofollow noreferrer" >字段选项说明</a></p>
 </blockquote>
 <blockquote>
 <p><strong>必需掌握字段类型说明</strong>：</p>
@@ -978,7 +574,8 @@
 <h3 id="字段参数">字段参数</h3>
 <blockquote>
 <p><strong>Reference</strong></p>
-<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-options">字段选项说明</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/2.0/ref/models/fields/#field-options" target="_blank"
+   rel="noopener nofollow noreferrer" >字段选项说明</a></p>
 </blockquote>
 <p><strong>必须掌握的字段选项</strong>：</p>
 <ul>
@@ -998,39 +595,20 @@
 <p>要创建一个对象，然后调用<code>save()</code>将其保存到数据库中。</p>
 <p><code>save()</code> 直到调用时，才操作数据库，并且没有返回值。</p>
 <p><code>save()</code> 必须实例化后调用</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">b</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">User</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;zhangsan&#34;</span><span class="p">,</span><span class="n">age</span><span class="o">=</span><span class="mi">18</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">b</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="create">create()</h3>
+<pre><code class="language-python">b = models.User(name=&quot;zhangsan&quot;,age=18)
+b.save()
+</code></pre>
+<h3 id="create">create()</h3>
 <p>创建对象并且保存</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;lisi&#34;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">19</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="删">删</h2>
+<pre><code class="language-python">models.User.objects.create(name=&quot;lisi&quot;, age=19)
+</code></pre>
+<h2 id="删">删</h2>
 <h3 id="delete">delete()</h3>
 <p><code>delete()</code> 在查询集中的所有行上执行SQL DELETE，并返回删除的对象数量和每个对象类型的删除次数的字典。</p>
 <p>delete()无法对<code>QuerySet</code> 上调用<code>delete()</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="查">查</h2>
+<pre><code class="language-python">models.User.objects.filter(pk=1).delete()
+</code></pre>
+<h2 id="查">查</h2>
 <h3 id="查询必会的方法">查询必会的方法</h3>
 <p><strong>返回值为QuerySet对象的方法有</strong></p>
 <p><code>all()</code> 查询所有数据
@@ -1057,47 +635,25 @@
 </li>
 <li>
 <p>终端打印，在<code>setting.py</code>中配置下列</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">LOGGING</span> <span class="o">=</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;version&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;disable_existing_loggers&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;console&#39;</span><span class="p">:{</span>
-</span></span><span class="line"><span class="cl">            <span class="s1">&#39;level&#39;</span><span class="p">:</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">            <span class="s1">&#39;class&#39;</span><span class="p">:</span><span class="s1">&#39;logging.StreamHandler&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="s1">&#39;loggers&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s1">&#39;django.db.backends&#39;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s1">&#39;handlers&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;console&#39;</span><span class="p">],</span>
-</span></span><span class="line"><span class="cl">            <span class="s1">&#39;propagate&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">            <span class="s1">&#39;level&#39;</span><span class="p">:</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="条件查询">条件查询</h3>
+<pre><code class="language-python">LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console':{
+            'level':'DEBUG',
+            'class':'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'propagate': True,
+            'level':'DEBUG',
+        },
+    }
+}
+</code></pre>
+<h3 id="条件查询">条件查询</h3>
 <h4 id="基于双下划线的查询">基于双下划线的查询</h4>
 <p>查询大于的18的用户 <code>models.User.objects.filter(age__gt=12)</code></p>
 <p>查询年龄为18,19,20岁的用户 <code>models.User.objects.filter(age__in=[18,19,20])</code></p>
@@ -1125,15 +681,18 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#many-to-one-relationships">ForeignKey</a></td>
+<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#many-to-one-relationships" target="_blank"
+   rel="noopener nofollow noreferrer" >ForeignKey</a></td>
 <td>多对一</td>
 </tr>
 <tr>
-<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#many-to-many-relationships">ManyToManyField</a></td>
+<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#many-to-many-relationships" target="_blank"
+   rel="noopener nofollow noreferrer" >ManyToManyField</a></td>
 <td>多对多</td>
 </tr>
 <tr>
-<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#one-to-one-relationships">OneToOneField</a></td>
+<td><a href="https://docs.djangoproject.com/zh-hans/2.0/topics/db/models/#one-to-one-relationships" target="_blank"
+   rel="noopener nofollow noreferrer" >OneToOneField</a></td>
 <td>一对一</td>
 </tr>
 </tbody>
@@ -1144,69 +703,35 @@
 <li>一本书 可以由多个 <code>Author</code> 编写，也可以由一个作者  <code>Author</code> 编写，但一个作者( <code>Author</code>)也可以编写多本书 <code>Book</code>。</li>
 <li>一般情况下，出版社仅记录<code>Author</code>的一个联系方式，也就是 <code>Author</code> 与 <code>AuthorDetail</code> 为一对一关系。</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Book</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">title</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">price</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DecimalField</span><span class="p">(</span><span class="n">max_digits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">decimal_places</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">publishData</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">DateField</span><span class="p">(</span><span class="n">auto_now_add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">press</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="s2">&#34;Press&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">author</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">ManyToManyField</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="s2">&#34;Author&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Press</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span><span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">address</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">email</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Author</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">name</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span><span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">age</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">authorDetail</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">OneToOneField</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="s2">&#34;AuthorDetail&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">AuthorDetail</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="n">phoneNumber</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">BigIntegerField</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="n">address</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="外键的基本操作">外键的基本操作</h3>
+<pre><code class="language-python">class Book(models.Model):
+    title = models.CharField(max_length=32)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    publishData = models.DateField(auto_now_add=True)
+
+    press = models.ForeignKey(to=&quot;Press&quot;)
+    author = models.ManyToManyField(to=&quot;Author&quot;)
+    
+class Press(models.Model):
+    name = models.CharField(max_length=32,null=True)
+    address = models.CharField(max_length=32)
+    email = models.EmailField()
+
+class Author(models.Model):
+    name = models.CharField(max_length=32,null=True)
+    age = models.IntegerField()
+    authorDetail = models.OneToOneField(to=&quot;AuthorDetail&quot;)
+
+class AuthorDetail(models.Model):
+    phoneNumber = models.BigIntegerField()
+    address = models.CharField(max_length=32)
+</code></pre>
+<h3 id="外键的基本操作">外键的基本操作</h3>
 <p>添加外键关系：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">bookobj</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">bookobj</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1"># 给主键为1的书籍绑定一个主键1的作者</span>
-</span></span><span class="line"><span class="cl"><span class="n">bookobj</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">add</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span> <span class="c1"># 给主键为1的书籍绑定多个作者</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>移除关系：<code>bookobj.author.remove(1)</code></p>
+<pre><code class="language-python">bookobj = models.Book.objects.filter(pk=1).first()
+bookobj.author.add(1) # 给主键为1的书籍绑定一个主键1的作者
+bookobj.author.add([1,2,3]) # 给主键为1的书籍绑定多个作者
+</code></pre>
+<p>移除关系：<code>bookobj.author.remove(1)</code></p>
 <p>修改关系：<code>bookobj.author.set(2)</code></p>
 <p>清空该关系：<code>bookobj.author.clear() # 清除所有这个作者的书</code></p>
 <h3 id="正反向概念">正反向概念</h3>
@@ -1216,110 +741,45 @@
 <p>查询口诀：正向查询按外键字段，反向查询按表名（model）</p>
 <p><code>all()</code> 当结果为多个时，需要使用<code>.all()</code> 如多对多，一对多</p>
 <p><strong>查询书籍1的出版社</strong> 正向查询</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">book = models.Book.objects.filter(pk=1).first()
-</span></span><span class="line"><span class="cl">print book.press.name
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询书籍1的作者</strong> 正向查询</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">book = models.Book.objects.filter(pk=1).first()
-</span></span><span class="line"><span class="cl">print book.author.all()
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询作者1的电话</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">auther = models.Author.objects.filter(pk=1).first()
-</span></span><span class="line"><span class="cl">print auther.authorDetail.phoneNumber
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询出版社拥有的书</strong> 反向查询</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">press</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Press</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">books</span> <span class="o">=</span> <span class="n">press</span><span class="o">.</span><span class="n">book_set</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询作者Phoenix写的书</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">auther</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Author</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="nb">print</span> <span class="n">auther</span><span class="o">.</span><span class="n">book_set</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>根据手机号查询作者</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">phone</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">AuthorDetail</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">phoneNumber</span><span class="o">=</span><span class="mi">1511111111</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="nb">print</span> <span class="n">phone</span><span class="o">.</span><span class="n">author</span><span class="o">.</span><span class="n">name</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="基于下划线的查询">基于下划线的查询</h3>
+<pre><code>book = models.Book.objects.filter(pk=1).first()
+print book.press.name
+</code></pre>
+<p><strong>查询书籍1的作者</strong> 正向查询</p>
+<pre><code>book = models.Book.objects.filter(pk=1).first()
+print book.author.all()
+</code></pre>
+<p><strong>查询作者1的电话</strong></p>
+<pre><code>auther = models.Author.objects.filter(pk=1).first()
+print auther.authorDetail.phoneNumber
+</code></pre>
+<p><strong>查询出版社拥有的书</strong> 反向查询</p>
+<pre><code class="language-python">press = models.Press.objects.filter(pk=1).first()
+books = press.book_set.all()
+</code></pre>
+<p><strong>查询作者Phoenix写的书</strong></p>
+<pre><code class="language-python">auther = models.Author.objects.filter(name=&quot;Phoenix&quot;).first()
+print auther.book_set.all()
+</code></pre>
+<p><strong>根据手机号查询作者</strong></p>
+<pre><code class="language-python">phone = models.AuthorDetail.objects.filter(phoneNumber=1511111111).first()
+print phone.author.name
+</code></pre>
+<h3 id="基于下划线的查询">基于下划线的查询</h3>
 <p><strong>根据名称查询手机号</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Author</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;authorDetail__phoneNumber&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 获取两个表中的字段</span>
-</span></span><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Author</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;authorDetail__phoneNumber&#34;</span><span class="p">,</span><span class="s2">&#34;name&#34;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询书籍1的作者名称</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># 正向</span>
-</span></span><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pk</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;author__name&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 反向</span>
-</span></span><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">AuthorDetail</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">author__name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;phoneNumber&#34;</span><span class="p">,</span><span class="s2">&#34;author__name&#34;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查询书籍1的作者手机号</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">models.Book.objects.filter(pk=1).values(&#34;author__authorDetail__phoneNumber&#34;)
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="聚合查询-aggregate">聚合查询 (aggregate)</h2>
+<pre><code class="language-python">models.Author.objects.filter(name=&quot;Phoenix&quot;).values(&quot;authorDetail__phoneNumber&quot;)
+# 获取两个表中的字段
+models.Author.objects.filter(name=&quot;Phoenix&quot;).values(&quot;authorDetail__phoneNumber&quot;,&quot;name&quot;)
+</code></pre>
+<p><strong>查询书籍1的作者名称</strong></p>
+<pre><code class="language-python"># 正向
+models.Book.objects.filter(pk=1).values(&quot;author__name&quot;)
+# 反向
+models.AuthorDetail.objects.filter(author__name=&quot;Phoenix&quot;).values(&quot;phoneNumber&quot;,&quot;author__name&quot;)
+</code></pre>
+<p>查询书籍1的作者手机号</p>
+<pre><code>models.Book.objects.filter(pk=1).values(&quot;author__authorDetail__phoneNumber&quot;)
+</code></pre>
+<h2 id="聚合查询-aggregate">聚合查询 (aggregate)</h2>
 <p><code>aggregate()</code> 是 <code>QuerySet</code> 的一个终止子句，意思是说，它返回一个包含一些键值对的字典。键的名称是聚合值的标识符，值是计算出来的聚合值。键的名称是按照字段和聚合函数的名称自动生成出来的。</p>
 <p>使用聚合查询需要引入具体的类 <code>from django.db.models import Avg,Max,Min,Count,Sum</code></p>
 <p>获取书的总数 <code>Book.objects.count()</code></p>
@@ -1337,280 +797,149 @@
 <li><strong>values or values_list 在annotate后</strong>： annotate 表示直接以当前表的pk执行分组，values 或者 values_list 表示查询哪些字段， 并且要将 annotate 里的聚合函数起别名，在 values 或者 values_list 里写其别名。</li>
 </ul>
 <p><strong>统计每本书的作者有几个</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">autherNum</span><span class="o">=</span><span class="n">Count</span><span class="p">(</span><span class="s1">&#39;author__id&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s1">&#39;autherNum&#39;</span><span class="p">,</span><span class="s1">&#39;title&#39;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>统计出版社最便宜书的价格</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"> <span class="n">models</span><span class="o">.</span><span class="n">Press</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">minPrice</span><span class="o">=</span><span class="n">Min</span><span class="p">(</span><span class="s1">&#39;book__price&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;name&#34;</span><span class="p">,</span> <span class="s2">&#34;minPrice&#34;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>统计不止一个作者的书</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">autherCount</span><span class="o">=</span><span class="n">Count</span><span class="p">(</span><span class="s2">&#34;author__id&#34;</span><span class="p">))</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">autherCount__gt</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;title&#34;</span><span class="p">,</span><span class="s2">&#34;autherCount&#34;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>统计作者出书的总价</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Author</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="n">bookPrice</span><span class="o">=</span><span class="n">Sum</span><span class="p">(</span><span class="s2">&#34;book__price&#34;</span><span class="p">))</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="s2">&#34;name&#34;</span><span class="p">,</span><span class="s2">&#34;bookPrice&#34;</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>根据指定字段分组</strong></p>
+<pre><code class="language-python">models.Book.objects.annotate(autherNum=Count('author__id')).values('autherNum','title')
+</code></pre>
+<p><strong>统计出版社最便宜书的价格</strong></p>
+<pre><code class="language-python"> models.Press.objects.annotate(minPrice=Min('book__price')).values(&quot;name&quot;, &quot;minPrice&quot;)
+</code></pre>
+<p><strong>统计不止一个作者的书</strong></p>
+<pre><code class="language-python">models.Book.objects.annotate(autherCount=Count(&quot;author__id&quot;)).filter(autherCount__gt=1).values(&quot;title&quot;,&quot;autherCount&quot;)
+</code></pre>
+<p><strong>统计作者出书的总价</strong></p>
+<pre><code class="language-python">models.Author.objects.annotate(bookPrice=Sum(&quot;book__price&quot;)).values(&quot;name&quot;,&quot;bookPrice&quot;)
+</code></pre>
+<p><strong>根据指定字段分组</strong></p>
 <h2 id="fq查询">F&amp;Q查询</h2>
 <h3 id="f查询">F查询</h3>
 <p>F 可以在对Model字段值的转换时，无需从数据库中将值加载到内存中，进行操作后再<code>save()</code>。</p>
 <p>例如。通常情况下，在更新数据时需先从数据库里将原数据加载到内存里，编辑后最后提交。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">order</span> <span class="o">=</span> <span class="n">Order</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">orderid</span><span class="o">=</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">order</span><span class="o">.</span><span class="n">amount</span> <span class="o">+=</span> <span class="mi">1</span>
-</span></span><span class="line"><span class="cl"><span class="n">order</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而F 可以直接对值进行运行而不必将数据从库中拉到内存中。例如</p>
+<pre><code class="language-python">order = Order.objects.get(orderid='1')
+order.amount += 1
+order.save()
+</code></pre>
+<p>而F 可以直接对值进行运行而不必将数据从库中拉到内存中。例如</p>
 <p><strong>卖出大于库存的书籍</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">sell__gt</span><span class="o">=</span><span class="n">F</span><span class="p">(</span><span class="s1">&#39;stock&#39;</span><span class="p">))</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>对所有书籍价格增加100</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">price</span><span class="o">=</span><span class="n">F</span><span class="p">(</span><span class="s1">&#39;price&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">100</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="q查询">Q查询</h3>
+<pre><code class="language-python">models.Book.objects.filter(sell__gt=F('stock'))
+</code></pre>
+<p><strong>对所有书籍价格增加100</strong></p>
+<pre><code class="language-python">models.Book.objects.update(price=F('price')+100)
+</code></pre>
+<h3 id="q查询">Q查询</h3>
 <p>ORM filter() 等方法中的关键字参数查询都是一起进行 <code>AND</code>  的。 如需要执行更复杂的查询（例如OR语句），你可以使用Q对象。</p>
 <p>Q是对查询条件进行字符串拼接，故可以组合 <code>&amp;</code>  和<code>|</code>  等操作符以及使用括号进行分组来编写任意复杂的Q对象。同时，Q 对象可以使用<code>~</code> 操作符取反。</p>
 <p>Q 对象允许组合正常的查询和取反(<code>NOT</code>) 查询。</p>
 <p>如**：查询作者是的Radamandis和Phoenix**</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Q</span><span class="p">(</span><span class="n">authors__name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">)</span><span class="o">|</span><span class="n">Q</span><span class="p">(</span><span class="n">authors__name</span><span class="o">=</span><span class="s2">&#34;Radamandis&#34;</span><span class="p">))</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>查询作者不是Phoenix的书</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="o">~</span><span class="n">Q</span><span class="p">(</span><span class="n">author__name</span><span class="o">=</span><span class="s2">&#34;Phoenix&#34;</span><span class="p">))</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>也可以进行组合查询</strong>: 查询作者不是Phoenix 并且价格大于700</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">models.Book.objects.filter(~Q(author__name=&#34;Phoenix&#34;) &amp; Q(publishData__gt=&#34;2021-08-04&#34;))
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Q的第二种使用方法</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">query</span> <span class="o">=</span> <span class="n">Q</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">query</span><span class="o">.</span><span class="n">connector</span> <span class="o">=</span> <span class="s1">&#39;OR&#39;</span> <span class="c1">#默认为and</span>
-</span></span><span class="line"><span class="cl"><span class="n">query</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl"><span class="n">query</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl"><span class="n">query</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">models</span><span class="o">.</span><span class="n">Book</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="事务">事务</h2>
+<pre><code class="language-python">models.Book.objects.filter(Q(authors__name=&quot;Phoenix&quot;)|Q(authors__name=&quot;Radamandis&quot;))
+</code></pre>
+<p><strong>查询作者不是Phoenix的书</strong></p>
+<pre><code class="language-python">models.Book.objects.filter(~Q(author__name=&quot;Phoenix&quot;))
+</code></pre>
+<p><strong>也可以进行组合查询</strong>: 查询作者不是Phoenix 并且价格大于700</p>
+<pre><code>models.Book.objects.filter(~Q(author__name=&quot;Phoenix&quot;) &amp; Q(publishData__gt=&quot;2021-08-04&quot;))
+</code></pre>
+<p>Q的第二种使用方法</p>
+<pre><code class="language-python">query = Q()
+query.connector = 'OR' #默认为and
+query.children.append(('id', 1))
+query.children.append(('id', 2))
+query.children.append(('id', 3))
+
+models.Book.objects.filter(query)
+</code></pre>
+<h2 id="事务">事务</h2>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/">transactions</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/" target="_blank"
+   rel="noopener nofollow noreferrer" >transactions</a></p>
 </blockquote>
 <p>在操作多表，或多次变更数据时，这些数据的修改应该是一个整体事务，即要么一起成功，要么一起失败。Django 默认的事务行为是自动提交，即每执行一次则会自动提交到数据库。</p>
 <p>在django中事务的使用是通过<code>django.db.transaction</code>模块提供的<code>atomic</code>来定义事务。所以使用事务需要先引入<code>from django.db import transaction</code></p>
 <p>事务的使用可以通过<code>装饰器</code> 或 <code>with</code>语句。</p>
 <p>通过装饰器方式（全局事务），在整个函数内为一个事务，要么一起成功，要么一起失败。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="nd">@transaction</span><span class="o">.</span><span class="n">atomic</span>
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
-</span></span><span class="line"><span class="cl">    <span class="n">models</span><span class="o">.</span><span class="n">Press</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;Yasgot&#34;</span><span class="p">,</span><span class="n">address</span><span class="o">=</span><span class="s2">&#34;Nordische Botschaften&#34;</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s2">&#34;yasgot.com@gamil.com&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span> <span class="s2">&#34;insert ok.&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">models</span><span class="o">.</span><span class="n">Press</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&#34;Yasgot&#34;</span><span class="p">,</span><span class="n">address</span><span class="o">=</span><span class="s2">&#34;Nordische Botschaften&#34;</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s2">&#34;yasgot.com@gamil.com&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">book</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Press</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span> <span class="n">book</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过with方式（局部事务），在函数中，使用 <code>with transaction.atomic():</code> 代码块内的为一个事务。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">viewfunc</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">	<span class="k">with</span> <span class="n">transaction</span><span class="o">.</span><span class="n">atomic</span><span class="p">():</span>
-</span></span><span class="line"><span class="cl">	<span class="c1"># 这部分代码会在事务中执行</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="事务的异常处理">事务的异常处理</h3>
+<pre><code class="language-python">@transaction.atomic
+def test():
+    models.Press.objects.create(name=&quot;Yasgot&quot;,address=&quot;Nordische Botschaften&quot;, email=&quot;yasgot.com@gamil.com&quot;)
+    print &quot;insert ok.&quot;
+    time.sleep(10)
+    models.Press.objects.create(name=&quot;Yasgot&quot;,address=&quot;Nordische Botschaften&quot;, email=&quot;yasgot.com@gamil.com&quot;)
+    book = models.Press.objects.all()
+    print book
+</code></pre>
+<p>通过with方式（局部事务），在函数中，使用 <code>with transaction.atomic():</code> 代码块内的为一个事务。</p>
+<pre><code class="language-python">def viewfunc(request):
+	with transaction.atomic():
+	# 这部分代码会在事务中执行
+</code></pre>
+<h3 id="事务的异常处理">事务的异常处理</h3>
 <h4 id="保存点">保存点</h4>
 <p>保存点（<code>savepoint</code>），在事务中可以做到部分回滚，而不是整个事务。</p>
 <p><code>atomic()</code> 为开启一个事务，而回滚是通过，<code>transaction.rollback()</code> 执行的完全回滚。而django也推荐仅使用<code>atomic()</code>。</p>
 <ul>
 <li>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint"><code>savepoint(*using=None*)</code></a>：创建新的保存点，返回保存点ID (<code>sid</code>) 。</p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>savepoint(*using=None*)</code></a>：创建新的保存点，返回保存点ID (<code>sid</code>) 。</p>
 </li>
 <li>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint_commit"><code>savepoint_commit(*sid*, *using=None*)</code></a>：释放保存点 <code>sid</code> 。如回滚等将不在保证之前的保存点的数据而是整个事务。</p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint_commit" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>savepoint_commit(*sid*, *using=None*)</code></a>：释放保存点 <code>sid</code> 。如回滚等将不在保证之前的保存点的数据而是整个事务。</p>
 </li>
 <li>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint_rollback"><code>savepoint_rollback(*sid*, *using=None*)</code></a>:回滚事务 <code>sid</code> 。</p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.savepoint_rollback" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>savepoint_rollback(*sid*, *using=None*)</code></a>:回滚事务 <code>sid</code> 。</p>
 </li>
 </ul>
-<p>下面是官方的一个例子：<a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.clean_savepoints">example-to-savepoint</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">django.db</span> <span class="kn">import</span> <span class="n">transaction</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># open a transaction</span>
-</span></span><span class="line"><span class="cl"><span class="nd">@transaction</span><span class="o">.</span><span class="n">atomic</span>
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">viewfunc</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">a</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="c1"># transaction now contains a.save()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">sid</span> <span class="o">=</span> <span class="n">transaction</span><span class="o">.</span><span class="n">savepoint</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">b</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="c1"># transaction now contains a.save() and b.save()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">want_to_keep_b</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">transaction</span><span class="o">.</span><span class="n">savepoint_commit</span><span class="p">(</span><span class="n">sid</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># open transaction still contains a.save() and b.save()</span>
-</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">        <span class="n">transaction</span><span class="o">.</span><span class="n">savepoint_rollback</span><span class="p">(</span><span class="n">sid</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># open transaction now contains only a.save()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="执行原生sql">执行原生SQL</h2>
+<p>下面是官方的一个例子：<a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/transactions/#django.db.transaction.clean_savepoints" target="_blank"
+   rel="noopener nofollow noreferrer" >example-to-savepoint</a></p>
+<pre><code class="language-python">from django.db import transaction
+
+# open a transaction
+@transaction.atomic
+def viewfunc(request):
+
+    a.save()
+    # transaction now contains a.save()
+
+    sid = transaction.savepoint()
+
+    b.save()
+    # transaction now contains a.save() and b.save()
+
+    if want_to_keep_b:
+        transaction.savepoint_commit(sid)
+        # open transaction still contains a.save() and b.save()
+    else:
+        transaction.savepoint_rollback(sid)
+        # open transaction now contains only a.save()
+</code></pre>
+<h2 id="执行原生sql">执行原生SQL</h2>
 <h2 id="reference-1">Reference</h2>
 <blockquote>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/sql/">raw-sql</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/topics/db/sql/" target="_blank"
+   rel="noopener nofollow noreferrer" >raw-sql</a></p>
 </blockquote>
 <p><strong><code>raw()</code></strong> :执行原生语句 <code>django.db.models.query.RawQuerySet</code></p>
 <p><strong><code> django.db.connection()</code></strong>：；连接多个库 <code>from django.db import connection</code></p>
 <h2 id="自定义字段类">自定义字段类</h2>
 <h2 id="reference-2">Reference</h2>
 <blockquote>
-<p><a href="https://docs.djangoproject.com/zh-hans/3.2/howto/custom-model-fields/">custom-filed</a></p>
+<p><a href="https://docs.djangoproject.com/zh-hans/3.2/howto/custom-model-fields/" target="_blank"
+   rel="noopener nofollow noreferrer" >custom-filed</a></p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">class FixedCharField(models.Field):
-</span></span><span class="line"><span class="cl">    &#34;&#34;&#34;
-</span></span><span class="line"><span class="cl">    自定义的 char 类型的字段类
-</span></span><span class="line"><span class="cl">    &#34;&#34;&#34;
-</span></span><span class="line"><span class="cl">    def __init__(self, max_length, *args, **kwargs):
-</span></span><span class="line"><span class="cl">        self.max_length = max_length
-</span></span><span class="line"><span class="cl">        super(FixedCharField, self).__init__(max_length=max_length, *args, **kwargs)
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    def db_type(self, connection):
-</span></span><span class="line"><span class="cl">        &#34;&#34;&#34;
-</span></span><span class="line"><span class="cl">        限定生成数据库表的字段类型为 char，长度为 max_length 指定的值
-</span></span><span class="line"><span class="cl">        &#34;&#34;&#34;
-</span></span><span class="line"><span class="cl">        return &#39;char(%s)&#39; % self.max_length
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code>class FixedCharField(models.Field):
+    &quot;&quot;&quot;
+    自定义的 char 类型的字段类
+    &quot;&quot;&quot;
+    def __init__(self, max_length, *args, **kwargs):
+        self.max_length = max_length
+        super(FixedCharField, self).__init__(max_length=max_length, *args, **kwargs)
+
+    def db_type(self, connection):
+        &quot;&quot;&quot;
+        限定生成数据库表的字段类型为 char，长度为 max_length 指定的值
+        &quot;&quot;&quot;
+        return 'char(%s)' % self.max_length
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -1625,58 +954,27 @@
 <p>在 3.5 版更改: 现在推荐使用 venv 来创建虚拟环境。</p>
 <h3 id="创建venv虚拟环境">创建venv虚拟环境</h3>
 <p>如果使用python2，则需要安装virtualenv模块</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">pip install virtualenv 
-</span></span><span class="line"><span class="cl">python -m virtualenv {name}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>python3内置了 <code>venv</code> 模块，可以直接使用</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">python3 -m venv {name}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>进入虚拟环境</p>
+<pre><code>pip install virtualenv 
+python -m virtualenv {name}
+</code></pre>
+<p>python3内置了 <code>venv</code> 模块，可以直接使用</p>
+<pre><code>python3 -m venv {name}
+</code></pre>
+<p>进入虚拟环境</p>
 <p>linux</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">venv\Scripts\activate
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>windows</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">venv\Scripts\activate.bat
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>退出环境</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">venv\Scripts\deactivate.bat
-</span></span><span class="line"><span class="cl">venv\Scripts\deactivate
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用venv环境安装软件报错">使用venv环境安装软件报错</h3>
+<pre><code>venv\Scripts\activate
+</code></pre>
+<p>windows</p>
+<pre><code>venv\Scripts\activate.bat
+</code></pre>
+<p>退出环境</p>
+<pre><code>venv\Scripts\deactivate.bat
+venv\Scripts\deactivate
+</code></pre>
+<h3 id="使用venv环境安装软件报错">使用venv环境安装软件报错</h3>
 <blockquote>
-<p>Could not fetch URL <a href="https://pypi.org/simple/pip/">https://pypi.org/simple/pip/</a>: There was a problem confirming the ssl certificate: HTTPSConnectionPool(host=&lsquo;pypi.org&rsquo;, port=443): Max retries exceeded with url: /simple/pip/ (Caused by SSLError(SSLEOFError(8, u&rsquo;EOF occurred in violation of protocol (_ssl.c:727)&rsquo;),)) - skipping</p>
+<p>Could not fetch URL <a href="https://pypi.org/simple/pip/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://pypi.org/simple/pip/</a>: There was a problem confirming the ssl certificate: HTTPSConnectionPool(host=&lsquo;pypi.org&rsquo;, port=443): Max retries exceeded with url: /simple/pip/ (Caused by SSLError(SSLEOFError(8, u&rsquo;EOF occurred in violation of protocol (_ssl.c:727)&rsquo;),)) - skipping</p>
 </blockquote>
 <p>查询很多都无法解决，最后发现有文章提到这是因为开启了climb wall软件导致的，关闭后恢复正常</p>
 ]]></content:encoded>
@@ -1693,7 +991,8 @@
 <p>信号（signal）&ndash; 进程间通讯的一种方式，也可作为一种软件中断的方法。一个进程一旦接收到信号就会打断原来的程序执行来按照信号进行处理。</p>
 <p>简化术语，信号是一个事件，用于中断运行功能的执行。信号始终在主Python线程中执行。对于信号，这里不做详细介绍。</p>
 <p>Python封装了操作系统的信号功能的库 <code>singal</code> 的库。<code>singal</code>  库可以使我们在python程序中中实现信号机制。</p>
-<p><a href="https://zh.wikipedia.org/wiki/Unix%E4%BF%A1%E5%8F%B7">https://zh.wikipedia.org/wiki/Unix%E4%BF%A1%E5%8F%B7</a>)</p>
+<p><a href="https://zh.wikipedia.org/wiki/Unix%E4%BF%A1%E5%8F%B7" target="_blank"
+   rel="noopener nofollow noreferrer" >https://zh.wikipedia.org/wiki/Unix%E4%BF%A1%E5%8F%B7</a>)</p>
 <h2 id="python的信号处理">Python的信号处理</h2>
 <p>首先需要了解Python为什么要提供 <code>signal Library</code>。信号库使我们能够使用信号处理程序，以便当接收信号时都可以执行自定义任务。</p>
 <blockquote>
@@ -1701,57 +1000,31 @@
 </blockquote>
 <p>可以通过使用 <code>signal.singal()</code> 函数来实现此功能</p>
 <h3 id="python对信号的处理">Python对信号的处理</h3>
-<p>通常情况下Python 信号处理程序总是会在主 Python 主解析器的主线程中执行，即使信号是在另一个线程中接收的。 这意味着信号不能被用作线程间通信的手段。 你可以改用 <a href="https://docs.python.org/zh-cn/3/library/threading.html#module-threading"><code>threading</code></a> 模块中的同步原语。</p>
+<p>通常情况下Python 信号处理程序总是会在主 Python 主解析器的主线程中执行，即使信号是在另一个线程中接收的。 这意味着信号不能被用作线程间通信的手段。 你可以改用 <a href="https://docs.python.org/zh-cn/3/library/threading.html#module-threading" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>threading</code></a> 模块中的同步原语。</p>
 <p>Python信号处理流程，需要对信号处理程序（signal handling ）简要说明。<code>signal handling </code> 是一个任务或程序，当检测到特定信号时，处理函数需要两个参数，即信号id <code>signal number</code> （Linux 中 1-64），与堆栈帧 <code>frame</code>。通过相应信号启动对应 <code>signal handling</code> ，<code>signal.signal()</code> 将为信号分配 处理函数。</p>
 <p>如：当运行一个脚本时，取消，此时是捕获到一个信号，可以通过捕获信号方式对程序进行异步的优雅处理。通过将信号处理程序注册到应用程序中：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-py" data-lang="py"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">signal</span>  
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>  
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">handler</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>  <span class="c1"># 定义一个signal handling</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Signal Number:&#34;</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="s2">&#34; Frame: &#34;</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>  
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>  <span class="c1"># 将handle分配给对应信号</span>
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl"><span class="k">while</span> <span class="kc">True</span><span class="p">:</span>  
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Press ctrl + c&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/python-signal-processing.png" alt="python signal processing, python SIGINT handler"  /></p>
+<pre><code class="language-py">import signal  
+import time  
+
+def handler(a, b):  # 定义一个signal handling
+    print(&quot;Signal Number:&quot;, a, &quot; Frame: &quot;, b)  
+  
+signal.signal(signal.SIGINT, handler)  # 将handle分配给对应信号
+  
+while True:  
+    print(&quot;Press ctrl + c&quot;)
+    time.sleep(10) 
+</code></pre>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/python-signal-processing.png" alt="python signal processing, python SIGINT handler" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>如果不对对应信号进行捕获处理时，python将会抛出异常。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ python signal.py
-</span></span><span class="line"><span class="cl">^CTraceback (most recent call last):
-</span></span><span class="line"><span class="cl">  File &#34;signal.py&#34;, line 3, in &lt;module&gt;
-</span></span><span class="line"><span class="cl">    while True:
-</span></span><span class="line"><span class="cl">KeyboardInterrupt
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="信号枚举">信号枚举</h2>
+<pre><code>$ python signal.py
+^CTraceback (most recent call last):
+  File &quot;signal.py&quot;, line 3, in &lt;module&gt;
+    while True:
+KeyboardInterrupt
+</code></pre>
+<h2 id="信号枚举">信号枚举</h2>
 <p>信号的表现为一个int，Python的信号库有对应的信号枚举成员</p>
 <p>其中常用的一般有，</p>
 <p>SIGINT  control+c</p>
@@ -1831,41 +1104,24 @@
 <p>创建一个 <code>SIGALRM</code> 类型的信号，time为预定的时间，设置为0时取消先前设置的定时器</p>
 <h3 id="signalpause"><strong>signal.pause()</strong></h3>
 <p>可以使代码逻辑处理过程睡眠，直到收到信号，然后调用对应的handler。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">signal</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">do_exit</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">stack</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;Exiting&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_IGN</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">do_exit</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;My PID:&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在执行时，忽略了ctrl + c的信号，对USR1做退出操作</p>
+<pre><code class="language-python">import signal
+import os
+import time
+
+def do_exit(sig, stack):
+    raise SystemExit('Exiting')
+
+signal.signal(signal.SIGINT, signal.SIG_IGN)
+signal.signal(signal.SIGUSR1, do_exit)
+
+print('My PID:', os.getpid())
+
+signal.pause()
+</code></pre>
+<p>在执行时，忽略了ctrl + c的信号，对USR1做退出操作</p>
 <h3 id="signalsetitimerwhich-seconds-interval"><strong>signal.setitimer(which, seconds, interval)</strong></h3>
-<p>which： <code>signal.ITIMER_REAL，</code><a href="https://docs.python.org/2/library/signal.html?highlight=signal#signal.ITIMER_VIRTUAL"><code>signal.ITIMER_VIRTUAL</code></a> 或 <code>signal.ITIMER_PROF</code></p>
+<p>which： <code>signal.ITIMER_REAL，</code><a href="https://docs.python.org/2/library/signal.html?highlight=signal#signal.ITIMER_VIRTUAL" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>signal.ITIMER_VIRTUAL</code></a> 或 <code>signal.ITIMER_PROF</code></p>
 <p>seconds：多少秒后触发which。seconds设置为0可以清除which的计时器。</p>
 <p>interval：每隔interval秒后触发一次</p>
 <h3 id="osgetpid">os.getpid()</h3>
@@ -1875,174 +1131,86 @@
 <h2 id="当signal-handling需要参数怎么办">当signal handling需要参数怎么办</h2>
 <p>在一些时候，signal handling的操作需要对应主进程传递进来一些函数，而在整个项目中执行过程中的变量与 signal handling不处于一个作用域中，而<code>signal.signal()</code> 不能传递其他的参数，这个时候可以使用 <code>partial</code> 创建一个闭包来解决这个问题。</p>
 <p>例如：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">signal</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">sys</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s2">这里signal frame默认参数需要放到最后
-</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">signal_handler</span><span class="p">(</span><span class="n">test_parameter1</span><span class="p">,</span> <span class="n">test_parameter2</span><span class="p">,</span> <span class="n">signal_num</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span> <span class="s2">&#34;signal </span><span class="si">{}</span><span class="s2"> exit. </span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">signal_num</span><span class="p">,</span> <span class="n">test_parameter1</span><span class="p">,</span> <span class="n">test_parameter2</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">a</span><span class="o">=</span><span class="mi">1</span>
-</span></span><span class="line"><span class="cl"><span class="n">b</span><span class="o">=</span><span class="mi">2</span>
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">partial</span><span class="p">(</span><span class="n">signal_handler</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span> <span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;My PID:&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="忽略信号">忽略信号</h2>
+<pre><code class="language-python">import signal
+import os
+import sys
+import time
+
+from functools import partial
+
+&quot;&quot;&quot;
+这里signal frame默认参数需要放到最后
+&quot;&quot;&quot;
+def signal_handler(test_parameter1, test_parameter2, signal_num, frame):
+    print &quot;signal {} exit. {} {}&quot;.format(signal_num, test_parameter1, test_parameter2)
+    sys.exit(1)
+
+
+a=1
+b=2
+signal.signal(signal.SIGINT, partial(signal_handler, a, b) )
+print('My PID:', os.getpid())
+
+signal.pause()
+</code></pre>
+<h2 id="忽略信号">忽略信号</h2>
 <p>signal定义了忽略接收信号的方法。为了实现信号的处理，需要使用<code>signal.signal()</code> 将默认的信号与<code>signal.SIG_IGN</code> 注册，即可忽略对应的信号中断，<code>kill -9</code> 不可忽略 。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">signal</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">receiveSignal</span><span class="p">(</span><span class="n">signalNumber</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Received:&#39;</span><span class="p">,</span> <span class="n">signalNumber</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="s1">&#39;Exiting&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">    <span class="c1"># register the signal to be caught</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># register the signal to be ignored</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">signal</span><span class="o">.</span><span class="n">SIG_IGN</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1"># output current process id</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;My PID is:&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="常用的信号">常用的信号</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">signal</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">sys</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">readConfiguration</span><span class="p">(</span><span class="n">signalNumber</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;(SIGHUP) reading configuration&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">terminateProcess</span><span class="p">(</span><span class="n">signalNumber</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span> <span class="p">(</span><span class="s1">&#39;(SIGTERM) terminating the process&#39;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">receiveSignal</span><span class="p">(</span><span class="n">signalNumber</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
-</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Received:&#39;</span><span class="p">,</span> <span class="n">signalNumber</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span>
-</span></span><span class="line"><span class="cl">	
-</span></span><span class="line"><span class="cl">	<span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGHUP</span><span class="p">,</span> <span class="n">readConfiguration</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGQUIT</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGILL</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTRAP</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGABRT</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGBUS</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGFPE</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">#signal.signal(signal.SIGKILL, receiveSignal)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR1</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGSEGV</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGUSR2</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGPIPE</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGALRM</span><span class="p">,</span> <span class="n">receiveSignal</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">terminateProcess</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-python">import signal
+import os
+import time
+
+def receiveSignal(signalNumber, frame):
+    print('Received:', signalNumber)
+    raise SystemExit('Exiting')
+    return
+
+if __name__ == '__main__':
+    # register the signal to be caught
+    signal.signal(signal.SIGUSR1, receiveSignal)
+
+    # register the signal to be ignored
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    # output current process id
+    print('My PID is:', os.getpid())
+
+    signal.pause()
+</code></pre>
+<h2 id="常用的信号">常用的信号</h2>
+<pre><code class="language-python">import signal
+import os
+import time
+import sys
+
+def readConfiguration(signalNumber, frame):
+    print ('(SIGHUP) reading configuration')
+    return
+
+def terminateProcess(signalNumber, frame):
+    print ('(SIGTERM) terminating the process')
+    sys.exit()
+
+def receiveSignal(signalNumber, frame):
+    print('Received:', signalNumber)
+    return
+	
+	signal.signal(signal.SIGHUP, readConfiguration)
+    signal.signal(signal.SIGINT, receiveSignal)
+    signal.signal(signal.SIGQUIT, receiveSignal)
+    signal.signal(signal.SIGILL, receiveSignal)
+    signal.signal(signal.SIGTRAP, receiveSignal)
+    signal.signal(signal.SIGABRT, receiveSignal)
+    signal.signal(signal.SIGBUS, receiveSignal)
+    signal.signal(signal.SIGFPE, receiveSignal)
+    #signal.signal(signal.SIGKILL, receiveSignal)
+    signal.signal(signal.SIGUSR1, receiveSignal)
+    signal.signal(signal.SIGSEGV, receiveSignal)
+    signal.signal(signal.SIGUSR2, receiveSignal)
+    signal.signal(signal.SIGPIPE, receiveSignal)
+    signal.signal(signal.SIGALRM, receiveSignal)
+    signal.signal(signal.SIGTERM, terminateProcess)
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -2064,136 +1232,64 @@ python version: 2.7.18</p>
 &lsquo;django.db.backends.oracle&rsquo;</p>
 </blockquote>
 <p>并且修改配置实例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">DATABASES = {
-</span></span><span class="line"><span class="cl">    &#39;default&#39;: {
-</span></span><span class="line"><span class="cl">        &#39;ENGINE&#39;: &#39;django.db.backends.mysql&#39;,
-</span></span><span class="line"><span class="cl">        &#39;USER&#39;: &#39;mydatabaseuser&#39;,
-</span></span><span class="line"><span class="cl">        &#39;NAME&#39;: &#39;mydatabase&#39;,
-</span></span><span class="line"><span class="cl">        &#39;TEST&#39;: {
-</span></span><span class="line"><span class="cl">            &#39;NAME&#39;: &#39;mytestdatabase&#39;,
-</span></span><span class="line"><span class="cl">        },
-</span></span><span class="line"><span class="cl">    },
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>brew unlink mysql</p>
+<pre><code>DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'USER': 'mydatabaseuser',
+        'NAME': 'mydatabase',
+        'TEST': {
+            'NAME': 'mytestdatabase',
+        },
+    },
+}
+</code></pre>
+<p>brew unlink mysql</p>
 <h3 id="error-command-gcc-failed-with-exit-status-1">error: command &lsquo;gcc&rsquo; failed with exit status 1</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">  creating build/temp.macosx-10.9-x86_64-2.7
-</span></span><span class="line"><span class="cl">  gcc -fno-strict-aliasing -fno-common -dynamic -arch x86_64 -g -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -Dversion_info=(1,2,5,&#39;final&#39;,1) -D__version__=1.2.5 -I/usr/local/Cellar/mysql@5.7/5.7.32/include/mysql -I/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7 -c _mysql.c -o build/temp.macosx-10.9-x86_64-2.7/_mysql.o
-</span></span><span class="line"><span class="cl">  gcc -bundle -undefined dynamic_lookup -arch x86_64 -g build/temp.macosx-10.9-x86_64-2.7/_mysql.o -L/usr/local/Cellar/mysql@5.7/5.7.32/lib -lmysqlclient -lssl -lcrypto -o build/lib.macosx-10.9-x86_64-2.7/_mysql.so
-</span></span><span class="line"><span class="cl">  ld: library not found for -lssl
-</span></span><span class="line"><span class="cl">  clang: error: linker command failed with exit code 1 (use -v to see invocation)
-</span></span><span class="line"><span class="cl">  error: command &#39;gcc&#39; failed with exit status 1
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># Required for mysqlclient, see brew info openssl
-</span></span><span class="line"><span class="cl">echo &#39;export PATH=&#34;/usr/local/opt/openssl/bin:$PATH&#34;&#39; &gt;&gt; ~/.bash_profile
-</span></span><span class="line"><span class="cl">export LDFLAGS=&#34;-L/usr/local/opt/openssl/lib&#34;
-</span></span><span class="line"><span class="cl">export CPPFLAGS=&#34;-I/usr/local/opt/openssl/include&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pip install MySQL-python
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Reference：<a href="https://stackoverflow.com/questions/49025594/osx-ld-library-not-found-for-lssl">not-found-for-lssl</a></p>
+<pre><code>  creating build/temp.macosx-10.9-x86_64-2.7
+  gcc -fno-strict-aliasing -fno-common -dynamic -arch x86_64 -g -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -Dversion_info=(1,2,5,'final',1) -D__version__=1.2.5 -I/usr/local/Cellar/mysql@5.7/5.7.32/include/mysql -I/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7 -c _mysql.c -o build/temp.macosx-10.9-x86_64-2.7/_mysql.o
+  gcc -bundle -undefined dynamic_lookup -arch x86_64 -g build/temp.macosx-10.9-x86_64-2.7/_mysql.o -L/usr/local/Cellar/mysql@5.7/5.7.32/lib -lmysqlclient -lssl -lcrypto -o build/lib.macosx-10.9-x86_64-2.7/_mysql.so
+  ld: library not found for -lssl
+  clang: error: linker command failed with exit code 1 (use -v to see invocation)
+  error: command 'gcc' failed with exit status 1
+</code></pre>
+<p>解决方法：</p>
+<pre><code># Required for mysqlclient, see brew info openssl
+echo 'export PATH=&quot;/usr/local/opt/openssl/bin:$PATH&quot;' &gt;&gt; ~/.bash_profile
+export LDFLAGS=&quot;-L/usr/local/opt/openssl/lib&quot;
+export CPPFLAGS=&quot;-I/usr/local/opt/openssl/include&quot;
+
+pip install MySQL-python
+</code></pre>
+<p>Reference：<a href="https://stackoverflow.com/questions/49025594/osx-ld-library-not-found-for-lssl" target="_blank"
+   rel="noopener nofollow noreferrer" >not-found-for-lssl</a></p>
 <p>windows安装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">pip install mysqlclient-1.3.12-cp36-cp36m-win_amd64.whl
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Reference <a href="https://www.lfd.uci.edu/~gohlke/pythonlibs/">https://www.lfd.uci.edu/~gohlke/pythonlibs/</a></p>
+<pre><code>pip install mysqlclient-1.3.12-cp36-cp36m-win_amd64.whl
+</code></pre>
+<p>Reference <a href="https://www.lfd.uci.edu/~gohlke/pythonlibs/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://www.lfd.uci.edu/~gohlke/pythonlibs/</a></p>
 <p>ubuntu安装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">apt-get install libmysqld-dev
-</span></span><span class="line"><span class="cl">pip install MySQL-python
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="my_configh-file-not-found">my_config.h file not found</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">creating build/temp.macosx-10.9-x86_64-2.7
-</span></span><span class="line"><span class="cl">    gcc -fno-strict-aliasing -fno-common -dynamic -arch x86_64 -g -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -Dversion_info=(1,2,5,&#39;final&#39;,1) -D__version__=1.2.5 -I/usr/local/Cellar/mysql/8.0.23_1/include/mysql -I/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7 -c _mysql.c -o build/temp.macosx-10.9-x86_64-2.7/_mysql.o
-</span></span><span class="line"><span class="cl">    _mysql.c:44:10: fatal error: &#39;my_config.h&#39; file not found
-</span></span><span class="line"><span class="cl">    #include &#34;my_config.h&#34;
-</span></span><span class="line"><span class="cl">             ^~~~~~~~~~~~~
-</span></span><span class="line"><span class="cl">    1 error generated.
-</span></span><span class="line"><span class="cl">    error: command &#39;gcc&#39; failed with exit status 1
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：网上找了很多版本均无法解决，最后发现实际上与linux处理思路是一样的。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">brew install mysql # 可以加版本 如 brew install mysq@5.7
-</span></span><span class="line"><span class="cl">brew unlink mysql
-</span></span><span class="line"><span class="cl">brew install mysql-connector-c  # 这个是客户端
-</span></span><span class="line"><span class="cl">ln -snvf /usr/local/Cellar/mysql\@5.7/5.7.32/bin/mysql_config  /usr/local/bin/ # 做个软连接，位置可能不一致
-</span></span><span class="line"><span class="cl">sed -i -e &#39;s/libs=&#34;$libs -l &#34;/libs=&#34;$libs -lmysqlclient -lssl -lcrypto&#34;/g&#39; /usr/local/bin/mysql_config
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pip install MySQL-python
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="sh-mysql_config-command-not-found">sh: mysql_config: command not found</h3>
+<pre><code>apt-get install libmysqld-dev
+pip install MySQL-python
+</code></pre>
+<h3 id="my_configh-file-not-found">my_config.h file not found</h3>
+<pre><code>creating build/temp.macosx-10.9-x86_64-2.7
+    gcc -fno-strict-aliasing -fno-common -dynamic -arch x86_64 -g -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -Dversion_info=(1,2,5,'final',1) -D__version__=1.2.5 -I/usr/local/Cellar/mysql/8.0.23_1/include/mysql -I/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7 -c _mysql.c -o build/temp.macosx-10.9-x86_64-2.7/_mysql.o
+    _mysql.c:44:10: fatal error: 'my_config.h' file not found
+    #include &quot;my_config.h&quot;
+             ^~~~~~~~~~~~~
+    1 error generated.
+    error: command 'gcc' failed with exit status 1
+</code></pre>
+<p>解决：网上找了很多版本均无法解决，最后发现实际上与linux处理思路是一样的。</p>
+<pre><code>brew install mysql # 可以加版本 如 brew install mysq@5.7
+brew unlink mysql
+brew install mysql-connector-c  # 这个是客户端
+ln -snvf /usr/local/Cellar/mysql\@5.7/5.7.32/bin/mysql_config  /usr/local/bin/ # 做个软连接，位置可能不一致
+sed -i -e 's/libs=&quot;$libs -l &quot;/libs=&quot;$libs -lmysqlclient -lssl -lcrypto&quot;/g' /usr/local/bin/mysql_config
+
+pip install MySQL-python
+</code></pre>
+<h3 id="sh-mysql_config-command-not-found">sh: mysql_config: command not found</h3>
 <p><code>sh: mysql_config: command not found</code> 这个与上面类似，可以看到也是在PATH中找mysql_config</p>
 ]]></content:encoded>
     </item>

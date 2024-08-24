@@ -18,70 +18,38 @@
 <p>本文将解析 D-Bus 配置文件，侧重点则为权限的配置</p>
 <h2 id="配置文件的基本结构">配置文件的基本结构</h2>
 <p>D-Bus 配置文件使用 XML 格式进行编写，具有以下基本结构：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE busconfig PUBLIC &#34;-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN&#34;
-</span></span></span><span class="line"><span class="cl"><span class="cp">        &#34;http://www.freedesktop.org/standards/D-Bus/1.0/busconfig.dtd&#34;&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;busconfig&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">group=</span><span class="s">&#34;wheel&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- policy rules go here --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">context=</span><span class="s">&#34;default&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- policy rules go here --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;include</span> <span class="na">filename=</span><span class="s">&#34;other-config.xml&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;listen&gt;</span>unix:path=/var/run/D-Bus/system_bus_socket<span class="nt">&lt;/listen&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;/busconfig&gt;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="什么是d-bus-policy">什么是D-Bus Policy？</h2>
+<pre><code class="language-xml">&lt;!DOCTYPE busconfig PUBLIC &quot;-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN&quot;
+        &quot;http://www.freedesktop.org/standards/D-Bus/1.0/busconfig.dtd&quot;&gt;
+&lt;busconfig&gt;
+  &lt;policy group=&quot;wheel&quot;&gt;
+    &lt;!-- policy rules go here --&gt;
+  &lt;/policy&gt;
+  &lt;policy context=&quot;default&quot;&gt;
+    &lt;!-- policy rules go here --&gt;
+  &lt;/policy&gt;
+  &lt;include filename=&quot;other-config.xml&quot;/&gt;
+  &lt;listen&gt;unix:path=/var/run/D-Bus/system_bus_socket&lt;/listen&gt;
+&lt;/busconfig&gt;
+</code></pre>
+<h2 id="什么是d-bus-policy">什么是D-Bus Policy？</h2>
 <p>D-Bus Policy是D-Bus配置文件中最重要的字段之一，用于定义D-Bus服务的访问控制策略。D-Bus Policy包含了一组规则，用于限制D-Bus服务的使用者对D-Bus服务的访问，确保D-Bus服务的安全性。</p>
 <p>这些规则可以限制对D-Bus的连接，以及对D-Bus服务的读写访问、接收和发送消息等操作，以助于保护D-Bus服务免受未经授权的访问和攻击。</p>
 <p>D-Bus Policy 是由 dbus-daemon 进程执行的，dbus-daemon 进程是DBus 消息总线系统的核心组件。D-Bus Policy 则在系统启动时加载并编译 dbus-policy 文件。此文件定义了系统中所有服务和对象的访问控制。</p>
 <h2 id="配置d-bus-policy">配置D-Bus Policy</h2>
 <p>&lt;policy&gt; 元素定义了要应用于总线连接的特定一组安全策略，也就是这里的核心配置，  &lt;policy&gt; 段的主要的子配置包含两个 allow 与 deny</p>
 <p>例如，下面是一个D-Bus Policy配置文件的示例：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE busconfig PUBLIC
-</span></span></span><span class="line"><span class="cl"><span class="cp">  &#34;-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN&#34;
-</span></span></span><span class="line"><span class="cl"><span class="cp">  &#34;http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd&#34;&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;busconfig&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;policy&gt;</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&lt;allow</span> <span class="na">own=</span><span class="s">&#34;org.example.myapp&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&lt;allow</span> <span class="na">own=</span><span class="s">&#34;org.example.myapp.service&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.example.myapp.service&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;/busconfig&gt;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>其中 own 用于允许其他DBus进程注册特定的DBus服务名称。own则是DBus服务的名称，它指明了DBus服务注册的名称，而这两条 own 允许了 <code>org.example.myapp</code> 和 <code>org.example.myapp.service</code> 的名字被注册。</p>
+<pre><code class="language-xml">&lt;!DOCTYPE busconfig PUBLIC
+  &quot;-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN&quot;
+  &quot;http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd&quot;&gt;
+&lt;busconfig&gt;
+    &lt;policy&gt;
+      &lt;allow own=&quot;org.example.myapp&quot;/&gt;
+      &lt;allow own=&quot;org.example.myapp.service&quot;/&gt;
+      &lt;allow send_destination=&quot;org.example.myapp.service&quot;/&gt;
+    &lt;/policy&gt;
+&lt;/busconfig&gt;
+</code></pre>
+<p>其中 own 用于允许其他DBus进程注册特定的DBus服务名称。own则是DBus服务的名称，它指明了DBus服务注册的名称，而这两条 own 允许了 <code>org.example.myapp</code> 和 <code>org.example.myapp.service</code> 的名字被注册。</p>
 <p>对于 own 存在四个回复标记</p>
 <ul>
 <li><code>RequestNameReplyPrimaryOwner</code>: 表示名称请求成功，您已成为主要所有者。</li>
@@ -109,31 +77,21 @@
 <h3 id="权限配置">权限配置</h3>
 <p>&lt;deny&gt; 配置需要出现在  &lt;policy&gt; 最上方，表示禁止某些操作，&lt;allow&gt; 是对上面的 &lt;deny&gt; 语句进行修饰。</p>
 <p>&lt;deny&gt; 确定是否拒绝与特定条件匹配的请求。如果匹配，则拒绝该操作（如果下面的 &lt;allow&gt; 允许，则允许），例如下列的配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"><span class="nt">&lt;policy</span> <span class="na">context=</span><span class="s">&#34;default&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">receive_path=</span><span class="s">&#34;/org/fedoraproject/FirewallD1&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">user=</span><span class="s">&#34;root&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">own=</span><span class="s">&#34;com.github.cylonchau.Uranus&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">receive_sender=</span><span class="s">&#34;com.github.cylonchau.Uranus&#34;</span> <span class="na">receive_path=</span><span class="s">&#34;/org/fedoraproject/FirewallD1&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;/policy&gt;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>例如拒绝所有请求 <code>/org/fedoraproject/FirewallD1</code> 的请求，只允许服务 <code>com.github.cylonchau.Uranus</code> 发送请求 <code>/org/fedoraproject/FirewallD1</code> 的请求</p>
+<pre><code class="language-xml">&lt;policy context=&quot;default&quot;&gt;
+    &lt;deny receive_path=&quot;/org/fedoraproject/FirewallD1&quot; /&gt;
+    &lt;allow user=&quot;root&quot; /&gt;
+    &lt;allow own=&quot;com.github.cylonchau.Uranus&quot; /&gt;
+    &lt;allow receive_sender=&quot;com.github.cylonchau.Uranus&quot; receive_path=&quot;/org/fedoraproject/FirewallD1&quot; /&gt;
+&lt;/policy&gt;
+</code></pre>
+<p>例如拒绝所有请求 <code>/org/fedoraproject/FirewallD1</code> 的请求，只允许服务 <code>com.github.cylonchau.Uranus</code> 发送请求 <code>/org/fedoraproject/FirewallD1</code> 的请求</p>
 <p>具有一个或多个 <code>send_*</code> 系列属性的规则在连接尝试发送消息时按顺序检查。最后匹配消息的规则确定是否可以发送它。</p>
 <p>而通常，已知的会话总线允许发送任何消息。通常，已知的系统总线允许发送任何信号，选择性地向dbus-daemon发送方法调用，并恰好回答先前已发送的每个方法调用（成功或错误）。</p>
 <p>具有一个或多个 <code>receive_*</code> 系列属性或仅带有 <code>eavesdrop</code> 属性且没有其他属性的规则将为每个消息的 receiver 进行检查（如果消息是广播或连接正在窃听，则可能有多个接收者）。最后一个匹配消息的规则确定是否可以接收它。</p>
 <p><code>send_destination</code> 和 <code>receive_sender</code> 规则表示消息不能被发送到或从给定名称的 “所有者” （服务）接收，而不是不能向该名称发送。即，如果连接拥有服务A、B、C，并且向A发送被拒绝，则向B或C发送也将无法工作。作为特例，<code>send_destination=&quot;*&quot;</code> 匹配任何消息（无论是否指定了目标），而 <code>receive_sender=&quot;*&quot;</code> 匹配任何消息。</p>
 <h2 id="reference">Reference</h2>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html">dbus-daemon</a></p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-daemon</a></p>
 ]]></content:encoded>
     </item>
     
@@ -163,7 +121,8 @@
 </ul>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://stackoverflow.com/questions/404604/comparing-unix-linux-ipc">comparsion Unix/Linux IPC</a></p>
+<p><a href="https://stackoverflow.com/questions/404604/comparing-unix-linux-ipc" target="_blank"
+   rel="noopener nofollow noreferrer" >comparsion Unix/Linux IPC</a></p>
 </blockquote>
 <h2 id="what-is-d-bus">What is D-Bus</h2>
 <p>提到，D-Bus就不能不提一下freedesktop，而  D-Bus 仅仅作为<code>freedesktop.org</code>的一部分。</p>
@@ -177,11 +136,11 @@
 <li><strong>Layer 2 dbus daemon</strong>：dbus实现的IPC守护进行，随Linux启动，通过不通进程对其的连接，实现了多进程间消息的路由（包含内核、网络、桌面等）</li>
 <li><strong>Layer 3 Wapper libraries （high-level API）</strong>： 对  <code>low-level API</code> <em>libdbus</em>的封装 ，例如<code> libdbus-qt</code> <code> libdbus-python</code> <code>github.com/godbus/dbus</code>，这些不同编程语言实现的Wapper是不同开发者应该使用的lib，其简化了D-Bus的开发难度。</li>
 </ul>
-<p>
-  <img loading="lazy" src="https://www.softprayog.in/images/interprocess-communication-using-dbus.png" alt="使用 D-Bus 进行进程间通信"  /></p>
+<p><img loading="lazy" src="https://www.softprayog.in/images/interprocess-communication-using-dbus.png" alt="使用 D-Bus 进行进程间通信" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-tutorial.html">dbus-tutorial</a></p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-tutorial.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-tutorial</a></p>
 </blockquote>
 <h2 id="dbus-基本概念">dbus 基本概念</h2>
 <h3 id="总线">总线</h3>
@@ -208,7 +167,8 @@
 </ul>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names-bus">bus name</a></p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names-bus" target="_blank"
+   rel="noopener nofollow noreferrer" >bus name</a></p>
 </blockquote>
 <h3 id="对象路径">对象路径</h3>
 <p>对象路径(<code>Object Paths</code>) 是用于引用对象实例的名称（类似于 C++ 或 Java 对象）。从概念上来说，D-Bus在消息交换中每个参与者都有任意个对象实例，如文件系统一样，Dbus中的参与者中的对象实例也会形成一个层次树。如，在CentOS7中 firewalld开发的D-Bus API 使用了<code>/org/fedoraproject/FirewallD1</code>的层次结构。</p>
@@ -279,422 +239,218 @@
 <p>dbus包含：</p>
 <ul>
 <li>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html">dbus-daemon</a>：dbus架构中 layer 2的 dbus-damon</p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-daemon</a>：dbus架构中 layer 2的 dbus-damon</p>
 </li>
 <li>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-send.1.html">dbus-send</a>: dbus提供的命令行工具，可以用dbus-send来发送消息。</p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-send.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-send</a>: dbus提供的命令行工具，可以用dbus-send来发送消息。</p>
 </li>
 <li>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-monitor.1.html">dbus-monitor</a>: dbus提供的命令行工具，用于监视总线上流动的消息。</p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-monitor.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-monitor</a>: dbus提供的命令行工具，用于监视总线上流动的消息。</p>
 </li>
 <li>
-<p><a href="https://dbus.freedesktop.org/doc/dbus-launch.1.html">dbus-launch</a>： shell脚本启动消息总线的命令行工具</p>
+<p><a href="https://dbus.freedesktop.org/doc/dbus-launch.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-launch</a>： shell脚本启动消息总线的命令行工具</p>
 </li>
 </ul>
 <h3 id="dbus配置文件说明">dbus配置文件说明</h3>
 <p>dbus-daemon守护进程，有两个配置文件，一个为 session bus，另外一个为 system bus。</p>
 <p>标准的system bus文件 <code>/usr/local/share/dbus-1/system.conf</code> session bus配置 <code>/usr/local/share/dbus-1/session.conf</code>中配置。在一般情况下，不会操作这两个文件，因其会引入 <code>/etc/dbus-1</code> 中的<code>system.conf</code>  或 <code>session.conf</code>。</p>
 <p>配置文件包含的标签：</p>
-<p>更多的注释可以参考：<a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html">dbus-daemon</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-xml" data-lang="xml"><span class="line"><span class="cl"># 根元素
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;busconfig&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- 根据指定的 -system或 -session 来选择的配置文件 --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;type&gt;</span>system<span class="nt">&lt;/type&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- dbus-daemon运行的用户 --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;user&gt;</span>dbus<span class="nt">&lt;/user&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Fork into daemon mode --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;fork/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- We use system service launching using a helper --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;standard_system_servicedirs/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- This is a setuid helper that is used to launch system services --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;servicehelper&gt;</span>//usr/libexec/dbus-1/dbus-daemon-launch-helper<span class="nt">&lt;/servicehelper&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Write a pid file --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;pidfile&gt;</span>/run/dbus/messagebus.pid<span class="nt">&lt;/pidfile&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Enable logging to syslog --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;syslog/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- 指定授权机制。如果不存在，所有的机制都被允许。 --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;auth&gt;</span>EXTERNAL<span class="nt">&lt;/auth&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- 总线监听的地址，支持unix socket，tcp，system等
-</span></span></span><span class="line"><span class="cl"><span class="c">		--&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;listen&gt;</span>unix:path=/run/dbus/system_bus_socket<span class="nt">&lt;/listen&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;listen&gt;</span>unix:path=/tmp/foo<span class="nt">&lt;/listen&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;listen&gt;</span>tcp:host=localhost,port=1234<span class="nt">&lt;/listen&gt;</span>  
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">context=</span><span class="s">&#34;default&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- All users can connect to system bus --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">user=</span><span class="s">&#34;*&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Holes must be punched in service configuration files for
-</span></span></span><span class="line"><span class="cl"><span class="c">         name ownership and sending method calls --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">own=</span><span class="s">&#34;*&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">send_type=</span><span class="s">&#34;method_call&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Signals and reply messages (method returns, errors) are allowed
-</span></span></span><span class="line"><span class="cl"><span class="c">         by efault --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_type=</span><span class="s">&#34;signal&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_requested_reply=</span><span class="s">&#34;true&#34;</span> <span class="na">send_type=</span><span class="s">&#34;method_return&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_requested_reply=</span><span class="s">&#34;true&#34;</span> <span class="na">send_type=</span><span class="s">&#34;error&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- All messages may be received by default --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">receive_type=</span><span class="s">&#34;method_call&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">receive_type=</span><span class="s">&#34;method_return&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">receive_type=</span><span class="s">&#34;error&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">receive_type=</span><span class="s">&#34;signal&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Allow anyone to talk to the message bus --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">           <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.fedoraproject.FirewallD1&#34;</span> 
-</span></span><span class="line"><span class="cl">	<span class="na">send_interface=</span><span class="s">&#34;org.fedorapproject.FirewallD1&#34;</span> <span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">           <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus.Introspectable&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- But disallow some specific bus services --&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="na">send_member=</span><span class="s">&#34;UpdateActivationEnvironment&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus.Debug.Stats&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;deny</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.systemd1.Activator&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Only systemd, which runs as root, may report activation failures. --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">user=</span><span class="s">&#34;root&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">           <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.systemd1.Activator&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- root may monitor the system bus. --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">user=</span><span class="s">&#34;root&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">           <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus.Monitoring&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- If the Stats interface was enabled at compile-time, root may use it.
-</span></span></span><span class="line"><span class="cl"><span class="c">       Copy this into system.local.conf or system.d/*.conf if you want to
-</span></span></span><span class="line"><span class="cl"><span class="c">       enable other privileged users to view statistics and debug info --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;policy</span> <span class="na">user=</span><span class="s">&#34;root&#34;</span><span class="nt">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&lt;allow</span> <span class="na">send_destination=</span><span class="s">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">           <span class="na">send_interface=</span><span class="s">&#34;org.freedesktop.DBus.Debug.Stats&#34;</span><span class="nt">/&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/policy&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Include legacy configuration location --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;include</span> <span class="na">ignore_missing=</span><span class="s">&#34;yes&#34;</span><span class="nt">&gt;</span>/etc/dbus-1/system.conf<span class="nt">&lt;/include&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- 包含的子配置文件. --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;includedir&gt;</span>system.d<span class="nt">&lt;/includedir&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;includedir&gt;</span>/etc/dbus-1/system.d<span class="nt">&lt;/includedir&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- This is included last so local configuration can override what&#39;s 
-</span></span></span><span class="line"><span class="cl"><span class="c">       in this standard file --&gt;</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;include</span> <span class="na">ignore_missing=</span><span class="s">&#34;yes&#34;</span><span class="nt">&gt;</span>/etc/dbus-1/system-local.conf<span class="nt">&lt;/include&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="nt">&lt;include</span> <span class="na">if_selinux_enabled=</span><span class="s">&#34;yes&#34;</span> <span class="na">selinux_root_relative=</span><span class="s">&#34;yes&#34;</span><span class="nt">&gt;</span>contexts/dbus_contexts<span class="nt">&lt;/include&gt;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nt">&lt;/busconfig&gt;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="通过命令行发送dbus消息">通过命令行发送dbus消息</h3>
+<p>更多的注释可以参考：<a href="https://dbus.freedesktop.org/doc/dbus-daemon.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-daemon</a></p>
+<pre><code class="language-xml"># 根元素
+&lt;busconfig&gt;
+
+  &lt;!-- 根据指定的 -system或 -session 来选择的配置文件 --&gt;
+  &lt;type&gt;system&lt;/type&gt;
+
+  &lt;!-- dbus-daemon运行的用户 --&gt;
+  &lt;user&gt;dbus&lt;/user&gt;
+
+  &lt;!-- Fork into daemon mode --&gt;
+  &lt;fork/&gt;
+
+  &lt;!-- We use system service launching using a helper --&gt;
+  &lt;standard_system_servicedirs/&gt;
+
+  &lt;!-- This is a setuid helper that is used to launch system services --&gt;
+  &lt;servicehelper&gt;//usr/libexec/dbus-1/dbus-daemon-launch-helper&lt;/servicehelper&gt;
+
+  &lt;!-- Write a pid file --&gt;
+  &lt;pidfile&gt;/run/dbus/messagebus.pid&lt;/pidfile&gt;
+
+  &lt;!-- Enable logging to syslog --&gt;
+  &lt;syslog/&gt;
+
+  &lt;!-- 指定授权机制。如果不存在，所有的机制都被允许。 --&gt;
+  &lt;auth&gt;EXTERNAL&lt;/auth&gt;
+
+  &lt;!-- 总线监听的地址，支持unix socket，tcp，system等
+		--&gt;
+  &lt;listen&gt;unix:path=/run/dbus/system_bus_socket&lt;/listen&gt;
+  &lt;listen&gt;unix:path=/tmp/foo&lt;/listen&gt;
+  &lt;listen&gt;tcp:host=localhost,port=1234&lt;/listen&gt;  
+    
+    
+  &lt;policy context=&quot;default&quot;&gt;
+    &lt;!-- All users can connect to system bus --&gt;
+    &lt;allow user=&quot;*&quot;/&gt;
+
+    &lt;!-- Holes must be punched in service configuration files for
+         name ownership and sending method calls --&gt;
+    &lt;deny own=&quot;*&quot;/&gt;
+    &lt;deny send_type=&quot;method_call&quot;/&gt;
+
+    &lt;!-- Signals and reply messages (method returns, errors) are allowed
+         by efault --&gt;
+    &lt;allow send_type=&quot;signal&quot;/&gt;
+    &lt;allow send_requested_reply=&quot;true&quot; send_type=&quot;method_return&quot;/&gt;
+    &lt;allow send_requested_reply=&quot;true&quot; send_type=&quot;error&quot;/&gt;
+
+    &lt;!-- All messages may be received by default --&gt;
+    &lt;allow receive_type=&quot;method_call&quot;/&gt;
+    &lt;allow receive_type=&quot;method_return&quot;/&gt;
+    &lt;allow receive_type=&quot;error&quot;/&gt;
+    &lt;allow receive_type=&quot;signal&quot;/&gt;
+
+    &lt;!-- Allow anyone to talk to the message bus --&gt;
+    &lt;allow send_destination=&quot;org.freedesktop.DBus&quot;
+           send_interface=&quot;org.freedesktop.DBus&quot; /&gt;
+    &lt;allow send_destination=&quot;org.fedoraproject.FirewallD1&quot; 
+	send_interface=&quot;org.fedorapproject.FirewallD1&quot; /&gt;
+    &lt;allow send_destination=&quot;org.freedesktop.DBus&quot;
+           send_interface=&quot;org.freedesktop.DBus.Introspectable&quot;/&gt;
+    &lt;!-- But disallow some specific bus services --&gt;
+    &lt;deny send_destination=&quot;org.freedesktop.DBus&quot;
+          send_interface=&quot;org.freedesktop.DBus&quot;
+          send_member=&quot;UpdateActivationEnvironment&quot;/&gt;
+    &lt;deny send_destination=&quot;org.freedesktop.DBus&quot;
+          send_interface=&quot;org.freedesktop.DBus.Debug.Stats&quot;/&gt;
+    &lt;deny send_destination=&quot;org.freedesktop.DBus&quot;
+          send_interface=&quot;org.freedesktop.systemd1.Activator&quot;/&gt;
+  &lt;/policy&gt;
+
+  &lt;!-- Only systemd, which runs as root, may report activation failures. --&gt;
+  &lt;policy user=&quot;root&quot;&gt;
+    &lt;allow send_destination=&quot;org.freedesktop.DBus&quot;
+           send_interface=&quot;org.freedesktop.systemd1.Activator&quot;/&gt;
+  &lt;/policy&gt;
+
+  &lt;!-- root may monitor the system bus. --&gt;
+  &lt;policy user=&quot;root&quot;&gt;
+    &lt;allow send_destination=&quot;org.freedesktop.DBus&quot;
+           send_interface=&quot;org.freedesktop.DBus.Monitoring&quot;/&gt;
+  &lt;/policy&gt;
+
+  &lt;!-- If the Stats interface was enabled at compile-time, root may use it.
+       Copy this into system.local.conf or system.d/*.conf if you want to
+       enable other privileged users to view statistics and debug info --&gt;
+  &lt;policy user=&quot;root&quot;&gt;
+    &lt;allow send_destination=&quot;org.freedesktop.DBus&quot;
+           send_interface=&quot;org.freedesktop.DBus.Debug.Stats&quot;/&gt;
+  &lt;/policy&gt;
+
+  &lt;!-- Include legacy configuration location --&gt;
+  &lt;include ignore_missing=&quot;yes&quot;&gt;/etc/dbus-1/system.conf&lt;/include&gt;
+
+  &lt;!-- 包含的子配置文件. --&gt;
+  &lt;includedir&gt;system.d&lt;/includedir&gt;
+
+  &lt;includedir&gt;/etc/dbus-1/system.d&lt;/includedir&gt;
+
+  &lt;!-- This is included last so local configuration can override what's 
+       in this standard file --&gt;
+  &lt;include ignore_missing=&quot;yes&quot;&gt;/etc/dbus-1/system-local.conf&lt;/include&gt;
+
+  &lt;include if_selinux_enabled=&quot;yes&quot; selinux_root_relative=&quot;yes&quot;&gt;contexts/dbus_contexts&lt;/include&gt;
+
+&lt;/busconfig&gt;
+</code></pre>
+<h3 id="通过命令行发送dbus消息">通过命令行发送dbus消息</h3>
 <p>dbus支持通过命令发送一个dbus消息，如获取可用的dbus 服务。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-send --session <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--dest<span class="o">=</span>org.freedesktop.DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--type<span class="o">=</span>method_call <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>/org/freedesktop/DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>org.freedesktop.DBus.ListNames
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">method <span class="k">return</span> <span class="nv">time</span><span class="o">=</span>1631452206.288425 <span class="nv">sender</span><span class="o">=</span>org.freedesktop.DBus -&gt; <span class="nv">destination</span><span class="o">=</span>:1.29 <span class="nv">serial</span><span class="o">=</span><span class="m">3</span> <span class="nv">reply_serial</span><span class="o">=</span><span class="m">2</span>
-</span></span><span class="line"><span class="cl">   array <span class="o">[</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;org.freedesktop.DBus&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;org.freedesktop.login1&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;org.freedesktop.systemd1&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;org.fedoraproject.FirewallD1&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;org.freedesktop.PolicyKit1&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;:1.17&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;:1.0&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;:1.29&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;:1.18&#34;</span>
-</span></span><span class="line"><span class="cl">      string <span class="s2">&#34;:1.1&#34;</span>
-</span></span><span class="line"><span class="cl">   <span class="o">]</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>返回org.freedesktop.DBus service</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-send --session <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--dest<span class="o">=</span>org.freedesktop.DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--type<span class="o">=</span>method_call <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>/org/freedesktop/DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="使用dbus-api操作linux防火墙">使用dbus api操作linux防火墙</h2>
+<pre><code class="language-bash">dbus-send --session \
+--dest=org.freedesktop.DBus \
+--type=method_call \
+--print-reply \
+/org/freedesktop/DBus \
+org.freedesktop.DBus.ListNames
+
+method return time=1631452206.288425 sender=org.freedesktop.DBus -&gt; destination=:1.29 serial=3 reply_serial=2
+   array [
+      string &quot;org.freedesktop.DBus&quot;
+      string &quot;org.freedesktop.login1&quot;
+      string &quot;org.freedesktop.systemd1&quot;
+      string &quot;org.fedoraproject.FirewallD1&quot;
+      string &quot;org.freedesktop.PolicyKit1&quot;
+      string &quot;:1.17&quot;
+      string &quot;:1.0&quot;
+      string &quot;:1.29&quot;
+      string &quot;:1.18&quot;
+      string &quot;:1.1&quot;
+   ]
+</code></pre>
+<p>返回org.freedesktop.DBus service</p>
+<pre><code class="language-bash">dbus-send --session \
+--dest=org.freedesktop.DBus \
+--type=method_call \
+--print-reply \
+/org/freedesktop/DBus \
+org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<h2 id="使用dbus-api操作linux防火墙">使用dbus api操作linux防火墙</h2>
 <p>Firewalld是一个基于动态区域的防火墙守护进程，自 2009 年左右开始开发，目前为Fedora 18 以及随后的 RHEL7 和 CentOS 7 中的默认防火墙机制。</p>
 <p><em>Firewalld</em>被配置为<em>systemd</em> D-Bus 服务。请注意下面的“Type=dbus”指令。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ cat /usr/lib/systemd/system/firewalld.service 
-</span></span><span class="line"><span class="cl"><span class="o">[</span>Unit<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">Description</span><span class="o">=</span>firewalld - dynamic firewall daemon
-</span></span><span class="line"><span class="cl"><span class="nv">Before</span><span class="o">=</span>network.target
-</span></span><span class="line"><span class="cl"><span class="nv">Before</span><span class="o">=</span>libvirtd.service
-</span></span><span class="line"><span class="cl"><span class="nv">Before</span><span class="o">=</span>NetworkManager.service
-</span></span><span class="line"><span class="cl"><span class="nv">Conflicts</span><span class="o">=</span>iptables.service ip6tables.service ebtables.service
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="o">[</span>Service<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">EnvironmentFile</span><span class="o">=</span>-/etc/sysconfig/firewalld
-</span></span><span class="line"><span class="cl"><span class="nv">ExecStart</span><span class="o">=</span>/usr/sbin/firewalld --nofork --nopid <span class="nv">$FIREWALLD_ARGS</span>
-</span></span><span class="line"><span class="cl"><span class="nv">ExecReload</span><span class="o">=</span>/bin/kill -HUP <span class="nv">$MAINPID</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># supress to log debug and error output also to /var/log/messages</span>
-</span></span><span class="line"><span class="cl"><span class="nv">StandardOutput</span><span class="o">=</span>null
-</span></span><span class="line"><span class="cl"><span class="nv">StandardError</span><span class="o">=</span>null
-</span></span><span class="line"><span class="cl"><span class="nv">Type</span><span class="o">=</span>dbus
-</span></span><span class="line"><span class="cl"><span class="nv">BusName</span><span class="o">=</span>org.fedoraproject.FirewallD1
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="o">[</span>Install<span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="nv">WantedBy</span><span class="o">=</span>basic.target
-</span></span><span class="line"><span class="cl"><span class="nv">Alias</span><span class="o">=</span>dbus-org.fedoraproject.FirewallD1.service
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>知道了<em>firewalld</em>服务是基于D-Bus的，就可以通过D-Bus来操作防火墙。</p>
+<pre><code class="language-bash">$ cat /usr/lib/systemd/system/firewalld.service 
+[Unit]
+Description=firewalld - dynamic firewall daemon
+Before=network.target
+Before=libvirtd.service
+Before=NetworkManager.service
+Conflicts=iptables.service ip6tables.service ebtables.service
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/firewalld
+ExecStart=/usr/sbin/firewalld --nofork --nopid $FIREWALLD_ARGS
+ExecReload=/bin/kill -HUP $MAINPID
+# supress to log debug and error output also to /var/log/messages
+StandardOutput=null
+StandardError=null
+Type=dbus
+BusName=org.fedoraproject.FirewallD1
+
+[Install]
+WantedBy=basic.target
+Alias=dbus-org.fedoraproject.FirewallD1.service
+</code></pre>
+<p>知道了<em>firewalld</em>服务是基于D-Bus的，就可以通过D-Bus来操作防火墙。</p>
 <p>查看dbus注册的服务是否包含firewalld，这里需要注意的是，firewalld依赖dbus服务，每次启动firewalld时注册到dbus总线内。所以需要先启动<code>dbus-daemon</code>与 <code>firewalld </code> 服务。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-send --system --dest<span class="o">=</span>org.freedesktop.DBus --type<span class="o">=</span>method_call --print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>/org/freedesktop/DBus org.freedesktop.DBus.ListNames <span class="p">|</span> grep FirewallD
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看得知 <code>org.fedoraproject.FirewallD1</code> 为firewalld接口</p>
+<pre><code class="language-bash">dbus-send --system --dest=org.freedesktop.DBus --type=method_call --print-reply \
+/org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep FirewallD
+</code></pre>
+<p>查看得知 <code>org.fedoraproject.FirewallD1</code> 为firewalld接口</p>
 <p>查看接口所拥有的方法、属性、信号等信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-send --system --dest<span class="o">=</span>org.fedoraproject.FirewallD1 --print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>/org/fedoraproject/FirewallD1 org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>获得zone</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">firewall-cmd --get-zones
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">--print-reply \
-</span></span><span class="line"><span class="cl">--type=method_call /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">org.fedoraproject.FirewallD1.zone.getZones
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看zone内的条目信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ firewall-cmd --zone<span class="o">=</span>public --list-all
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system --dest<span class="o">=</span>org.fedoraproject.FirewallD1 --print-reply --type<span class="o">=</span>method_call <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>/org/fedoraproject/FirewallD1 org.fedoraproject.FirewallD1.getZoneSettings string:<span class="s2">&#34;public&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-bash">dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply \
+/org/fedoraproject/FirewallD1 org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<p>获得zone</p>
+<pre><code>firewall-cmd --get-zones
+
+dbus-send --system \
+--dest=org.fedoraproject.FirewallD1 \
+--print-reply \
+--type=method_call /org/fedoraproject/FirewallD1 \
+org.fedoraproject.FirewallD1.zone.getZones
+</code></pre>
+<p>查看zone内的条目信息</p>
+<pre><code class="language-bash">$ firewall-cmd --zone=public --list-all
+
+dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply --type=method_call \
+/org/fedoraproject/FirewallD1 org.fedoraproject.FirewallD1.getZoneSettings string:&quot;public&quot;
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -708,385 +464,178 @@
 <p>firewalld比旧的 iptable 机制有许多优势。值得注意的是，它解决了 iptable 要求每次更改时重新启动防火墙的问题，从而中断了任何状态连接。它还提供了丰富的 D-Bus 方法、信号和属性。</p>
 <p>这里并不是从firewalld操作使用方式来介绍firewalld的改名，想反，是介绍firewalld D-Bus API来检索信息或更改设置。</p>
 <p>firewalld被配置为系统 D-Bus 服务，注意看 systemd file中的&quot; <code>Type=dbus</code> &ldquo;参数。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ cat /usr/lib/systemd/system/firewalld.service
-</span></span><span class="line"><span class="cl">[Unit]
-</span></span><span class="line"><span class="cl">Description=firewalld - dynamic firewall daemon
-</span></span><span class="line"><span class="cl">Before=network-pre.target
-</span></span><span class="line"><span class="cl">Wants=network-pre.target
-</span></span><span class="line"><span class="cl">After=dbus.service
-</span></span><span class="line"><span class="cl">After=polkit.service
-</span></span><span class="line"><span class="cl">Conflicts=iptables.service ip6tables.service ebtables.service ipset.service
-</span></span><span class="line"><span class="cl">Documentation=man:firewalld(1)
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Service]
-</span></span><span class="line"><span class="cl">EnvironmentFile=-/etc/sysconfig/firewalld
-</span></span><span class="line"><span class="cl">ExecStart=/usr/sbin/firewalld --nofork --nopid $FIREWALLD_ARGS
-</span></span><span class="line"><span class="cl">ExecReload=/bin/kill -HUP $MAINPID
-</span></span><span class="line"><span class="cl"># supress to log debug and error output also to /var/log/messages
-</span></span><span class="line"><span class="cl">StandardOutput=null
-</span></span><span class="line"><span class="cl">StandardError=null
-</span></span><span class="line"><span class="cl">Type=dbus
-</span></span><span class="line"><span class="cl">BusName=org.fedoraproject.FirewallD1
-</span></span><span class="line"><span class="cl">KillMode=mixed
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Install]
-</span></span><span class="line"><span class="cl">WantedBy=multi-user.target
-</span></span><span class="line"><span class="cl">Alias=dbus-org.fedoraproject.FirewallD1.service
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>实际上，手动运行 <code>/usr/bin/python2 -Es /usr/sbin/firewalld --nofork --nopid --debug</code> 效果是一样的，这里的注册是通过dbus 高级API操作的。</p>
+<pre><code>$ cat /usr/lib/systemd/system/firewalld.service
+[Unit]
+Description=firewalld - dynamic firewall daemon
+Before=network-pre.target
+Wants=network-pre.target
+After=dbus.service
+After=polkit.service
+Conflicts=iptables.service ip6tables.service ebtables.service ipset.service
+Documentation=man:firewalld(1)
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/firewalld
+ExecStart=/usr/sbin/firewalld --nofork --nopid $FIREWALLD_ARGS
+ExecReload=/bin/kill -HUP $MAINPID
+# supress to log debug and error output also to /var/log/messages
+StandardOutput=null
+StandardError=null
+Type=dbus
+BusName=org.fedoraproject.FirewallD1
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+Alias=dbus-org.fedoraproject.FirewallD1.service
+</code></pre>
+<p>实际上，手动运行 <code>/usr/bin/python2 -Es /usr/sbin/firewalld --nofork --nopid --debug</code> 效果是一样的，这里的注册是通过dbus 高级API操作的。</p>
 <p>此时由于已经了解到了，firewalld 服务 是基于D-Bus接口的，所以需要找到对应的 dbus interface</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --dest=org.freedesktop.DBus \
-</span></span><span class="line"><span class="cl">	--type=method_call --print-reply \
-</span></span><span class="line"><span class="cl">	/org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep FirewallD
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>org.fedoraproject.FirewallD1</code> 这个就是firewalld注册的dbus interface了。</p>
+<pre><code>dbus-send --system --dest=org.freedesktop.DBus \
+	--type=method_call --print-reply \
+	/org/freedesktop/DBus org.freedesktop.DBus.ListNames | grep FirewallD
+</code></pre>
+<p><code>org.fedoraproject.FirewallD1</code> 这个就是firewalld注册的dbus interface了。</p>
 <p><code>dbus-send</code> 命令可以向 D-Bus消息总线发送消息并显示该消息的返回结果。有两个众所周知的消息总线：system bus（<code>Option -System</code>） 和每个用户session bus（ <code>-session</code>）。使用 <code>firewall-cmd</code> 也是通过 dbus interface 进行交互的。在使用<code>dbus-send</code> 时，必须指定其对应的消息接口 <code> -dest</code>，该参数是连接到对应总线上的接口名称，以将消息发送到对应的dbus firewalld-server进行对应iptables规则的翻译。</p>
 <p>现在有了dbus接口，需要了解改接口支持的方法 <code>methods</code>，属性 <code>properties </code>，信号<code>signals </code> 等信息。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过上述输出列出了通过防火墙 D-Bus 接口提供的所有方法、单一和属性。这是基于D-Bus DTD 的输出格式。所有 dbus服务都需要实现 <code>org.freedesktop.DBus.Introspectable.Introspect </code> 方法。</p>
+<pre><code>dbus-send --system --dest=org.fedoraproject.FirewallD1 --print-reply \
+	/org/fedoraproject/FirewallD1 \
+	org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<p>通过上述输出列出了通过防火墙 D-Bus 接口提供的所有方法、单一和属性。这是基于D-Bus DTD 的输出格式。所有 dbus服务都需要实现 <code>org.freedesktop.DBus.Introspectable.Introspect </code> 方法。</p>
 <p>知道了 方法 属性 信号，就可以直接对firewalld进行一个操作了。现在开始第一个例子。获取默认zone。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --get-default-zone
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \ 
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.getDefaultZone
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>通过dbus接口来检索区域列表</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --get-zones
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \ 
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.zone.getZones
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>最常用的命令：查看当前zone所有策略</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ firewall-cmd --zone=public --list-all
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	--print-reply --type=method_call \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.fedoraproject.FirewallD1.getZoneSettings string:&#34;public&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>获得inerface的properties</strong></p>
+<pre><code>$ firewall-cmd --get-default-zone
+
+dbus-send --system --dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \ 
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.getDefaultZone
+</code></pre>
+<p><strong>通过dbus接口来检索区域列表</strong></p>
+<pre><code>$ firewall-cmd --get-zones
+
+dbus-send --system \
+	--dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \ 
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.zone.getZones
+</code></pre>
+<p><strong>最常用的命令：查看当前zone所有策略</strong></p>
+<pre><code>$ firewall-cmd --zone=public --list-all
+
+dbus-send --system \
+	--dest=org.fedoraproject.FirewallD1 \
+	--print-reply --type=method_call \
+	/org/fedoraproject/FirewallD1 \
+	org.fedoraproject.FirewallD1.getZoneSettings string:&quot;public&quot;
+</code></pre>
+<p><strong>获得inerface的properties</strong></p>
 <p>其实这里在命令行根本用不到，但是在封装时却会可以用到。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">	--print-reply --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">	/org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">	org.freedesktop.DBus.Properties.GetAll string:&#34;org.fedoraproject.FirewallD1&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>还可以通过其他的接口来查看对应的属性值</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system --print-reply 
-</span></span><span class="line"><span class="cl">--dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;version&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;interface_version&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;state&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ dbus-send --system --print-reply=literal \
-</span></span><span class="line"><span class="cl">   --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">   /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">   org.freedesktop.DBus.Properties.Get \
-</span></span><span class="line"><span class="cl">   string:&#34;org.fedoraproject.FirewallD1&#34; \
-</span></span><span class="line"><span class="cl">   string:&#34;state&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="查询规则">查询规则</h3>
+<pre><code>dbus-send --system \
+	--print-reply --dest=org.fedoraproject.FirewallD1 \
+	/org/fedoraproject/FirewallD1 \
+	org.freedesktop.DBus.Properties.GetAll string:&quot;org.fedoraproject.FirewallD1&quot;
+</code></pre>
+<p>还可以通过其他的接口来查看对应的属性值</p>
+<pre><code>dbus-send --system --print-reply 
+--dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;version&quot;
+
+
+$ dbus-send --system --print-reply \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;interface_version&quot;
+
+
+$ dbus-send --system --print-reply \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;state&quot;
+
+$ dbus-send --system --print-reply=literal \
+   --dest=org.fedoraproject.FirewallD1 \
+   /org/fedoraproject/FirewallD1 \
+   org.freedesktop.DBus.Properties.Get \
+   string:&quot;org.fedoraproject.FirewallD1&quot; \
+   string:&quot;state&quot;
+</code></pre>
+<h3 id="查询规则">查询规则</h3>
 <p><strong>查询接口</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">    --print-reply \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.zone.getZoneOfInterface \
-</span></span><span class="line"><span class="cl">    string:&#34;eth0&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>创建一个新zone</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --session \
-</span></span><span class="line"><span class="cl">    --dest=org.freedesktop.DBus \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    --print-reply /org/freedesktop/DBus  \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.config.addZone \
-</span></span><span class="line"><span class="cl">    string:&#34;testapi&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>获得一个zone的所有规则（<code>zonesettings</code>）</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1  \
-</span></span><span class="line"><span class="cl">    --type=method_call \
-</span></span><span class="line"><span class="cl">    --print-reply /org/fedoraproject/FirewallD1  \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.getZoneSettings \
-</span></span><span class="line"><span class="cl">    string:&#34;public&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>添加一个port</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-send --system \
-</span></span><span class="line"><span class="cl">    --dest=org.fedoraproject.FirewallD1 \
-</span></span><span class="line"><span class="cl">    --print-reply --type=method_call \
-</span></span><span class="line"><span class="cl">    /org/fedoraproject/FirewallD1 \
-</span></span><span class="line"><span class="cl">    org.fedoraproject.FirewallD1.zone.addPort \
-</span></span><span class="line"><span class="cl">    string:&#34;public&#34; \
-</span></span><span class="line"><span class="cl">    string:&#34;81&#34; \
-</span></span><span class="line"><span class="cl">    string:&#34;tcp&#34; \
-</span></span><span class="line"><span class="cl">    uint64:300 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>对应设置firewalld 面板所有属性的命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">firewall-cmd --zone=public --change-interface=eth0
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-masquerade
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=192.168.100.3
-</span></span><span class="line"><span class="cl">firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=10.0.0.3
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-protocol=tcp
-</span></span><span class="line"><span class="cl">firewall-cmd --add-protocol=udp
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-blocks=icmp
-</span></span><span class="line"><span class="cl">firewall-cmd --set-target=DROP
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block=redirect
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block=network-unknown
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source-port=80/tcp
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source-port=100/tcp
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source=10.0.0.1
-</span></span><span class="line"><span class="cl">firewall-cmd --add-source=10.0.0.2
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-rich-rule=&#39;rule family=ipv4 source address=192.168.1.101/32 service name=telnet limit value=1/m accept&#39;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --add-icmp-block-inversion
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">firewall-cmd --new-zone=123 --permanen
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="执行远程命令">执行远程命令</h3>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1 \
+    --print-reply \
+    --type=method_call \
+    /org/fedoraproject/FirewallD1 \
+    org.fedoraproject.FirewallD1.zone.getZoneOfInterface \
+    string:&quot;eth0&quot;
+</code></pre>
+<p><strong>创建一个新zone</strong></p>
+<pre><code>dbus-send --session \
+    --dest=org.freedesktop.DBus \
+    --type=method_call \
+    --print-reply /org/freedesktop/DBus  \
+    org.fedoraproject.FirewallD1.config.addZone \
+    string:&quot;testapi&quot;
+</code></pre>
+<p><strong>获得一个zone的所有规则（<code>zonesettings</code>）</strong></p>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1  \
+    --type=method_call \
+    --print-reply /org/fedoraproject/FirewallD1  \
+    org.fedoraproject.FirewallD1.getZoneSettings \
+    string:&quot;public&quot;
+</code></pre>
+<p><strong>添加一个port</strong></p>
+<pre><code>dbus-send --system \
+    --dest=org.fedoraproject.FirewallD1 \
+    --print-reply --type=method_call \
+    /org/fedoraproject/FirewallD1 \
+    org.fedoraproject.FirewallD1.zone.addPort \
+    string:&quot;public&quot; \
+    string:&quot;81&quot; \
+    string:&quot;tcp&quot; \
+    uint64:300 
+</code></pre>
+<p>对应设置firewalld 面板所有属性的命令</p>
+<pre><code>firewall-cmd --zone=public --change-interface=eth0
+
+firewall-cmd --zone=public --add-masquerade
+firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=192.168.100.3
+firewall-cmd --zone=public --add-forward-port=port=1122:proto=tcp:toport=22:toaddr=10.0.0.3
+
+firewall-cmd --add-protocol=tcp
+firewall-cmd --add-protocol=udp
+
+firewall-cmd --add-icmp-blocks=icmp
+firewall-cmd --set-target=DROP
+
+firewall-cmd --add-icmp-block=redirect
+firewall-cmd --add-icmp-block=network-unknown
+
+firewall-cmd --add-source-port=80/tcp
+firewall-cmd --add-source-port=100/tcp
+
+firewall-cmd --add-source=10.0.0.1
+firewall-cmd --add-source=10.0.0.2
+
+firewall-cmd --add-rich-rule='rule family=ipv4 source address=192.168.1.101/32 service name=telnet limit value=1/m accept'
+
+firewall-cmd --add-icmp-block-inversion
+
+firewall-cmd --new-zone=123 --permanen
+</code></pre>
+<h3 id="执行远程命令">执行远程命令</h3>
 <p>dbus接口支持远程命令的，通过dbus-send发送时，根据配置dbus的监听来完成远程的操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">DBUS_SESSION_BUS_ADDRESS=tcp:host=10.0.0.3,port=55557 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>根据上述，参考加上官方文档，了解如何通过D-Bus接口操作FirewallD，虽然此处是使用了 <code>dbus-send</code>，但是也可以通过 qt 或者 其他的来管理 基于 dbus api的应用了。</p>
+<pre><code>DBUS_SESSION_BUS_ADDRESS=tcp:host=10.0.0.3,port=55557 
+</code></pre>
+<p>根据上述，参考加上官方文档，了解如何通过D-Bus接口操作FirewallD，虽然此处是使用了 <code>dbus-send</code>，但是也可以通过 qt 或者 其他的来管理 基于 dbus api的应用了。</p>
 ]]></content:encoded>
     </item>
     
@@ -1181,208 +730,115 @@
 </li>
 <li>
 <p><code>(sssbsasa(ss)asba(ssss)asasasasa(ss)b)</code> 这个类型拆开为下：共16个属性</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">(
-</span></span><span class="line"><span class="cl"> s string
-</span></span><span class="line"><span class="cl"> s string
-</span></span><span class="line"><span class="cl"> s string
-</span></span><span class="line"><span class="cl"> b bool
-</span></span><span class="line"><span class="cl"> s string
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> a(ss) two string type in the array
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> b bool
-</span></span><span class="line"><span class="cl"> a(ssss) four string type in the array
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> as array only one string
-</span></span><span class="line"><span class="cl"> a(ss)  two string type in the array
-</span></span><span class="line"><span class="cl"> b bool
-</span></span><span class="line"><span class="cl"> )
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>对上述类型，python中就可以很灵活的声明</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">[&#34;&#34;, &#34;&#34;, &#34;&#34;, False, DEFAULT_ZONE_TARGET, [], [],
-</span></span><span class="line"><span class="cl">                         [], False, [], [], [], [], [], [], False]
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>go 中就需要按照对应类型声明为不通的结构体，属性名称可以不为主，顺序需要一致。</p>
+<pre><code>(
+ s string
+ s string
+ s string
+ b bool
+ s string
+ as array only one string
+ a(ss) two string type in the array
+ as array only one string
+ b bool
+ a(ssss) four string type in the array
+ as array only one string
+ as array only one string
+ as array only one string
+ as array only one string
+ a(ss)  two string type in the array
+ b bool
+ )
+</code></pre>
+<p>对上述类型，python中就可以很灵活的声明</p>
+<pre><code>[&quot;&quot;, &quot;&quot;, &quot;&quot;, False, DEFAULT_ZONE_TARGET, [], [],
+                         [], False, [], [], [], [], [], [], False]
+</code></pre>
+<p>go 中就需要按照对应类型声明为不通的结构体，属性名称可以不为主，顺序需要一致。</p>
 <p><strong>其dbus收到的报文内容为</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">   struct {
-</span></span><span class="line"><span class="cl">      string &#34;&#34;
-</span></span><span class="line"><span class="cl">      string &#34;Public&#34; 
-</span></span><span class="line"><span class="cl">      string &#34;For use in public areas. You do not trust the other computers on networks to not harm your computer. Only selected incoming connections are accepted.&#34;
-</span></span><span class="line"><span class="cl">      boolean false
-</span></span><span class="line"><span class="cl">      string &#34;default&#34;
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;ssh&#34;
-</span></span><span class="line"><span class="cl">         string &#34;dhcpv6-client&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         struct {
-</span></span><span class="line"><span class="cl">            string &#34;55555-55557&#34;
-</span></span><span class="line"><span class="cl">            string &#34;tcp&#34;
-</span></span><span class="line"><span class="cl">         }
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;redirect&#34;
-</span></span><span class="line"><span class="cl">         string &#34;network-unknown&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      boolean true
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         struct {
-</span></span><span class="line"><span class="cl">            string &#34;1122&#34;
-</span></span><span class="line"><span class="cl">            string &#34;tcp&#34;
-</span></span><span class="line"><span class="cl">            string &#34;22&#34;
-</span></span><span class="line"><span class="cl">            string &#34;10.0.0.3&#34;
-</span></span><span class="line"><span class="cl">         }
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;eth0&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;10.0.0.1&#34;
-</span></span><span class="line"><span class="cl">         string &#34;10.0.0.2&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;rule family=&#34;ipv4&#34; source address=&#34;192.168.1.101/32&#34; service name=&#34;telnet&#34; accept limit value=&#34;1/m&#34;&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         string &#34;tcp&#34;
-</span></span><span class="line"><span class="cl">         string &#34;udp&#34;
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      array [
-</span></span><span class="line"><span class="cl">         struct {
-</span></span><span class="line"><span class="cl">            string &#34;80&#34;
-</span></span><span class="line"><span class="cl">            string &#34;tcp&#34;
-</span></span><span class="line"><span class="cl">         }
-</span></span><span class="line"><span class="cl">         struct {
-</span></span><span class="line"><span class="cl">            string &#34;100&#34;
-</span></span><span class="line"><span class="cl">            string &#34;tcp&#34;
-</span></span><span class="line"><span class="cl">         }
-</span></span><span class="line"><span class="cl">      ]
-</span></span><span class="line"><span class="cl">      boolean false
-</span></span><span class="line"><span class="cl">   }
-</span></span></code></pre></td></tr></table>
-</div>
-</div></li>
+<pre><code>   struct {
+      string &quot;&quot;
+      string &quot;Public&quot; 
+      string &quot;For use in public areas. You do not trust the other computers on networks to not harm your computer. Only selected incoming connections are accepted.&quot;
+      boolean false
+      string &quot;default&quot;
+      array [
+         string &quot;ssh&quot;
+         string &quot;dhcpv6-client&quot;
+      ]
+      array [
+         struct {
+            string &quot;55555-55557&quot;
+            string &quot;tcp&quot;
+         }
+      ]
+      array [
+         string &quot;redirect&quot;
+         string &quot;network-unknown&quot;
+      ]
+      boolean true
+      array [
+         struct {
+            string &quot;1122&quot;
+            string &quot;tcp&quot;
+            string &quot;22&quot;
+            string &quot;10.0.0.3&quot;
+         }
+      ]
+      array [
+         string &quot;eth0&quot;
+      ]
+      array [
+         string &quot;10.0.0.1&quot;
+         string &quot;10.0.0.2&quot;
+      ]
+      array [
+         string &quot;rule family=&quot;ipv4&quot; source address=&quot;192.168.1.101/32&quot; service name=&quot;telnet&quot; accept limit value=&quot;1/m&quot;&quot;
+      ]
+      array [
+         string &quot;tcp&quot;
+         string &quot;udp&quot;
+      ]
+      array [
+         struct {
+            string &quot;80&quot;
+            string &quot;tcp&quot;
+         }
+         struct {
+            string &quot;100&quot;
+            string &quot;tcp&quot;
+         }
+      ]
+      boolean false
+   }
+</code></pre>
+</li>
 <li>
 <p><code>ao</code>:  array，里面元素仅为一个<code>object_path</code></p>
 </li>
 </ul>
 <h2 id="golang-中声明一个-variant">golang 中声明一个 Variant</h2>
 <p>在go中看到variant类型如下</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">type Variant struct {
-</span></span><span class="line"><span class="cl">	sig   Signature
-</span></span><span class="line"><span class="cl">	value interface{}
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以通过 <code>SignatureOf(&quot;short&quot;)</code>声明一个 <code>Signature</code></p>
+<pre><code>type Variant struct {
+	sig   Signature
+	value interface{}
+}
+</code></pre>
+<p>可以通过 <code>SignatureOf(&quot;short&quot;)</code>声明一个 <code>Signature</code></p>
 <p>然后在通过：<code>MakeVariantWithSignature(v interface{}, s Signature) Variant</code> 声明 对应的 Variant</p>
 <hr>
 <p>注：其他数据类型与golang自己的数据类型一致，数组可以使用slice（类似php，python直接用数组替代即可更灵活）</p>
 <hr>
-<blockquote>
-<p><strong>More Reference</strong></p>
-<p><a href="http://www.fmddlmyy.cn/text54.html">dbus data type</a></p>
-<p><a href="http://www.fmddlmyy.cn/text54.html">dbus data type conparision perl</a></p>
-</blockquote>
+<h2 id="more-reference"><strong>More Reference</strong></h2>
+<ul>
+<li>
+<p><a href="http://www.fmddlmyy.cn/text54.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus data type</a></p>
+</li>
+<li>
+<p><a href="http://www.fmddlmyy.cn/text54.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus data type conparision perl</a></p>
+</li>
+</ul>
 ]]></content:encoded>
     </item>
     
@@ -1465,154 +921,76 @@
 <li>词典: <code>dict = dict:&lt;type&gt;:&lt;type&gt;:&lt;key&gt;,&lt;value&gt;[,&lt;key&gt;,&lt;value&gt;...]</code>。</li>
 <li>变体：<code>variant = variant:&lt;type&gt;:&lt;value&gt;</code>。</li>
 </ul>
-<p>根据官网的解析出来后如上述集中数据类型，更详细的描述可以根据官方 <a href="https://dbus.freedesktop.org/doc/dbus-send.1.html">dbus-send</a> 进行参考。</p>
+<p>根据官网的解析出来后如上述集中数据类型，更详细的描述可以根据官方 <a href="https://dbus.freedesktop.org/doc/dbus-send.1.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-send</a> 进行参考。</p>
 <p><strong>可以通过一张图来理解 <code>dbus-send</code> 发送一个消息所需的几个必须参数</strong></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20211011223436036-907208415.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20211011223436036-907208415.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p><strong>通过简单的命令，来了解一个 <code>dbus-send</code> 命令如何传入参数</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"> dbus-send --dest<span class="o">=</span>org.freedesktop.ExampleName <span class="se">\ </span> <span class="c1"># service</span>
-</span></span><span class="line"><span class="cl">   /org/freedesktop/sample/object/name <span class="se">\ </span> <span class="c1"># object</span>
-</span></span><span class="line"><span class="cl">   org.freedesktop.ExampleInterface.ExampleMethod <span class="se">\ </span><span class="c1"># interface.method</span>
-</span></span><span class="line"><span class="cl">   int32:47 string:<span class="s1">&#39;hello world&#39;</span> double:65.32	<span class="se">\ </span><span class="c1"># param int</span>
-</span></span><span class="line"><span class="cl">   array:string:<span class="s2">&#34;1st item&#34;</span>,<span class="s2">&#34;next item&#34;</span>,<span class="s2">&#34;last item&#34;</span> <span class="se">\ </span><span class="c1"># param array</span>
-</span></span><span class="line"><span class="cl">   dict:string:int32:<span class="s2">&#34;one&#34;</span>,1,<span class="s2">&#34;two&#34;</span>,2,<span class="s2">&#34;three&#34;</span>,3 <span class="se">\ </span><span class="c1"># param dict</span>
-</span></span><span class="line"><span class="cl">   variant:int32:-8 <span class="se">\ </span><span class="c1"># param variant</span>
-</span></span><span class="line"><span class="cl">   objpath:/org/freedesktop/sample/object/name <span class="c1"># param object_path</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用案例">使用案例</h3>
+<pre><code class="language-bash"> dbus-send --dest=org.freedesktop.ExampleName \  # service
+   /org/freedesktop/sample/object/name \  # object
+   org.freedesktop.ExampleInterface.ExampleMethod \ # interface.method
+   int32:47 string:'hello world' double:65.32	\ # param int
+   array:string:&quot;1st item&quot;,&quot;next item&quot;,&quot;last item&quot; \ # param array
+   dict:string:int32:&quot;one&quot;,1,&quot;two&quot;,2,&quot;three&quot;,3 \ # param dict
+   variant:int32:-8 \ # param variant
+   objpath:/org/freedesktop/sample/object/name # param object_path
+</code></pre>
+<h3 id="使用案例">使用案例</h3>
 <p>如列出所有总线接口</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-shell" data-lang="shell"><span class="line"><span class="cl">dbus-send --session <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>  --dest<span class="o">=</span>org.freedesktop.DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>  --type<span class="o">=</span>method_call <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>  --print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>  /org/freedesktop/DBus <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>  org.freedesktop.DBus.ListNames
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看对方总线所支持的对象接口，<code>org.freedesktop.DBus.Introspectable</code> 、<code>org.freedesktop.DBus.Properties</code> 和 <code>org.freedesktop.PowerManagement</code>。每个接口实现一些方法和信号。这些是你可以与之互动的东西。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-send --session <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--type<span class="o">=</span>method_call <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--print-reply <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--dest<span class="o">=</span>org.freedesktop.DBus <span class="se">\ </span>
-</span></span><span class="line"><span class="cl">	/ <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>dbus-send</code>，也支持调用远程总线接口，通过默认通过 <code>DBUS_SESSION_BUS_ADDRESS</code> 或 <code>DBUS_SYSTEM_BUS_ADDRESS</code>，来指定远程的总线。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">DBUS_SESSION_BUS_ADDRESS=&#34;&#34;
-</span></span><span class="line"><span class="cl">dbus-send --session \
-</span></span><span class="line"><span class="cl">	--type=method_call \
-</span></span><span class="line"><span class="cl">	--print-reply \
-</span></span><span class="line"><span class="cl">	--dest=org.freedesktop.DBus \ 
-</span></span><span class="line"><span class="cl">	/ \
-</span></span><span class="line"><span class="cl">	org.freedesktop.DBus.Introspectable.Introspect
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="dbus-monitor">dbus-monitor</h2>
+<pre><code class="language-shell">dbus-send --session \
+  --dest=org.freedesktop.DBus \
+  --type=method_call \
+  --print-reply \
+  /org/freedesktop/DBus \
+  org.freedesktop.DBus.ListNames
+</code></pre>
+<p>查看对方总线所支持的对象接口，<code>org.freedesktop.DBus.Introspectable</code> 、<code>org.freedesktop.DBus.Properties</code> 和 <code>org.freedesktop.PowerManagement</code>。每个接口实现一些方法和信号。这些是你可以与之互动的东西。</p>
+<pre><code class="language-bash">dbus-send --session \
+	--type=method_call \
+	--print-reply \
+	--dest=org.freedesktop.DBus \ 
+	/ \
+	org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<p><code>dbus-send</code>，也支持调用远程总线接口，通过默认通过 <code>DBUS_SESSION_BUS_ADDRESS</code> 或 <code>DBUS_SYSTEM_BUS_ADDRESS</code>，来指定远程的总线。</p>
+<pre><code>DBUS_SESSION_BUS_ADDRESS=&quot;&quot;
+dbus-send --session \
+	--type=method_call \
+	--print-reply \
+	--dest=org.freedesktop.DBus \ 
+	/ \
+	org.freedesktop.DBus.Introspectable.Introspect
+</code></pre>
+<h2 id="dbus-monitor">dbus-monitor</h2>
 <p><code>dbus-monitor</code> 是一个可以监控 D-Bus 消息的命令行工具，。它可以调试和分析 D-Bus 通信间的数据包。</p>
 <ol>
 <li>监视所有消息</li>
 </ol>
 <p>要在控制台上监视所有 D-Bus 消息，可以使用以下命令：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-monitor
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="2">
+<pre><code class="language-bash">dbus-monitor
+</code></pre>
+<ol start="2">
 <li>监视某个特定接口</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">dbus</span><span class="o">-</span><span class="nx">monitor</span> <span class="kd">interface</span><span class="p">=</span><span class="s">&#34;org.freedesktop.NetworkManager&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="3">
+<pre><code class="language-go">dbus-monitor interface=&quot;org.freedesktop.NetworkManager&quot;
+</code></pre>
+<ol start="3">
 <li>监视某个特定路径下的对象</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-monitor <span class="nv">path</span><span class="o">=</span><span class="s2">&#34;/org/freedesktop/NetworkManager&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="4">
+<pre><code class="language-bash">dbus-monitor path=&quot;/org/freedesktop/NetworkManager&quot;
+</code></pre>
+<ol start="4">
 <li>监视某个特定接口和路径下的对象</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-monitor <span class="nv">interface</span><span class="o">=</span><span class="s2">&#34;org.freedesktop.NetworkManager&#34;</span> <span class="se">\ </span>
-</span></span><span class="line"><span class="cl">	<span class="nv">path</span><span class="o">=</span><span class="s2">&#34;/org/freedesktop/NetworkManager&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="5">
+<pre><code class="language-bash">dbus-monitor interface=&quot;org.freedesktop.NetworkManager&quot; \ 
+	path=&quot;/org/freedesktop/NetworkManager&quot;
+</code></pre>
+<ol start="5">
 <li>抓包输出到 Wireshark</li>
 </ol>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">dbus-monitor --pcap &gt; 1.pcap
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>​</p>
+<pre><code>dbus-monitor --pcap &gt; 1.pcap
+</code></pre>
+<p>​</p>
 <h2 id="gdbus">gdbus</h2>
 <p>gdbus是 GLib实现的dbus工具。较与 <code>dbus-send</code>，拥有更完整的功能。</p>
 <p><code>introspect</code> : 可以打印出对象的接口和属性值。对应对象的所有者需要实现<code>org.freedesktop.DBus.Introspectable</code> 的接口。使用 <code>--xml</code>选项，将打印返回的<code>xml </code> 格式。<code>--recurse</code> 选项可将其子级等打印，<code>--only</code> 选项仅打印具有属性的接口。</p>
@@ -1620,122 +998,54 @@
 <p><code>call</code>: 调用一个方法，传入的必须为 <code>GVariant</code> ,而相应的也为<code>GVariant</code>。</p>
 <p><code>emit</code>: 发出信号。信号中包含的每个参数除字符串外都必须序列化为GVariant。</p>
 <p>使用案例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">gdbus introspect --system \
-</span></span><span class="line"><span class="cl">	--dest org.freedesktop.UPower \
-</span></span><span class="line"><span class="cl">	--object-path \
-</span></span><span class="line"><span class="cl">	/ \
-</span></span><span class="line"><span class="cl">	--recurse  \
-</span></span><span class="line"><span class="cl">	--only-properties 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过call 来向一个dbus service发送信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">gdbus call --session \
-</span></span><span class="line"><span class="cl">             --dest org.freedesktop.Notifications \
-</span></span><span class="line"><span class="cl">             --object-path /org/freedesktop/Notifications \
-</span></span><span class="line"><span class="cl">             --method org.freedesktop.Notifications.Notify \
-</span></span><span class="line"><span class="cl">             my_app_name \
-</span></span><span class="line"><span class="cl">             42 \
-</span></span><span class="line"><span class="cl">             gtk-dialog-info \
-</span></span><span class="line"><span class="cl">             &#34;The Summary&#34; \
-</span></span><span class="line"><span class="cl">             &#34;Here&#39;s the body of the notification&#34; \
-</span></span><span class="line"><span class="cl">             [] \
-</span></span><span class="line"><span class="cl">             {} \
-</span></span><span class="line"><span class="cl">             5000
-</span></span><span class="line"><span class="cl">(uint32 12,)
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>监听一个服务的对象</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">gdbus monitor \
-</span></span><span class="line"><span class="cl">	--system \
-</span></span><span class="line"><span class="cl">	--dest org.freedesktop.NetworkManager \
-</span></span><span class="line"><span class="cl">	--object-path /org/freedesktop/NetworkManager/AccessPoint/4141
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>发送信号</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">gdbus emit --session \
-</span></span><span class="line"><span class="cl">	--object-path /foo \
-</span></span><span class="line"><span class="cl">	--signal org.bar.Foo &#34;[&#39;foo&#39;, &#39;bar&#39;, &#39;baz&#39;]&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>想特定进程发送信号，`&ndash;dest 为指定进程。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"> gdbus emit \
-</span></span><span class="line"><span class="cl"> 	--session \
-</span></span><span class="line"><span class="cl"> 	--object-path /bar \
-</span></span><span class="line"><span class="cl"> 	--signal org.bar.Bar someString \
-</span></span><span class="line"><span class="cl"> 	--dest :1.42
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="检查配置文件语法">检查配置文件语法</h2>
+<pre><code>gdbus introspect --system \
+	--dest org.freedesktop.UPower \
+	--object-path \
+	/ \
+	--recurse  \
+	--only-properties 
+</code></pre>
+<p>通过call 来向一个dbus service发送信息</p>
+<pre><code>gdbus call --session \
+             --dest org.freedesktop.Notifications \
+             --object-path /org/freedesktop/Notifications \
+             --method org.freedesktop.Notifications.Notify \
+             my_app_name \
+             42 \
+             gtk-dialog-info \
+             &quot;The Summary&quot; \
+             &quot;Here's the body of the notification&quot; \
+             [] \
+             {} \
+             5000
+(uint32 12,)
+</code></pre>
+<p>监听一个服务的对象</p>
+<pre><code>gdbus monitor \
+	--system \
+	--dest org.freedesktop.NetworkManager \
+	--object-path /org/freedesktop/NetworkManager/AccessPoint/4141
+</code></pre>
+<p>发送信号</p>
+<pre><code>gdbus emit --session \
+	--object-path /foo \
+	--signal org.bar.Foo &quot;['foo', 'bar', 'baz']&quot;
+</code></pre>
+<p>想特定进程发送信号，`&ndash;dest 为指定进程。</p>
+<pre><code> gdbus emit \
+ 	--session \
+ 	--object-path /bar \
+ 	--signal org.bar.Bar someString \
+ 	--dest :1.42
+</code></pre>
+<h2 id="检查配置文件语法">检查配置文件语法</h2>
 <p>CentOS 7 (dbus 1.10)，命令会启动一个dbus来验证配置文件的正确与否</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-launch --sh-syntax --config-file<span class="o">=</span>/path/to/config &gt; output.txt
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>higher</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">dbus-daemon --config-file<span class="o">=</span>/path/to/config --print-syntax
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-bash">dbus-launch --sh-syntax --config-file=/path/to/config &gt; output.txt
+</code></pre>
+<p>higher</p>
+<pre><code class="language-bash">dbus-daemon --config-file=/path/to/config --print-syntax
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -1746,92 +1056,55 @@
       <guid>https://www.oomkill.com/2020/09/centos7-dbus-troubleshooting/</guid>
       <description></description>
       <content:encoded><![CDATA[<h2 id="authorization-not-available-check-if-polkit">Authorization not available. Check if polkit</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Authorization not available. Check if polkit service is running or see debug message for more information.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus.socket failed to listen on sockets: Address family not supported by protocol
-</span></span><span class="line"><span class="cl">Failed to listen on D-Bus System Message Bus Socket.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这个问题是因为dbus.socket状态异常，所有依赖dbus的启动都会去通过systemcall连接 dbus，当服务不可用时，所有服务无法以systemd方式正常启动/关闭。需要检查dbus.socket是否正常。本地使用需保证unix套接字的监听时启动的</p>
+<pre><code>Authorization not available. Check if polkit service is running or see debug message for more information.
+
+dbus.socket failed to listen on sockets: Address family not supported by protocol
+Failed to listen on D-Bus System Message Bus Socket.
+</code></pre>
+<p>这个问题是因为dbus.socket状态异常，所有依赖dbus的启动都会去通过systemcall连接 dbus，当服务不可用时，所有服务无法以systemd方式正常启动/关闭。需要检查dbus.socket是否正常。本地使用需保证unix套接字的监听时启动的</p>
 <h2 id="did-not-receive-a-reply">Did not receive a reply</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Failed to open connection to &#34;system&#34; message bus: Did not receive a reply. Possible causes include: the remote application did not send a reply, the message bus security policy blocked the reply, the reply timeout expired, or the network connection was broken.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这是因为你的配置不对，客户端无法连接上</p>
+<pre><code>Failed to open connection to &quot;system&quot; message bus: Did not receive a reply. Possible causes include: the remote application did not send a reply, the message bus security policy blocked the reply, the reply timeout expired, or the network connection was broken.
+</code></pre>
+<p>这是因为你的配置不对，客户端无法连接上</p>
 <h2 id="d-bus-重启后登陆慢">D-Bus 重启后登陆慢</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">systemd-logind: Failed to connect to system bus: Connection refused
-</span></span><span class="line"><span class="cl">systemd-logind: Failed to fully start up daemon: Connection refused
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service: main process exited, code=exited, status=1/FAILURE
-</span></span><span class="line"><span class="cl">systemd: Unit systemd-logind.service entered failed state.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service failed.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service has no holdoff time, scheduling restart.
-</span></span><span class="line"><span class="cl">systemd: start request repeated too quickly for systemd-logind.service
-</span></span><span class="line"><span class="cl">systemd: Unit systemd-logind.service entered failed state.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service failed.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus[7782]: [system] Failed to activate service &#39;org.freedesktop.login1&#39;: timed out
-</span></span><span class="line"><span class="cl">dbus-daemon: dbus[7782]: [system] Failed to activate service &#39;org.freedesktop.login1&#39;:   timed out
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考：<a href="https://serverfault.com/questions/707377/slow-ssh-login-activation-of-org-freedesktop-login1-timed-out">ssh登陆缓慢</a></p>
+<pre><code>systemd-logind: Failed to connect to system bus: Connection refused
+systemd-logind: Failed to fully start up daemon: Connection refused
+systemd: systemd-logind.service: main process exited, code=exited, status=1/FAILURE
+systemd: Unit systemd-logind.service entered failed state.
+systemd: systemd-logind.service failed.
+systemd: systemd-logind.service has no holdoff time, scheduling restart.
+systemd: start request repeated too quickly for systemd-logind.service
+systemd: Unit systemd-logind.service entered failed state.
+systemd: systemd-logind.service failed.
+
+dbus[7782]: [system] Failed to activate service 'org.freedesktop.login1': timed out
+dbus-daemon: dbus[7782]: [system] Failed to activate service 'org.freedesktop.login1':   timed out
+</code></pre>
+<p>参考：<a href="https://serverfault.com/questions/707377/slow-ssh-login-activation-of-org-freedesktop-login1-timed-out" target="_blank"
+   rel="noopener nofollow noreferrer" >ssh登陆缓慢</a></p>
 <p>systemd-logind主要功能是为每一个登陆session创建一个systemd角度的cgroup管理对象，更方便对session使用cgroup，在dbus服务异常时，systemd-logind会导致登陆缓慢，并不影响正常登陆和ssh登陆。重启dbus.socket后需要也重启systemd-logind</p>
 <h2 id="d-bus-开启远程连接">D-Bus 开启远程连接</h2>
 <p>编辑 <code>/usr/share/dbus-1/system.conf</code> 或 <code>/etc/dbus-1/session.conf</code></p>
 <p>通常情况下生效的是 <code>/etc/dbus-1/system.conf</code> ,需要根据dbus应用是system bus 还是 session bus进行选择配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">&lt;listen&gt;tcp:host=&lt;ip&gt;,bind=*,port=&lt;port&gt;,family=ipv4&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">&lt;listen&gt;unix:path=/run/user/&lt;username&gt;/dbus/user_bus_socket&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">&lt;listen&gt;unix:tmpdir=/tmp&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">&lt;auth&gt;ANONYMOUS&lt;/auth&gt;
-</span></span><span class="line"><span class="cl">&lt;allow_anonymous/&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Reference</p>
-<p><a href="https://blog.fpmurphy.com/2018/10/using-the-d-bus-interface-to-firewalld.html">dbus-send使用</a></p>
-<p><a href="https://stackoverflow.com/questions/61327052/linux-dbus-remote-tcp-connection-with-systemd-fails">Linux DBus远程TCP连接失败</a></p>
-</blockquote>
+<pre><code>&lt;listen&gt;tcp:host=&lt;ip&gt;,bind=*,port=&lt;port&gt;,family=ipv4&lt;/listen&gt;
+&lt;listen&gt;unix:path=/run/user/&lt;username&gt;/dbus/user_bus_socket&lt;/listen&gt;
+&lt;listen&gt;unix:tmpdir=/tmp&lt;/listen&gt;
+
+&lt;auth&gt;ANONYMOUS&lt;/auth&gt;
+&lt;allow_anonymous/&gt;
+</code></pre>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://blog.fpmurphy.com/2018/10/using-the-d-bus-interface-to-firewalld.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-send使用</a></li>
+<li><a href="https://stackoverflow.com/questions/61327052/linux-dbus-remote-tcp-connection-with-systemd-fails" target="_blank"
+   rel="noopener nofollow noreferrer" >Linux DBus远程TCP连接失败</a></li>
+</ul>
 <h2 id="dbus-faq">dbus faq</h2>
-<p><a href="https://dbus.freedesktop.org/doc/">faq</a></p>
+<ul>
+<li><a href="https://dbus.freedesktop.org/doc/" target="_blank"
+   rel="noopener nofollow noreferrer" >faq</a></li>
+</ul>
 ]]></content:encoded>
     </item>
     

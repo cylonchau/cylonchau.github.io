@@ -10,7 +10,7 @@
 <meta name="description" content="深入解析Kubernetes监控体系与prometheus-adapter - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2024/05/prometheus-adapter-intro/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "prometheus", "monitor", "adapter"
   ],
-  "wordCount" : "4905",
+  "wordCount" : "4671",
   "inLanguage": "zh",
   "datePublished": "2024-05-31T00:00:00Z",
   "dateModified": "2024-05-31T00:00:00Z",
@@ -413,43 +413,24 @@ function toggleThemeListener() {
 <li>
 <p>自定义指标 API (Custom Metrics API)：该 API 允许消费者访问描述 Kubernetes 资源的任意指标。</p>
 <ul>
-<li>用户可以根据 <a href="https://github.com/kubernetes-sigs/custom-metrics-apiserver">kubernetes-sigs/custom-metrics-apiserver </a> 仓库来自定义 API-server</li>
+<li>用户可以根据 <a href="https://github.com/kubernetes-sigs/custom-metrics-apiserver" target="_blank"
+   rel="noopener nofollow noreferrer" >kubernetes-sigs/custom-metrics-apiserver </a> 仓库来自定义 API-server</li>
 </ul>
 </li>
 </ul>
 <h4 id="api的访问">API的访问<a hidden class="anchor" aria-hidden="true" href="#api的访问">¶</a></h4>
 <p>资源指标，该 API 是在 <code>/apis/metrics.k8s.io/</code> ，可以使用 <code>kubectl proxy --port 8080</code> 代理后进行访问，</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl proxy --port<span class="o">=</span><span class="m">8080</span>
-</span></span><span class="line"><span class="cl">$ curl localhost:8080/apis/metrics.k8s.io/v1beta1/nodes
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>或者使用 <code>kubectl get --raw</code> 进行获取</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get --raw <span class="s2">&#34;/apis/metrics.k8s.io/v1beta1/nodes&#34;</span> <span class="p">|</span> jq 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>自定义指标，该 API 是在 <code>/apis/custom.metrics.k8s.io/</code> ，访问的方式相同，用户通过该 PATH 进行访问。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 查看有哪些指标可用</span>
-</span></span><span class="line"><span class="cl">$ kubectl get --raw <span class="s2">&#34;/apis/custom.metrics.k8s.io/v1beta1/&#34;</span> <span class="p">|</span> jq
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="prometheus-adapter">Prometheus-adapter<a hidden class="anchor" aria-hidden="true" href="#prometheus-adapter">¶</a></h2>
+<pre><code class="language-bash">$ kubectl proxy --port=8080
+$ curl localhost:8080/apis/metrics.k8s.io/v1beta1/nodes
+</code></pre>
+<p>或者使用 <code>kubectl get --raw</code> 进行获取</p>
+<pre><code class="language-bash">$ kubectl get --raw &quot;/apis/metrics.k8s.io/v1beta1/nodes&quot; | jq 
+</code></pre>
+<p>自定义指标，该 API 是在 <code>/apis/custom.metrics.k8s.io/</code> ，访问的方式相同，用户通过该 PATH 进行访问。</p>
+<pre><code class="language-bash"># 查看有哪些指标可用
+$ kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1/&quot; | jq
+</code></pre>
+<h2 id="prometheus-adapter">Prometheus-adapter<a hidden class="anchor" aria-hidden="true" href="#prometheus-adapter">¶</a></h2>
 <p>通过上一章节介绍了kubernetes监控体系，这已经可以了解到了 prometheus-adapter 的定位；prometheus-adapter 是通过 kubernetes custom-metrics-apiserver 标准实现的一个 custom.metrics.k8s.io API，用于提供给 HPA 的一种指标适配器，可以将任何指标转化为 HPA 可用的指标。他全名为 <strong>Kubernetes Custom Metrics Adapter for Prometheus</strong>。</p>
 <h3 id="prometheus-adapter配置文件详解">prometheus-adapter配置文件详解<a hidden class="anchor" aria-hidden="true" href="#prometheus-adapter配置文件详解">¶</a></h3>
 <p>prometheus-adapter负责确定哪些指标以及如何去发现这些指标，根据这个标准，配置文件分为四个步骤来完成这套 “发现” 规则</p>
@@ -460,180 +441,93 @@ function toggleThemeListener() {
 <li><em>Naming</em> ，用于指定 adapter 应如何在自定义指标 API 中公开该指标。</li>
 <li><em>Querying</em> ，用于指定如何将针对一个或多个 Kubernetes 对象的特定指标请求转换为对 Prometheus 的查询。</li>
 </ul>
-<p>配置文件如下所示，这是官方给出的样板<a href="https://github.com/kubernetes-sigs/prometheus-adapter/blob/v0.12.0/docs/sample-config.yaml">配置文件</a>（文章编写时版本为0.12）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span><span class="lnt">73
-</span><span class="lnt">74
-</span><span class="lnt">75
-</span><span class="lnt">76
-</span><span class="lnt">77
-</span><span class="lnt">78
-</span><span class="lnt">79
-</span><span class="lnt">80
-</span><span class="lnt">81
-</span><span class="lnt">82
-</span><span class="lnt">83
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Each rule represents a some naming and discovery logic.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Each rule is executed independently of the others, so</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># take care to avoid overlap.  As an optimization, rules</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># with the same `seriesQuery` but different</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># `name` or `seriesFilters` will use only one query to</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Prometheus for discovery.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># some of these rules are taken from the &#34;default&#34; configuration, which</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># can be found in pkg/config/default.go</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># this rule matches cumulative cAdvisor metrics measured in seconds</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{__name__=~&#34;^container_.*&#34;,container!=&#34;POD&#34;,namespace!=&#34;&#34;,pod!=&#34;&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># skip specifying generic resource&lt;-&gt;label mappings, and just</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># attach only pod and namespace resources by mapping label names to group-resources</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span>{<span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;namespace&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span>{<span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;pod&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># specify that the `container_` and `_seconds_total` suffixes should be removed.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># this also introduces an implicit filter on metric family names</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># we use the value of the capture group implicitly as the API name</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># we could also explicitly write `as: &#34;$1&#34;`</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^container_(.*)_seconds_total$&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># specify how to construct a query to fetch samples for a given series</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># This is a Go template where the `.Series` and `.LabelMatchers` string values</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># are available, and the delimiters are `&lt;&lt;` and `&gt;&gt;` to avoid conflicts with</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># the prometheus query language</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&#34;</span><span class="l">POD&#34;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># this rule matches cumulative cAdvisor metrics not measured in seconds</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{__name__=~&#34;^container_.*_total&#34;,container!=&#34;POD&#34;,namespace!=&#34;&#34;,pod!=&#34;&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span>{<span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;namespace&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">pod</span><span class="p">:</span><span class="w"> </span>{<span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;pod&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">seriesFilters</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># since this is a superset of the query above, we introduce an additional filter here</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">isNot</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^container_.*_seconds_total$&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span>{<span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^container_(.*)_total$&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&#34;</span><span class="l">POD&#34;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># this rule matches cumulative non-cAdvisor metrics</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{namespace!=&#34;&#34;,__name__!=&#34;^container_.*&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span>{<span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^(.*)_total$&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># specify an a generic mapping between resources and labels.  This</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># is a template, like the `metricsQuery` template, except with the `.Group`</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># and `.Resource` strings available.  It will also be used to match labels,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># so avoid using template functions which truncate the group or resource.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># Group will be converted to a form acceptible for use as a label automatically.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&lt;&lt;.Resource&gt;&gt;&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># if we wanted to, we could also specify overrides here</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&#34;</span><span class="l">POD&#34;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># this rule matches only a single metric, explicitly naming it something else</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># It&#39;s series query *must* return only a single metric family</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;cheddar{sharp=&#34;true&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># this metric will appear as &#34;cheesy_goodness&#34; in the custom metrics API</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span>{<span class="nt">as</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;cheesy_goodness&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="c"># this should still resolve in our cluster</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">brand</span><span class="p">:</span><span class="w"> </span>{<span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;cheese.io&#34;</span><span class="nt">, resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;brand&#34;</span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;count(cheddar{sharp=&#34;true&#34;})&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># external rules are not tied to a Kubernetes resource and can reference any metric</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-metrics-not-related-to-kubernetes-objects</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">externalRules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{__name__=&#34;queue_consumer_lag&#34;,name!=&#34;&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="l">sum(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;}) by (name)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{__name__=&#34;queue_depth&#34;,topic!=&#34;&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="l">sum(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;}) by (name)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Kubernetes metric queries include a namespace in the query by default</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># but you can explicitly disable namespaces if needed with &#34;namespaced: false&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># this is useful if you have an HPA with an external metric in namespace A</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># but want to query for metrics from namespace B</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">namespaced</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># TODO: should we be able to map to a constant instance of a resource</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># (e.g. `resources: {constant: [{resource: &#34;namespace&#34;, name: &#34;kube-system&#34;}}]`)?</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="discovery">Discovery<a hidden class="anchor" aria-hidden="true" href="#discovery">¶</a></h4>
+<p>配置文件如下所示，这是官方给出的样板<a href="https://github.com/kubernetes-sigs/prometheus-adapter/blob/v0.12.0/docs/sample-config.yaml" target="_blank"
+   rel="noopener nofollow noreferrer" >配置文件</a>（文章编写时版本为0.12）</p>
+<pre><code class="language-yaml">rules:
+# Each rule represents a some naming and discovery logic.
+# Each rule is executed independently of the others, so
+# take care to avoid overlap.  As an optimization, rules
+# with the same `seriesQuery` but different
+# `name` or `seriesFilters` will use only one query to
+# Prometheus for discovery.
+
+# some of these rules are taken from the &quot;default&quot; configuration, which
+# can be found in pkg/config/default.go
+
+# this rule matches cumulative cAdvisor metrics measured in seconds
+- seriesQuery: '{__name__=~&quot;^container_.*&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;}'
+  resources:
+    # skip specifying generic resource&lt;-&gt;label mappings, and just
+    # attach only pod and namespace resources by mapping label names to group-resources
+    overrides:
+      namespace: {resource: &quot;namespace&quot;}
+      pod: {resource: &quot;pod&quot;}
+  # specify that the `container_` and `_seconds_total` suffixes should be removed.
+  # this also introduces an implicit filter on metric family names
+  name:
+    # we use the value of the capture group implicitly as the API name
+    # we could also explicitly write `as: &quot;$1&quot;`
+    matches: &quot;^container_(.*)_seconds_total$&quot;
+  # specify how to construct a query to fetch samples for a given series
+  # This is a Go template where the `.Series` and `.LabelMatchers` string values
+  # are available, and the delimiters are `&lt;&lt;` and `&gt;&gt;` to avoid conflicts with
+  # the prometheus query language
+  metricsQuery: &quot;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&quot;
+
+# this rule matches cumulative cAdvisor metrics not measured in seconds
+- seriesQuery: '{__name__=~&quot;^container_.*_total&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;}'
+  resources:
+    overrides:
+      namespace: {resource: &quot;namespace&quot;}
+      pod: {resource: &quot;pod&quot;}
+  seriesFilters:
+  # since this is a superset of the query above, we introduce an additional filter here
+  - isNot: &quot;^container_.*_seconds_total$&quot;
+  name: {matches: &quot;^container_(.*)_total$&quot;}
+  metricsQuery: &quot;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&quot;
+
+# this rule matches cumulative non-cAdvisor metrics
+- seriesQuery: '{namespace!=&quot;&quot;,__name__!=&quot;^container_.*&quot;}'
+  name: {matches: &quot;^(.*)_total$&quot;}
+  resources:
+    # specify an a generic mapping between resources and labels.  This
+    # is a template, like the `metricsQuery` template, except with the `.Group`
+    # and `.Resource` strings available.  It will also be used to match labels,
+    # so avoid using template functions which truncate the group or resource.
+    # Group will be converted to a form acceptible for use as a label automatically.
+    template: &quot;&lt;&lt;.Resource&gt;&gt;&quot;
+    # if we wanted to, we could also specify overrides here
+  metricsQuery: &quot;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&quot;
+
+# this rule matches only a single metric, explicitly naming it something else
+# It's series query *must* return only a single metric family
+- seriesQuery: 'cheddar{sharp=&quot;true&quot;}'
+  # this metric will appear as &quot;cheesy_goodness&quot; in the custom metrics API
+  name: {as: &quot;cheesy_goodness&quot;}
+  resources:
+    overrides:
+      # this should still resolve in our cluster
+      brand: {group: &quot;cheese.io&quot;, resource: &quot;brand&quot;}
+  metricsQuery: 'count(cheddar{sharp=&quot;true&quot;})'
+
+# external rules are not tied to a Kubernetes resource and can reference any metric
+# https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-metrics-not-related-to-kubernetes-objects
+externalRules:
+- seriesQuery: '{__name__=&quot;queue_consumer_lag&quot;,name!=&quot;&quot;}'
+  metricsQuery: sum(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;}) by (name)
+- seriesQuery: '{__name__=&quot;queue_depth&quot;,topic!=&quot;&quot;}'
+  metricsQuery: sum(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;}) by (name)
+  # Kubernetes metric queries include a namespace in the query by default
+  # but you can explicitly disable namespaces if needed with &quot;namespaced: false&quot;
+  # this is useful if you have an HPA with an external metric in namespace A
+  # but want to query for metrics from namespace B
+  resources:
+    namespaced: false
+
+# TODO: should we be able to map to a constant instance of a resource
+# (e.g. `resources: {constant: [{resource: &quot;namespace&quot;, name: &quot;kube-system&quot;}}]`)?
+</code></pre>
+<h4 id="discovery">Discovery<a hidden class="anchor" aria-hidden="true" href="#discovery">¶</a></h4>
 <p>Discovery 部分控制了查找要在自定义指标 API 中公开的指标的过程。其中有两个关键字段：<code>seriesQuery</code> 和 <code>seriesFilters</code>。</p>
 <p><strong>seriesQuery</strong> 指定了用于查找某些 Prometheus series 的 Prometheus series 查询(作为传递给  Prometheus  <code> /api/v1/series</code>)。适配器将从这些系列中剥离标签值，然后在后续步骤中使用得到的“指标名称—标签名称”的组合。</p>
 <p>在许多情况下，seriesQuery 就足以缩小 Prometheus series 的列表。但有时(特别是当两个规则可能重叠时)，对指标名称进行额外的过滤是很有用的。在这种情况下,可以使用  seriesFilters。在从 seriesQuery 返回 series  列表后，每个 series 的指标名称都会通过指定的任何过滤器进行过滤。</p>
@@ -643,78 +537,40 @@ function toggleThemeListener() {
 <li>isNot: <regex>，匹配名称不符合指定正则表达式的任何序列。</li>
 </ul>
 <p>例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="c"># match all cAdvisor metrics that aren&#39;t measured in seconds</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{__name__=~&#34;^container_.*_total&#34;,container!=&#34;POD&#34;,namespace!=&#34;&#34;,pod!=&#34;&#34;}&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">seriesFilters</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">isNot</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^container_.*_seconds_total&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="association">Association<a hidden class="anchor" aria-hidden="true" href="#association">¶</a></h4>
+<pre><code class="language-yaml"># match all cAdvisor metrics that aren't measured in seconds
+seriesQuery: '{__name__=~&quot;^container_.*_total&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;}'
+seriesFilters:
+  - isNot: &quot;^container_.*_seconds_total&quot;
+</code></pre>
+<h4 id="association">Association<a hidden class="anchor" aria-hidden="true" href="#association">¶</a></h4>
 <p>Association 部分控制了确定序列指标可以附加到哪些 Kubernetes 资源的过程。resources 字段控制了这个过程。</p>
 <p>有两种方式来关联资源与特定指标。在这两种情况下,标签的值都会成为特定对象的名称。</p>
 <p>一种方式是指定，任何符合某个特定模式的标签名称都指向基于标签名称的某个“group_resource”。这可以使用 template 字段来完成。pattern 被指定为一个 Go 模板，其中 Group 和 Resource 字段分别代表“组”和“资源”。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="c"># any label `kube_&lt;group&gt;_&lt;resource&gt;` becomes &lt;group&gt;.&lt;resource&gt; in Kubernetes</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;kube_&lt;&lt;.Group&gt;&gt;_&lt;&lt;.Resource&gt;&gt;&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>另一种方式是指定某个特定标签代表某个特定的 Kubernetes 资源。这可以使用 overrides 字段来完成。每个 override 将一个 Prometheus 标签映射到一个 Kubernetes group-resource。例如:</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="c"># the microservice label corresponds to the apps.deployment resource</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">microservice</span><span class="p">:</span><span class="w"> 
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;apps&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;deployment&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>Association 部分提供了两种关联 Prometheus 指标和 Kubernetes 资源的方式，可以根据需要灵活地组合使用。这是实现自定义指标 API 的关键一环。</p>
+<pre><code class="language-yaml"># any label `kube_&lt;group&gt;_&lt;resource&gt;` becomes &lt;group&gt;.&lt;resource&gt; in Kubernetes
+resources:
+  template: &quot;kube_&lt;&lt;.Group&gt;&gt;_&lt;&lt;.Resource&gt;&gt;&quot;
+</code></pre>
+<p>另一种方式是指定某个特定标签代表某个特定的 Kubernetes 资源。这可以使用 overrides 字段来完成。每个 override 将一个 Prometheus 标签映射到一个 Kubernetes group-resource。例如:</p>
+<pre><code class="language-yaml"># the microservice label corresponds to the apps.deployment resource
+resources:
+  overrides:
+    microservice: 
+      group: &quot;apps&quot;
+      resource: &quot;deployment&quot;
+</code></pre>
+<p>Association 部分提供了两种关联 Prometheus 指标和 Kubernetes 资源的方式，可以根据需要灵活地组合使用。这是实现自定义指标 API 的关键一环。</p>
 <h4 id="naming">Naming<a hidden class="anchor" aria-hidden="true" href="#naming">¶</a></h4>
 <p>Naming 部分控制了将 Prometheus 指标名称转换为自定义指标 API 中的指标，这是通过 name 字段来实现的。</p>
 <p>Naming 的控制通过指定一个从 Prometheus 名称中提取 API 名称的模式，以及对提取值进行的可选转换来实现。</p>
 <p>模式由 <code>matches</code> 字段指定，这是一个正则表达式。如果没有指定,它默认为 .* 。</p>
 <p>转换由 <code>as</code> 字段指定。你可以使用 <code>matches</code> 字段中定义的任何捕获组。如果 <code>matches</code> 字段没有捕获组，as 字段默认为 <code>$0</code> 。如果只包含一个捕获组，as 字段默认为 <code>$1</code> 。否则，如果没有指定 as 字段就会出错。例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="c"># match turn any name &lt;name&gt;_total to &lt;name&gt;_per_second</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># e.g. http_requests_total becomes http_requests_per_second</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;^(.*)_total$&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">as</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;${1}_per_second&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="querying">Querying<a hidden class="anchor" aria-hidden="true" href="#querying">¶</a></h4>
+<pre><code class="language-yaml"># match turn any name &lt;name&gt;_total to &lt;name&gt;_per_second
+# e.g. http_requests_total becomes http_requests_per_second
+name:
+  matches: &quot;^(.*)_total$&quot;
+  as: &quot;${1}_per_second&quot;
+</code></pre>
+<h4 id="querying">Querying<a hidden class="anchor" aria-hidden="true" href="#querying">¶</a></h4>
 <p>Querying 部分控制了实际获取特定指标值的过程。它由 <code>metricsQuery</code> 字段来控制。</p>
 <p>metricsQuery 字段是一个 Go 模板,它会被转换成一个 Prometheus 查询，使用从特定的自定义指标 API  调用获取的输入数据。对自定义指标 API  的一次调用会被简化为一个指标名称、一个 “group-resource” 和一个或多个该 “group-resource” 的对象。这些会被转换成模板中的以下字段:</p>
 <ul>
@@ -729,338 +585,183 @@ function toggleThemeListener() {
 <li>GroupBy: pod</li>
 </ul>
 <p>对应 prometheus promql 如下所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">sum<span class="o">(</span>http_requests_total<span class="o">{</span><span class="nv">pod</span><span class="o">=</span>~<span class="s2">&#34;pod1|pod2&#34;</span>,namespace<span class="o">=</span><span class="s2">&#34;somens&#34;</span><span class="o">})</span> by <span class="o">(</span>pod<span class="o">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>此外,还有两个高级字段是其他字段的&quot;原始&quot;形式:</p>
+<pre><code class="language-bash">sum(http_requests_total{pod=~&quot;pod1|pod2&quot;,namespace=&quot;somens&quot;}) by (pod)
+</code></pre>
+<p>此外,还有两个高级字段是其他字段的&quot;原始&quot;形式:</p>
 <ul>
 <li>LabelValuesByName: 映射。将 LabelMatchers 字段中的标签和值对应起来。值是用 <code>|</code> 预先连接的 (用于在 Prometheus 中使用 =~ 匹配器)。</li>
 <li>GroupBySlice: GroupBy 字段的切片形式。</li>
 </ul>
 <p>通常，我们可能会想使用 Series、LabelMatchers 和 GroupBy 字段。其他两个是用于高级用法的。</p>
 <p>Querying 预计会为每个请求的对象返回一个值。适配器会使用返回的系列上的标签，将给定的系列关联回其相应的对象。例如:</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># convert cumulative cAdvisor metrics into rates calculated over 2 minutes</span>
-</span></span><span class="line"><span class="cl">metricsQuery: <span class="s2">&#34;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&#34;</span>POD<span class="s2">&#34;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="完整的配置文件实例">完整的配置文件实例<a hidden class="anchor" aria-hidden="true" href="#完整的配置文件实例">¶</a></h3>
+<pre><code class="language-bash"># convert cumulative cAdvisor metrics into rates calculated over 2 minutes
+metricsQuery: &quot;sum(rate(&lt;&lt;.Series&gt;&gt;{&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;}[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&quot;
+</code></pre>
+<h3 id="完整的配置文件实例">完整的配置文件实例<a hidden class="anchor" aria-hidden="true" href="#完整的配置文件实例">¶</a></h3>
 <p>例如，我们想使用 springboot 的 actuator 提供的 <code>jvm_memory_used_bytes</code> 和 <code>jvm_memory_max_bytes</code> 计算内存使用率，如下所式</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;jvm_memory_used_bytes&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;namespace&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">pod</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;pod&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;jvm_memory_used_bytes&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">as</span><span class="p">:</span><span class="w"> </span><span class="l">memory_percent</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;sum(jvm_memory_used_bytes{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) / sum(jvm_memory_max_bytes{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) * 100&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;process_cpu_usage&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">overrides</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">namespace</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;namespace&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">pod</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;pod&#34;</span><span class="w">  
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;process_cpu_usage&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">as</span><span class="p">:</span><span class="w"> </span><span class="l">process_cpu_percent</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;sum(avg_over_time(process_cpu_usage{&lt;&lt;.LabelMatchers&gt;&gt;}[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)&#39;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里用到了一个技巧，就是使用查询多个指标，这里参考了 prometheus-adapter 的说明 <sup><a href="#4">4</a></sup></p>
+<pre><code class="language-yaml">rules:
+- seriesQuery: 'jvm_memory_used_bytes'
+  resources:
+    overrides:
+      namespace:
+        resource: &quot;namespace&quot;
+      pod:
+        resource: &quot;pod&quot;
+  name:
+    matches: 'jvm_memory_used_bytes'
+    as: memory_percent
+  metricsQuery: 'sum(jvm_memory_used_bytes{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) / sum(jvm_memory_max_bytes{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) * 100'
+- seriesQuery: 'process_cpu_usage'
+  resources:
+    overrides:
+      namespace:
+        resource: &quot;namespace&quot;
+      pod:
+        resource: &quot;pod&quot;  
+  name:
+    matches: 'process_cpu_usage'
+    as: process_cpu_percent
+  metricsQuery: 'sum(avg_over_time(process_cpu_usage{&lt;&lt;.LabelMatchers&gt;&gt;}[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)'
+</code></pre>
+<p>这里用到了一个技巧，就是使用查询多个指标，这里参考了 prometheus-adapter 的说明 <sup><a href="#4">4</a></sup></p>
 <blockquote>
 <p>这很好理解,虽然一开始可能看起来不太明显。</p>
 <p>基本上，你只需要选择一个指标作为 &ldquo;Discovery&rdquo; 和 &ldquo;naming&rdquo; 指标，然后使用它来配置配置中的 &ldquo;discovery&rdquo; 和 &ldquo;naming&rdquo; 部分。之后，你就可以在 metricsQuery 中写任何你想要的指标了！ ==<strong>Querying 的序列可以包含任何你想要的指标，只要它们有正确的标签集合即可</strong>==。</p>
 </blockquote>
 <p>例如，假设你有两个指标 foo_total 和 foo_count，它们都有一个标签 <code>system_name</code>，用于表示节点资源，那么如下配置所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">seriesQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;foo_total&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span>{<span class="nt">overrides</span><span class="p">:</span><span class="w"> </span>{<span class="nt">system_name</span><span class="p">:</span><span class="w"> </span>{<span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;node&#34;</span>}}}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matches</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;foo_total&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">as</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;foo&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">metricsQuery</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;sum(foo_total{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) / sum(foo_count{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;)&#39;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>由于我们使用了 <code>jvm_memory_used_bytes</code> 和 <code>jvm_memory_max_bytes</code> ，那么我们可以在 &ldquo;discovery&rdquo; 和 &ldquo;naming&rdquo; 部分写任意指标，在 ”quering“ 中使用真是的指标进行替换，就可以完成</p>
+<pre><code class="language-yaml">rules:
+- seriesQuery: 'foo_total'
+  resources: {overrides: {system_name: {resource: &quot;node&quot;}}}
+  name:
+    matches: 'foo_total'
+    as: 'foo'
+  metricsQuery: 'sum(foo_total{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;) / sum(foo_count{&lt;&lt;.LabelMatchers&gt;&gt;}) by (&lt;&lt;.GroupBy&gt;&gt;)'
+</code></pre>
+<p>由于我们使用了 <code>jvm_memory_used_bytes</code> 和 <code>jvm_memory_max_bytes</code> ，那么我们可以在 &ldquo;discovery&rdquo; 和 &ldquo;naming&rdquo; 部分写任意指标，在 ”quering“ 中使用真是的指标进行替换，就可以完成</p>
 <h4 id="查询-kubernetes-的指标">查询 kubernetes 的指标<a hidden class="anchor" aria-hidden="true" href="#查询-kubernetes-的指标">¶</a></h4>
 <p>完成配置后，可以使用下面命令进行查询</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get --raw <span class="s2">&#34;/apis/custom.metrics.k8s.io/v1beta1&#34;</span><span class="p">|</span>jq
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;APIResourceList&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;groupVersion&#34;</span>: <span class="s2">&#34;custom.metrics.k8s.io/v1beta1&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;resources&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;pods/process_cpu_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;singularName&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;namespaced&#34;</span>: true,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;MetricValueList&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;verbs&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;get&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;pods/memory_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;singularName&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;namespaced&#34;</span>: true,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;MetricValueList&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;verbs&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;get&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;namespaces/memory_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;singularName&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;namespaced&#34;</span>: false,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;MetricValueList&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;verbs&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;get&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;namespaces/process_cpu_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;singularName&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;namespaced&#34;</span>: false,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;MetricValueList&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;verbs&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;get&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>
-</span></span><span class="line"><span class="cl">  <span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以通过 custom API 进程查询具体获取的值，如下所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get --raw <span class="s2">&#34;/apis/custom.metrics.k8s.io/v1beta1/namespaces/public/pods/*/process_cpu_percent&#34;</span><span class="p">|</span>jq
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;MetricValueList&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;custom.metrics.k8s.io/v1beta1&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;metadata&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;items&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;describedObject&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;Pod&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;namespace&#34;</span>: <span class="s2">&#34;msg&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;message-gateway-api-78c4d5cdbf-9k2g7&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;/v1&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;metricName&#34;</span>: <span class="s2">&#34;process_cpu_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;timestamp&#34;</span>: <span class="s2">&#34;2024-05-31T11:40:25Z&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;value&#34;</span>: <span class="s2">&#34;404m&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;selector&#34;</span>: null
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    ...
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;describedObject&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;Pod&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;namespace&#34;</span>: <span class="s2">&#34;msg&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;message-core-79fdc6fdd-lkpdm&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;/v1&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;metricName&#34;</span>: <span class="s2">&#34;process_cpu_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;timestamp&#34;</span>: <span class="s2">&#34;2024-05-31T11:40:25Z&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;value&#34;</span>: <span class="s2">&#34;31m&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;selector&#34;</span>: null
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;describedObject&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;Pod&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;namespace&#34;</span>: <span class="s2">&#34;msg&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;message-push-admin-554f5d96fd-xlnhj&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;/v1&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;metricName&#34;</span>: <span class="s2">&#34;process_cpu_percent&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;timestamp&#34;</span>: <span class="s2">&#34;2024-05-31T11:40:25Z&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;value&#34;</span>: <span class="s2">&#34;487m&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;selector&#34;</span>: null
-</span></span><span class="line"><span class="cl">    <span class="o">}</span>
-</span></span><span class="line"><span class="cl">  <span class="o">]</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>我们可以看到，返回值是带有 ”m“ 的单位，这里 issue 是这样回答的</p>
+<pre><code class="language-bash">kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1&quot;|jq
+{
+  &quot;kind&quot;: &quot;APIResourceList&quot;,
+  &quot;apiVersion&quot;: &quot;v1&quot;,
+  &quot;groupVersion&quot;: &quot;custom.metrics.k8s.io/v1beta1&quot;,
+  &quot;resources&quot;: [
+    {
+      &quot;name&quot;: &quot;pods/process_cpu_percent&quot;,
+      &quot;singularName&quot;: &quot;&quot;,
+      &quot;namespaced&quot;: true,
+      &quot;kind&quot;: &quot;MetricValueList&quot;,
+      &quot;verbs&quot;: [
+        &quot;get&quot;
+      ]
+    },
+    {
+      &quot;name&quot;: &quot;pods/memory_percent&quot;,
+      &quot;singularName&quot;: &quot;&quot;,
+      &quot;namespaced&quot;: true,
+      &quot;kind&quot;: &quot;MetricValueList&quot;,
+      &quot;verbs&quot;: [
+        &quot;get&quot;
+      ]
+    },
+    {
+      &quot;name&quot;: &quot;namespaces/memory_percent&quot;,
+      &quot;singularName&quot;: &quot;&quot;,
+      &quot;namespaced&quot;: false,
+      &quot;kind&quot;: &quot;MetricValueList&quot;,
+      &quot;verbs&quot;: [
+        &quot;get&quot;
+      ]
+    },
+    {
+      &quot;name&quot;: &quot;namespaces/process_cpu_percent&quot;,
+      &quot;singularName&quot;: &quot;&quot;,
+      &quot;namespaced&quot;: false,
+      &quot;kind&quot;: &quot;MetricValueList&quot;,
+      &quot;verbs&quot;: [
+        &quot;get&quot;
+      ]
+    }
+  ]
+}
+</code></pre>
+<p>可以通过 custom API 进程查询具体获取的值，如下所示</p>
+<pre><code class="language-bash">$ kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/public/pods/*/process_cpu_percent&quot;|jq
+{
+  &quot;kind&quot;: &quot;MetricValueList&quot;,
+  &quot;apiVersion&quot;: &quot;custom.metrics.k8s.io/v1beta1&quot;,
+  &quot;metadata&quot;: {},
+  &quot;items&quot;: [
+    {
+      &quot;describedObject&quot;: {
+        &quot;kind&quot;: &quot;Pod&quot;,
+        &quot;namespace&quot;: &quot;msg&quot;,
+        &quot;name&quot;: &quot;message-gateway-api-78c4d5cdbf-9k2g7&quot;,
+        &quot;apiVersion&quot;: &quot;/v1&quot;
+      },
+      &quot;metricName&quot;: &quot;process_cpu_percent&quot;,
+      &quot;timestamp&quot;: &quot;2024-05-31T11:40:25Z&quot;,
+      &quot;value&quot;: &quot;404m&quot;,
+      &quot;selector&quot;: null
+    },
+    
+    ...
+    
+    {
+      &quot;describedObject&quot;: {
+        &quot;kind&quot;: &quot;Pod&quot;,
+        &quot;namespace&quot;: &quot;msg&quot;,
+        &quot;name&quot;: &quot;message-core-79fdc6fdd-lkpdm&quot;,
+        &quot;apiVersion&quot;: &quot;/v1&quot;
+      },
+      &quot;metricName&quot;: &quot;process_cpu_percent&quot;,
+      &quot;timestamp&quot;: &quot;2024-05-31T11:40:25Z&quot;,
+      &quot;value&quot;: &quot;31m&quot;,
+      &quot;selector&quot;: null
+    },
+    {
+      &quot;describedObject&quot;: {
+        &quot;kind&quot;: &quot;Pod&quot;,
+        &quot;namespace&quot;: &quot;msg&quot;,
+        &quot;name&quot;: &quot;message-push-admin-554f5d96fd-xlnhj&quot;,
+        &quot;apiVersion&quot;: &quot;/v1&quot;
+      },
+      &quot;metricName&quot;: &quot;process_cpu_percent&quot;,
+      &quot;timestamp&quot;: &quot;2024-05-31T11:40:25Z&quot;,
+      &quot;value&quot;: &quot;487m&quot;,
+      &quot;selector&quot;: null
+    }
+  ]
+}
+</code></pre>
+<p>我们可以看到，返回值是带有 ”m“ 的单位，这里 issue 是这样回答的</p>
 <blockquote>
-<p>The <code>m</code>-suffix means milli, Quantity Values are explained here: <a href="https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/walkthrough.md#quantity-values">https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/walkthrough.md#quantity-values</a>  <sup><a href="#5">5</a></sup></p>
+<p>The <code>m</code>-suffix means milli, Quantity Values are explained here: <a href="https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/walkthrough.md#quantity-values" target="_blank"
+   rel="noopener nofollow noreferrer" >https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/walkthrough.md#quantity-values</a>  <sup><a href="#5">5</a></sup></p>
 </blockquote>
 <p>在指标 API 中最常见的是 m 后缀,它表示毫单位，即单位的千分之一；由于我们返回值是一个百分比，例如 4.87%，那么实际值是 0.0487，那么他的毫单位为就是 “487m” ，和上面返回值一样。</p>
 <h3 id="prometheus-adapter的安装">Prometheus-adapter的安装<a hidden class="anchor" aria-hidden="true" href="#prometheus-adapter的安装">¶</a></h3>
 <p>在这里采用 helm 方式进行安装，只需要修改对应参数即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">helm install prometheus-adapter -n monitoring  prometheus-community/prometheus-adapter <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--set prometheus.url<span class="o">=</span>http://prometheus.default.svc <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--set <span class="nv">logLevel</span><span class="o">=</span><span class="m">2</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--set rules.external<span class="o">=</span>xxx <span class="c1"># 如果使用外部规则替换默认的config.yaml,则需要提前创建一个configmap，然后这里指定这个名称</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/monitoring_architecture.md">Kubernetes monitoring architecture</a></p>
-<p><sup id="2">[2]</sup> <a href="https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/core-metrics-pipeline.md">core-metrics-pipeline</a></p>
-<p><sup id="3">[3]</sup> <a href="https://github.com/kubernetes/metrics">kubernetes/metrics</a></p>
-<p><sup id="4">[4]</sup> <a href="https://github.com/kubernetes-sigs/prometheus-adapter/tree/v0.12.0?tab=readme-ov-file#my-query-contains-multiple-metrics-how-do-i-make-that-work">my-query-contains-multiple-metrics-how-do-i-make-that-work</a></p>
-<p><sup id="5">[5]</sup> <a href="https://github.com/kubernetes-sigs/prometheus-adapter/issues/376">why i request rest-api, returned requeslt for item value has &rsquo;m&rsquo; unit!!  #376</a></p>
-<p><sup id="6">[6]</sup> <a href="https://medium.com/@congliu.thu/complete-guide-to-kubernetes-metrics-24a8782c34cd">Guide to Kubernetes Metrics</a></p>
-<p><sup id="7">[7]</sup>  <a href="https://www.geekgame.site/post/k8s/monitoring_arch/">Kubernetes 监控架构(译)</a></p>
+<pre><code class="language-bash">helm install prometheus-adapter -n monitoring  prometheus-community/prometheus-adapter \
+	--set prometheus.url=http://prometheus.default.svc \
+	--set logLevel=2 \
+	--set rules.external=xxx # 如果使用外部规则替换默认的config.yaml,则需要提前创建一个configmap，然后这里指定这个名称
+</code></pre>
+<h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
+<p><sup id="1">[1]</sup> <a href="https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/monitoring_architecture.md" target="_blank"
+   rel="noopener nofollow noreferrer" >Kubernetes monitoring architecture</a></p>
+<p><sup id="2">[2]</sup> <a href="https://github.com/kubernetes/design-proposals-archive/blob/main/instrumentation/core-metrics-pipeline.md" target="_blank"
+   rel="noopener nofollow noreferrer" >core-metrics-pipeline</a></p>
+<p><sup id="3">[3]</sup> <a href="https://github.com/kubernetes/metrics" target="_blank"
+   rel="noopener nofollow noreferrer" >kubernetes/metrics</a></p>
+<p><sup id="4">[4]</sup> <a href="https://github.com/kubernetes-sigs/prometheus-adapter/tree/v0.12.0?tab=readme-ov-file#my-query-contains-multiple-metrics-how-do-i-make-that-work" target="_blank"
+   rel="noopener nofollow noreferrer" >my-query-contains-multiple-metrics-how-do-i-make-that-work</a></p>
+<p><sup id="5">[5]</sup> <a href="https://github.com/kubernetes-sigs/prometheus-adapter/issues/376" target="_blank"
+   rel="noopener nofollow noreferrer" >why i request rest-api, returned requeslt for item value has &rsquo;m&rsquo; unit!!  #376</a></p>
+<p><sup id="6">[6]</sup> <a href="https://medium.com/@congliu.thu/complete-guide-to-kubernetes-metrics-24a8782c34cd" target="_blank"
+   rel="noopener nofollow noreferrer" >Guide to Kubernetes Metrics</a></p>
+<p><sup id="7">[7]</sup>  <a href="https://www.geekgame.site/post/k8s/monitoring_arch/" target="_blank"
+   rel="noopener nofollow noreferrer" >Kubernetes 监控架构(译)</a></p>
 
 
     

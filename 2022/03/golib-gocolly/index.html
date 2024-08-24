@@ -10,7 +10,7 @@
 <meta name="description" content="Go每日一库 - gocolly - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/03/golib-gocolly/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "golang", "Go每日一库 - gocolly"
   ],
-  "wordCount" : "1959",
+  "wordCount" : "1675",
   "inLanguage": "zh",
   "datePublished": "2022-03-29T00:00:00Z",
   "dateModified": "2022-03-29T00:00:00Z",
@@ -346,7 +346,8 @@ function toggleThemeListener() {
 <p>本文对colly如何使用，整个代码架构设计，以及一些使用实例的收集。</p>
 <p>Colly是Go语言开发的Crawler Framework，并不是一个完整的产品，Colly提供了类似于Python的同类产品（<code>BeautifulSoup</code> 或  <code>Scrapy</code>）相似的表现力和灵活性。</p>
 <p>Colly这个名称源自 <code>Collector</code>  的简写，而<code>Collector</code> 也是 Colly的核心。</p>
-<p><a href="http://go-colly.org/docs/">Colly Official Docs</a>，内容不是很多，最新的消息也很就远了，仅仅是活跃在Github</p>
+<p><a href="http://go-colly.org/docs/" target="_blank"
+   rel="noopener nofollow noreferrer" >Colly Official Docs</a>，内容不是很多，最新的消息也很就远了，仅仅是活跃在Github</p>
 <h2 id="concepts">Concepts<a hidden class="anchor" aria-hidden="true" href="#concepts">¶</a></h2>
 <h3 id="architecture">Architecture<a hidden class="anchor" aria-hidden="true" href="#architecture">¶</a></h3>
 <p>从理解上来说，Colly的设计分为两层，核心层和解析层，</p>
@@ -366,7 +367,7 @@ function toggleThemeListener() {
 </ul>
 </blockquote>
 <p>而Colly则是将这些概念进行封装，通过将事件注册到每个步骤中，通过事件的方式对数据进行清理，抽象来说，Colly面向的是过程而不是对象。大概的工作架构如图</p>
-<p></p>
+<p><img loading="lazy" src="../../images/gocolly/image-20220401003447726.png" alt="image-20220401003447726" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h3 id="event">event<a hidden class="anchor" aria-hidden="true" href="#event">¶</a></h3>
 <p>通过上述的概念，可以大概了解到 <code>Colly </code> 是一个基于事件的Crawler，通过开发者自行注册事件函数来触发整个流水线的工作</p>
 <p>Colly 具有以下事件处理程序：</p>
@@ -383,649 +384,325 @@ function toggleThemeListener() {
 </ul>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://github.com/PuerkitoBio/goquery">goquery</a></p>
-<p><a href="https://github.com/antchfx/htmlquery">htmlquery</a></p>
+<p><a href="https://github.com/PuerkitoBio/goquery" target="_blank"
+   rel="noopener nofollow noreferrer" >goquery</a></p>
+<p><a href="https://github.com/antchfx/htmlquery" target="_blank"
+   rel="noopener nofollow noreferrer" >htmlquery</a></p>
 </blockquote>
 <h2 id="utilities">Utilities<a hidden class="anchor" aria-hidden="true" href="#utilities">¶</a></h2>
 <h3 id="简单使用">简单使用<a hidden class="anchor" aria-hidden="true" href="#简单使用">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Instantiate default collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Visit only domains: hackerspaces.org, wiki.hackerspaces.org
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">colly</span><span class="p">.</span><span class="nf">AllowedDomains</span><span class="p">(</span><span class="s">&#34;hackerspaces.org&#34;</span><span class="p">,</span> <span class="s">&#34;wiki.hackerspaces.org&#34;</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// On every a element which has href attribute call callback
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">OnHTML</span><span class="p">(</span><span class="s">&#34;a[href]&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">HTMLElement</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">link</span> <span class="o">:=</span> <span class="nx">e</span><span class="p">.</span><span class="nf">Attr</span><span class="p">(</span><span class="s">&#34;href&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Print link
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Link found: %q -&gt; %s\n&#34;</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Text</span><span class="p">,</span> <span class="nx">link</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Visit link found on page
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// Only those links are visited which are in AllowedDomains
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nf">AbsoluteURL</span><span class="p">(</span><span class="nx">link</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Before making a request print &#34;Visiting ...&#34;
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">OnRequest</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;Visiting&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Start scraping on https://hackerspaces.org
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="s">&#34;https://hackerspaces.org/&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="错误处理">错误处理<a hidden class="anchor" aria-hidden="true" href="#错误处理">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Create a collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Set HTML callback
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// Won&#39;t be called if error occurs
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">OnHTML</span><span class="p">(</span><span class="s">&#34;*&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">HTMLElement</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Set error handler
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">OnError</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">Response</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;Request URL:&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">URL</span><span class="p">,</span> <span class="s">&#34;failed with response:&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="s">&#34;\nError:&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Start scraping
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="s">&#34;https://definitely-not-a.website/&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="处理本地文件">处理本地文件<a hidden class="anchor" aria-hidden="true" href="#处理本地文件">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;fmt&quot;
+
+	&quot;github.com/gocolly/colly&quot;
+)
+
+func main() {
+	// Instantiate default collector
+	c := colly.NewCollector(
+		// Visit only domains: hackerspaces.org, wiki.hackerspaces.org
+		colly.AllowedDomains(&quot;hackerspaces.org&quot;, &quot;wiki.hackerspaces.org&quot;),
+	)
+
+	// On every a element which has href attribute call callback
+	c.OnHTML(&quot;a[href]&quot;, func(e *colly.HTMLElement) {
+		link := e.Attr(&quot;href&quot;)
+		// Print link
+		fmt.Printf(&quot;Link found: %q -&gt; %s\n&quot;, e.Text, link)
+		// Visit link found on page
+		// Only those links are visited which are in AllowedDomains
+		c.Visit(e.Request.AbsoluteURL(link))
+	})
+
+	// Before making a request print &quot;Visiting ...&quot;
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println(&quot;Visiting&quot;, r.URL.String())
+	})
+
+	// Start scraping on https://hackerspaces.org
+	c.Visit(&quot;https://hackerspaces.org/&quot;)
+}
+</code></pre>
+<h3 id="错误处理">错误处理<a hidden class="anchor" aria-hidden="true" href="#错误处理">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;fmt&quot;
+
+	&quot;github.com/gocolly/colly&quot;
+)
+
+func main() {
+	// Create a collector
+	c := colly.NewCollector()
+
+	// Set HTML callback
+	// Won't be called if error occurs
+	c.OnHTML(&quot;*&quot;, func(e *colly.HTMLElement) {
+		fmt.Println(e)
+	})
+
+	// Set error handler
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(&quot;Request URL:&quot;, r.Request.URL, &quot;failed with response:&quot;, r, &quot;\nError:&quot;, err)
+	})
+
+	// Start scraping
+	c.Visit(&quot;https://definitely-not-a.website/&quot;)
+}
+</code></pre>
+<h3 id="处理本地文件">处理本地文件<a hidden class="anchor" aria-hidden="true" href="#处理本地文件">¶</a></h3>
 <p>word.html</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-html" data-lang="html"><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>Document title<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>List of words<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>dark<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>smart<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>war<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>cloud<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>park<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>cup<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>worm<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>water<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>rock<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>warm<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">footer</span><span class="p">&gt;</span>footer for words<span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
-</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;net/http&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/gocolly/colly/v2&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">t</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">http</span><span class="p">.</span><span class="nx">Transport</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">t</span><span class="p">.</span><span class="nf">RegisterProtocol</span><span class="p">(</span><span class="s">&#34;file&#34;</span><span class="p">,</span> <span class="nx">http</span><span class="p">.</span><span class="nf">NewFileTransport</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nf">Dir</span><span class="p">(</span><span class="s">&#34;.&#34;</span><span class="p">)))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span><span class="p">.</span><span class="nf">WithTransport</span><span class="p">(</span><span class="nx">t</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">words</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span><span class="p">.</span><span class="nf">OnHTML</span><span class="p">(</span><span class="s">&#34;li&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">HTMLElement</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">words</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">words</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Text</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="s">&#34;file://./words.html&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">p</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">words</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%s\n&#34;</span><span class="p">,</span> <span class="nx">p</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用代理交换器">使用代理交换器<a hidden class="anchor" aria-hidden="true" href="#使用代理交换器">¶</a></h3>
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;title&gt;Document title&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;p&gt;List of words&lt;/p&gt;
+&lt;ul&gt;
+    &lt;li&gt;dark&lt;/li&gt;
+    &lt;li&gt;smart&lt;/li&gt;
+    &lt;li&gt;war&lt;/li&gt;
+    &lt;li&gt;cloud&lt;/li&gt;
+    &lt;li&gt;park&lt;/li&gt;
+    &lt;li&gt;cup&lt;/li&gt;
+    &lt;li&gt;worm&lt;/li&gt;
+    &lt;li&gt;water&lt;/li&gt;
+    &lt;li&gt;rock&lt;/li&gt;
+    &lt;li&gt;warm&lt;/li&gt;
+&lt;/ul&gt;
+&lt;footer&gt;footer for words&lt;/footer&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<pre><code class="language-go">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;net/http&quot;
+
+    &quot;github.com/gocolly/colly/v2&quot;
+)
+
+func main() {
+
+    t := &amp;http.Transport{}
+    t.RegisterProtocol(&quot;file&quot;, http.NewFileTransport(http.Dir(&quot;.&quot;)))
+
+    c := colly.NewCollector()
+    c.WithTransport(t)
+
+    words := []string{}
+
+    c.OnHTML(&quot;li&quot;, func(e *colly.HTMLElement) {
+        words = append(words, e.Text)
+    })
+
+    c.Visit(&quot;file://./words.html&quot;)
+
+    for _, p := range words {
+        fmt.Printf(&quot;%s\n&quot;, p)
+    }
+}
+</code></pre>
+<h3 id="使用代理交换器">使用代理交换器<a hidden class="anchor" aria-hidden="true" href="#使用代理交换器">¶</a></h3>
 <p>通过 <code>ProxySwitcher</code> , 可以直接使用一批代理IP池进行访问了，然而这里只有RR，如果需要其他的均衡算法，需要有自己实现了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;bytes&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;log&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly/proxy&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Instantiate default collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span><span class="nx">colly</span><span class="p">.</span><span class="nf">AllowURLRevisit</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Rotate two socks5 proxies
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">rp</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">proxy</span><span class="p">.</span><span class="nf">RoundRobinProxySwitcher</span><span class="p">(</span><span class="s">&#34;socks5://127.0.0.1:1337&#34;</span><span class="p">,</span> <span class="s">&#34;socks5://127.0.0.1:1338&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nf">SetProxyFunc</span><span class="p">(</span><span class="nx">rp</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Print the response
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">OnResponse</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">Response</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Proxy Address: %s\n&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">ProxyURL</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%s\n&#34;</span><span class="p">,</span> <span class="nx">bytes</span><span class="p">.</span><span class="nf">Replace</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">Body</span><span class="p">,</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">),</span> <span class="kc">nil</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Fetch httpbin.org/ip five times
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">5</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="s">&#34;https://httpbin.org/ip&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="随机延迟">随机延迟<a hidden class="anchor" aria-hidden="true" href="#随机延迟">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;bytes&quot;
+	&quot;log&quot;
+
+	&quot;github.com/gocolly/colly&quot;
+	&quot;github.com/gocolly/colly/proxy&quot;
+)
+
+func main() {
+	// Instantiate default collector
+	c := colly.NewCollector(colly.AllowURLRevisit())
+
+	// Rotate two socks5 proxies
+	rp, err := proxy.RoundRobinProxySwitcher(&quot;socks5://127.0.0.1:1337&quot;, &quot;socks5://127.0.0.1:1338&quot;)
+	if err != nil {
+		log.Fatal(err)
+	}
+	c.SetProxyFunc(rp)
+
+	// Print the response
+	c.OnResponse(func(r *colly.Response) {
+		log.Printf(&quot;Proxy Address: %s\n&quot;, r.Request.ProxyURL)
+		log.Printf(&quot;%s\n&quot;, bytes.Replace(r.Body, []byte(&quot;\n&quot;), nil, -1))
+	})
+
+	// Fetch httpbin.org/ip five times
+	for i := 0; i &lt; 5; i++ {
+		c.Visit(&quot;https://httpbin.org/ip&quot;)
+	}
+}
+
+</code></pre>
+<h3 id="随机延迟">随机延迟<a hidden class="anchor" aria-hidden="true" href="#随机延迟">¶</a></h3>
 <p>该功能可以对行为设置一种特征，以免被反扒机器人检测，并禁止我们，如速率限制和延迟</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly/debug&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">url</span> <span class="o">:=</span> <span class="s">&#34;https://httpbin.org/delay/2&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Instantiate default collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Attach a debugger to the collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">colly</span><span class="p">.</span><span class="nf">Debugger</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">debug</span><span class="p">.</span><span class="nx">LogDebugger</span><span class="p">{}),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">colly</span><span class="p">.</span><span class="nf">Async</span><span class="p">(</span><span class="kc">true</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Limit the number of threads started by colly to two
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// when visiting links which domains&#39; matches &#34;*httpbin.*&#34; glob
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">Limit</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">colly</span><span class="p">.</span><span class="nx">LimitRule</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">DomainGlob</span><span class="p">:</span>  <span class="s">&#34;*httpbin.*&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Parallelism</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">RandomDelay</span><span class="p">:</span> <span class="mi">5</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Start scraping in four threads on https://httpbin.org/delay/2
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">4</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%s?n=%d&#34;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">i</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Start scraping on https://httpbin.org/delay/2
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Wait until threads are finished
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="多线程请求队列">多线程请求队列<a hidden class="anchor" aria-hidden="true" href="#多线程请求队列">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gocolly/colly/queue&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">url</span> <span class="o">:=</span> <span class="s">&#34;https://httpbin.org/delay/1&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Instantiate default collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span><span class="nx">colly</span><span class="p">.</span><span class="nf">AllowURLRevisit</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// create a request queue with 2 consumer threads
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">q</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">queue</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">		<span class="mi">2</span><span class="p">,</span> <span class="c1">// Number of consumer threads
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="o">&amp;</span><span class="nx">queue</span><span class="p">.</span><span class="nx">InMemoryQueueStorage</span><span class="p">{</span><span class="nx">MaxSize</span><span class="p">:</span> <span class="mi">10000</span><span class="p">},</span> <span class="c1">// Use default queue storage
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nf">OnRequest</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;visiting&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">r</span><span class="p">.</span><span class="nx">ID</span> <span class="p">&lt;</span> <span class="mi">15</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">r2</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;GET&#34;</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%s?x=%v&#34;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">ID</span><span class="p">),</span> <span class="kc">nil</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">err</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">q</span><span class="p">.</span><span class="nf">AddRequest</span><span class="p">(</span><span class="nx">r2</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">5</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Add URLs to the queue
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">q</span><span class="p">.</span><span class="nf">AddURL</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%s?n=%d&#34;</span><span class="p">,</span> <span class="nx">url</span><span class="p">,</span> <span class="nx">i</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Consume URLs
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">q</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">c</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="异步">异步<a hidden class="anchor" aria-hidden="true" href="#异步">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;fmt&quot;
+	&quot;time&quot;
+
+	&quot;github.com/gocolly/colly&quot;
+	&quot;github.com/gocolly/colly/debug&quot;
+)
+
+func main() {
+	url := &quot;https://httpbin.org/delay/2&quot;
+
+	// Instantiate default collector
+	c := colly.NewCollector(
+		// Attach a debugger to the collector
+		colly.Debugger(&amp;debug.LogDebugger{}),
+		colly.Async(true),
+	)
+
+	// Limit the number of threads started by colly to two
+	// when visiting links which domains' matches &quot;*httpbin.*&quot; glob
+	c.Limit(&amp;colly.LimitRule{
+		DomainGlob:  &quot;*httpbin.*&quot;,
+		Parallelism: 2,
+		RandomDelay: 5 * time.Second,
+	})
+
+	// Start scraping in four threads on https://httpbin.org/delay/2
+	for i := 0; i &lt; 4; i++ {
+		c.Visit(fmt.Sprintf(&quot;%s?n=%d&quot;, url, i))
+	}
+	// Start scraping on https://httpbin.org/delay/2
+	c.Visit(url)
+	// Wait until threads are finished
+	c.Wait()
+}
+</code></pre>
+<h3 id="多线程请求队列">多线程请求队列<a hidden class="anchor" aria-hidden="true" href="#多线程请求队列">¶</a></h3>
+<pre><code>package main
+
+import (
+	&quot;fmt&quot;
+
+	&quot;github.com/gocolly/colly&quot;
+	&quot;github.com/gocolly/colly/queue&quot;
+)
+
+func main() {
+	url := &quot;https://httpbin.org/delay/1&quot;
+
+	// Instantiate default collector
+	c := colly.NewCollector(colly.AllowURLRevisit())
+
+	// create a request queue with 2 consumer threads
+	q, _ := queue.New(
+		2, // Number of consumer threads
+		&amp;queue.InMemoryQueueStorage{MaxSize: 10000}, // Use default queue storage
+	)
+
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println(&quot;visiting&quot;, r.URL)
+		if r.ID &lt; 15 {
+			r2, err := r.New(&quot;GET&quot;, fmt.Sprintf(&quot;%s?x=%v&quot;, url, r.ID), nil)
+			if err == nil {
+				q.AddRequest(r2)
+			}
+		}
+	})
+
+	for i := 0; i &lt; 5; i++ {
+		// Add URLs to the queue
+		q.AddURL(fmt.Sprintf(&quot;%s?n=%d&quot;, url, i))
+	}
+	// Consume URLs
+	q.Run(c)
+
+}
+</code></pre>
+<h3 id="异步">异步<a hidden class="anchor" aria-hidden="true" href="#异步">¶</a></h3>
 <p>默认情况下，Colly的工作模式是同步的。可以使用 <code>Async</code> 函数启用异步模式。在异步模式下，我们需要调用<code>Wait</code> 等待<code>Collector</code> 工作完成。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/gocolly/colly/v2&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">urls</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;http://webcode.me&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://example.com&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;http://httpbin.org&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://www.perl.org&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://www.php.net&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://www.python.org&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://code.visualstudio.com&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="s">&#34;https://clojure.org&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">colly</span><span class="p">.</span><span class="nf">Async</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">    <span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span><span class="p">.</span><span class="nf">OnHTML</span><span class="p">(</span><span class="s">&#34;title&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">HTMLElement</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">e</span><span class="p">.</span><span class="nx">Text</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">url</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">urls</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">        <span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="nx">url</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="nx">c</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="最大深度">最大深度<a hidden class="anchor" aria-hidden="true" href="#最大深度">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+    &quot;fmt&quot;
+
+    &quot;github.com/gocolly/colly/v2&quot;
+)
+
+func main() {
+
+    urls := []string{
+        &quot;http://webcode.me&quot;,
+        &quot;https://example.com&quot;,
+        &quot;http://httpbin.org&quot;,
+        &quot;https://www.perl.org&quot;,
+        &quot;https://www.php.net&quot;,
+        &quot;https://www.python.org&quot;,
+        &quot;https://code.visualstudio.com&quot;,
+        &quot;https://clojure.org&quot;,
+    }
+
+    c := colly.NewCollector(
+        colly.Async(),
+    )
+
+    c.OnHTML(&quot;title&quot;, func(e *colly.HTMLElement) {
+        fmt.Println(e.Text)
+    })
+
+    for _, url := range urls {
+
+        c.Visit(url)
+    }
+
+    c.Wait()
+
+}
+</code></pre>
+<h3 id="最大深度">最大深度<a hidden class="anchor" aria-hidden="true" href="#最大深度">¶</a></h3>
 <p>深度是在访问这个页面时，其页面还有link，此时需要采集到入口link几层的link？默认1</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">   <span class="s">&#34;fmt&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">   <span class="s">&#34;github.com/gocolly/colly&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">   <span class="c1">// Instantiate default collector
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">c</span> <span class="o">:=</span> <span class="nx">colly</span><span class="p">.</span><span class="nf">NewCollector</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">      <span class="c1">// MaxDepth is 1, so only the links on the scraped page
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="c1">// is visited, and no further links are followed
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="nx">colly</span><span class="p">.</span><span class="nf">MaxDepth</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">   <span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">   <span class="c1">// On every a element which has href attribute call callback
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">c</span><span class="p">.</span><span class="nf">OnHTML</span><span class="p">(</span><span class="s">&#34;a[href]&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">colly</span><span class="p">.</span><span class="nx">HTMLElement</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nx">link</span> <span class="o">:=</span> <span class="nx">e</span><span class="p">.</span><span class="nf">Attr</span><span class="p">(</span><span class="s">&#34;href&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">      <span class="c1">// Print link
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">      <span class="c1">// Visit link found on page
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>      <span class="nx">e</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="nx">link</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">   <span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">   <span class="c1">// Start scraping on https://en.wikipedia.org
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>   <span class="nx">c</span><span class="p">.</span><span class="nf">Visit</span><span class="p">(</span><span class="s">&#34;https://en.wikipedia.org/&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-go">package main
+
+import (
+   &quot;fmt&quot;
+
+   &quot;github.com/gocolly/colly&quot;
+)
+
+func main() {
+   // Instantiate default collector
+   c := colly.NewCollector(
+      // MaxDepth is 1, so only the links on the scraped page
+      // is visited, and no further links are followed
+      colly.MaxDepth(1),
+   )
+
+   // On every a element which has href attribute call callback
+   c.OnHTML(&quot;a[href]&quot;, func(e *colly.HTMLElement) {
+      link := e.Attr(&quot;href&quot;)
+      // Print link
+      fmt.Println(link)
+      // Visit link found on page
+      e.Request.Visit(link)
+   })
+
+   // Start scraping on https://en.wikipedia.org
+   c.Visit(&quot;https://en.wikipedia.org/&quot;)
+}
+</code></pre>
+<blockquote>
 <p>Reference</p>
-<p><a href="https://faun.pub/web-scrapping-using-golang-gocolly-21f824070291">gocolly</a></p>
-<p><a href="https://zetcode.com/golang/colly/">colly</a></p>
+<p><a href="https://faun.pub/web-scrapping-using-golang-gocolly-21f824070291" target="_blank"
+   rel="noopener nofollow noreferrer" >gocolly</a></p>
+<p><a href="https://zetcode.com/golang/colly/" target="_blank"
+   rel="noopener nofollow noreferrer" >colly</a></p>
 </blockquote>
 
 

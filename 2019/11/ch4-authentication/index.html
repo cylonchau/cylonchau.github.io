@@ -10,7 +10,7 @@
 <meta name="description" content="ch4 OpenVPN的统一身份认证方案及实现方法 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/11/ch4-authentication/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "VPN", "openvpn统一身份认证"
   ],
-  "wordCount" : "1484",
+  "wordCount" : "1397",
   "inLanguage": "zh",
   "datePublished": "2019-11-18T00:00:00Z",
   "dateModified": "2023-03-22T23:10:36+08:00",
@@ -338,21 +338,14 @@ function toggleThemeListener() {
 <br><p>OpenVPN 2.0与更高版本允许OpenVPN服务器从客户端安全地获取用户名和密码，并将该信息用作认证基础。</p>
 <h3 id="方法1通过本地证书密钥认证">方法1：通过本地证书密钥认证。<a hidden class="anchor" aria-hidden="true" href="#方法1通过本地证书密钥认证">¶</a></h3>
 <p>默认不配置，openvpn即使用证书进行身份认证。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221024220430016.png" alt="image-20221024220430016"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20221024220430016.png" alt="image-20221024220430016" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>（1）编辑主服务器配置文件/etc/openldap/slapd.conf，取消如下行的注释：</p>
 <h3 id="方法2本地文件认证">方法2：本地文件认证<a hidden class="anchor" aria-hidden="true" href="#方法2本地文件认证">¶</a></h3>
 <p>在使用身份验证时，需要将 <code>auth-user-pass</code> 指令添加到客户端配置文件中，设置后OpenVPN客户端向用户索要用户名/密码，并将其通过安全的TLS通道传递给服务器进行验证。</p>
 <p>服务端配置文件需要增加配置指令 <code>auth-user-pass-verify auth-pam.pl via-file</code> 使用脚本插件。<code>auth-pam.pl</code> 在源码包 <code>sample/sample-script</code> 路径下。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">plugin /usr/share/openvpn/plugin/lib/openvpn-auth-pam.so login
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>生产环境下官方推荐使用 <code>openvpn-auth-pam</code> 插件进行验证，相比于 <strong>auth-pam.pl</strong>，<code>openvpn-auth-pam </code> 插件具有多个优点：</p>
+<pre><code>plugin /usr/share/openvpn/plugin/lib/openvpn-auth-pam.so login
+</code></pre>
+<p>生产环境下官方推荐使用 <code>openvpn-auth-pam</code> 插件进行验证，相比于 <strong>auth-pam.pl</strong>，<code>openvpn-auth-pam </code> 插件具有多个优点：</p>
 <ul>
 <li><code>openvpn-auth-pam</code> 使用拆分权限执行模型来提高安全性。</li>
 <li>C编译的插件比脚本运行速度更快。</li>
@@ -362,20 +355,14 @@ function toggleThemeListener() {
 <p><strong>openvpn-auth-pam</strong>插件在openvpn代码目录<code>src/plugins/auth-pam</code> 下，运行 <code>make &amp;&amp; make install</code> 进行安装，会自动复制到openvpn安装好的 <code>lib/openvpn/plugins</code> 目录下。</p>
 <h4 id="开启密码认证">开启密码认证<a hidden class="anchor" aria-hidden="true" href="#开启密码认证">¶</a></h4>
 <p>默认情况下， 在服务器上使用 <code>auth-user-pass-verify</code> 或用户名/密码 <strong>插件</strong> 将启用<strong>双重身份验证</strong>，要求客户端证书和用户名/密码身份验证都必须成功，才能对客户端进行身份验证。可以选择关闭客户端证书认证。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">client-cert-not-required
-</span></span><span class="line"><span class="cl">username-as-common-name # 用户名作为通用名称
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>开启后需要在客户端注释 <strong>cert</strong> 和 <strong>key</strong>的配置</p>
+<pre><code>client-cert-not-required
+username-as-common-name # 用户名作为通用名称
+</code></pre>
+<p>开启后需要在客户端注释 <strong>cert</strong> 和 <strong>key</strong>的配置</p>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://openvpn.net/community-resources/how-to/#using-alternative-authentication-methods">authentication methods</a></p>
+<p><a href="https://openvpn.net/community-resources/how-to/#using-alternative-authentication-methods" target="_blank"
+   rel="noopener nofollow noreferrer" >authentication methods</a></p>
 </blockquote>
 <h3 id="方法3数据库认证">方法3：数据库认证<a hidden class="anchor" aria-hidden="true" href="#方法3数据库认证">¶</a></h3>
 <p>法2：利用的脚本程序（shell，php等）本地文件去读数据库。</p>
@@ -385,235 +372,118 @@ function toggleThemeListener() {
 <li>openvpn-auth-ldap</li>
 <li>利用第一个文件认证的思路，去LDAP查询，还可以和本地文件比较。如</li>
 </ul>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/%E7%BB%98%E5%9B%BE1.png" alt="绘图1"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/%E7%BB%98%E5%9B%BE1.png" alt="绘图1" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>ldap认证原理图</center>
 <h4 id="配置openvpn服务端通过ldap进行身份验证">配置openvpn服务端通过ldap进行身份验证<a hidden class="anchor" aria-hidden="true" href="#配置openvpn服务端通过ldap进行身份验证">¶</a></h4>
 <p>配置OpenVPN基 LDAP的身份验证，需要安装用于LDAP身份验证的OpenVPN插件。<code>openvpn-auth-ldap</code>，它通过LDAP为OpenVPN实现身份认证。</p>
 <p>CentOS中 <code>openvpn-auth-ldap</code> 插件在EPEL中 ubuntu与Centos都可以通过对应的包管理工具进行插件安装。</p>
 <p>安装完成后配置 OpenVPN LDAP身份验证 <code>examples/auth-ldap.conf</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">&lt;LDAP&gt;
-</span></span><span class="line"><span class="cl">	URL		ldaps://ip
-</span></span><span class="line"><span class="cl">	BindDN	dc=kifarunix-demo,dc=com
-</span></span><span class="line"><span class="cl">	Password	P@ssW0rd
-</span></span><span class="line"><span class="cl">	Timeout	  15
-</span></span><span class="line"><span class="cl">	TLSEnable	yes|no
-</span></span><span class="line"><span class="cl">	FollowReferrals no
-</span></span><span class="line"><span class="cl">&lt;/LDAP&gt;
-</span></span><span class="line"><span class="cl">&lt;Authorization&gt;
-</span></span><span class="line"><span class="cl"># 搜索的域
-</span></span><span class="line"><span class="cl">	BaseDN		&#34;ou=people,dc=ldapmaster,dc=kifarunix-demo,dc=com&#34;
-</span></span><span class="line"><span class="cl"># 搜索的条件，这里使用的UID，如其他名称为用户名可以选择其他
-</span></span><span class="line"><span class="cl">	SearchFilter	&#34;(uid=%u)&#34;
-</span></span><span class="line"><span class="cl">	RequireGroup	false
-</span></span><span class="line"><span class="cl">&lt;/Authorization&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>还可以基于组管理</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">&lt;LDAP&gt;
-</span></span><span class="line"><span class="cl">	URL		ldaps://ip
-</span></span><span class="line"><span class="cl">	BindDN	dc=kifarunix-demo,dc=com
-</span></span><span class="line"><span class="cl">	Password	P@ssW0rd
-</span></span><span class="line"><span class="cl">	Timeout	  15
-</span></span><span class="line"><span class="cl">	TLSEnable	yes|no
-</span></span><span class="line"><span class="cl">	FollowReferrals no
-</span></span><span class="line"><span class="cl">&lt;/LDAP&gt;
-</span></span><span class="line"><span class="cl">&lt;Authorization&gt;
-</span></span><span class="line"><span class="cl">	BaseDN		&#34;ou=people,dc=ldapmaster,dc=kifarunix-demo,dc=com&#34;
-</span></span><span class="line"><span class="cl">	SearchFilter	&#34;(uid=%u)&#34;
-</span></span><span class="line"><span class="cl">	RequireGroup	true # 这里设置为true
-</span></span><span class="line"><span class="cl">	&lt;Group&gt;
-</span></span><span class="line"><span class="cl">		BaseDN		&#34;cn=admin,dc=kifarunix-demo,dc=com&#34;
-</span></span><span class="line"><span class="cl">		SearchFilter	&#34;memberOf=ou=people,dc=seal,dc=com&#34;
-</span></span><span class="line"><span class="cl">		MemberAttribute	uniqueMember # 需要ldap安装memberof，这时memeberof组的属性
-</span></span><span class="line"><span class="cl">	&lt;/Group&gt;
-</span></span><span class="line"><span class="cl">&lt;/Authorization&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改openvpn配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">plugin /usr/lib64/openvpn/plugin/lib/openvpn-auth-ldap.so &#34;/etc/openvpn/auth/ldap.conf&#34;
-</span></span><span class="line"><span class="cl">verify-client-cert none
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>完整的服务端配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">local 10.0.0.4
-</span></span><span class="line"><span class="cl">port 1194
-</span></span><span class="line"><span class="cl">proto udp
-</span></span><span class="line"><span class="cl">dev tun
-</span></span><span class="line"><span class="cl">ca ca.crt
-</span></span><span class="line"><span class="cl">cert server.crt
-</span></span><span class="line"><span class="cl">key server.key
-</span></span><span class="line"><span class="cl">dh dh2048.pem
-</span></span><span class="line"><span class="cl">tls-auth ta.key 0
-</span></span><span class="line"><span class="cl">server 192.168.100.128 255.255.255.128
-</span></span><span class="line"><span class="cl">ifconfig-pool-persist ipp.txt
-</span></span><span class="line"><span class="cl">push &#34;route 192.168.100.0 255.255.255.0&#34;
-</span></span><span class="line"><span class="cl">client-to-client
-</span></span><span class="line"><span class="cl">duplicate-cn
-</span></span><span class="line"><span class="cl">keepalive 10 120
-</span></span><span class="line"><span class="cl">max-clients 100
-</span></span><span class="line"><span class="cl">persist-key
-</span></span><span class="line"><span class="cl">persist-tun
-</span></span><span class="line"><span class="cl">log-append  /var/log/openvpn.log
-</span></span><span class="line"><span class="cl">verb 3
-</span></span><span class="line"><span class="cl">compress lz4-v2
-</span></span><span class="line"><span class="cl">mute 20
-</span></span><span class="line"><span class="cl">explicit-exit-notify 1
-</span></span><span class="line"><span class="cl">reneg-sec 360
-</span></span><span class="line"><span class="cl">plugin /usr/lib64/openvpn/plugin/lib/openvpn-auth-ldap.so &#34;/etc/openvpn/auth/ldap.conf&#34;
-</span></span><span class="line"><span class="cl">verify-client-cert none
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="启动客户端配置">启动客户端配置<a hidden class="anchor" aria-hidden="true" href="#启动客户端配置">¶</a></h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">auth-user-pass
-</span></span><span class="line"><span class="cl">remote-cert-tls server
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>完整的客户端配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">client
-</span></span><span class="line"><span class="cl">dev tun
-</span></span><span class="line"><span class="cl">proto udp
-</span></span><span class="line"><span class="cl">remote 10.0.0.4 1194
-</span></span><span class="line"><span class="cl">nobind
-</span></span><span class="line"><span class="cl">resolv-retry infinite
-</span></span><span class="line"><span class="cl">persist-key
-</span></span><span class="line"><span class="cl">persist-tun
-</span></span><span class="line"><span class="cl">mute-replay-warnings
-</span></span><span class="line"><span class="cl">cipher AES-256-CBC
-</span></span><span class="line"><span class="cl">#comp-lzo
-</span></span><span class="line"><span class="cl">verb 3
-</span></span><span class="line"><span class="cl">ca ca.crt
-</span></span><span class="line"><span class="cl">tls-auth ta.key 1
-</span></span><span class="line"><span class="cl">compress lz4-v2
-</span></span><span class="line"><span class="cl">#cert client.crt
-</span></span><span class="line"><span class="cl">#key client.key 
-</span></span><span class="line"><span class="cl">auth-user-pass
-</span></span><span class="line"><span class="cl">remote-cert-tls server
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>服务端报错 <code>TLS Error: reading acknowledgement record from packet</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">TLS: Initial packet from [AF_INET]10.0.0.1:56531, sid=50a1c0bb 07a548a5
-</span></span><span class="line"><span class="cl">TLS Error: reading acknowledgement record from packet
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因，客户端开启了安全配置<code>tls-auth ta.key 1</code> 而 服务端没有对应配置</p>
+<pre><code>&lt;LDAP&gt;
+	URL		ldaps://ip
+	BindDN	dc=kifarunix-demo,dc=com
+	Password	P@ssW0rd
+	Timeout	  15
+	TLSEnable	yes|no
+	FollowReferrals no
+&lt;/LDAP&gt;
+&lt;Authorization&gt;
+# 搜索的域
+	BaseDN		&quot;ou=people,dc=ldapmaster,dc=kifarunix-demo,dc=com&quot;
+# 搜索的条件，这里使用的UID，如其他名称为用户名可以选择其他
+	SearchFilter	&quot;(uid=%u)&quot;
+	RequireGroup	false
+&lt;/Authorization&gt;
+</code></pre>
+<p>还可以基于组管理</p>
+<pre><code>&lt;LDAP&gt;
+	URL		ldaps://ip
+	BindDN	dc=kifarunix-demo,dc=com
+	Password	P@ssW0rd
+	Timeout	  15
+	TLSEnable	yes|no
+	FollowReferrals no
+&lt;/LDAP&gt;
+&lt;Authorization&gt;
+	BaseDN		&quot;ou=people,dc=ldapmaster,dc=kifarunix-demo,dc=com&quot;
+	SearchFilter	&quot;(uid=%u)&quot;
+	RequireGroup	true # 这里设置为true
+	&lt;Group&gt;
+		BaseDN		&quot;cn=admin,dc=kifarunix-demo,dc=com&quot;
+		SearchFilter	&quot;memberOf=ou=people,dc=seal,dc=com&quot;
+		MemberAttribute	uniqueMember # 需要ldap安装memberof，这时memeberof组的属性
+	&lt;/Group&gt;
+&lt;/Authorization&gt;
+</code></pre>
+<p>修改openvpn配置</p>
+<pre><code>plugin /usr/lib64/openvpn/plugin/lib/openvpn-auth-ldap.so &quot;/etc/openvpn/auth/ldap.conf&quot;
+verify-client-cert none
+</code></pre>
+<p>完整的服务端配置</p>
+<pre><code>local 10.0.0.4
+port 1194
+proto udp
+dev tun
+ca ca.crt
+cert server.crt
+key server.key
+dh dh2048.pem
+tls-auth ta.key 0
+server 192.168.100.128 255.255.255.128
+ifconfig-pool-persist ipp.txt
+push &quot;route 192.168.100.0 255.255.255.0&quot;
+client-to-client
+duplicate-cn
+keepalive 10 120
+max-clients 100
+persist-key
+persist-tun
+log-append  /var/log/openvpn.log
+verb 3
+compress lz4-v2
+mute 20
+explicit-exit-notify 1
+reneg-sec 360
+plugin /usr/lib64/openvpn/plugin/lib/openvpn-auth-ldap.so &quot;/etc/openvpn/auth/ldap.conf&quot;
+verify-client-cert none
+</code></pre>
+<h4 id="启动客户端配置">启动客户端配置<a hidden class="anchor" aria-hidden="true" href="#启动客户端配置">¶</a></h4>
+<pre><code>auth-user-pass
+remote-cert-tls server
+</code></pre>
+<p>完整的客户端配置</p>
+<pre><code>client
+dev tun
+proto udp
+remote 10.0.0.4 1194
+nobind
+resolv-retry infinite
+persist-key
+persist-tun
+mute-replay-warnings
+cipher AES-256-CBC
+#comp-lzo
+verb 3
+ca ca.crt
+tls-auth ta.key 1
+compress lz4-v2
+#cert client.crt
+#key client.key 
+auth-user-pass
+remote-cert-tls server
+</code></pre>
+<p>服务端报错 <code>TLS Error: reading acknowledgement record from packet</code></p>
+<pre><code>TLS: Initial packet from [AF_INET]10.0.0.1:56531, sid=50a1c0bb 07a548a5
+TLS Error: reading acknowledgement record from packet
+</code></pre>
+<p>原因，客户端开启了安全配置<code>tls-auth ta.key 1</code> 而 服务端没有对应配置</p>
 <blockquote>
 <p>Reference</p>
-<p><a href="https://www.digitalocean.com/community/questions/help-with-the-following-error-tls-error-cannot-locate-hmac-in-incoming-packet-from-af_inet">auth error</a></p>
-<p><a href="https://kifarunix.com/configure-openvpn-ldap-based-authentication/">how to configure</a></p>
-<p><a href="https://openvpn.net/community-resources/how-to/#examples">openldap howto</a></p>
+<p><a href="https://www.digitalocean.com/community/questions/help-with-the-following-error-tls-error-cannot-locate-hmac-in-incoming-packet-from-af_inet" target="_blank"
+   rel="noopener nofollow noreferrer" >auth error</a></p>
+<p><a href="https://kifarunix.com/configure-openvpn-ldap-based-authentication/" target="_blank"
+   rel="noopener nofollow noreferrer" >how to configure</a></p>
+<p><a href="https://openvpn.net/community-resources/how-to/#examples" target="_blank"
+   rel="noopener nofollow noreferrer" >openldap howto</a></p>
 </blockquote>
 <h3 id="方法5配置配置radius认证">方法5：配置配置RADIUS认证。<a hidden class="anchor" aria-hidden="true" href="#方法5配置配置radius认证">¶</a></h3>
 <p>RADIUS (<em>Remote Authentication Dial In User Service</em>)，远程用户拨号认证系统由RFC2865，RFC2866定义，是目前应用最广泛的AAA协议。可实现验证、授权、记账等服务的协议。</p>

@@ -10,7 +10,7 @@
 <meta name="description" content="深入理解Kubernetes 4A - Authorization源码解析 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/11/ch32-authorization/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "kubernetes Authorization", "k8s authorization webhook", "4A"
   ],
-  "wordCount" : "5811",
+  "wordCount" : "5322",
   "inLanguage": "zh",
   "datePublished": "2022-11-24T00:00:00Z",
   "dateModified": "2022-11-28T23:00:36+08:00",
@@ -282,7 +282,7 @@ function toggleThemeListener() {
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
   <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a><a href="https://www.oomkill.com/tags/kubernetes-develop/">kubernetes develop</a></span></span><span class="meta-item">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>12 分钟</span></span>
+  <span>11 分钟</span></span>
 
       
       
@@ -354,75 +354,39 @@ function toggleThemeListener() {
 <li>完成实验，使用 OPA 作为 Kubernetes 外部用户，权限认证模型 <em>RBAC</em> 的替代品</li>
 </ul>
 <h2 id="kubernetes是如何对用户授权的">Kubernetes是如何对用户授权的<a hidden class="anchor" aria-hidden="true" href="#kubernetes是如何对用户授权的">¶</a></h2>
-<p>kubernetes对用户授权需要遵守的shema必须拥有下列属性，代码位于<a href="https://github.com/kubernetes/kubernetes/blob/57eb5d631ccd615cd161b6da36afc759af004b93/pkg/apis/authorization/types.go#L27-L36">pkg\apis\authorization\types.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">SubjectAccessReview</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// API必须实现的部分
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 请求需要遵守的属性
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Spec</span> <span class="nx">SubjectAccessReviewSpec</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 请求被授权的状态
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Status</span> <span class="nx">SubjectAccessReviewStatus</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里可以看到数据模型是</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">SubjectAccessReviewSpec</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ResourceAttributes describes information for a resource access request
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ResourceAttributes</span> <span class="o">*</span><span class="nx">ResourceAttributes</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// NonResourceAttributes describes information for a non-resource access request
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">NonResourceAttributes</span> <span class="o">*</span><span class="nx">NonResourceAttributes</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 请求的用户，必填
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 如果只传递 User，而没有Group，那么权限必须与用户对应，例如rolebinding/clusterrolebing
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 如果传递了User与Group，那么rolebinding/clusterrolebing权限最大为Group，最小为User
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">User</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Groups是用户所属组，可以有多个
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Groups</span> <span class="p">[]</span><span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Extra corresponds to the user.Info.GetExtra() method from the authenticator.  Since that is input to the authorizer
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 这里通常对于验证和授权阶段，没有特别的需求
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Extra</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">ExtraValue</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// UID 请求用户的UID，通常来说与User相同，Authentication中也是这么做的
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">UID</span> <span class="kt">string</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>由此可得知，在授权部分，kubernetes要求请求必须存在</p>
+<p>kubernetes对用户授权需要遵守的shema必须拥有下列属性，代码位于<a href="https://github.com/kubernetes/kubernetes/blob/57eb5d631ccd615cd161b6da36afc759af004b93/pkg/apis/authorization/types.go#L27-L36" target="_blank"
+   rel="noopener nofollow noreferrer" >pkg\apis\authorization\types.go</a></p>
+<pre><code class="language-go">type SubjectAccessReview struct {
+    // API必须实现的部分
+	metav1.TypeMeta
+	metav1.ObjectMeta
+	// 请求需要遵守的属性
+	Spec SubjectAccessReviewSpec
+	// 请求被授权的状态
+	Status SubjectAccessReviewStatus
+}
+</code></pre>
+<p>这里可以看到数据模型是</p>
+<pre><code class="language-go">type SubjectAccessReviewSpec struct {
+	// ResourceAttributes describes information for a resource access request
+	ResourceAttributes *ResourceAttributes
+	// NonResourceAttributes describes information for a non-resource access request
+	NonResourceAttributes *NonResourceAttributes
+
+	// 请求的用户，必填
+    // 如果只传递 User，而没有Group，那么权限必须与用户对应，例如rolebinding/clusterrolebing
+    // 如果传递了User与Group，那么rolebinding/clusterrolebing权限最大为Group，最小为User
+	User string
+	// Groups是用户所属组，可以有多个
+	Groups []string
+	// Extra corresponds to the user.Info.GetExtra() method from the authenticator.  Since that is input to the authorizer
+	// 这里通常对于验证和授权阶段，没有特别的需求
+	Extra map[string]ExtraValue
+	// UID 请求用户的UID，通常来说与User相同，Authentication中也是这么做的
+	UID string
+}
+</code></pre>
+<p>由此可得知，在授权部分，kubernetes要求请求必须存在</p>
 <ul>
 <li><strong>用户类属性</strong>：<strong>user</strong>，<strong>group</strong> ，<strong>extra</strong>  由 <em><strong>Authentication</strong></em> 提供的用户信息</li>
 <li><strong>请求类属性</strong>：
@@ -444,41 +408,22 @@ function toggleThemeListener() {
 <h2 id="kubernetes中的授权模式">Kubernetes中的授权模式<a hidden class="anchor" aria-hidden="true" href="#kubernetes中的授权模式">¶</a></h2>
 <p>知道授权的对象，就需要知道如何对该对象进行授权，Kubernetes authorizer 提供了下列授权模式</p>
 <p><a href="pkg/kubeapiserver/authorizer/modes/modes.go">pkg/kubeapiserver/authorizer/modes/modes.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">const</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeAlwaysAllow is the mode to set all requests as authorized
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeAlwaysAllow</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;AlwaysAllow&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeAlwaysDeny is the mode to set no requests as authorized
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeAlwaysDeny</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;AlwaysDeny&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeABAC is the mode to use Attribute Based Access Control to authorize
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeABAC</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;ABAC&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeWebhook is the mode to make an external webhook call to authorize
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeWebhook</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;Webhook&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeRBAC is the mode to use Role Based Access Control to authorize
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeRBAC</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;RBAC&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// ModeNode is an authorization mode that authorizes API requests made by kubelets.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ModeNode</span> <span class="kt">string</span> <span class="p">=</span> <span class="s">&#34;Node&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以看出，大致遵循模式进行授权</p>
+<pre><code class="language-go">const (
+	// ModeAlwaysAllow is the mode to set all requests as authorized
+	ModeAlwaysAllow string = &quot;AlwaysAllow&quot;
+	// ModeAlwaysDeny is the mode to set no requests as authorized
+	ModeAlwaysDeny string = &quot;AlwaysDeny&quot;
+	// ModeABAC is the mode to use Attribute Based Access Control to authorize
+	ModeABAC string = &quot;ABAC&quot;
+	// ModeWebhook is the mode to make an external webhook call to authorize
+	ModeWebhook string = &quot;Webhook&quot;
+	// ModeRBAC is the mode to use Role Based Access Control to authorize
+	ModeRBAC string = &quot;RBAC&quot;
+	// ModeNode is an authorization mode that authorizes API requests made by kubelets.
+	ModeNode string = &quot;Node&quot;
+)
+</code></pre>
+<p>可以看出，大致遵循模式进行授权</p>
 <ul>
 <li>ModeABAC (<em><strong>Attribute-based access control</strong></em>)：是一种将属性分组，而后属性组分配给用户的模型，通常情况下这种模型很少使用</li>
 <li>ModeRBAC (<em><strong>Role Based Access Control</strong></em>) ：是kubernetes主流的授权模型，是将用户分组，将属性分配给用户组的一种模型</li>
@@ -486,787 +431,390 @@ function toggleThemeListener() {
 <li>ModeWebhook：用户注入给Kubernetes 授权插件进行回调的一种授权模式</li>
 </ul>
 <h2 id="kubernetes-授权生命周期">Kubernetes 授权生命周期<a hidden class="anchor" aria-hidden="true" href="#kubernetes-授权生命周期">¶</a></h2>
-<p>在启动 <code>kube-apiserver</code> 是都会初始化被注入一个 <code>Authorizer</code> 而这个被上面模式进行实现，如 <code>RBACAuthorizer</code> ,  <code>WebhookAuthorizer</code> <a href="https://github.com/kubernetes/kubernetes/blob/release-1.24/staging/src/k8s.io/apiserver/pkg/authorization/authorizer/interfaces.go">k8s.io/apiserver/pkg/authorization/authorizer/interfaces.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Authorizer</span> <span class="kd">interface</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nf">Authorize</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">a</span> <span class="nx">Attributes</span><span class="p">)</span> <span class="p">(</span><span class="nx">authorized</span> <span class="nx">Decision</span><span class="p">,</span> <span class="nx">reason</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在 Run 中会创建一个CreateServerChain，这里面可以看到对应注册进来的  <code>Authorizer </code>  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/server.go#L155-L173">k8s.io\kubernetes\cmd\kube-apiserver\app\server.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Run runs the specified APIServer.  This should never exit.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">Run</span><span class="p">(</span><span class="nx">completeOptions</span> <span class="nx">completedServerRunOptions</span><span class="p">,</span> <span class="nx">stopCh</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// To help debugging, immediately log version
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">klog</span><span class="p">.</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Version: %+v&#34;</span><span class="p">,</span> <span class="nx">version</span><span class="p">.</span><span class="nf">Get</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">InfoS</span><span class="p">(</span><span class="s">&#34;Golang settings&#34;</span><span class="p">,</span> <span class="s">&#34;GOGC&#34;</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Getenv</span><span class="p">(</span><span class="s">&#34;GOGC&#34;</span><span class="p">),</span> <span class="s">&#34;GOMAXPROCS&#34;</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Getenv</span><span class="p">(</span><span class="s">&#34;GOMAXPROCS&#34;</span><span class="p">),</span> <span class="s">&#34;GOTRACEBACK&#34;</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Getenv</span><span class="p">(</span><span class="s">&#34;GOTRACEBACK&#34;</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">CreateServerChain</span><span class="p">(</span><span class="nx">completeOptions</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">prepared</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">PrepareRun</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">prepared</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">stopCh</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以看到在创建这个 <code>Authorizer </code>  时会调用一个 <code>BuildAuthorizer</code> 构建这个 <code>Authorizer </code></p>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/server.go#L448">k8s.io/kubernetes/cmd/kube-apiserver/app/server.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">buildGenericConfig</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">s</span> <span class="o">*</span><span class="nx">options</span><span class="p">.</span><span class="nx">ServerRunOptions</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">proxyTransport</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Transport</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">genericConfig</span> <span class="o">*</span><span class="nx">genericapiserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">versionedInformers</span> <span class="nx">clientgoinformers</span><span class="p">.</span><span class="nx">SharedInformerFactory</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">serviceResolver</span> <span class="nx">aggregatorapiserver</span><span class="p">.</span><span class="nx">ServiceResolver</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pluginInitializers</span> <span class="p">[]</span><span class="nx">admission</span><span class="p">.</span><span class="nx">PluginInitializer</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">admissionPostStartHook</span> <span class="nx">genericapiserver</span><span class="p">.</span><span class="nx">PostStartHookFunc</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">storageFactory</span> <span class="o">*</span><span class="nx">serverstorage</span><span class="p">.</span><span class="nx">DefaultStorageFactory</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">lastErr</span> <span class="kt">error</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">	<span class="o">...</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">genericConfig</span><span class="p">.</span><span class="nx">Authorization</span><span class="p">.</span><span class="nx">Authorizer</span><span class="p">,</span> <span class="nx">genericConfig</span><span class="p">.</span><span class="nx">RuleResolver</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nf">BuildAuthorizer</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="nx">genericConfig</span><span class="p">.</span><span class="nx">EgressSelector</span><span class="p">,</span> <span class="nx">versionedInformers</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">lastErr</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;invalid authorization config: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="o">...</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在代码 <code>BuildAuthorizer</code> 中构建了这个 <code>Authorizer</code> 其中可以看到 s 为 <code>kube-apiserver</code> 对于授权阶段的参数，例如参数，使用哪些模式 <code>--authorization-mode</code>，使用的webhook的配置 <code>--authentication-token-webhook-config-file</code> 等，通过传入的参数来决定这些</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// BuildAuthorizer constructs the authorizer
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">BuildAuthorizer</span><span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">options</span><span class="p">.</span><span class="nx">ServerRunOptions</span><span class="p">,</span> <span class="nx">EgressSelector</span> <span class="o">*</span><span class="nx">egressselector</span><span class="p">.</span><span class="nx">EgressSelector</span><span class="p">,</span> <span class="nx">versionedInformers</span> <span class="nx">clientgoinformers</span><span class="p">.</span><span class="nx">SharedInformerFactory</span><span class="p">)</span> <span class="p">(</span><span class="nx">authorizer</span><span class="p">.</span><span class="nx">Authorizer</span><span class="p">,</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">RuleResolver</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">   <span class="c1">// 这里构建出  authorizer.Config
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">authorizationConfig</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Authorization</span><span class="p">.</span><span class="nf">ToAuthorizationConfig</span><span class="p">(</span><span class="nx">versionedInformers</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">EgressSelector</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">egressDialer</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">EgressSelector</span><span class="p">.</span><span class="nf">Lookup</span><span class="p">(</span><span class="nx">egressselector</span><span class="p">.</span><span class="nx">ControlPlane</span><span class="p">.</span><span class="nf">AsNetworkContext</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">authorizationConfig</span><span class="p">.</span><span class="nx">CustomDial</span> <span class="p">=</span> <span class="nx">egressDialer</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	
-</span></span><span class="line"><span class="cl">    <span class="c1">// 然后返回你开启的每一个webhook的模式的 authorizer
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">return</span> <span class="nx">authorizationConfig</span><span class="p">.</span><span class="nf">New</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而对应这部分的数据结构如下所示  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/pkg/kubeapiserver/options/authorization.go#L34-L46">k8s.io/pkg/kubeapiserver/options/authorization.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// BuiltInAuthorizationOptions contains all build-in authorization options for API Server
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">BuiltInAuthorizationOptions</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Modes</span>                       <span class="p">[]</span><span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">PolicyFile</span>                  <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">WebhookConfigFile</span>           <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">WebhookVersion</span>              <span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">WebhookCacheAuthorizedTTL</span>   <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">WebhookCacheUnauthorizedTTL</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// WebhookRetryBackoff specifies the backoff parameters for the authorization webhook retry logic.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// This allows us to configure the sleep time at each iteration and the maximum number of retries allowed
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// before we fail the webhook call in order to limit the fan out that ensues when the system is degraded.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">WebhookRetryBackoff</span> <span class="o">*</span><span class="nx">wait</span><span class="p">.</span><span class="nx">Backoff</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>例如在客户端部分，如果需要授权，都会使用该操作，可以在代码 <a href="pkg/registry/authorization/subjectaccessreview/rest.go">k8s.io/pkg/registry/authorization/subjectaccessreview/rest.go</a>  中可以看到REST中会 authorizer.Authorize 去验证是否有权限操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">r</span> <span class="o">*</span><span class="nx">REST</span><span class="p">)</span> <span class="nf">Create</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">obj</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">Object</span><span class="p">,</span> <span class="nx">createValidation</span> <span class="nx">rest</span><span class="p">.</span><span class="nx">ValidateObjectFunc</span><span class="p">,</span> <span class="nx">options</span> <span class="o">*</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">CreateOptions</span><span class="p">)</span> <span class="p">(</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">Object</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">subjectAccessReview</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">obj</span><span class="p">.(</span><span class="o">*</span><span class="nx">authorizationapi</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">apierrors</span><span class="p">.</span><span class="nf">NewBadRequest</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;not a SubjectAccessReview: %#v&#34;</span><span class="p">,</span> <span class="nx">obj</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">errs</span> <span class="o">:=</span> <span class="nx">authorizationvalidation</span><span class="p">.</span><span class="nf">ValidateSubjectAccessReview</span><span class="p">(</span><span class="nx">subjectAccessReview</span><span class="p">);</span> <span class="nb">len</span><span class="p">(</span><span class="nx">errs</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">apierrors</span><span class="p">.</span><span class="nf">NewInvalid</span><span class="p">(</span><span class="nx">authorizationapi</span><span class="p">.</span><span class="nf">Kind</span><span class="p">(</span><span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nx">Kind</span><span class="p">),</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="nx">errs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">createValidation</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">createValidation</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">obj</span><span class="p">.</span><span class="nf">DeepCopyObject</span><span class="p">());</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">authorizationAttributes</span> <span class="o">:=</span> <span class="nx">authorizationutil</span><span class="p">.</span><span class="nf">AuthorizationAttributesFrom</span><span class="p">(</span><span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nx">Spec</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">decision</span><span class="p">,</span> <span class="nx">reason</span><span class="p">,</span> <span class="nx">evaluationErr</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">authorizer</span><span class="p">.</span><span class="nf">Authorize</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">authorizationAttributes</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">authorizationapi</span><span class="p">.</span><span class="nx">SubjectAccessReviewStatus</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Allowed</span><span class="p">:</span> <span class="p">(</span><span class="nx">decision</span> <span class="o">==</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionAllow</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Denied</span><span class="p">:</span>  <span class="p">(</span><span class="nx">decision</span> <span class="o">==</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionDeny</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Reason</span><span class="p">:</span>  <span class="nx">reason</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">evaluationErr</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">EvaluationError</span> <span class="p">=</span> <span class="nx">evaluationErr</span><span class="p">.</span><span class="nf">Error</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">subjectAccessReview</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>authorizer.Authorize 会被实现在每一个该阶段的模式下，在 withAuthentication 构建了一个授权的 http.Handler 函数</p>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/endpoints/filters/authorization.go#L45-L79">k8s.io/apiserver/pkg/endpoints/filters/authorization.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">WithAuthorization</span><span class="p">(</span><span class="nx">handler</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">a</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">Authorizer</span><span class="p">,</span> <span class="nx">s</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">NegotiatedSerializer</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">a</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Warning</span><span class="p">(</span><span class="s">&#34;Authorization is disabled&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">handler</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">http</span><span class="p">.</span><span class="nf">HandlerFunc</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ctx</span> <span class="o">:=</span> <span class="nx">req</span><span class="p">.</span><span class="nf">Context</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">attributes</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">GetAuthorizerAttributes</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">InternalError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// 这里调用了authorizer.Authorizer传入的authorizer来进行鉴权
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">authorized</span><span class="p">,</span> <span class="nx">reason</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">a</span><span class="p">.</span><span class="nf">Authorize</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">attributes</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// an authorizer like RBAC could encounter evaluation errors and still allow the request, so authorizer decision is checked before error here.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nx">authorized</span> <span class="o">==</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionAllow</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">audit</span><span class="p">.</span><span class="nf">AddAuditAnnotations</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">decisionAnnotationKey</span><span class="p">,</span> <span class="nx">decisionAllow</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">reasonAnnotationKey</span><span class="p">,</span> <span class="nx">reason</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">handler</span><span class="p">.</span><span class="nf">ServeHTTP</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">audit</span><span class="p">.</span><span class="nf">AddAuditAnnotation</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">reasonAnnotationKey</span><span class="p">,</span> <span class="nx">reasonError</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">InternalError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">InfoS</span><span class="p">(</span><span class="s">&#34;Forbidden&#34;</span><span class="p">,</span> <span class="s">&#34;URI&#34;</span><span class="p">,</span> <span class="nx">req</span><span class="p">.</span><span class="nx">RequestURI</span><span class="p">,</span> <span class="s">&#34;Reason&#34;</span><span class="p">,</span> <span class="nx">reason</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">audit</span><span class="p">.</span><span class="nf">AddAuditAnnotations</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">decisionAnnotationKey</span><span class="p">,</span> <span class="nx">decisionForbid</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">reasonAnnotationKey</span><span class="p">,</span> <span class="nx">reason</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">Forbidden</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">attributes</span><span class="p">,</span> <span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">reason</span><span class="p">,</span> <span class="nx">s</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>接下来在 createAggregatorConfig 调用了 BuildHandlerChainWithStorageVersionPrecondition 而又调用了</p>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/aggregator.go#L56-L78">cmd/kube-apiserver/app/aggregator.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">createAggregatorConfig</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">kubeAPIServerConfig</span> <span class="nx">genericapiserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">commandOptions</span> <span class="o">*</span><span class="nx">options</span><span class="p">.</span><span class="nx">ServerRunOptions</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">externalInformers</span> <span class="nx">kubeexternalinformers</span><span class="p">.</span><span class="nx">SharedInformerFactory</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">serviceResolver</span> <span class="nx">aggregatorapiserver</span><span class="p">.</span><span class="nx">ServiceResolver</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">proxyTransport</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Transport</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pluginInitializers</span> <span class="p">[]</span><span class="nx">admission</span><span class="p">.</span><span class="nx">PluginInitializer</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">aggregatorapiserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// make a shallow copy to let us twiddle a few things
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// most of the config actually remains the same.  We only need to mess with a couple items related to the particulars of the aggregator
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">genericConfig</span> <span class="o">:=</span> <span class="nx">kubeAPIServerConfig</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">genericConfig</span><span class="p">.</span><span class="nx">PostStartHooks</span> <span class="p">=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">genericapiserver</span><span class="p">.</span><span class="nx">PostStartHookConfigEntry</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">genericConfig</span><span class="p">.</span><span class="nx">RESTOptionsGetter</span> <span class="p">=</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// prevent generic API server from installing the OpenAPI handler. Aggregator server
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// has its own customized OpenAPI handler.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">genericConfig</span><span class="p">.</span><span class="nx">SkipOpenAPIInstallation</span> <span class="p">=</span> <span class="kc">true</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">genericfeatures</span><span class="p">.</span><span class="nx">StorageVersionAPI</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">genericfeatures</span><span class="p">.</span><span class="nx">APIServerIdentity</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Add StorageVersionPrecondition handler to aggregator-apiserver.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// The handler will block write requests to built-in resources until the
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// target resources&#39; storage versions are up-to-date.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">genericConfig</span><span class="p">.</span><span class="nx">BuildHandlerChainFunc</span> <span class="p">=</span> <span class="nx">genericapiserver</span><span class="p">.</span><span class="nx">BuildHandlerChainWithStorageVersionPrecondition</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/config.go#L601-L655">k8s.io/apiserver/pkg/server/config.go</a> 返回这个函数 BuildHandlerChainWithStorageVersionPrecondition</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">handlerChainBuilder</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">(</span><span class="nx">handler</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nf">BuildHandlerChainFunc</span><span class="p">(</span><span class="nx">handler</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">Config</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">apiServerHandler</span> <span class="o">:=</span> <span class="nf">NewAPIServerHandler</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">Serializer</span><span class="p">,</span> <span class="nx">handlerChainBuilder</span><span class="p">,</span> <span class="nx">delegationTarget</span><span class="p">.</span><span class="nf">UnprotectedHandler</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">s</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">GenericAPIServer</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">discoveryAddresses</span><span class="p">:</span>         <span class="nx">c</span><span class="p">.</span><span class="nx">DiscoveryAddresses</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">LoopbackClientConfig</span><span class="p">:</span>       <span class="nx">c</span><span class="p">.</span><span class="nx">LoopbackClientConfig</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">legacyAPIGroupPrefixes</span><span class="p">:</span>     <span class="nx">c</span><span class="p">.</span><span class="nx">LegacyAPIGroupPrefixes</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">admissionControl</span><span class="p">:</span>           <span class="nx">c</span><span class="p">.</span><span class="nx">AdmissionControl</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Serializer</span><span class="p">:</span>                 <span class="nx">c</span><span class="p">.</span><span class="nx">Serializer</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">AuditBackend</span><span class="p">:</span>               <span class="nx">c</span><span class="p">.</span><span class="nx">AuditBackend</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Authorizer</span><span class="p">:</span>                 <span class="nx">c</span><span class="p">.</span><span class="nx">Authorization</span><span class="p">.</span><span class="nx">Authorizer</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">delegationTarget</span><span class="p">:</span>           <span class="nx">delegationTarget</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">EquivalentResourceRegistry</span><span class="p">:</span> <span class="nx">c</span><span class="p">.</span><span class="nx">EquivalentResourceRegistry</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">HandlerChainWaitGroup</span><span class="p">:</span>      <span class="nx">c</span><span class="p">.</span><span class="nx">HandlerChainWaitGroup</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Handler</span><span class="p">:</span>                    <span class="nx">apiServerHandler</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">listedPathProvider</span><span class="p">:</span> <span class="nx">apiServerHandler</span><span class="p">,</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>只要知道哪里调用了 handlerChainBuilder 就知道了鉴权步骤在哪里了，可以看到 handlerChainBuilder 被传入了 apiServerHandler，而后被作为参数返回给 <code>listedPathProvider: &amp;GenericAPIServer{}</code></p>
-<p>listedPathProvider在 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L282-L284">k8s.io/apiserver/pkg/server/genericapiserver.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">GenericAPIServer</span><span class="p">)</span> <span class="nf">ListedPaths</span><span class="p">()</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">s</span><span class="p">.</span><span class="nx">listedPathProvider</span><span class="p">.</span><span class="nf">ListedPaths</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>ListedPaths() 又在代码  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/routes/index.go#L38-L47">k8s.io/apiserver/pkg/server/routes/index.go</a> 中被 构建成这个http服务</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// ListedPaths returns the paths that should be shown under /
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">a</span> <span class="o">*</span><span class="nx">APIServerHandler</span><span class="p">)</span> <span class="nf">ListedPaths</span><span class="p">()</span> <span class="p">[]</span><span class="kt">string</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">handledPaths</span> <span class="p">[]</span><span class="kt">string</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Extract the paths handled using restful.WebService
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">ws</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">a</span><span class="p">.</span><span class="nx">GoRestfulContainer</span><span class="p">.</span><span class="nf">RegisteredWebServices</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">handledPaths</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">handledPaths</span><span class="p">,</span> <span class="nx">ws</span><span class="p">.</span><span class="nf">RootPath</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">handledPaths</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">handledPaths</span><span class="p">,</span> <span class="nx">a</span><span class="p">.</span><span class="nx">NonGoRestfulMux</span><span class="p">.</span><span class="nf">ListedPaths</span><span class="p">()</span><span class="o">...</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">sort</span><span class="p">.</span><span class="nf">Strings</span><span class="p">(</span><span class="nx">handledPaths</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">handledPaths</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// ServeHTTP serves the available paths.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">i</span> <span class="nx">IndexLister</span><span class="p">)</span> <span class="nf">ServeHTTP</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">WriteRawJSON</span><span class="p">(</span><span class="nx">i</span><span class="p">.</span><span class="nx">StatusCode</span><span class="p">,</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">RootPaths</span><span class="p">{</span><span class="nx">Paths</span><span class="p">:</span> <span class="nx">i</span><span class="p">.</span><span class="nx">PathProvider</span><span class="p">.</span><span class="nf">ListedPaths</span><span class="p">()},</span> <span class="nx">w</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>至此，可以知道，每次请求时，我们在配置 <em>kube-apiserver</em> 配置的授权插件 <code>.authorizer.Authorize</code> ，而这个参数会被带至 <code>subjectAccessReview</code> 向下传递，其中 User,Group,Extra,UID 为 authentication 部分提供</p>
+<p>在启动 <code>kube-apiserver</code> 是都会初始化被注入一个 <code>Authorizer</code> 而这个被上面模式进行实现，如 <code>RBACAuthorizer</code> ,  <code>WebhookAuthorizer</code> <a href="https://github.com/kubernetes/kubernetes/blob/release-1.24/staging/src/k8s.io/apiserver/pkg/authorization/authorizer/interfaces.go" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/authorization/authorizer/interfaces.go</a></p>
+<pre><code class="language-go">type Authorizer interface {
+	Authorize(ctx context.Context, a Attributes) (authorized Decision, reason string, err error)
+}
+</code></pre>
+<p>在 Run 中会创建一个CreateServerChain，这里面可以看到对应注册进来的  <code>Authorizer </code>  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/server.go#L155-L173" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io\kubernetes\cmd\kube-apiserver\app\server.go</a></p>
+<pre><code class="language-go">// Run runs the specified APIServer.  This should never exit.
+func Run(completeOptions completedServerRunOptions, stopCh &lt;-chan struct{}) error {
+	// To help debugging, immediately log version
+	klog.Infof(&quot;Version: %+v&quot;, version.Get())
+
+	klog.InfoS(&quot;Golang settings&quot;, &quot;GOGC&quot;, os.Getenv(&quot;GOGC&quot;), &quot;GOMAXPROCS&quot;, os.Getenv(&quot;GOMAXPROCS&quot;), &quot;GOTRACEBACK&quot;, os.Getenv(&quot;GOTRACEBACK&quot;))
+
+	server, err := CreateServerChain(completeOptions)
+	if err != nil {
+		return err
+	}
+
+	prepared, err := server.PrepareRun()
+	if err != nil {
+		return err
+	}
+
+	return prepared.Run(stopCh)
+}
+</code></pre>
+<p>可以看到在创建这个 <code>Authorizer </code>  时会调用一个 <code>BuildAuthorizer</code> 构建这个 <code>Authorizer </code></p>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/server.go#L448" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/kubernetes/cmd/kube-apiserver/app/server.go</a></p>
+<pre><code class="language-go">func buildGenericConfig(
+	s *options.ServerRunOptions,
+	proxyTransport *http.Transport,
+) (
+	genericConfig *genericapiserver.Config,
+	versionedInformers clientgoinformers.SharedInformerFactory,
+	serviceResolver aggregatorapiserver.ServiceResolver,
+	pluginInitializers []admission.PluginInitializer,
+	admissionPostStartHook genericapiserver.PostStartHookFunc,
+	storageFactory *serverstorage.DefaultStorageFactory,
+	lastErr error,
+) {
+    
+	...
+
+	genericConfig.Authorization.Authorizer, genericConfig.RuleResolver, err = BuildAuthorizer(s, genericConfig.EgressSelector, versionedInformers)
+	if err != nil {
+		lastErr = fmt.Errorf(&quot;invalid authorization config: %v&quot;, err)
+		return
+	}
+	...
+}
+</code></pre>
+<p>在代码 <code>BuildAuthorizer</code> 中构建了这个 <code>Authorizer</code> 其中可以看到 s 为 <code>kube-apiserver</code> 对于授权阶段的参数，例如参数，使用哪些模式 <code>--authorization-mode</code>，使用的webhook的配置 <code>--authentication-token-webhook-config-file</code> 等，通过传入的参数来决定这些</p>
+<pre><code class="language-go">// BuildAuthorizer constructs the authorizer
+func BuildAuthorizer(s *options.ServerRunOptions, EgressSelector *egressselector.EgressSelector, versionedInformers clientgoinformers.SharedInformerFactory) (authorizer.Authorizer, authorizer.RuleResolver, error) {
+   // 这里构建出  authorizer.Config
+	authorizationConfig := s.Authorization.ToAuthorizationConfig(versionedInformers)
+
+	if EgressSelector != nil {
+		egressDialer, err := EgressSelector.Lookup(egressselector.ControlPlane.AsNetworkContext())
+		if err != nil {
+			return nil, nil, err
+		}
+		authorizationConfig.CustomDial = egressDialer
+	}
+	
+    // 然后返回你开启的每一个webhook的模式的 authorizer
+	return authorizationConfig.New()
+}
+</code></pre>
+<p>而对应这部分的数据结构如下所示  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/pkg/kubeapiserver/options/authorization.go#L34-L46" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/pkg/kubeapiserver/options/authorization.go</a></p>
+<pre><code class="language-go">// BuiltInAuthorizationOptions contains all build-in authorization options for API Server
+type BuiltInAuthorizationOptions struct {
+	Modes                       []string
+	PolicyFile                  string
+	WebhookConfigFile           string
+	WebhookVersion              string
+	WebhookCacheAuthorizedTTL   time.Duration
+	WebhookCacheUnauthorizedTTL time.Duration
+	// WebhookRetryBackoff specifies the backoff parameters for the authorization webhook retry logic.
+	// This allows us to configure the sleep time at each iteration and the maximum number of retries allowed
+	// before we fail the webhook call in order to limit the fan out that ensues when the system is degraded.
+	WebhookRetryBackoff *wait.Backoff
+}
+</code></pre>
+<p>例如在客户端部分，如果需要授权，都会使用该操作，可以在代码 <a href="pkg/registry/authorization/subjectaccessreview/rest.go">k8s.io/pkg/registry/authorization/subjectaccessreview/rest.go</a>  中可以看到REST中会 authorizer.Authorize 去验证是否有权限操作</p>
+<pre><code class="language-go">func (r *REST) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
+	subjectAccessReview, ok := obj.(*authorizationapi.SubjectAccessReview)
+	if !ok {
+		return nil, apierrors.NewBadRequest(fmt.Sprintf(&quot;not a SubjectAccessReview: %#v&quot;, obj))
+	}
+	if errs := authorizationvalidation.ValidateSubjectAccessReview(subjectAccessReview); len(errs) &gt; 0 {
+		return nil, apierrors.NewInvalid(authorizationapi.Kind(subjectAccessReview.Kind), &quot;&quot;, errs)
+	}
+
+	if createValidation != nil {
+		if err := createValidation(ctx, obj.DeepCopyObject()); err != nil {
+			return nil, err
+		}
+	}
+
+	authorizationAttributes := authorizationutil.AuthorizationAttributesFrom(subjectAccessReview.Spec)
+	decision, reason, evaluationErr := r.authorizer.Authorize(ctx, authorizationAttributes)
+
+	subjectAccessReview.Status = authorizationapi.SubjectAccessReviewStatus{
+		Allowed: (decision == authorizer.DecisionAllow),
+		Denied:  (decision == authorizer.DecisionDeny),
+		Reason:  reason,
+	}
+	if evaluationErr != nil {
+		subjectAccessReview.Status.EvaluationError = evaluationErr.Error()
+	}
+
+	return subjectAccessReview, nil
+}
+</code></pre>
+<p>authorizer.Authorize 会被实现在每一个该阶段的模式下，在 withAuthentication 构建了一个授权的 http.Handler 函数</p>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/endpoints/filters/authorization.go#L45-L79" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/endpoints/filters/authorization.go</a></p>
+<pre><code class="language-go">func WithAuthorization(handler http.Handler, a authorizer.Authorizer, s runtime.NegotiatedSerializer) http.Handler {
+	if a == nil {
+		klog.Warning(&quot;Authorization is disabled&quot;)
+		return handler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+
+		attributes, err := GetAuthorizerAttributes(ctx)
+		if err != nil {
+			responsewriters.InternalError(w, req, err)
+			return
+		}
+        // 这里调用了authorizer.Authorizer传入的authorizer来进行鉴权
+		authorized, reason, err := a.Authorize(ctx, attributes)
+		// an authorizer like RBAC could encounter evaluation errors and still allow the request, so authorizer decision is checked before error here.
+		if authorized == authorizer.DecisionAllow {
+			audit.AddAuditAnnotations(ctx,
+				decisionAnnotationKey, decisionAllow,
+				reasonAnnotationKey, reason)
+			handler.ServeHTTP(w, req)
+			return
+		}
+		if err != nil {
+			audit.AddAuditAnnotation(ctx, reasonAnnotationKey, reasonError)
+			responsewriters.InternalError(w, req, err)
+			return
+		}
+
+		klog.V(4).InfoS(&quot;Forbidden&quot;, &quot;URI&quot;, req.RequestURI, &quot;Reason&quot;, reason)
+		audit.AddAuditAnnotations(ctx,
+			decisionAnnotationKey, decisionForbid,
+			reasonAnnotationKey, reason)
+		responsewriters.Forbidden(ctx, attributes, w, req, reason, s)
+	})
+}
+</code></pre>
+<p>接下来在 createAggregatorConfig 调用了 BuildHandlerChainWithStorageVersionPrecondition 而又调用了</p>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/cmd/kube-apiserver/app/aggregator.go#L56-L78" target="_blank"
+   rel="noopener nofollow noreferrer" >cmd/kube-apiserver/app/aggregator.go</a></p>
+<pre><code class="language-go">func createAggregatorConfig(
+	kubeAPIServerConfig genericapiserver.Config,
+	commandOptions *options.ServerRunOptions,
+	externalInformers kubeexternalinformers.SharedInformerFactory,
+	serviceResolver aggregatorapiserver.ServiceResolver,
+	proxyTransport *http.Transport,
+	pluginInitializers []admission.PluginInitializer,
+) (*aggregatorapiserver.Config, error) {
+	// make a shallow copy to let us twiddle a few things
+	// most of the config actually remains the same.  We only need to mess with a couple items related to the particulars of the aggregator
+	genericConfig := kubeAPIServerConfig
+	genericConfig.PostStartHooks = map[string]genericapiserver.PostStartHookConfigEntry{}
+	genericConfig.RESTOptionsGetter = nil
+	// prevent generic API server from installing the OpenAPI handler. Aggregator server
+	// has its own customized OpenAPI handler.
+	genericConfig.SkipOpenAPIInstallation = true
+
+	if utilfeature.DefaultFeatureGate.Enabled(genericfeatures.StorageVersionAPI) &amp;&amp;
+		utilfeature.DefaultFeatureGate.Enabled(genericfeatures.APIServerIdentity) {
+		// Add StorageVersionPrecondition handler to aggregator-apiserver.
+		// The handler will block write requests to built-in resources until the
+		// target resources' storage versions are up-to-date.
+		genericConfig.BuildHandlerChainFunc = genericapiserver.BuildHandlerChainWithStorageVersionPrecondition
+	}
+</code></pre>
+<p>而 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/config.go#L601-L655" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/server/config.go</a> 返回这个函数 BuildHandlerChainWithStorageVersionPrecondition</p>
+<pre><code class="language-go">handlerChainBuilder := func(handler http.Handler) http.Handler {
+    return c.BuildHandlerChainFunc(handler, c.Config)
+}
+
+apiServerHandler := NewAPIServerHandler(name, c.Serializer, handlerChainBuilder, delegationTarget.UnprotectedHandler())
+
+s := &amp;GenericAPIServer{
+		discoveryAddresses:         c.DiscoveryAddresses,
+		LoopbackClientConfig:       c.LoopbackClientConfig,
+		legacyAPIGroupPrefixes:     c.LegacyAPIGroupPrefixes,
+		admissionControl:           c.AdmissionControl,
+		Serializer:                 c.Serializer,
+		AuditBackend:               c.AuditBackend,
+		Authorizer:                 c.Authorization.Authorizer,
+		delegationTarget:           delegationTarget,
+		EquivalentResourceRegistry: c.EquivalentResourceRegistry,
+		HandlerChainWaitGroup:      c.HandlerChainWaitGroup,
+		Handler:                    apiServerHandler,
+
+		listedPathProvider: apiServerHandler,
+</code></pre>
+<p>只要知道哪里调用了 handlerChainBuilder 就知道了鉴权步骤在哪里了，可以看到 handlerChainBuilder 被传入了 apiServerHandler，而后被作为参数返回给 <code>listedPathProvider: &amp;GenericAPIServer{}</code></p>
+<p>listedPathProvider在 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/genericapiserver.go#L282-L284" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/server/genericapiserver.go</a></p>
+<pre><code class="language-go">func (s *GenericAPIServer) ListedPaths() []string {
+	return s.listedPathProvider.ListedPaths()
+}
+</code></pre>
+<p>ListedPaths() 又在代码  <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/pkg/server/routes/index.go#L38-L47" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/server/routes/index.go</a> 中被 构建成这个http服务</p>
+<pre><code class="language-go">// ListedPaths returns the paths that should be shown under /
+func (a *APIServerHandler) ListedPaths() []string {
+	var handledPaths []string
+	// Extract the paths handled using restful.WebService
+	for _, ws := range a.GoRestfulContainer.RegisteredWebServices() {
+		handledPaths = append(handledPaths, ws.RootPath())
+	}
+	handledPaths = append(handledPaths, a.NonGoRestfulMux.ListedPaths()...)
+	sort.Strings(handledPaths)
+
+	return handledPaths
+}
+
+
+// ServeHTTP serves the available paths.
+func (i IndexLister) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	responsewriters.WriteRawJSON(i.StatusCode, metav1.RootPaths{Paths: i.PathProvider.ListedPaths()}, w)
+}
+</code></pre>
+<p>至此，可以知道，每次请求时，我们在配置 <em>kube-apiserver</em> 配置的授权插件 <code>.authorizer.Authorize</code> ，而这个参数会被带至 <code>subjectAccessReview</code> 向下传递，其中 User,Group,Extra,UID 为 authentication 部分提供</p>
 <h2 id="authorization-webhook">Authorization webhook<a hidden class="anchor" aria-hidden="true" href="#authorization-webhook">¶</a></h2>
-<p>Authorization webhook 位于 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go#L166-L247">k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go</a>，是通过 <em>kube-apiserver</em> 注入进来的配置，就是上面讲到的如果提供了配置就会加入这种类型的 Authorization 插件来认证。当配置此类型的授权插件，Authorize 会被调用，通过向注入的 URL 发起 REST 请求进行授权，请求对象是 <code>v1beta1.SubjectAccessReview</code></p>
+<p>Authorization webhook 位于 <a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go#L166-L247" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go</a>，是通过 <em>kube-apiserver</em> 注入进来的配置，就是上面讲到的如果提供了配置就会加入这种类型的 Authorization 插件来认证。当配置此类型的授权插件，Authorize 会被调用，通过向注入的 URL 发起 REST 请求进行授权，请求对象是 <code>v1beta1.SubjectAccessReview</code></p>
 <p>下面是请求的实例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">{
-</span></span><span class="line"><span class="cl">  &#34;apiVersion&#34;: &#34;authorization.k8s.io/v1beta1&#34;,
-</span></span><span class="line"><span class="cl">  &#34;kind&#34;: &#34;SubjectAccessReview&#34;,
-</span></span><span class="line"><span class="cl">  &#34;spec&#34;: {
-</span></span><span class="line"><span class="cl">	&#34;resourceAttributes&#34;: {
-</span></span><span class="line"><span class="cl">	  &#34;namespace&#34;: &#34;kittensandponies&#34;,
-</span></span><span class="line"><span class="cl">	  &#34;verb&#34;: &#34;GET&#34;,
-</span></span><span class="line"><span class="cl">	  &#34;group&#34;: &#34;group3&#34;,
-</span></span><span class="line"><span class="cl">	  &#34;resource&#34;: &#34;pods&#34;
-</span></span><span class="line"><span class="cl">	},
-</span></span><span class="line"><span class="cl">	&#34;user&#34;: &#34;jane&#34;,
-</span></span><span class="line"><span class="cl">	&#34;group&#34;: [
-</span></span><span class="line"><span class="cl">	  &#34;group1&#34;,
-</span></span><span class="line"><span class="cl">	  &#34;group2&#34;
-</span></span><span class="line"><span class="cl">	]
-</span></span><span class="line"><span class="cl">  }
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>webhook 返回的格式</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="c1">// 如果允许这个用户访问则返回这个格式
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;apiVersion&#34;</span><span class="p">:</span> <span class="s2">&#34;authorization.k8s.io/v1beta1&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;kind&#34;</span><span class="p">:</span> <span class="s2">&#34;SubjectAccessReview&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;status&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nt">&#34;allowed&#34;</span><span class="p">:</span> <span class="kc">true</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// 如果拒绝这个用户访问则返回这个格式
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;apiVersion&#34;</span><span class="p">:</span> <span class="s2">&#34;authorization.k8s.io/v1beta1&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;kind&#34;</span><span class="p">:</span> <span class="s2">&#34;SubjectAccessReview&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;status&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nt">&#34;allowed&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nt">&#34;reason&#34;</span><span class="p">:</span> <span class="s2">&#34;user does not have read access to the namespace&#34;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>对于webhook来讲，只要接受请求保持上面格式，而返回格式为下属格式，就可以很好的将Kubernetes 权限体系接入到三方系统中，例如 <em><strong>open policy agent</strong></em>。</p>
+<pre><code>{
+  &quot;apiVersion&quot;: &quot;authorization.k8s.io/v1beta1&quot;,
+  &quot;kind&quot;: &quot;SubjectAccessReview&quot;,
+  &quot;spec&quot;: {
+	&quot;resourceAttributes&quot;: {
+	  &quot;namespace&quot;: &quot;kittensandponies&quot;,
+	  &quot;verb&quot;: &quot;GET&quot;,
+	  &quot;group&quot;: &quot;group3&quot;,
+	  &quot;resource&quot;: &quot;pods&quot;
+	},
+	&quot;user&quot;: &quot;jane&quot;,
+	&quot;group&quot;: [
+	  &quot;group1&quot;,
+	  &quot;group2&quot;
+	]
+  }
+}
+</code></pre>
+<p>webhook 返回的格式</p>
+<pre><code class="language-json">// 如果允许这个用户访问则返回这个格式
+{
+  &quot;apiVersion&quot;: &quot;authorization.k8s.io/v1beta1&quot;,
+  &quot;kind&quot;: &quot;SubjectAccessReview&quot;,
+  &quot;status&quot;: {
+	&quot;allowed&quot;: true
+  }
+}
+
+// 如果拒绝这个用户访问则返回这个格式
+{
+  &quot;apiVersion&quot;: &quot;authorization.k8s.io/v1beta1&quot;,
+  &quot;kind&quot;: &quot;SubjectAccessReview&quot;,
+  &quot;status&quot;: {
+	&quot;allowed&quot;: false,
+	&quot;reason&quot;: &quot;user does not have read access to the namespace&quot;
+  }
+}
+</code></pre>
+<p>对于webhook来讲，只要接受请求保持上面格式，而返回格式为下属格式，就可以很好的将Kubernetes 权限体系接入到三方系统中，例如 <em><strong>open policy agent</strong></em>。</p>
 <p>同样 webhook 也提供了  <code>Authorize</code> 函数，如同上面一样会被注入到每个handler中被执行</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span><span class="lnt">73
-</span><span class="lnt">74
-</span><span class="lnt">75
-</span><span class="lnt">76
-</span><span class="lnt">77
-</span><span class="lnt">78
-</span><span class="lnt">79
-</span><span class="lnt">80
-</span><span class="lnt">81
-</span><span class="lnt">82
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">w</span> <span class="o">*</span><span class="nx">WebhookAuthorizer</span><span class="p">)</span> <span class="nf">Authorize</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">attr</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">Attributes</span><span class="p">)</span> <span class="p">(</span><span class="nx">decision</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">Decision</span><span class="p">,</span> <span class="nx">reason</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">r</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">user</span> <span class="o">:=</span> <span class="nx">attr</span><span class="p">.</span><span class="nf">GetUser</span><span class="p">();</span> <span class="nx">user</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">r</span><span class="p">.</span><span class="nx">Spec</span> <span class="p">=</span> <span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReviewSpec</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">User</span><span class="p">:</span>   <span class="nx">user</span><span class="p">.</span><span class="nf">GetName</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">UID</span><span class="p">:</span>    <span class="nx">user</span><span class="p">.</span><span class="nf">GetUID</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Groups</span><span class="p">:</span> <span class="nx">user</span><span class="p">.</span><span class="nf">GetGroups</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Extra</span><span class="p">:</span>  <span class="nf">convertToSARExtra</span><span class="p">(</span><span class="nx">user</span><span class="p">.</span><span class="nf">GetExtra</span><span class="p">()),</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">attr</span><span class="p">.</span><span class="nf">IsResourceRequest</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">r</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">ResourceAttributes</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">ResourceAttributes</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Namespace</span><span class="p">:</span>   <span class="nx">attr</span><span class="p">.</span><span class="nf">GetNamespace</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Verb</span><span class="p">:</span>        <span class="nx">attr</span><span class="p">.</span><span class="nf">GetVerb</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Group</span><span class="p">:</span>       <span class="nx">attr</span><span class="p">.</span><span class="nf">GetAPIGroup</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Version</span><span class="p">:</span>     <span class="nx">attr</span><span class="p">.</span><span class="nf">GetAPIVersion</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Resource</span><span class="p">:</span>    <span class="nx">attr</span><span class="p">.</span><span class="nf">GetResource</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Subresource</span><span class="p">:</span> <span class="nx">attr</span><span class="p">.</span><span class="nf">GetSubresource</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Name</span><span class="p">:</span>        <span class="nx">attr</span><span class="p">.</span><span class="nf">GetName</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">r</span><span class="p">.</span><span class="nx">Spec</span><span class="p">.</span><span class="nx">NonResourceAttributes</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">NonResourceAttributes</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Path</span><span class="p">:</span> <span class="nx">attr</span><span class="p">.</span><span class="nf">GetPath</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">Verb</span><span class="p">:</span> <span class="nx">attr</span><span class="p">.</span><span class="nf">GetVerb</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">key</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">Marshal</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">Spec</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">w</span><span class="p">.</span><span class="nx">decisionOnError</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">entry</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.</span><span class="nx">responseCache</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">key</span><span class="p">));</span> <span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">r</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">entry</span><span class="p">.(</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReviewStatus</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="kd">var</span> <span class="nx">result</span> <span class="o">*</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// WithExponentialBackoff will return SAR create error (sarErr) if any.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">webhook</span><span class="p">.</span><span class="nf">WithExponentialBackoff</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">w</span><span class="p">.</span><span class="nx">retryBackoff</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="kd">var</span> <span class="nx">sarErr</span> <span class="kt">error</span>
-</span></span><span class="line"><span class="cl">			<span class="kd">var</span> <span class="nx">statusCode</span> <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">			<span class="nx">start</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">result</span><span class="p">,</span> <span class="nx">statusCode</span><span class="p">,</span> <span class="nx">sarErr</span> <span class="p">=</span> <span class="nx">w</span><span class="p">.</span><span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">CreateOptions</span><span class="p">{})</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">latency</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Since</span><span class="p">(</span><span class="nx">start</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">statusCode</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">RecordRequestTotal</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Itoa</span><span class="p">(</span><span class="nx">statusCode</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">RecordRequestLatency</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">strconv</span><span class="p">.</span><span class="nf">Itoa</span><span class="p">(</span><span class="nx">statusCode</span><span class="p">),</span> <span class="nx">latency</span><span class="p">.</span><span class="nf">Seconds</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">sarErr</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">sarErr</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">RecordRequestTotal</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="s">&#34;&lt;error&gt;&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">RecordRequestLatency</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="s">&#34;&lt;error&gt;&#34;</span><span class="p">,</span> <span class="nx">latency</span><span class="p">.</span><span class="nf">Seconds</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="nx">sarErr</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span> <span class="nx">webhook</span><span class="p">.</span><span class="nx">DefaultShouldRetry</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">klog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;Failed to make webhook authorizer request: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="nx">w</span><span class="p">.</span><span class="nx">decisionOnError</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">r</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">result</span><span class="p">.</span><span class="nx">Status</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nf">shouldCache</span><span class="p">(</span><span class="nx">attr</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Allowed</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">responseCache</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">key</span><span class="p">),</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">,</span> <span class="nx">w</span><span class="p">.</span><span class="nx">authorizedTTL</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">w</span><span class="p">.</span><span class="nx">responseCache</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nx">key</span><span class="p">),</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">,</span> <span class="nx">w</span><span class="p">.</span><span class="nx">unauthorizedTTL</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">switch</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">case</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Denied</span> <span class="o">&amp;&amp;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Allowed</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionDeny</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Reason</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;webhook subject access review returned both allow and deny response&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">case</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Denied</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionDeny</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Reason</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="k">case</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Allowed</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionAllow</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Reason</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="k">default</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">DecisionNoOpinion</span><span class="p">,</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Reason</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>执行 <code>webhook.Authorize()</code> 会执行 <code>w.subjectAccessReview.Create()</code> 在这里可以看到会发起一个POST请求将 <code>v1beta1.SubjectAccessReview</code> 传入给webhook</p>
-<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go#L317-L329">k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go.Create</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">subjectAccessReviewV1Client</span><span class="p">)</span> <span class="nf">Create</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">subjectAccessReview</span> <span class="o">*</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">,</span> <span class="nx">opts</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">CreateOptions</span><span class="p">)</span> <span class="p">(</span><span class="nx">result</span> <span class="o">*</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">,</span> <span class="nx">statusCode</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">result</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">authorizationv1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">restResult</span> <span class="o">:=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">client</span><span class="p">.</span><span class="nf">Post</span><span class="p">().</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">Resource</span><span class="p">(</span><span class="s">&#34;subjectaccessreviews&#34;</span><span class="p">).</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">VersionedParams</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">opts</span><span class="p">,</span> <span class="nx">scheme</span><span class="p">.</span><span class="nx">ParameterCodec</span><span class="p">).</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">Body</span><span class="p">(</span><span class="nx">subjectAccessReview</span><span class="p">).</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">Do</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">restResult</span><span class="p">.</span><span class="nf">StatusCode</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">statusCode</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">err</span> <span class="p">=</span> <span class="nx">restResult</span><span class="p">.</span><span class="nf">Into</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="实验基于opa的rbac模型">实验：基于OPA的RBAC模型<a hidden class="anchor" aria-hidden="true" href="#实验基于opa的rbac模型">¶</a></h2>
+<pre><code class="language-go">func (w *WebhookAuthorizer) Authorize(ctx context.Context, attr authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
+	r := &amp;authorizationv1.SubjectAccessReview{}
+	if user := attr.GetUser(); user != nil {
+		r.Spec = authorizationv1.SubjectAccessReviewSpec{
+			User:   user.GetName(),
+			UID:    user.GetUID(),
+			Groups: user.GetGroups(),
+			Extra:  convertToSARExtra(user.GetExtra()),
+		}
+	}
+
+	if attr.IsResourceRequest() {
+		r.Spec.ResourceAttributes = &amp;authorizationv1.ResourceAttributes{
+			Namespace:   attr.GetNamespace(),
+			Verb:        attr.GetVerb(),
+			Group:       attr.GetAPIGroup(),
+			Version:     attr.GetAPIVersion(),
+			Resource:    attr.GetResource(),
+			Subresource: attr.GetSubresource(),
+			Name:        attr.GetName(),
+		}
+	} else {
+		r.Spec.NonResourceAttributes = &amp;authorizationv1.NonResourceAttributes{
+			Path: attr.GetPath(),
+			Verb: attr.GetVerb(),
+		}
+	}
+	key, err := json.Marshal(r.Spec)
+	if err != nil {
+		return w.decisionOnError, &quot;&quot;, err
+	}
+	if entry, ok := w.responseCache.Get(string(key)); ok {
+		r.Status = entry.(authorizationv1.SubjectAccessReviewStatus)
+	} else {
+		var result *authorizationv1.SubjectAccessReview
+		// WithExponentialBackoff will return SAR create error (sarErr) if any.
+		if err := webhook.WithExponentialBackoff(ctx, w.retryBackoff, func() error {
+			var sarErr error
+			var statusCode int
+
+			start := time.Now()
+			result, statusCode, sarErr = w.subjectAccessReview.Create(ctx, r, metav1.CreateOptions{})
+			latency := time.Since(start)
+
+			if statusCode != 0 {
+				w.metrics.RecordRequestTotal(ctx, strconv.Itoa(statusCode))
+				w.metrics.RecordRequestLatency(ctx, strconv.Itoa(statusCode), latency.Seconds())
+				return sarErr
+			}
+
+			if sarErr != nil {
+				w.metrics.RecordRequestTotal(ctx, &quot;&lt;error&gt;&quot;)
+				w.metrics.RecordRequestLatency(ctx, &quot;&lt;error&gt;&quot;, latency.Seconds())
+			}
+
+			return sarErr
+		}, webhook.DefaultShouldRetry); err != nil {
+			klog.Errorf(&quot;Failed to make webhook authorizer request: %v&quot;, err)
+			return w.decisionOnError, &quot;&quot;, err
+		}
+
+		r.Status = result.Status
+		if shouldCache(attr) {
+			if r.Status.Allowed {
+				w.responseCache.Add(string(key), r.Status, w.authorizedTTL)
+			} else {
+				w.responseCache.Add(string(key), r.Status, w.unauthorizedTTL)
+			}
+		}
+	}
+	switch {
+	case r.Status.Denied &amp;&amp; r.Status.Allowed:
+		return authorizer.DecisionDeny, r.Status.Reason, fmt.Errorf(&quot;webhook subject access review returned both allow and deny response&quot;)
+	case r.Status.Denied:
+		return authorizer.DecisionDeny, r.Status.Reason, nil
+	case r.Status.Allowed:
+		return authorizer.DecisionAllow, r.Status.Reason, nil
+	default:
+		return authorizer.DecisionNoOpinion, r.Status.Reason, nil
+	}
+
+}
+</code></pre>
+<p>执行 <code>webhook.Authorize()</code> 会执行 <code>w.subjectAccessReview.Create()</code> 在这里可以看到会发起一个POST请求将 <code>v1beta1.SubjectAccessReview</code> 传入给webhook</p>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/d818028a1851891cdf934a543bb7ff959ec23d50/staging/src/k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go#L317-L329" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/plugin/pkg/authorizer/webhook/webhook.go.Create</a></p>
+<pre><code class="language-go">func (t *subjectAccessReviewV1Client) Create(ctx context.Context, subjectAccessReview *authorizationv1.SubjectAccessReview, opts metav1.CreateOptions) (result *authorizationv1.SubjectAccessReview, statusCode int, err error) {
+	result = &amp;authorizationv1.SubjectAccessReview{}
+
+	restResult := t.client.Post().
+		Resource(&quot;subjectaccessreviews&quot;).
+		VersionedParams(&amp;opts, scheme.ParameterCodec).
+		Body(subjectAccessReview).
+		Do(ctx)
+
+	restResult.StatusCode(&amp;statusCode)
+	err = restResult.Into(result)
+	return
+}
+</code></pre>
+<h2 id="实验基于opa的rbac模型">实验：基于OPA的RBAC模型<a hidden class="anchor" aria-hidden="true" href="#实验基于opa的rbac模型">¶</a></h2>
 <p>通过上面阐述，大致了解到kubernetes认证框架中的用户的分类以及认证的策略由哪些，实验的目的也是为了阐述一个结果，就是使用OIDC/webhook 是比其他方式更好的保护，管理kubernetes集群。首先在安全上，假设网络环境是不安全的，那么任意node节点遗漏 bootstrap  token文件，就意味着拥有了集群中最高权限；其次在管理上，越大的团队，人数越多，不可能每个用户都提供单独的证书或者token，要知道传统教程中讲到token在kubernetes集群中是永久有效的，除非你删除了这个secret/sa；而Kubernetes提供的插件就很好的解决了这些问题。</p>
 <h3 id="实验环境">实验环境<a hidden class="anchor" aria-hidden="true" href="#实验环境">¶</a></h3>
 <ul>
@@ -1281,300 +829,145 @@ function toggleThemeListener() {
 <h3 id="实验开始">实验开始<a hidden class="anchor" aria-hidden="true" href="#实验开始">¶</a></h3>
 <h4 id="编写webhook-authorization">编写webhook Authorization<a hidden class="anchor" aria-hidden="true" href="#编写webhook-authorization">¶</a></h4>
 <p>这里做的就是接收 <code>subjectAccessReview</code> ，将授权结果赋予 <code>subjectAccessReview.Status.Allowed</code> ，true/false，然后返回 <code>subjectAccessReview</code>  即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">serveAuthorization</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">b</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ioutil</span><span class="p">.</span><span class="nf">ReadAll</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">httpError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Receied: &#34;</span><span class="p">,</span> <span class="nb">string</span><span class="p">(</span><span class="nx">b</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">subjectAccessReview</span> <span class="nx">authoV1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">err</span> <span class="p">=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">Unmarshal</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">subjectAccessReview</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Json convert err: &#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">httpError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">subjectAccessReview</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">Allowed</span> <span class="p">=</span> <span class="nx">rbac</span><span class="p">.</span><span class="nf">RBACChek</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">subjectAccessReview</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">b</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">Marshal</span><span class="p">(</span><span class="nx">subjectAccessReview</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Json convert err: &#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">httpError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">w</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="nx">b</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Returning: &#34;</span><span class="p">,</span> <span class="nb">string</span><span class="p">(</span><span class="nx">b</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="编写rego">编写rego<a hidden class="anchor" aria-hidden="true" href="#编写rego">¶</a></h4>
+<pre><code class="language-go">func serveAuthorization(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+	klog.V(4).Info(&quot;Receied: &quot;, string(b))
+
+	var subjectAccessReview authoV1.SubjectAccessReview
+	err = json.Unmarshal(b, &amp;subjectAccessReview)
+	if err != nil {
+		klog.V(3).Info(&quot;Json convert err: &quot;, err)
+		httpError(w, err)
+		return
+	}
+	subjectAccessReview.Status.Allowed = rbac.RBACChek(&amp;subjectAccessReview)
+	b, err = json.Marshal(subjectAccessReview)
+	if err != nil {
+		klog.V(3).Info(&quot;Json convert err: &quot;, err)
+		httpError(w, err)
+		return
+	}
+	w.Write(b)
+	klog.V(3).Info(&quot;Returning: &quot;, string(b))
+}
+</code></pre>
+<h4 id="编写rego">编写rego<a hidden class="anchor" aria-hidden="true" href="#编写rego">¶</a></h4>
 <p>这里简单配置了两个权限，<em>admin</em> 组拥有所有操作权限，不包含 <code>watch</code> ，而 <em>conf</em> 组只能 <em>list</em>，在访问控制三部曲中，已授权的会增加一个组，例如 <code>system:authenticated</code> 代表被 <em>Authentication</em> 授予通过的用户，所以 Groups 为一个数组格式，这里检查为两个数组的交集 &gt; 1，则肯定代表这个用户拥有该组的权限。</p>
-<p>实验中 <em>rego</em> 部分可以在 <a href="https://play.openpolicyagent.org/p/JFdryx8eqW">playground</a> 中测试</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">module</span> <span class="p">=</span> <span class="s">`package k8s
-</span></span></span><span class="line"><span class="cl"><span class="s">import future.keywords.in
-</span></span></span><span class="line"><span class="cl"><span class="s">
-</span></span></span><span class="line"><span class="cl"><span class="s">default allow = false
-</span></span></span><span class="line"><span class="cl"><span class="s">admin_verbs := {&#34;create&#34;, &#34;list&#34;, &#34;delete&#34;, &#34;update&#34;}
-</span></span></span><span class="line"><span class="cl"><span class="s">admin_groups := {&#34;admin&#34;}
-</span></span></span><span class="line"><span class="cl"><span class="s">conf_groups := {&#34;conf&#34;}
-</span></span></span><span class="line"><span class="cl"><span class="s">conf_verbs := {&#34;list&#34;}
-</span></span></span><span class="line"><span class="cl"><span class="s">allow  {
-</span></span></span><span class="line"><span class="cl"><span class="s">	groups := {v | v := input.spec.groups[_]}
-</span></span></span><span class="line"><span class="cl"><span class="s">	count(admin_groups &amp; groups) &gt; 0
-</span></span></span><span class="line"><span class="cl"><span class="s">	input.spec.resourceAttributes.verb in admin_verbs
-</span></span></span><span class="line"><span class="cl"><span class="s">}
-</span></span></span><span class="line"><span class="cl"><span class="s">
-</span></span></span><span class="line"><span class="cl"><span class="s">allow  {
-</span></span></span><span class="line"><span class="cl"><span class="s">	groups := {v | v := input.spec.groups[_]}
-</span></span></span><span class="line"><span class="cl"><span class="s">	count(conf_groups &amp; groups) &gt; 0
-</span></span></span><span class="line"><span class="cl"><span class="s">	input.spec.resourceAttributes.verb in conf_verbs
-</span></span></span><span class="line"><span class="cl"><span class="s">}
-</span></span></span><span class="line"><span class="cl"><span class="s">`</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>下面编写 RBACChek 函数，由于go1.16提供了embed功能，就可以直接将 rego embed go中，最后<code>result.Allowed()</code>  如果 <em>input</em> 通过评估则为 <code>true</code> ，反之亦然</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">RBACChek</span><span class="p">(</span><span class="nx">req</span> <span class="o">*</span><span class="nx">authoV1</span><span class="p">.</span><span class="nx">SubjectAccessReview</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;\n%+v\n&#34;</span><span class="p">,</span> <span class="nx">req</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">query</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">rego</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// query是要检查的模块，data是固定格式，这与playground中不一样，需要.allow
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// k8s是package
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">rego</span><span class="p">.</span><span class="nf">Query</span><span class="p">(</span><span class="s">&#34;data.k8s.allow&#34;</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">rego</span><span class="p">.</span><span class="nf">Module</span><span class="p">(</span><span class="s">&#34;k8s.allow&#34;</span><span class="p">,</span> <span class="nx">module</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="p">).</span><span class="nf">PrepareForEval</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">TODO</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">false</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">result</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">query</span><span class="p">.</span><span class="nf">Eval</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">TODO</span><span class="p">(),</span> <span class="nx">rego</span><span class="p">.</span><span class="nf">EvalInput</span><span class="p">(</span><span class="nx">req</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;evaluation error:&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">false</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;undefined result&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">false</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">result</span><span class="p">.</span><span class="nf">Allowed</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="配置kube-apiserver">配置kube-apiserver<a hidden class="anchor" aria-hidden="true" href="#配置kube-apiserver">¶</a></h4>
+<p>实验中 <em>rego</em> 部分可以在 <a href="https://play.openpolicyagent.org/p/JFdryx8eqW" target="_blank"
+   rel="noopener nofollow noreferrer" >playground</a> 中测试</p>
+<pre><code class="language-go">var module = `package k8s
+import future.keywords.in
+
+default allow = false
+admin_verbs := {&quot;create&quot;, &quot;list&quot;, &quot;delete&quot;, &quot;update&quot;}
+admin_groups := {&quot;admin&quot;}
+conf_groups := {&quot;conf&quot;}
+conf_verbs := {&quot;list&quot;}
+allow  {
+	groups := {v | v := input.spec.groups[_]}
+	count(admin_groups &amp; groups) &gt; 0
+	input.spec.resourceAttributes.verb in admin_verbs
+}
+
+allow  {
+	groups := {v | v := input.spec.groups[_]}
+	count(conf_groups &amp; groups) &gt; 0
+	input.spec.resourceAttributes.verb in conf_verbs
+}
+`
+</code></pre>
+<p>下面编写 RBACChek 函数，由于go1.16提供了embed功能，就可以直接将 rego embed go中，最后<code>result.Allowed()</code>  如果 <em>input</em> 通过评估则为 <code>true</code> ，反之亦然</p>
+<pre><code class="language-go">func RBACChek(req *authoV1.SubjectAccessReview) bool {
+	fmt.Printf(&quot;\n%+v\n&quot;, req)
+	query, err := rego.New(
+        // query是要检查的模块，data是固定格式，这与playground中不一样，需要.allow
+        // k8s是package
+		rego.Query(&quot;data.k8s.allow&quot;),
+		rego.Module(&quot;k8s.allow&quot;, module),
+	).PrepareForEval(context.TODO())
+
+	if err != nil {
+		klog.V(4).Info(err)
+		return false
+	}
+	result, err := query.Eval(context.TODO(), rego.EvalInput(req))
+
+	if err != nil {
+		klog.V(4).Info(&quot;evaluation error:&quot;, err)
+		return false
+	} else if len(result) == 0 {
+		klog.V(4).Info(&quot;undefined result&quot;, err)
+		return false
+	}
+	return result.Allowed()
+}
+</code></pre>
+<h4 id="配置kube-apiserver">配置kube-apiserver<a hidden class="anchor" aria-hidden="true" href="#配置kube-apiserver">¶</a></h4>
 <p>Authorization webhook 与其他 webhook 一样，启用的方法也是修改 <em>kube-apiserver</em> 参数，并指定 <code>kubeconfig</code> 类型的配置文件，其中对于 Kubernetes 集群来说 <code>kubeconfig</code> 是 kubernetes 客户端访问的信息，而 webhook 这里的 <code>kubeconfig</code> 配置文件要填写的则是 webhook的信息，其中 user,cluster,contexts 属性均为 webhook的配置信息 <sup><a href="#1">[1]</a></sup>。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Config</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">clusters</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">cluster</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">server</span><span class="p">:</span><span class="w"> </span><span class="l">http://10.0.0.1:88/authorization</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">insecure-skip-tls-verify</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">authorizator</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">users</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">webhook-authorizator</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">current-context</span><span class="p">:</span><span class="w"> </span><span class="l">webhook-authorizator@authorizator</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">contexts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">context</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l">authorizator</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l">webhook-authorizator</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">webhook-authorizator@authorizator</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改 <em>kube-apiserver</em> 参数</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">--<span class="l">authorization-webhook-config-file=/etc/kubernetes/auth/authorization-webhook.conf \</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># 1s 是为了在测试时减少等待的时间，否则缓存太长不会走webhook</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>--<span class="l">authorization-webhook-cache-authorized-ttl=1s \</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>--<span class="l">authorization-webhook-cache-unauthorized-ttl=1s \</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># api版本建议还是指定下，因为v1与v1beta1的 subjectAccessReview 内容不同rego因为格式问题会为空从而false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># 代码中schema v1与v1beta1相同，测试时收到的请求的格式不一样，没找到原因 TODO</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>--<span class="l">authorization-webhook-version=v1 \</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="验证结果">验证结果<a hidden class="anchor" aria-hidden="true" href="#验证结果">¶</a></h3>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: http://10.0.0.1:88/authorization
+    insecure-skip-tls-verify: true
+  name: authorizator
+users:
+- name: webhook-authorizator
+current-context: webhook-authorizator@authorizator
+contexts:
+- context:
+    cluster: authorizator
+    user: webhook-authorizator
+  name: webhook-authorizator@authorizator
+</code></pre>
+<p>修改 <em>kube-apiserver</em> 参数</p>
+<pre><code class="language-yaml">--authorization-webhook-config-file=/etc/kubernetes/auth/authorization-webhook.conf \
+# 1s 是为了在测试时减少等待的时间，否则缓存太长不会走webhook
+--authorization-webhook-cache-authorized-ttl=1s \
+--authorization-webhook-cache-unauthorized-ttl=1s \
+# api版本建议还是指定下，因为v1与v1beta1的 subjectAccessReview 内容不同rego因为格式问题会为空从而false
+# 代码中schema v1与v1beta1相同，测试时收到的请求的格式不一样，没找到原因 TODO
+--authorization-webhook-version=v1 \
+</code></pre>
+<h3 id="验证结果">验证结果<a hidden class="anchor" aria-hidden="true" href="#验证结果">¶</a></h3>
 <p>准备三个外部用户，admin,admin1,searchUser，admin,admin1 为 admin 组，拥有所有权限，searchUser 为 conf 组，仅能 list 操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">admin</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w"> 
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l">admin@111</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">admin1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l">admin1@111</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">searchUser</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">user</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="l">searchUser@111</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>测试用户 searchUser ，可以看到只能list操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pod --user<span class="o">=</span>searchUser
-</span></span><span class="line"><span class="cl">NAME                      READY   STATUS             RESTARTS   AGE
-</span></span><span class="line"><span class="cl">netbox-85865d5556-hfg6v   1/1     Running            <span class="m">0</span>          96d
-</span></span><span class="line"><span class="cl">netbox-85865d5556-vlgr4   1/1     Running            <span class="m">0</span>          96d
-</span></span><span class="line"><span class="cl">pod                       0/1     CrashLoopBackOff   <span class="m">95</span>         22h
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ kubectl delete pod pod --user<span class="o">=</span>searchUser
-</span></span><span class="line"><span class="cl">Error from server <span class="o">(</span>Forbidden<span class="o">)</span>: pods <span class="s2">&#34;pod&#34;</span> is forbidden: User <span class="s2">&#34;searchUser&#34;</span> cannot delete resource <span class="s2">&#34;pods&#34;</span> in API group <span class="s2">&#34;&#34;</span> in the namespace <span class="s2">&#34;default&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>测试用户 admin，可以看出可以进行写与查看的操作</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl delete pod pod --user<span class="o">=</span>admin
-</span></span><span class="line"><span class="cl">pod <span class="s2">&#34;pod&#34;</span> deleted
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ kubectl get pod --user<span class="o">=</span>admin
-</span></span><span class="line"><span class="cl">NAME                      READY   STATUS    RESTARTS   AGE
-</span></span><span class="line"><span class="cl">netbox-85865d5556-hfg6v   1/1     Running   <span class="m">0</span>          96d
-</span></span><span class="line"><span class="cl">netbox-85865d5556-vlgr4   1/1     Running   <span class="m">0</span>          96d
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">¶</a></h2>
+<pre><code class="language-yaml">- name: admin
+  user: 
+    token: admin@111
+- name: admin1
+  user:
+    token: admin1@111
+- name: searchUser
+  user:
+    token: searchUser@111
+</code></pre>
+<p>测试用户 searchUser ，可以看到只能list操作</p>
+<pre><code class="language-bash">$ kubectl get pod --user=searchUser
+NAME                      READY   STATUS             RESTARTS   AGE
+netbox-85865d5556-hfg6v   1/1     Running            0          96d
+netbox-85865d5556-vlgr4   1/1     Running            0          96d
+pod                       0/1     CrashLoopBackOff   95         22h
+
+$ kubectl delete pod pod --user=searchUser
+Error from server (Forbidden): pods &quot;pod&quot; is forbidden: User &quot;searchUser&quot; cannot delete resource &quot;pods&quot; in API group &quot;&quot; in the namespace &quot;default&quot;
+</code></pre>
+<p>测试用户 admin，可以看出可以进行写与查看的操作</p>
+<pre><code class="language-bash">$ kubectl delete pod pod --user=admin
+pod &quot;pod&quot; deleted
+
+$ kubectl get pod --user=admin
+NAME                      READY   STATUS    RESTARTS   AGE
+netbox-85865d5556-hfg6v   1/1     Running   0          96d
+netbox-85865d5556-vlgr4   1/1     Running   0          96d
+</code></pre>
+<h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">¶</a></h2>
 <p>kubernetes 提供了 Authentication,Authorization,Adminsion Control,Audit 几种webhook，可以自行在Kubernetes之上实现一个4A的标准，Authorization部分提供了一个并行与，但脱离Kubernetes的授权系统，使得外部用户可以很灵活的被授权，而不是手动管理多个clusterrolebinding,rolebingding 之类的资源。</p>
 <p>实验中使用了OPA，这里是将rego静态文件embed入go中，在正常情况下OPA给出的架构如下图所示，存在一个 <em><strong>OPA Service</strong></em>，来进行验证，而实验中是直接嵌入到go中，OPA本身也提供了 <em><strong>HTTP Service</strong></em>，可以直接编译运行为 HTTP服务  <sup><a href="#2">[2]</a></sup>。 TODO</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221124224618920.png" alt="image-20221124224618920"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221124224618920.png" alt="image-20221124224618920" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：OPA 架构</center>
 <center><em>Source：</em>https://www.openpolicyagent.org/docs/latest/</center><br>
 <p>OPA本身提供了 Gatekeeper ，可以作为Kubernetes 资源使用，官方示例是作为为一个kubernetes准入网关，也提供了ingress浏览的验证 <sup><a href="#3">[3]</a></sup></p>
@@ -1583,11 +976,16 @@ function toggleThemeListener() {
 </blockquote>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/access-authn-authz/webhook/"><em><strong>Webhook Mode</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://www.openpolicyagent.org/docs/latest/http-api-authorization/"><em><strong>HTTP APIs</strong></em></a></p>
-<p><sup id="3">[3]</sup> <a href="https://www.openpolicyagent.org/docs/latest/kubernetes-introduction/#what-is-opa-gatekeeper"><em><strong>What is OPA Gatekeeper?</strong></em></a></p>
-<p><sup id="4">[4]</sup> <a href="https://blog.haohtml.com/archives/31514"><em><strong>用 Goalng 开发 OPA 策略</strong></em></a></p>
-<p><sup id="5">[5]</sup> <a href="https://blog.wu-boy.com/2021/04/setup-rbac-role-based-access-control-using-open-policy-agent/"><em><strong>初探 Open Policy Agent 實作 RBAC (Role-based access control) 權限控管</strong></em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/access-authn-authz/webhook/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Webhook Mode</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://www.openpolicyagent.org/docs/latest/http-api-authorization/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>HTTP APIs</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="https://www.openpolicyagent.org/docs/latest/kubernetes-introduction/#what-is-opa-gatekeeper" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>What is OPA Gatekeeper?</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://blog.haohtml.com/archives/31514" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>用 Goalng 开发 OPA 策略</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="https://blog.wu-boy.com/2021/04/setup-rbac-role-based-access-control-using-open-policy-agent/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>初探 Open Policy Agent 實作 RBAC (Role-based access control) 權限控管</strong></em></a></p>
 </blockquote>
 
 

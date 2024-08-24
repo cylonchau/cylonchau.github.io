@@ -10,7 +10,7 @@
 <meta name="description" content="使用go语言颁发CA证书 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/10/goskill-x509-in-go/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "golang"
   ],
-  "wordCount" : "1651",
+  "wordCount" : "1400",
   "inLanguage": "zh",
   "datePublished": "2019-10-02T00:00:00Z",
   "dateModified": "2019-10-02T00:00:00Z",
@@ -282,7 +282,7 @@ function toggleThemeListener() {
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
   <span class="post-tags"><a href="https://www.oomkill.com/tags/go/">go</a></span></span><span class="meta-item">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>4 分钟</span></span>
+  <span>3 分钟</span></span>
 
       
       
@@ -326,580 +326,281 @@ function toggleThemeListener() {
 <br><p>本篇文章中，将描述如何使用go创建CA，并使用CA签署证书。在使用openssl创建证书时，遵循的步骤是 创建秘钥 &gt; 创建CA &gt; 生成要颁发证书的秘钥 &gt; 使用CA签发证书。这种步骤，那么我们现在就来尝试下。</p>
 <h3 id="创建证书的颁发机构">创建证书的颁发机构<a hidden class="anchor" aria-hidden="true" href="#创建证书的颁发机构">¶</a></h3>
 <p>首先，会从将从创建 <em>CA</em> 开始。<em>CA</em> 会被用来签署其他证书</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// 对证书进行签名
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">ca</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">SerialNumber</span><span class="p">:</span> <span class="nx">big</span><span class="p">.</span><span class="nf">NewInt</span><span class="p">(</span><span class="mi">2019</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Subject</span><span class="p">:</span> <span class="nx">pkix</span><span class="p">.</span><span class="nx">Name</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">CommonName</span><span class="p">:</span>    <span class="s">&#34;domain name&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Organization</span><span class="p">:</span>  <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Company, INC.&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Country</span><span class="p">:</span>       <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;US&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Province</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Locality</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;San Francisco&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">StreetAddress</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Golden Gate Bridge&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">PostalCode</span><span class="p">:</span>    <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;94016&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">NotBefore</span><span class="p">:</span>             <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>  <span class="c1">// 生效时间
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">NotAfter</span><span class="p">:</span>              <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">AddDate</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="c1">// 过期时间 年月日
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">IsCA</span><span class="p">:</span>                  <span class="kc">true</span><span class="p">,</span> <span class="c1">// 表示用于CA
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// openssl 中的 extendedKeyUsage = clientAuth, serverAuth 字段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ExtKeyUsage</span><span class="p">:</span>           <span class="p">[]</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsage</span><span class="p">{</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageClientAuth</span><span class="p">,</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageServerAuth</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// openssl 中的 keyUsage 字段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">KeyUsage</span><span class="p">:</span>              <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageDigitalSignature</span> <span class="p">|</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageCertSign</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">BasicConstraintsValid</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>接下来需要对证书生成公钥和私钥</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">caPrivKey</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">rsa</span><span class="p">.</span><span class="nf">GenerateKey</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>然后生成证书：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">caBytes</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">CreateCertificate</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="nx">ca</span><span class="p">,</span> <span class="nx">ca</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">caPrivKey</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">,</span> <span class="nx">caPrivKey</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>我们看到的证书内容是PEM编码后的，现在<code>caBytes</code>我们有了生成的证书，我们将其进行 PEM 编码以供以后使用：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">caPEM</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">caPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;CERTIFICATE&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">caBytes</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">caPrivKeyPEM</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">caPrivKeyPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;RSA PRIVATE KEY&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">MarshalPKCS1PrivateKey</span><span class="p">(</span><span class="nx">caPrivKey</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="创建证书">创建证书<a hidden class="anchor" aria-hidden="true" href="#创建证书">¶</a></h3>
+<pre><code class="language-go">// 对证书进行签名
+ca := &amp;x509.Certificate{
+	SerialNumber: big.NewInt(2019),
+	Subject: pkix.Name{
+        CommonName:    &quot;domain name&quot;,
+		Organization:  []string{&quot;Company, INC.&quot;},
+		Country:       []string{&quot;US&quot;},
+		Province:      []string{&quot;&quot;},
+		Locality:      []string{&quot;San Francisco&quot;},
+		StreetAddress: []string{&quot;Golden Gate Bridge&quot;},
+		PostalCode:    []string{&quot;94016&quot;},
+	},
+	NotBefore:             time.Now(),  // 生效时间
+	NotAfter:              time.Now().AddDate(10, 0, 0), // 过期时间 年月日
+	IsCA:                  true, // 表示用于CA
+    // openssl 中的 extendedKeyUsage = clientAuth, serverAuth 字段
+	ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+    // openssl 中的 keyUsage 字段
+	KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+	BasicConstraintsValid: true,
+}
+</code></pre>
+<p>接下来需要对证书生成公钥和私钥</p>
+<pre><code class="language-go">caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+if err != nil {
+	return err
+}
+</code></pre>
+<p>然后生成证书：</p>
+<pre><code class="language-go">caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &amp;caPrivKey.PublicKey, caPrivKey)
+if err != nil {
+	return err
+}
+</code></pre>
+<p>我们看到的证书内容是PEM编码后的，现在<code>caBytes</code>我们有了生成的证书，我们将其进行 PEM 编码以供以后使用：</p>
+<pre><code class="language-go">caPEM := new(bytes.Buffer)
+pem.Encode(caPEM, &amp;pem.Block{
+	Type:  &quot;CERTIFICATE&quot;,
+	Bytes: caBytes,
+})
+
+caPrivKeyPEM := new(bytes.Buffer)
+pem.Encode(caPrivKeyPEM, &amp;pem.Block{
+	Type:  &quot;RSA PRIVATE KEY&quot;,
+	Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+})
+</code></pre>
+<h3 id="创建证书">创建证书<a hidden class="anchor" aria-hidden="true" href="#创建证书">¶</a></h3>
 <p>证书的 <code>x509.Certificate</code> 与CA的 <code>x509.Certificate</code> 属性有稍微不同，需要进行一些修改</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">cert</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">SerialNumber</span><span class="p">:</span> <span class="nx">big</span><span class="p">.</span><span class="nf">NewInt</span><span class="p">(</span><span class="mi">1658</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Subject</span><span class="p">:</span> <span class="nx">pkix</span><span class="p">.</span><span class="nx">Name</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">CommonName</span><span class="p">:</span>    <span class="s">&#34;domain name&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Organization</span><span class="p">:</span>  <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Company, INC.&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Country</span><span class="p">:</span>       <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;US&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Province</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Locality</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;San Francisco&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">StreetAddress</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Golden Gate Bridge&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">PostalCode</span><span class="p">:</span>    <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;94016&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">IPAddresses</span><span class="p">:</span>  <span class="p">[]</span><span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{},</span> <span class="c1">// 这里就是openssl配置文件中 subjectAltName 里的 IP:/IP=
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">DNSNames</span><span class="p">:</span>     <span class="p">[]</span><span class="kt">string</span><span class="p">{},</span> <span class="c1">// 这里就是openssl配置文件中 subjectAltName 里的 DNS:/DNS=
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">NotBefore</span><span class="p">:</span>    <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">NotAfter</span><span class="p">:</span>     <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">AddDate</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">SubjectKeyId</span><span class="p">:</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 这里就是openssl中的extendedKeyUsage 
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ExtKeyUsage</span><span class="p">:</span>  <span class="p">[]</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsage</span><span class="p">{</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageClientAuth</span><span class="p">,</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageServerAuth</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">KeyUsage</span><span class="p">:</span>     <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageDigitalSignature</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-go">cert := &amp;x509.Certificate{
+	SerialNumber: big.NewInt(1658),
+	Subject: pkix.Name{
+        CommonName:    &quot;domain name&quot;,
+		Organization:  []string{&quot;Company, INC.&quot;},
+		Country:       []string{&quot;US&quot;},
+		Province:      []string{&quot;&quot;},
+		Locality:      []string{&quot;San Francisco&quot;},
+		StreetAddress: []string{&quot;Golden Gate Bridge&quot;},
+		PostalCode:    []string{&quot;94016&quot;},
+	},
+    IPAddresses:  []net.IP{}, // 这里就是openssl配置文件中 subjectAltName 里的 IP:/IP=
+    DNSNames:     []string{}, // 这里就是openssl配置文件中 subjectAltName 里的 DNS:/DNS=
+	NotBefore:    time.Now(),
+	NotAfter:     time.Now().AddDate(10, 0, 0),
+	SubjectKeyId: []byte{1, 2, 3, 4, 6},
+    // 这里就是openssl中的extendedKeyUsage 
+	ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+	KeyUsage:     x509.KeyUsageDigitalSignature,
+}
+</code></pre>
+<blockquote>
 <p>注：这里会在证书中特别添加了 <code>DNS</code> 和 <code>IP</code> （这个不是必须的），这个选项的增加代表的我们的证书可以支持多域名</p>
 </blockquote>
 <p>为该证书创建私钥和公钥：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">certPrivKey</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">rsa</span><span class="p">.</span><span class="nf">GenerateKey</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用ca签署证书">使用CA签署证书<a hidden class="anchor" aria-hidden="true" href="#使用ca签署证书">¶</a></h3>
+<pre><code class="language-go">certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+if err != nil {
+	return err
+}
+</code></pre>
+<h3 id="使用ca签署证书">使用CA签署证书<a hidden class="anchor" aria-hidden="true" href="#使用ca签署证书">¶</a></h3>
 <p>有了上述的内容后，可以创建证书并用CA进行签名</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">certBytes</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">CreateCertificate</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="nx">cert</span><span class="p">,</span> <span class="nx">ca</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">certPrivKey</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">,</span> <span class="nx">caPrivKey</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>要保存成证书格式需要做PEM编码</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">certPEM</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">certPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;CERTIFICATE&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">certBytes</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">certPrivKeyPEM</span> <span class="o">:=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">certPrivKeyPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;RSA PRIVATE KEY&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">MarshalPKCS1PrivateKey</span><span class="p">(</span><span class="nx">certPrivKey</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="把上面内容融合为一起">把上面内容融合为一起<a hidden class="anchor" aria-hidden="true" href="#把上面内容融合为一起">¶</a></h3>
+<pre><code class="language-go">certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &amp;certPrivKey.PublicKey, caPrivKey)
+if err != nil {
+	return err
+}
+</code></pre>
+<p>要保存成证书格式需要做PEM编码</p>
+<pre><code class="language-go">certPEM := new(bytes.Buffer)
+pem.Encode(certPEM, &amp;pem.Block{
+	Type:  &quot;CERTIFICATE&quot;,
+	Bytes: certBytes,
+})
+
+certPrivKeyPEM := new(bytes.Buffer)
+pem.Encode(certPrivKeyPEM, &amp;pem.Block{
+	Type:  &quot;RSA PRIVATE KEY&quot;,
+	Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
+})
+</code></pre>
+<h3 id="把上面内容融合为一起">把上面内容融合为一起<a hidden class="anchor" aria-hidden="true" href="#把上面内容融合为一起">¶</a></h3>
 <p>创建一个 <code>ca.go</code> 里面是创建ca和颁发证书的逻辑</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span><span class="lnt">108
-</span><span class="lnt">109
-</span><span class="lnt">110
-</span><span class="lnt">111
-</span><span class="lnt">112
-</span><span class="lnt">113
-</span><span class="lnt">114
-</span><span class="lnt">115
-</span><span class="lnt">116
-</span><span class="lnt">117
-</span><span class="lnt">118
-</span><span class="lnt">119
-</span><span class="lnt">120
-</span><span class="lnt">121
-</span><span class="lnt">122
-</span><span class="lnt">123
-</span><span class="lnt">124
-</span><span class="lnt">125
-</span><span class="lnt">126
-</span><span class="lnt">127
-</span><span class="lnt">128
-</span><span class="lnt">129
-</span><span class="lnt">130
-</span><span class="lnt">131
-</span><span class="lnt">132
-</span><span class="lnt">133
-</span><span class="lnt">134
-</span><span class="lnt">135
-</span><span class="lnt">136
-</span><span class="lnt">137
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;bytes&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">cr</span> <span class="s">&#34;crypto/rand&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;crypto/rsa&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;crypto/x509&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;crypto/x509/pkix&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;encoding/pem&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;math/big&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;math/rand&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;net&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;os&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;time&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">CERT</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">CERT</span>       <span class="p">[]</span><span class="kt">byte</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">CERTKEY</span>    <span class="o">*</span><span class="nx">rsa</span><span class="p">.</span><span class="nx">PrivateKey</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">CERTPEM</span>    <span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">CERTKEYPEM</span> <span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">CSR</span>        <span class="o">*</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">CreateCA</span><span class="p">(</span><span class="nx">sub</span> <span class="o">*</span><span class="nx">pkix</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span> <span class="nx">expire</span> <span class="kt">int</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">CERT</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ca</span>  <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">CERT</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="kt">error</span>
-</span></span><span class="line"><span class="cl">	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">expire</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">expire</span> <span class="p">=</span> <span class="mi">1</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 为ca生成私钥
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">rsa</span><span class="p">.</span><span class="nf">GenerateKey</span><span class="p">(</span><span class="nx">cr</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 对证书进行签名
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ca</span><span class="p">.</span><span class="nx">CSR</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">SerialNumber</span><span class="p">:</span> <span class="nx">big</span><span class="p">.</span><span class="nf">NewInt</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Int63n</span><span class="p">(</span><span class="mi">2000</span><span class="p">)),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Subject</span><span class="p">:</span>      <span class="o">*</span><span class="nx">sub</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">NotBefore</span><span class="p">:</span>    <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>                       <span class="c1">// 生效时间
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">NotAfter</span><span class="p">:</span>     <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">AddDate</span><span class="p">(</span><span class="nx">expire</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="c1">// 过期时间
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">IsCA</span><span class="p">:</span>         <span class="kc">true</span><span class="p">,</span>                             <span class="c1">// 表示用于CA
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// openssl 中的 extendedKeyUsage = clientAuth, serverAuth 字段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">ExtKeyUsage</span><span class="p">:</span> <span class="p">[]</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsage</span><span class="p">{</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageClientAuth</span><span class="p">,</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageServerAuth</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// openssl 中的 keyUsage 字段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">KeyUsage</span><span class="p">:</span>              <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageDigitalSignature</span> <span class="p">|</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageCertSign</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">BasicConstraintsValid</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 创建证书
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// caBytes 就是生成的证书
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ca</span><span class="p">.</span><span class="nx">CERT</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">CreateCertificate</span><span class="p">(</span><span class="nx">cr</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="nx">ca</span><span class="p">.</span><span class="nx">CSR</span><span class="p">,</span> <span class="nx">ca</span><span class="p">.</span><span class="nx">CSR</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">,</span> <span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">ca</span><span class="p">.</span><span class="nx">CERTPEM</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">ca</span><span class="p">.</span><span class="nx">CERTPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;CERTIFICATE&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">ca</span><span class="p">.</span><span class="nx">CERT</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEYPEM</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEYPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;RSA PRIVATE KEY&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">MarshalPKCS1PrivateKey</span><span class="p">(</span><span class="nx">ca</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 进行PEM编码，编码就是直接cat证书里面内容显示的东西
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">return</span> <span class="nx">ca</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">Req</span><span class="p">(</span><span class="nx">ca</span> <span class="o">*</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">,</span> <span class="nx">sub</span> <span class="o">*</span><span class="nx">pkix</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span> <span class="nx">expire</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">dns</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">ip</span> <span class="p">[]</span><span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">CERT</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">cert</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">CERT</span><span class="p">{}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">err</span>  <span class="kt">error</span>
-</span></span><span class="line"><span class="cl">	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">rsa</span><span class="p">.</span><span class="nf">GenerateKey</span><span class="p">(</span><span class="nx">cr</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="mi">4096</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">expire</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">expire</span> <span class="p">=</span> <span class="mi">1</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">cert</span><span class="p">.</span><span class="nx">CSR</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">x509</span><span class="p">.</span><span class="nx">Certificate</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">SerialNumber</span><span class="p">:</span> <span class="nx">big</span><span class="p">.</span><span class="nf">NewInt</span><span class="p">(</span><span class="nx">rand</span><span class="p">.</span><span class="nf">Int63n</span><span class="p">(</span><span class="mi">2000</span><span class="p">)),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Subject</span><span class="p">:</span>      <span class="o">*</span><span class="nx">sub</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">IPAddresses</span><span class="p">:</span>  <span class="nx">ip</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">DNSNames</span><span class="p">:</span>     <span class="nx">dns</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">NotBefore</span><span class="p">:</span>    <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">NotAfter</span><span class="p">:</span>     <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">AddDate</span><span class="p">(</span><span class="nx">expire</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">SubjectKeyId</span><span class="p">:</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ExtKeyUsage</span><span class="p">:</span>  <span class="p">[]</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsage</span><span class="p">{</span><span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageClientAuth</span><span class="p">,</span> <span class="nx">x509</span><span class="p">.</span><span class="nx">ExtKeyUsageServerAuth</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">KeyUsage</span><span class="p">:</span>     <span class="nx">x509</span><span class="p">.</span><span class="nx">KeyUsageDigitalSignature</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">cert</span><span class="p">.</span><span class="nx">CERT</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">CreateCertificate</span><span class="p">(</span><span class="nx">cr</span><span class="p">.</span><span class="nx">Reader</span><span class="p">,</span> <span class="nx">cert</span><span class="p">.</span><span class="nx">CSR</span><span class="p">,</span> <span class="nx">ca</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">.</span><span class="nx">PublicKey</span><span class="p">,</span> <span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">cert</span><span class="p">.</span><span class="nx">CERTPEM</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;CERTIFICATE&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">cert</span><span class="p">.</span><span class="nx">CERT</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEYPEM</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">pem</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEYPEM</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">pem</span><span class="p">.</span><span class="nx">Block</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;RSA PRIVATE KEY&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Bytes</span><span class="p">:</span> <span class="nx">x509</span><span class="p">.</span><span class="nf">MarshalPKCS1PrivateKey</span><span class="p">(</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEY</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">cert</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">Write</span><span class="p">(</span><span class="nx">cert</span> <span class="o">*</span><span class="nx">CERT</span><span class="p">,</span> <span class="nx">file</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">keyFileName</span> <span class="o">:=</span> <span class="nx">file</span> <span class="o">+</span> <span class="s">&#34;.key&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">certFIleName</span> <span class="o">:=</span> <span class="nx">file</span> <span class="o">+</span> <span class="s">&#34;.crt&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">kf</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span><span class="nx">keyFileName</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">kf</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">kf</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTKEYPEM</span><span class="p">.</span><span class="nf">Bytes</span><span class="p">());</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">cf</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span><span class="nx">certFIleName</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">cf</span><span class="p">.</span><span class="nf">Write</span><span class="p">(</span><span class="nx">cert</span><span class="p">.</span><span class="nx">CERTPEM</span><span class="p">.</span><span class="nf">Bytes</span><span class="p">());</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果需要使用的话，可以引用这些函数</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;crypto/x509/pkix&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;log&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;net&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">subj</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">pkix</span><span class="p">.</span><span class="nx">Name</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">CommonName</span><span class="p">:</span>    <span class="s">&#34;chinamobile.com&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Organization</span><span class="p">:</span>  <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Company, INC.&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Country</span><span class="p">:</span>       <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;US&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Province</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Locality</span><span class="p">:</span>      <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;San Francisco&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">StreetAddress</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Golden Gate Bridge&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">PostalCode</span><span class="p">:</span>    <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;94016&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">ca</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">CreateCA</span><span class="p">(</span><span class="nx">subj</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Panic</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nf">Write</span><span class="p">(</span><span class="nx">ca</span><span class="p">,</span> <span class="s">&#34;./ca&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">crt</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">Req</span><span class="p">(</span><span class="nx">ca</span><span class="p">.</span><span class="nx">CSR</span><span class="p">,</span> <span class="nx">subj</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;test.default.svc&#34;</span><span class="p">,</span> <span class="s">&#34;test&#34;</span><span class="p">},</span> <span class="p">[]</span><span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Panic</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nf">Write</span><span class="p">(</span><span class="nx">crt</span><span class="p">,</span> <span class="s">&#34;./tls&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="遇到的问题">遇到的问题<a hidden class="anchor" aria-hidden="true" href="#遇到的问题">¶</a></h3>
+<pre><code class="language-go">package main
+
+import (
+	&quot;bytes&quot;
+	cr &quot;crypto/rand&quot;
+	&quot;crypto/rsa&quot;
+	&quot;crypto/x509&quot;
+	&quot;crypto/x509/pkix&quot;
+	&quot;encoding/pem&quot;
+	&quot;math/big&quot;
+	&quot;math/rand&quot;
+	&quot;net&quot;
+	&quot;os&quot;
+	&quot;time&quot;
+)
+
+type CERT struct {
+	CERT       []byte
+	CERTKEY    *rsa.PrivateKey
+	CERTPEM    *bytes.Buffer
+	CERTKEYPEM *bytes.Buffer
+	CSR        *x509.Certificate
+}
+
+func CreateCA(sub *pkix.Name, expire int) (*CERT, error) {
+	var (
+		ca  = new(CERT)
+		err error
+	)
+
+	if expire &lt; 1 {
+		expire = 1
+	}
+	// 为ca生成私钥
+	ca.CERTKEY, err = rsa.GenerateKey(cr.Reader, 4096)
+	if err != nil {
+		return nil, err
+	}
+
+	// 对证书进行签名
+	ca.CSR = &amp;x509.Certificate{
+		SerialNumber: big.NewInt(rand.Int63n(2000)),
+		Subject:      *sub,
+		NotBefore:    time.Now(),                       // 生效时间
+		NotAfter:     time.Now().AddDate(expire, 0, 0), // 过期时间
+		IsCA:         true,                             // 表示用于CA
+		// openssl 中的 extendedKeyUsage = clientAuth, serverAuth 字段
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		// openssl 中的 keyUsage 字段
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	// 创建证书
+	// caBytes 就是生成的证书
+	ca.CERT, err = x509.CreateCertificate(cr.Reader, ca.CSR, ca.CSR, &amp;ca.CERTKEY.PublicKey, ca.CERTKEY)
+	if err != nil {
+		return nil, err
+	}
+	ca.CERTPEM = new(bytes.Buffer)
+	pem.Encode(ca.CERTPEM, &amp;pem.Block{
+		Type:  &quot;CERTIFICATE&quot;,
+		Bytes: ca.CERT,
+	})
+	ca.CERTKEYPEM = new(bytes.Buffer)
+	pem.Encode(ca.CERTKEYPEM, &amp;pem.Block{
+		Type:  &quot;RSA PRIVATE KEY&quot;,
+		Bytes: x509.MarshalPKCS1PrivateKey(ca.CERTKEY),
+	})
+
+	// 进行PEM编码，编码就是直接cat证书里面内容显示的东西
+	return ca, nil
+}
+
+func Req(ca *x509.Certificate, sub *pkix.Name, expire int, dns []string, ip []net.IP) (*CERT, error) {
+	var (
+		cert = &amp;CERT{}
+		err  error
+	)
+	cert.CERTKEY, err = rsa.GenerateKey(cr.Reader, 4096)
+	if err != nil {
+		return nil, err
+	}
+	if expire &lt; 1 {
+		expire = 1
+	}
+	cert.CSR = &amp;x509.Certificate{
+		SerialNumber: big.NewInt(rand.Int63n(2000)),
+		Subject:      *sub,
+		IPAddresses:  ip,
+		DNSNames:     dns,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(expire, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	cert.CERT, err = x509.CreateCertificate(cr.Reader, cert.CSR, ca, &amp;cert.CERTKEY.PublicKey, cert.CERTKEY)
+	if err != nil {
+		return nil, err
+	}
+
+	cert.CERTPEM = new(bytes.Buffer)
+	pem.Encode(cert.CERTPEM, &amp;pem.Block{
+		Type:  &quot;CERTIFICATE&quot;,
+		Bytes: cert.CERT,
+	})
+	cert.CERTKEYPEM = new(bytes.Buffer)
+	pem.Encode(cert.CERTKEYPEM, &amp;pem.Block{
+		Type:  &quot;RSA PRIVATE KEY&quot;,
+		Bytes: x509.MarshalPKCS1PrivateKey(cert.CERTKEY),
+	})
+	return cert, nil
+}
+
+func Write(cert *CERT, file string) error {
+	keyFileName := file + &quot;.key&quot;
+	certFIleName := file + &quot;.crt&quot;
+	kf, err := os.Create(keyFileName)
+	if err != nil {
+		return err
+	}
+	defer kf.Close()
+
+	if _, err := kf.Write(cert.CERTKEYPEM.Bytes()); err != nil {
+		return err
+	}
+
+	cf, err := os.Create(certFIleName)
+	if err != nil {
+		return err
+	}
+	if _, err := cf.Write(cert.CERTPEM.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+</code></pre>
+<p>如果需要使用的话，可以引用这些函数</p>
+<pre><code class="language-go">package main
+
+import (
+	&quot;crypto/x509/pkix&quot;
+	&quot;log&quot;
+	&quot;net&quot;
+)
+
+func main() {
+	subj := &amp;pkix.Name{
+		CommonName:    &quot;chinamobile.com&quot;,
+		Organization:  []string{&quot;Company, INC.&quot;},
+		Country:       []string{&quot;US&quot;},
+		Province:      []string{&quot;&quot;},
+		Locality:      []string{&quot;San Francisco&quot;},
+		StreetAddress: []string{&quot;Golden Gate Bridge&quot;},
+		PostalCode:    []string{&quot;94016&quot;},
+	}
+	ca, err := CreateCA(subj, 10)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	Write(ca, &quot;./ca&quot;)
+
+	crt, err := Req(ca.CSR, subj, 10, []string{&quot;test.default.svc&quot;, &quot;test&quot;}, []net.IP{})
+
+	if err != nil {
+		log.Panic(err)
+	}
+
+	Write(crt, &quot;./tls&quot;)
+}
+</code></pre>
+<h3 id="遇到的问题">遇到的问题<a hidden class="anchor" aria-hidden="true" href="#遇到的问题">¶</a></h3>
 <p><strong>panic: x509: unsupported public key type: rsa.PublicKey</strong></p>
 <p>这里是因为 <code>x509.CreateCertificate</code> 的参数 <code>privatekey</code> 需要传入引用变量，而传入的是一个普通变量</p>
 <blockquote>
@@ -907,27 +608,17 @@ function toggleThemeListener() {
 </blockquote>
 <h3 id="一些参数的意思">一些参数的意思<a hidden class="anchor" aria-hidden="true" href="#一些参数的意思">¶</a></h3>
 <p><code>extendedKeyUsage</code> ：增强型密钥用法(参见&quot;new_oids&quot;字段)：服务器身份验证、客户端身份验证、时间戳。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">extendedKeyUsage = critical,serverAuth, clientAuth, timeStamping
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>keyUsage </code>： 密钥用法，防否认(nonRepudiation)、数字签名(digitalSignature)、密钥加密(keyEncipherment)。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-cnf">extendedKeyUsage = critical,serverAuth, clientAuth, timeStamping
+</code></pre>
+<p><code>keyUsage </code>： 密钥用法，防否认(nonRepudiation)、数字签名(digitalSignature)、密钥加密(keyEncipherment)。</p>
+<pre><code class="language-conf">keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+</code></pre>
+<blockquote>
 <p>Reference</p>
-<p><a href="https://shaneutt.com/blog/golang-ca-and-signed-cert-go/">golang ca and signed cert go</a></p>
-<p><a href="https://golang.google.cn/pkg/crypto/x509/">package x509</a></p>
+<p><a href="https://shaneutt.com/blog/golang-ca-and-signed-cert-go/" target="_blank"
+   rel="noopener nofollow noreferrer" >golang ca and signed cert go</a></p>
+<p><a href="https://golang.google.cn/pkg/crypto/x509/" target="_blank"
+   rel="noopener nofollow noreferrer" >package x509</a></p>
 </blockquote>
 
 

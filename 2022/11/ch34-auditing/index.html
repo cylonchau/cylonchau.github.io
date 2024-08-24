@@ -10,7 +10,7 @@
 <meta name="description" content="深入理解Kubernetes 4A - Audit源码解析 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/11/ch34-auditing/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "kubernetes Audit", "k8s Audit webhook", "4A"
   ],
-  "wordCount" : "6370",
+  "wordCount" : "6030",
   "inLanguage": "zh",
   "datePublished": "2022-11-24T00:00:00Z",
   "dateModified": "2022-11-28T23:00:36+08:00",
@@ -343,9 +343,12 @@ function toggleThemeListener() {
 <blockquote>
 <p>本文是关于Kubernetes 4A解析的第四章</p>
 <ul>
-<li><a href="https://cylonchau.github.io/kubernetes-authentication.html">深入理解Kubernetes 4A - Authentication源码解析</a></li>
-<li><a href="https://cylonchau.github.io/kubernetes-authorization.html">深入理解Kubernetes 4A - Authorization源码解析</a></li>
-<li><a href="https://cylonchau.github.io/ch3.7-admission-webhook.html">深入理解Kubernetes 4A - Admission Control源码解析</a></li>
+<li><a href="https://cylonchau.github.io/kubernetes-authentication.html" target="_blank"
+   rel="noopener nofollow noreferrer" >深入理解Kubernetes 4A - Authentication源码解析</a></li>
+<li><a href="https://cylonchau.github.io/kubernetes-authorization.html" target="_blank"
+   rel="noopener nofollow noreferrer" >深入理解Kubernetes 4A - Authorization源码解析</a></li>
+<li><a href="https://cylonchau.github.io/ch3.7-admission-webhook.html" target="_blank"
+   rel="noopener nofollow noreferrer" >深入理解Kubernetes 4A - Admission Control源码解析</a></li>
 <li>深入理解Kubernetes 4A - Audit源码解析</li>
 </ul>
 <p>所有关于Kubernetes 4A四部分代码上传至仓库 github.com/cylonchau/hello-k8s-4A</p>
@@ -374,627 +377,320 @@ function toggleThemeListener() {
 <p>审计日志功能增加了 <em>kube-apiserver</em> 的内存消耗，因为会为每个请求存储了审计所需的上下文。内存的消耗取决于审计日志配置 <sup><a href="#1">[1]</a></sup>。</p>
 </blockquote>
 <h2 id="审计事件设计">审计事件设计<a hidden class="anchor" aria-hidden="true" href="#审计事件设计">¶</a></h2>
-<p>审计的schema不同于资源API的设计，没有 <code>metav1.ObjectMeta</code> 属性，Event是一个事件的结构体，Policy是事件配置，属于kubernetes资源，在代码 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/apis/audit/types.go#L79-L148">k8s.io/apiserver/pkg/apis/audit/types.go</a> 可以看到</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Event</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Level</span> <span class="nx">Level</span> <span class="s">`json:&#34;level&#34; protobuf:&#34;bytes,1,opt,name=level,casttype=Level&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s">	AuditID types.UID `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;auditID&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,2,opt,name=auditID,casttype=k8s.io/apimachinery/pkg/types.UID&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	
-</span></span></span><span class="line"><span class="cl"><span class="s">	Stage Stage `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;stage&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,3,opt,name=stage,casttype=Stage&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	RequestURI string `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;requestURI&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,4,opt,name=requestURI&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	Verb string `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;verb&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,5,opt,name=verb&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	User authnv1.UserInfo `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;user&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,6,opt,name=user&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	ImpersonatedUser *authnv1.UserInfo `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;impersonatedUser,omitempty&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,7,opt,name=impersonatedUser&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	SourceIPs []string `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;sourceIPs,omitempty&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,8,rep,name=sourceIPs&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	UserAgent string `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;userAgent,omitempty&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,16,opt,name=userAgent&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	ObjectRef *ObjectReference `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;objectRef,omitempty&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,9,opt,name=objectRef&#34;`
-</span></span></span><span class="line"><span class="cl"><span class="s">	// +optional
-</span></span></span><span class="line"><span class="cl"><span class="s">	ResponseStatus *metav1.Status `</span><span class="nx">json</span><span class="p">:</span><span class="s">&#34;responseStatus,omitempty&#34;</span> <span class="nx">protobuf</span><span class="p">:</span><span class="s">&#34;bytes,10,opt,name=responseStatus&#34;</span><span class="err">`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="o">...</span>
-</span></span><span class="line"><span class="cl">	
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>对于记录的认证事件来说，会根据请求阶段记录审计的阶段，主要分为下属集中情况，每个请求会记录其中一个验证阶段，如代码所示 <sup><a href="#1">[1]</a></sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">const</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 这个阶段是audit handler收到请求后立即生成事件的阶段，然后委托handler chain处理。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">StageRequestReceived</span> <span class="nx">Stage</span> <span class="p">=</span> <span class="s">&#34;RequestReceived&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 这个阶段阶段仅对长时间运行的请求如 watch
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// 将在发送响应标头后，响应正文之前生成的阶段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">StageResponseStarted</span> <span class="nx">Stage</span> <span class="p">=</span> <span class="s">&#34;ResponseStarted&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 这个阶段是发送相应体后的事件。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">StageResponseComplete</span> <span class="nx">Stage</span> <span class="p">=</span> <span class="s">&#34;ResponseComplete&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 如果程序出现panic，则触发这个阶段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">StagePanic</span> <span class="nx">Stage</span> <span class="p">=</span> <span class="s">&#34;Panic&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="审计工作流程">审计工作流程<a hidden class="anchor" aria-hidden="true" href="#审计工作流程">¶</a></h2>
-<p>审计真正工作的地方在 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L42-L119">k8s.io/apiserver/pkg/endpoints/filters/audit.go.WithAudit</a> 函数，下面对与官方文档说明与这个实际代码进行结合</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span><span class="lnt">73
-</span><span class="lnt">74
-</span><span class="lnt">75
-</span><span class="lnt">76
-</span><span class="lnt">77
-</span><span class="lnt">78
-</span><span class="lnt">79
-</span><span class="lnt">80
-</span><span class="lnt">81
-</span><span class="lnt">82
-</span><span class="lnt">83
-</span><span class="lnt">84
-</span><span class="lnt">85
-</span><span class="lnt">86
-</span><span class="lnt">87
-</span><span class="lnt">88
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">WithAudit</span><span class="p">(</span><span class="nx">handler</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span><span class="p">,</span> <span class="nx">sink</span> <span class="nx">audit</span><span class="p">.</span><span class="nx">Sink</span><span class="p">,</span> <span class="nx">policy</span> <span class="nx">audit</span><span class="p">.</span><span class="nx">PolicyRuleEvaluator</span><span class="p">,</span> <span class="nx">longRunningCheck</span> <span class="nx">request</span><span class="p">.</span><span class="nx">LongRunningRequestCheck</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">Handler</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// sink是一个backend（webhook 或 日志），policy则是自定义的事件配置
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 如果两者之一未配置，则不会使用审计功能
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nx">sink</span> <span class="o">==</span> <span class="kc">nil</span> <span class="o">||</span> <span class="nx">policy</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">handler</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">http</span><span class="p">.</span><span class="nf">HandlerFunc</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// 通过给定的配置与请求构建出一个事件 context
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 这里可以看到
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">auditContext</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">evaluatePolicyAndCreateAuditEvent</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">policy</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">utilruntime</span><span class="p">.</span><span class="nf">HandleError</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;failed to create audit event: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">InternalError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;failed to create audit event&#34;</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// 下面代码可以看出是对事件context进行构建，与拿到来自请求Context
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">ev</span> <span class="o">:=</span> <span class="nx">auditContext</span><span class="p">.</span><span class="nx">Event</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">ev</span> <span class="o">==</span> <span class="kc">nil</span> <span class="o">||</span> <span class="nx">req</span><span class="p">.</span><span class="nf">Context</span><span class="p">()</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">handler</span><span class="p">.</span><span class="nf">ServeHTTP</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">req</span> <span class="p">=</span> <span class="nx">req</span><span class="p">.</span><span class="nf">WithContext</span><span class="p">(</span><span class="nx">audit</span><span class="p">.</span><span class="nf">WithAuditContext</span><span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nf">Context</span><span class="p">(),</span> <span class="nx">auditContext</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="nx">ctx</span> <span class="o">:=</span> <span class="nx">req</span><span class="p">.</span><span class="nf">Context</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">omitStages</span> <span class="o">:=</span> <span class="nx">auditContext</span><span class="p">.</span><span class="nx">RequestAuditConfig</span><span class="p">.</span><span class="nx">OmitStages</span>
-</span></span><span class="line"><span class="cl">		
-</span></span><span class="line"><span class="cl">        <span class="c1">// 这里到StageRequestReceived阶段，如果是收到请求阶段则通过注入的后端进行处理
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="nx">ev</span><span class="p">.</span><span class="nx">Stage</span> <span class="p">=</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">StageRequestReceived</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">processed</span> <span class="o">:=</span> <span class="nf">processAuditEvent</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">sink</span><span class="p">,</span> <span class="nx">ev</span><span class="p">,</span> <span class="nx">omitStages</span><span class="p">);</span> <span class="p">!</span><span class="nx">processed</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">audit</span><span class="p">.</span><span class="nx">ApiserverAuditDroppedCounter</span><span class="p">.</span><span class="nf">WithContext</span><span class="p">(</span><span class="nx">ctx</span><span class="p">).</span><span class="nf">Inc</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">responsewriters</span><span class="p">.</span><span class="nf">InternalError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">req</span><span class="p">,</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;failed to store audit event&#34;</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">			<span class="k">return</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="c1">// 拦截watch类长请求的状态码
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="kd">var</span> <span class="nx">longRunningSink</span> <span class="nx">audit</span><span class="p">.</span><span class="nx">Sink</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">longRunningCheck</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">ri</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">request</span><span class="p">.</span><span class="nf">RequestInfoFrom</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nf">longRunningCheck</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">ri</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">longRunningSink</span> <span class="p">=</span> <span class="nx">sink</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">respWriter</span> <span class="o">:=</span> <span class="nf">decorateResponseWriter</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">w</span><span class="p">,</span> <span class="nx">ev</span><span class="p">,</span> <span class="nx">longRunningSink</span><span class="p">,</span> <span class="nx">omitStages</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="c1">// send audit event when we leave this func, either via a panic or cleanly. In the case of long
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="c1">// running requests, this will be the second audit event.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="c1">// 在离开函数前会处理 ResponseStarted、ResponseComplete、Panic这三个阶段
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">r</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">r</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="k">defer</span> <span class="nb">panic</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">                <span class="c1">// 当前发生panic的请求
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nx">ev</span><span class="p">.</span><span class="nx">Stage</span> <span class="p">=</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">StagePanic</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">ev</span><span class="p">.</span><span class="nx">ResponseStatus</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">Status</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">Code</span><span class="p">:</span>    <span class="nx">http</span><span class="p">.</span><span class="nx">StatusInternalServerError</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">Status</span><span class="p">:</span>  <span class="nx">metav1</span><span class="p">.</span><span class="nx">StatusFailure</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">Reason</span><span class="p">:</span>  <span class="nx">metav1</span><span class="p">.</span><span class="nx">StatusReasonInternalError</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">Message</span><span class="p">:</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;APIServer panic&#39;d: %v&#34;</span><span class="p">,</span> <span class="nx">r</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">				<span class="p">}</span>
-</span></span><span class="line"><span class="cl">				<span class="nf">processAuditEvent</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">sink</span><span class="p">,</span> <span class="nx">ev</span><span class="p">,</span> <span class="nx">omitStages</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">			<span class="c1">// if no StageResponseStarted event was sent b/c neither a status code nor a body was sent, fake it here
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="c1">// But Audit-Id http header will only be sent when http.ResponseWriter.WriteHeader is called.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nx">fakedSuccessStatus</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">metav1</span><span class="p">.</span><span class="nx">Status</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">Code</span><span class="p">:</span>    <span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">Status</span><span class="p">:</span>  <span class="nx">metav1</span><span class="p">.</span><span class="nx">StatusSuccess</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">Message</span><span class="p">:</span> <span class="s">&#34;Connection closed early&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">ev</span><span class="p">.</span><span class="nx">ResponseStatus</span> <span class="o">==</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">longRunningSink</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">ev</span><span class="p">.</span><span class="nx">ResponseStatus</span> <span class="p">=</span> <span class="nx">fakedSuccessStatus</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">ev</span><span class="p">.</span><span class="nx">Stage</span> <span class="p">=</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">StageResponseStarted</span>
-</span></span><span class="line"><span class="cl">				<span class="nf">processAuditEvent</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">longRunningSink</span><span class="p">,</span> <span class="nx">ev</span><span class="p">,</span> <span class="nx">omitStages</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// ResponseStarted 在响应头发送后，响应体发送前的事件。watch会触发他
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            
-</span></span><span class="line"><span class="cl">			<span class="nx">ev</span><span class="p">.</span><span class="nx">Stage</span> <span class="p">=</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">StageResponseComplete</span>
-</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">ev</span><span class="p">.</span><span class="nx">ResponseStatus</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">                <span class="c1">// 没有相应状态 正是上面构造的fakedSuccessStatus
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>				<span class="nx">ev</span><span class="p">.</span><span class="nx">ResponseStatus</span> <span class="p">=</span> <span class="nx">fakedSuccessStatus</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">            <span class="c1">// 将事件发送到后端
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="nf">processAuditEvent</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">sink</span><span class="p">,</span> <span class="nx">ev</span><span class="p">,</span> <span class="nx">omitStages</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}()</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">handler</span><span class="p">.</span><span class="nf">ServeHTTP</span><span class="p">(</span><span class="nx">respWriter</span><span class="p">,</span> <span class="nx">req</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">})</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<p>审计的schema不同于资源API的设计，没有 <code>metav1.ObjectMeta</code> 属性，Event是一个事件的结构体，Policy是事件配置，属于kubernetes资源，在代码 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/apis/audit/types.go#L79-L148" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/apis/audit/types.go</a> 可以看到</p>
+<pre><code class="language-go">type Event struct {
+	metav1.TypeMeta `json:&quot;,inline&quot;`
+	Level Level `json:&quot;level&quot; protobuf:&quot;bytes,1,opt,name=level,casttype=Level&quot;
+	AuditID types.UID `json:&quot;auditID&quot; protobuf:&quot;bytes,2,opt,name=auditID,casttype=k8s.io/apimachinery/pkg/types.UID&quot;`
+	
+	Stage Stage `json:&quot;stage&quot; protobuf:&quot;bytes,3,opt,name=stage,casttype=Stage&quot;`
+	RequestURI string `json:&quot;requestURI&quot; protobuf:&quot;bytes,4,opt,name=requestURI&quot;`
+	Verb string `json:&quot;verb&quot; protobuf:&quot;bytes,5,opt,name=verb&quot;`
+	User authnv1.UserInfo `json:&quot;user&quot; protobuf:&quot;bytes,6,opt,name=user&quot;`
+	ImpersonatedUser *authnv1.UserInfo `json:&quot;impersonatedUser,omitempty&quot; protobuf:&quot;bytes,7,opt,name=impersonatedUser&quot;`
+	SourceIPs []string `json:&quot;sourceIPs,omitempty&quot; protobuf:&quot;bytes,8,rep,name=sourceIPs&quot;`
+	UserAgent string `json:&quot;userAgent,omitempty&quot; protobuf:&quot;bytes,16,opt,name=userAgent&quot;`
+	ObjectRef *ObjectReference `json:&quot;objectRef,omitempty&quot; protobuf:&quot;bytes,9,opt,name=objectRef&quot;`
+	// +optional
+	ResponseStatus *metav1.Status `json:&quot;responseStatus,omitempty&quot; protobuf:&quot;bytes,10,opt,name=responseStatus&quot;`
+
+...
+	
+}
+</code></pre>
+<p>对于记录的认证事件来说，会根据请求阶段记录审计的阶段，主要分为下属集中情况，每个请求会记录其中一个验证阶段，如代码所示 <sup><a href="#1">[1]</a></sup></p>
+<pre><code class="language-go">const (
+    // 这个阶段是audit handler收到请求后立即生成事件的阶段，然后委托handler chain处理。
+	StageRequestReceived Stage = &quot;RequestReceived&quot;
+    // 这个阶段阶段仅对长时间运行的请求如 watch
+	// 将在发送响应标头后，响应正文之前生成的阶段
+	StageResponseStarted Stage = &quot;ResponseStarted&quot;
+    // 这个阶段是发送相应体后的事件。
+	StageResponseComplete Stage = &quot;ResponseComplete&quot;
+	// 如果程序出现panic，则触发这个阶段
+	StagePanic Stage = &quot;Panic&quot;
+)
+</code></pre>
+<h2 id="审计工作流程">审计工作流程<a hidden class="anchor" aria-hidden="true" href="#审计工作流程">¶</a></h2>
+<p>审计真正工作的地方在 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L42-L119" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/endpoints/filters/audit.go.WithAudit</a> 函数，下面对与官方文档说明与这个实际代码进行结合</p>
+<pre><code class="language-go">func WithAudit(handler http.Handler, sink audit.Sink, policy audit.PolicyRuleEvaluator, longRunningCheck request.LongRunningRequestCheck) http.Handler {
+    // sink是一个backend（webhook 或 日志），policy则是自定义的事件配置
+    // 如果两者之一未配置，则不会使用审计功能
+	if sink == nil || policy == nil {
+		return handler
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+        // 通过给定的配置与请求构建出一个事件 context
+        // 这里可以看到
+		auditContext, err := evaluatePolicyAndCreateAuditEvent(req, policy)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf(&quot;failed to create audit event: %v&quot;, err))
+			responsewriters.InternalError(w, req, errors.New(&quot;failed to create audit event&quot;))
+			return
+		}
+		// 下面代码可以看出是对事件context进行构建，与拿到来自请求Context
+		ev := auditContext.Event
+		if ev == nil || req.Context() == nil {
+			handler.ServeHTTP(w, req)
+			return
+		}
+
+		req = req.WithContext(audit.WithAuditContext(req.Context(), auditContext))
+
+		ctx := req.Context()
+		omitStages := auditContext.RequestAuditConfig.OmitStages
+		
+        // 这里到StageRequestReceived阶段，如果是收到请求阶段则通过注入的后端进行处理
+		ev.Stage = auditinternal.StageRequestReceived
+		if processed := processAuditEvent(ctx, sink, ev, omitStages); !processed {
+            audit.ApiserverAuditDroppedCounter.WithContext(ctx).Inc()
+			responsewriters.InternalError(w, req, errors.New(&quot;failed to store audit event&quot;))
+			return
+		}
+
+		// 拦截watch类长请求的状态码
+		var longRunningSink audit.Sink
+		if longRunningCheck != nil {
+			ri, _ := request.RequestInfoFrom(ctx)
+			if longRunningCheck(req, ri) {
+				longRunningSink = sink
+			}
+		}
+		respWriter := decorateResponseWriter(ctx, w, ev, longRunningSink, omitStages)
+
+		// send audit event when we leave this func, either via a panic or cleanly. In the case of long
+		// running requests, this will be the second audit event.
+        // 在离开函数前会处理 ResponseStarted、ResponseComplete、Panic这三个阶段
+		defer func() {
+			if r := recover(); r != nil {
+				defer panic(r)
+                // 当前发生panic的请求
+				ev.Stage = auditinternal.StagePanic
+				ev.ResponseStatus = &amp;metav1.Status{
+					Code:    http.StatusInternalServerError,
+					Status:  metav1.StatusFailure,
+					Reason:  metav1.StatusReasonInternalError,
+					Message: fmt.Sprintf(&quot;APIServer panic'd: %v&quot;, r),
+				}
+				processAuditEvent(ctx, sink, ev, omitStages)
+				return
+			}
+
+			// if no StageResponseStarted event was sent b/c neither a status code nor a body was sent, fake it here
+			// But Audit-Id http header will only be sent when http.ResponseWriter.WriteHeader is called.
+			fakedSuccessStatus := &amp;metav1.Status{
+				Code:    http.StatusOK,
+				Status:  metav1.StatusSuccess,
+				Message: &quot;Connection closed early&quot;,
+			}
+			if ev.ResponseStatus == nil &amp;&amp; longRunningSink != nil {
+				ev.ResponseStatus = fakedSuccessStatus
+				ev.Stage = auditinternal.StageResponseStarted
+				processAuditEvent(ctx, longRunningSink, ev, omitStages)
+			}
+			// ResponseStarted 在响应头发送后，响应体发送前的事件。watch会触发他
+            
+			ev.Stage = auditinternal.StageResponseComplete
+			if ev.ResponseStatus == nil {
+                // 没有相应状态 正是上面构造的fakedSuccessStatus
+				ev.ResponseStatus = fakedSuccessStatus
+			}
+            // 将事件发送到后端
+			processAuditEvent(ctx, sink, ev, omitStages)
+		}()
+		handler.ServeHTTP(respWriter, req)
+	})
+}
+</code></pre>
+<ul>
 <li>
 <p>在评估请求时，会调用 <code>GetAuthorizerAttributes(ctx)</code> ，这里通过授权记录然后来通过给定的审计配置来</p>
 </li>
 <li>
 <p>当在将事件发送到后端时，使用 <code>processAuditEvent()</code> 函数，最终修改时间后会转交至后端函数，例如webhook，会请求后端配置的webhook url的客户端，最终被执行 <code>return sink.ProcessEvents(ev)</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">backend</span><span class="p">)</span> <span class="nf">processEvents</span><span class="p">(</span><span class="nx">ev</span> <span class="o">...*</span><span class="nx">auditinternal</span><span class="p">.</span><span class="nx">Event</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">list</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">EventList</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">e</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ev</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">list</span><span class="p">.</span><span class="nx">Items</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">list</span><span class="p">.</span><span class="nx">Items</span><span class="p">,</span> <span class="o">*</span><span class="nx">e</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">b</span><span class="p">.</span><span class="nx">w</span><span class="p">.</span><span class="nf">WithExponentialBackoff</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span> <span class="kd">func</span><span class="p">()</span> <span class="nx">rest</span><span class="p">.</span><span class="nx">Result</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">trace</span> <span class="o">:=</span> <span class="nx">utiltrace</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;Call Audit Events webhook&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">utiltrace</span><span class="p">.</span><span class="nx">Field</span><span class="p">{</span><span class="s">&#34;name&#34;</span><span class="p">,</span> <span class="nx">b</span><span class="p">.</span><span class="nx">name</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">utiltrace</span><span class="p">.</span><span class="nx">Field</span><span class="p">{</span><span class="s">&#34;event-count&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">list</span><span class="p">.</span><span class="nx">Items</span><span class="p">)})</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Only log audit webhook traces that exceed a 25ms per object limit plus a 50ms request overhead allowance. The high per object limit used here is primarily to allow enough time for the serialization/deserialization of audit events, which contain nested request and response objects plus additional event fields.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">defer</span> <span class="nx">trace</span><span class="p">.</span><span class="nf">LogIfLong</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="mi">50</span><span class="o">+</span><span class="mi">25</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nx">list</span><span class="p">.</span><span class="nx">Items</span><span class="p">))</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">b</span><span class="p">.</span><span class="nx">w</span><span class="p">.</span><span class="nx">RestClient</span><span class="p">.</span><span class="nf">Post</span><span class="p">().</span><span class="nf">Body</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">list</span><span class="p">).</span><span class="nf">Do</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">TODO</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}).</span><span class="nf">Error</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div></li>
+<pre><code class="language-go">func (b *backend) processEvents(ev ...*auditinternal.Event) error {
+	var list auditinternal.EventList
+	for _, e := range ev {
+		list.Items = append(list.Items, *e)
+	}
+	return b.w.WithExponentialBackoff(context.Background(), func() rest.Result {
+		trace := utiltrace.New(&quot;Call Audit Events webhook&quot;,
+			utiltrace.Field{&quot;name&quot;, b.name},
+			utiltrace.Field{&quot;event-count&quot;, len(list.Items)})
+		// Only log audit webhook traces that exceed a 25ms per object limit plus a 50ms request overhead allowance. The high per object limit used here is primarily to allow enough time for the serialization/deserialization of audit events, which contain nested request and response objects plus additional event fields.
+		defer trace.LogIfLong(time.Duration(50+25*len(list.Items)) * time.Millisecond)
+		return b.w.RestClient.Post().Body(&amp;list).Do(context.TODO())
+	}).Error()
+}
+</code></pre>
+</li>
 </ul>
-<p>在 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L125-L155">k8s.io/apiserver/pkg/endpoints/filters/audit.go.evaluatePolicyAndCreateAuditEvent</a> 会评估请求的级别和规则，而 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/audit/policy/checker.go#L64-L84">k8s.io/apiserver/pkg/audit/policy/checker.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">policyRuleEvaluator</span><span class="p">)</span> <span class="nf">EvaluatePolicyRule</span><span class="p">(</span><span class="nx">attrs</span> <span class="nx">authorizer</span><span class="p">.</span><span class="nx">Attributes</span><span class="p">)</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">RequestAuditConfigWithLevel</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">rule</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">p</span><span class="p">.</span><span class="nx">Rules</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// 评估则是评估用户与用户组，verb，ns,非API资源 /metrics /healthz
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">if</span> <span class="nf">ruleMatches</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">rule</span><span class="p">,</span> <span class="nx">attrs</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="c1">// 通过后，则将这条规则与配置返回
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">return</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">RequestAuditConfigWithLevel</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">Level</span><span class="p">:</span> <span class="nx">rule</span><span class="p">.</span><span class="nx">Level</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">RequestAuditConfig</span><span class="p">:</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">RequestAuditConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">OmitStages</span><span class="p">:</span>        <span class="nx">rule</span><span class="p">.</span><span class="nx">OmitStages</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">					<span class="nx">OmitManagedFields</span><span class="p">:</span> <span class="nf">isOmitManagedFields</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">rule</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nx">OmitManagedFields</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">				<span class="p">},</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 如果条件都不满足，则构建一个
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">return</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">RequestAuditConfigWithLevel</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Level</span><span class="p">:</span> <span class="nx">DefaultAuditLevel</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">RequestAuditConfig</span><span class="p">:</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">RequestAuditConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">OmitStages</span><span class="p">:</span>        <span class="nx">p</span><span class="p">.</span><span class="nx">OmitStages</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">OmitManagedFields</span><span class="p">:</span> <span class="nx">p</span><span class="p">.</span><span class="nx">OmitManagedFields</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/audit/request.go#L48-L93">k8s.io/apiserver/pkg/audit/request.go.NewEventFromRequest</a> 创建出审计事件对象被上面 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L125-L155">evaluatePolicyAndCreateAuditEvent</a> 返回</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// evaluatePolicyAndCreateAuditEvent is responsible for evaluating the audit
-</span></span></span><span class="line"><span class="cl"><span class="c1">// policy configuration applicable to the request and create a new audit
-</span></span></span><span class="line"><span class="cl"><span class="c1">// event that will be written to the API audit log.
-</span></span></span><span class="line"><span class="cl"><span class="c1">// - error if anything bad happened
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">evaluatePolicyAndCreateAuditEvent</span><span class="p">(</span><span class="nx">req</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">,</span> <span class="nx">policy</span> <span class="nx">audit</span><span class="p">.</span><span class="nx">PolicyRuleEvaluator</span><span class="p">)</span> <span class="p">(</span><span class="o">*</span><span class="nx">audit</span><span class="p">.</span><span class="nx">AuditContext</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">ctx</span> <span class="o">:=</span> <span class="nx">req</span><span class="p">.</span><span class="nf">Context</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">attribs</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">GetAuthorizerAttributes</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;failed to GetAuthorizerAttributes: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">ls</span> <span class="o">:=</span> <span class="nx">policy</span><span class="p">.</span><span class="nf">EvaluatePolicyRule</span><span class="p">(</span><span class="nx">attribs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">audit</span><span class="p">.</span><span class="nf">ObservePolicyLevel</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">ls</span><span class="p">.</span><span class="nx">Level</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">ls</span><span class="p">.</span><span class="nx">Level</span> <span class="o">==</span> <span class="nx">auditinternal</span><span class="p">.</span><span class="nx">LevelNone</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Don&#39;t audit.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">return</span> <span class="o">&amp;</span><span class="nx">audit</span><span class="p">.</span><span class="nx">AuditContext</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">RequestAuditConfig</span><span class="p">:</span> <span class="nx">ls</span><span class="p">.</span><span class="nx">RequestAuditConfig</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">},</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">requestReceivedTimestamp</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">request</span><span class="p">.</span><span class="nf">ReceivedTimestampFrom</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">requestReceivedTimestamp</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">ev</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">audit</span><span class="p">.</span><span class="nf">NewEventFromRequest</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">requestReceivedTimestamp</span><span class="p">,</span> <span class="nx">ls</span><span class="p">.</span><span class="nx">Level</span><span class="p">,</span> <span class="nx">attribs</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;failed to complete audit event from request: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">audit</span><span class="p">.</span><span class="nx">AuditContext</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">RequestAuditConfig</span><span class="p">:</span> <span class="nx">ls</span><span class="p">.</span><span class="nx">RequestAuditConfig</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Event</span><span class="p">:</span>              <span class="nx">ev</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">	<span class="p">},</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>到这里，已经清楚的了解到，Kubernetes审计工作与什么位置了，而对于Kubernetes准入给出的登录（<em><strong>Authentication</strong></em>），授权 (<em><strong>Authorization</strong></em>) 与 准入控制 (<em><strong>Admission control</strong></em>) 三个阶段来说，Audition 位于授权之后，正如下图所示，而这个真正的流程在kubernetes中有个属于叫 <em><strong>handler chain</strong></em> 整个链条中，准入与审计只是其中一部分。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221128001225515.png" alt="image-20221128001225515"  /></p>
+<p>在 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L125-L155" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/endpoints/filters/audit.go.evaluatePolicyAndCreateAuditEvent</a> 会评估请求的级别和规则，而 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/audit/policy/checker.go#L64-L84" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/audit/policy/checker.go</a></p>
+<pre><code class="language-go">func (p *policyRuleEvaluator) EvaluatePolicyRule(attrs authorizer.Attributes) auditinternal.RequestAuditConfigWithLevel {
+	for _, rule := range p.Rules {
+        // 评估则是评估用户与用户组，verb，ns,非API资源 /metrics /healthz
+		if ruleMatches(&amp;rule, attrs) {
+            // 通过后，则将这条规则与配置返回
+			return auditinternal.RequestAuditConfigWithLevel{
+				Level: rule.Level,
+				RequestAuditConfig: auditinternal.RequestAuditConfig{
+					OmitStages:        rule.OmitStages,
+					OmitManagedFields: isOmitManagedFields(&amp;rule, p.OmitManagedFields),
+				},
+			}
+		}
+	}
+	// 如果条件都不满足，则构建一个
+	return auditinternal.RequestAuditConfigWithLevel{
+		Level: DefaultAuditLevel,
+		RequestAuditConfig: auditinternal.RequestAuditConfig{
+			OmitStages:        p.OmitStages,
+			OmitManagedFields: p.OmitManagedFields,
+		},
+	}
+}
+</code></pre>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/audit/request.go#L48-L93" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/audit/request.go.NewEventFromRequest</a> 创建出审计事件对象被上面 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/endpoints/filters/audit.go#L125-L155" target="_blank"
+   rel="noopener nofollow noreferrer" >evaluatePolicyAndCreateAuditEvent</a> 返回</p>
+<pre><code class="language-go">// evaluatePolicyAndCreateAuditEvent is responsible for evaluating the audit
+// policy configuration applicable to the request and create a new audit
+// event that will be written to the API audit log.
+// - error if anything bad happened
+func evaluatePolicyAndCreateAuditEvent(req *http.Request, policy audit.PolicyRuleEvaluator) (*audit.AuditContext, error) {
+	ctx := req.Context()
+
+	attribs, err := GetAuthorizerAttributes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf(&quot;failed to GetAuthorizerAttributes: %v&quot;, err)
+	}
+
+	ls := policy.EvaluatePolicyRule(attribs)
+	audit.ObservePolicyLevel(ctx, ls.Level)
+	if ls.Level == auditinternal.LevelNone {
+		// Don't audit.
+		return &amp;audit.AuditContext{
+			RequestAuditConfig: ls.RequestAuditConfig,
+		}, nil
+	}
+
+	requestReceivedTimestamp, ok := request.ReceivedTimestampFrom(ctx)
+	if !ok {
+		requestReceivedTimestamp = time.Now()
+	}
+	ev, err := audit.NewEventFromRequest(req, requestReceivedTimestamp, ls.Level, attribs)
+	if err != nil {
+		return nil, fmt.Errorf(&quot;failed to complete audit event from request: %v&quot;, err)
+	}
+
+	return &amp;audit.AuditContext{
+		RequestAuditConfig: ls.RequestAuditConfig,
+		Event:              ev,
+	}, nil
+}
+</code></pre>
+<p>到这里，已经清楚的了解到，Kubernetes审计工作与什么位置了，而对于Kubernetes准入给出的登录（<em><strong>Authentication</strong></em>），授权 (<em><strong>Authorization</strong></em>) 与 准入控制 (<em><strong>Admission control</strong></em>) 三个阶段来说，Audition 位于授权之后，正如下图所示，而这个真正的流程在kubernetes中有个属于叫 <em><strong>handler chain</strong></em> 整个链条中，准入与审计只是其中一部分。</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221128001225515.png" alt="image-20221128001225515" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Kubernetes 4A 的 handler chain</center><br>
 <p>由图再结合代码可以看出，所有的客户端访问API都需要经过完整经由整个链条，而 Auditing 事件的构建是需要获取经由验证过的用户等资源构建出的事件，首次发生的为 <code>StageRequestReceived</code> ，这将在收到请求后执行，而由代码又可知，因为在最终结束掉整个请求时会执行 <code>WithAudit</code> 函数，这就为 <code>StageResponseComplete</code> 与 <code>StageResponseStarted</code> 这两个阶段被执行，而这个将发生在被注册的 handler 完成后，也就是  <em><strong>Admission control</strong></em> 后因为 AC 是在每个真实REST中被执行。TODO</p>
 <h2 id="审计策略级别-supa-href22asup">审计策略级别 <sup><a href="#2">[2]</a></sup><a hidden class="anchor" aria-hidden="true" href="#审计策略级别-supa-href22asup">¶</a></h2>
 <p>审计策略级别是控制审计记录将记录那些对象的数据内容，当事件被处理时，会按照配置的审计规则进行比较。而使用该功能需要 <em>kube-apiserver</em> 开启参数 <code>--audit-policy-file</code> 指定对应的配置，如果未指定则默认不记录任何事件，可供定义的级别有四个，被定义在 k8s.io/apiserver/pkg/apis/audit/v1/types.go 中</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">const</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// LevelNone disables auditing
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LevelNone</span> <span class="nx">Level</span> <span class="p">=</span> <span class="s">&#34;None&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// LevelMetadata provides the basic level of auditing.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LevelMetadata</span> <span class="nx">Level</span> <span class="p">=</span> <span class="s">&#34;Metadata&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// LevelRequest provides Metadata level of auditing, and additionally
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// logs the request object (does not apply for non-resource requests).
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LevelRequest</span> <span class="nx">Level</span> <span class="p">=</span> <span class="s">&#34;Request&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// LevelRequestResponse provides Request level of auditing, and additionally
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// logs the response object (does not apply for non-resource requests).
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LevelRequestResponse</span> <span class="nx">Level</span> <span class="p">=</span> <span class="s">&#34;RequestResponse&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<pre><code class="language-go">const (
+	// LevelNone disables auditing
+	LevelNone Level = &quot;None&quot;
+	// LevelMetadata provides the basic level of auditing.
+	LevelMetadata Level = &quot;Metadata&quot;
+	// LevelRequest provides Metadata level of auditing, and additionally
+	// logs the request object (does not apply for non-resource requests).
+	LevelRequest Level = &quot;Request&quot;
+	// LevelRequestResponse provides Request level of auditing, and additionally
+	// logs the response object (does not apply for non-resource requests).
+	LevelRequestResponse Level = &quot;RequestResponse&quot;
+)
+</code></pre>
+<ul>
 <li><strong>None</strong>： 不记录符合该规则的事件</li>
 <li><strong>Metadata</strong>：只记录请求元数据（如User, timestamp, resources, verb），不记录请求和响应体。</li>
 <li><strong>Request</strong>：记录事件元数据和请求体，不记录响应体。</li>
 <li><strong>RequestResponse</strong>： 记录事件元数据，请求和响应体</li>
 </ul>
 <p>下面是Kubernetes官网给出的 Policy 的配置 <sup><a href="#2">[2]</a></sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">audit.k8s.io/v1</span><span class="w"> </span><span class="c"># This is required.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Policy</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># omitStages 代表忽略该阶段所有请求事件</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># RequestReceived 这里配置的指在RequestReceived阶段忽略所有请求事件</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">omitStages</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="s2">&#34;RequestReceived&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 记录将以RequestResponse级别的格式记录pod更改</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">RequestResponse</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="c"># 这里资源的配置必须与RBAC配置的一致，pods将不支持pods/log这类子资源</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;pods&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 如果需要配置子资源按照下列方式</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">Metadata</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;pods/log&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;pods/status&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 不记录的资源为controller-leader的configmaps资源的请求</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">None</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;configmaps&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resourceNames</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;controller-leader&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 不记录用户为 &#34;system:kube-proxy&#34; 发起的对 endpoints与services资源的watch请求事件</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">None</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">users</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;system:kube-proxy&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;watch&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w"> </span><span class="c"># core API group</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;endpoints&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;services&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 每个登录成功的用户，都会被追加一个用户组为 &#34;system:authenticated&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 下述规则为不记录包含非资源类型的URL的已认证请求</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">None</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">userGroups</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;system:authenticated&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">nonResourceURLs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;/api*&#34;</span><span class="w"> </span><span class="c"># Wildcard matching.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;/version&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 记录kube-system名称空间configmap更改事件的请求体与元数据</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">Request</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w"> </span><span class="c"># core API group</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;configmaps&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># This rule only applies to resources in the &#34;kube-system&#34; namespace.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># The empty string &#34;&#34; can be used to select non-namespaced resources.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">namespaces</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;kube-system&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 事件将记录所有名称空间内对于configmap与secret资源改变的元数据</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">Metadata</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w"> </span><span class="c"># core API group</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;secrets&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;configmaps&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 记录对group为core与extensions下的资源类型请求的 请求体与元数据（request级别）</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">Request</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">resources</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w"> </span><span class="c"># core API group</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;extensions&#34;</span><span class="w"> </span><span class="c"># Version of group should NOT be included.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 这种属于泛规则，会记录所有上述其他之外的所有类型请求的元数据</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># 类似于授权，小权限在前，* 最后</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l">Metadata</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># Long-running requests like watches that fall under this rule will not</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># generate an audit event in RequestReceived.</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">omitStages</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;RequestReceived&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="backend-supa-href33asup">Backend <sup><a href="#3">[3]</a></sup><a hidden class="anchor" aria-hidden="true" href="#backend-supa-href33asup">¶</a></h2>
+<pre><code class="language-yaml">apiVersion: audit.k8s.io/v1 # This is required.
+kind: Policy
+# omitStages 代表忽略该阶段所有请求事件
+# RequestReceived 这里配置的指在RequestReceived阶段忽略所有请求事件
+omitStages:
+  - &quot;RequestReceived&quot;
+rules:
+  # 记录将以RequestResponse级别的格式记录pod更改
+  - level: RequestResponse
+    resources:
+    - group: &quot;&quot;
+      # 这里资源的配置必须与RBAC配置的一致，pods将不支持pods/log这类子资源
+      resources: [&quot;pods&quot;]
+  # 如果需要配置子资源按照下列方式
+  - level: Metadata
+    resources:
+    - group: &quot;&quot;
+      resources: [&quot;pods/log&quot;, &quot;pods/status&quot;]
+
+  # 不记录的资源为controller-leader的configmaps资源的请求
+  - level: None
+    resources:
+    - group: &quot;&quot;
+      resources: [&quot;configmaps&quot;]
+      resourceNames: [&quot;controller-leader&quot;]
+
+  # 不记录用户为 &quot;system:kube-proxy&quot; 发起的对 endpoints与services资源的watch请求事件
+  - level: None
+    users: [&quot;system:kube-proxy&quot;]
+    verbs: [&quot;watch&quot;]
+    resources:
+    - group: &quot;&quot; # core API group
+      resources: [&quot;endpoints&quot;, &quot;services&quot;]
+
+  # 每个登录成功的用户，都会被追加一个用户组为 &quot;system:authenticated&quot;
+  # 下述规则为不记录包含非资源类型的URL的已认证请求
+  - level: None
+    userGroups: [&quot;system:authenticated&quot;]
+    nonResourceURLs:
+    - &quot;/api*&quot; # Wildcard matching.
+    - &quot;/version&quot;
+
+  # 记录kube-system名称空间configmap更改事件的请求体与元数据
+  - level: Request
+    resources:
+    - group: &quot;&quot; # core API group
+      resources: [&quot;configmaps&quot;]
+    # This rule only applies to resources in the &quot;kube-system&quot; namespace.
+    # The empty string &quot;&quot; can be used to select non-namespaced resources.
+    namespaces: [&quot;kube-system&quot;]
+
+  # 事件将记录所有名称空间内对于configmap与secret资源改变的元数据
+  - level: Metadata
+    resources:
+    - group: &quot;&quot; # core API group
+      resources: [&quot;secrets&quot;, &quot;configmaps&quot;]
+
+  # 记录对group为core与extensions下的资源类型请求的 请求体与元数据（request级别）
+  - level: Request
+    resources:
+    - group: &quot;&quot; # core API group
+    - group: &quot;extensions&quot; # Version of group should NOT be included.
+
+  # 这种属于泛规则，会记录所有上述其他之外的所有类型请求的元数据
+  # 类似于授权，小权限在前，* 最后
+  - level: Metadata
+    # Long-running requests like watches that fall under this rule will not
+    # generate an audit event in RequestReceived.
+    omitStages:
+      - &quot;RequestReceived&quot;
+</code></pre>
+<h2 id="backend-supa-href33asup">Backend <sup><a href="#3">[3]</a></sup><a hidden class="anchor" aria-hidden="true" href="#backend-supa-href33asup">¶</a></h2>
 <p>kubernetes目前为Auditing 提供了两个后端，日志方式与webhook方式，kubernetes审计事件会遵循 <code>audit.k8s.io</code> 结构写入到后端。</p>
 <h3 id="日志模式配置">日志模式配置<a hidden class="anchor" aria-hidden="true" href="#日志模式配置">¶</a></h3>
 <p>启用日志模式只需要配置几个参数 <sup><a href="#4">[4]</a></sup></p>
@@ -1005,19 +701,11 @@ function toggleThemeListener() {
 <li><code>--audit-log-maxsize</code> 审计日志文件最大大小（单位M）大于会切割</li>
 </ul>
 <p>例如配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">--audit-policy-file<span class="o">=</span>/etc/kubernetes/audit-policy.yaml <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--audit-log-path<span class="o">=</span>/var/log/kubernetes/audit.log <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--audit-log-maxsize<span class="o">=</span>20M
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="webhook-supa-href55asup">webhook <sup><a href="#5">[5]</a></sup><a hidden class="anchor" aria-hidden="true" href="#webhook-supa-href55asup">¶</a></h3>
+<pre><code class="language-bash">--audit-policy-file=/etc/kubernetes/audit-policy.yaml \
+--audit-log-path=/var/log/kubernetes/audit.log \
+--audit-log-maxsize=20M
+</code></pre>
+<h3 id="webhook-supa-href55asup">webhook <sup><a href="#5">[5]</a></sup><a hidden class="anchor" aria-hidden="true" href="#webhook-supa-href55asup">¶</a></h3>
 <p>webhook是指审计事件将由 <em>kube-apiserver</em> 发送到webhook服务中记录，开启webhook只需要配置 <code>--audit-webhook-config-file</code> 与 <code>--audit-policy-file</code> 两个参数，而其他的则是对该模式的辅助</p>
 <ul>
 <li>
@@ -1031,91 +719,46 @@ function toggleThemeListener() {
 </li>
 </ul>
 <p>例如配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">--<span class="l">audit-policy-file=/etc/kubernetes/audit-policy.yaml \</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>--<span class="l">audit-webhook-config-file=/etc/kubernetes/auth/audit-webhook.yaml \</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>--<span class="l">audit-webhook-mode=batch \</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>对于initialBackoff 的退避重试则如代码所示 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/server/options/audit.go#L584-L594">k8s.io/apiserver/pkg/server/options/audit.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">o</span> <span class="o">*</span><span class="nx">AuditWebhookOptions</span><span class="p">)</span> <span class="nf">newUntruncatedBackend</span><span class="p">(</span><span class="nx">customDial</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nx">DialFunc</span><span class="p">)</span> <span class="p">(</span><span class="nx">audit</span><span class="p">.</span><span class="nx">Backend</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">groupVersion</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">schema</span><span class="p">.</span><span class="nf">ParseGroupVersion</span><span class="p">(</span><span class="nx">o</span><span class="p">.</span><span class="nx">GroupVersionString</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">webhook</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">pluginwebhook</span><span class="p">.</span><span class="nf">NewBackend</span><span class="p">(</span><span class="nx">o</span><span class="p">.</span><span class="nx">ConfigFile</span><span class="p">,</span> <span class="nx">groupVersion</span><span class="p">,</span> <span class="nx">webhook</span><span class="p">.</span><span class="nf">DefaultRetryBackoffWithInitialDelay</span><span class="p">(</span><span class="nx">o</span><span class="p">.</span><span class="nx">InitialBackoff</span><span class="p">),</span> <span class="nx">customDial</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;initializing audit webhook: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">webhook</span> <span class="p">=</span> <span class="nx">o</span><span class="p">.</span><span class="nx">BatchOptions</span><span class="p">.</span><span class="nf">wrapBackend</span><span class="p">(</span><span class="nx">webhook</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">webhook</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在函数 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/util/webhook/webhook.go#L42-L49">k8s.io/apiserver/pkg/util/webhook/webhook.go.DefaultRetryBackoffWithInitialDelay</a> 中看到 通过 wait.Backoff 进行的</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">return</span> <span class="nx">wait</span><span class="p">.</span><span class="nx">Backoff</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 时间间隔，用于调用 Step 方法时返回的时间间隔
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Duration</span><span class="p">:</span> <span class="nx">initialBackoffDelay</span><span class="p">,</span>  
-</span></span><span class="line"><span class="cl">   	
-</span></span><span class="line"><span class="cl">    <span class="c1">// 用于计算下次的时间间隔，不能为负数
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// Factor 大于 0 时，Backoff 在计算下次的时间间隔时都会根据 
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// Duration * Factor，Factor * Duration 不能大于 Cap
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Factor</span><span class="p">:</span>   <span class="mf">1.5</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c1">// 抖动，Jitter &gt; 0 时，每次迭代的时间间隔都会额外加上 0 - Duration * Jitter 的随机时间,
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 并且抖动出的时间不会设置为 Duration，而且不受 Caps 的限制
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Jitter</span><span class="p">:</span>   <span class="mf">0.2</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c1">// 进行指数回退(*Factor) 操作的次数
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 当 Factor * Duration &gt; Cap 时 Steps 会被设置为 0, Duration 设置为 Cap
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 也就是说后续的迭代时间间隔都会返回 Duration
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Steps</span><span class="p">:</span>    <span class="mi">5</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">    <span class="c1">// 还有一个cap（Cap time.Duration），是最大的时间间隔
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="批处理">批处理<a hidden class="anchor" aria-hidden="true" href="#批处理">¶</a></h3>
+<pre><code class="language-yaml">--audit-policy-file=/etc/kubernetes/audit-policy.yaml \
+--audit-webhook-config-file=/etc/kubernetes/auth/audit-webhook.yaml \
+--audit-webhook-mode=batch \
+</code></pre>
+<p>对于initialBackoff 的退避重试则如代码所示 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/server/options/audit.go#L584-L594" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/server/options/audit.go</a></p>
+<pre><code class="language-go">func (o *AuditWebhookOptions) newUntruncatedBackend(customDial utilnet.DialFunc) (audit.Backend, error) {
+	groupVersion, _ := schema.ParseGroupVersion(o.GroupVersionString)
+	webhook, err := pluginwebhook.NewBackend(o.ConfigFile, groupVersion, webhook.DefaultRetryBackoffWithInitialDelay(o.InitialBackoff), customDial)
+	if err != nil {
+		return nil, fmt.Errorf(&quot;initializing audit webhook: %v&quot;, err)
+	}
+	webhook = o.BatchOptions.wrapBackend(webhook)
+	return webhook, nil
+}
+</code></pre>
+<p>在函数 <a href="https://github.com/kubernetes/kubernetes/blob/e72eea92396503521f1acaab60a2975c13ffc618/staging/src/k8s.io/apiserver/pkg/util/webhook/webhook.go#L42-L49" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/apiserver/pkg/util/webhook/webhook.go.DefaultRetryBackoffWithInitialDelay</a> 中看到 通过 wait.Backoff 进行的</p>
+<pre><code class="language-go">return wait.Backoff{
+    // 时间间隔，用于调用 Step 方法时返回的时间间隔
+    Duration: initialBackoffDelay,  
+   	
+    // 用于计算下次的时间间隔，不能为负数
+    // Factor 大于 0 时，Backoff 在计算下次的时间间隔时都会根据 
+    // Duration * Factor，Factor * Duration 不能大于 Cap
+    Factor:   1.5,
+    
+    // 抖动，Jitter &gt; 0 时，每次迭代的时间间隔都会额外加上 0 - Duration * Jitter 的随机时间,
+    // 并且抖动出的时间不会设置为 Duration，而且不受 Caps 的限制
+    Jitter:   0.2,
+    
+    // 进行指数回退(*Factor) 操作的次数
+    // 当 Factor * Duration &gt; Cap 时 Steps 会被设置为 0, Duration 设置为 Cap
+    // 也就是说后续的迭代时间间隔都会返回 Duration
+    Steps:    5,
+    
+    // 还有一个cap（Cap time.Duration），是最大的时间间隔
+}
+</code></pre>
+<h3 id="批处理">批处理<a hidden class="anchor" aria-hidden="true" href="#批处理">¶</a></h3>
 <p>日志后端与webhook后端都支持批处理模式，默认值为webhook默认开启batch，而log则被禁用</p>
 <ul>
 <li><code>--audit-log-mode/--audit-webhook-mode</code> ：参数通过将webhook替换为log则为对应的 batch 模式的参数，可以通过 <code>kube-apiserver --help|grep &quot;audit&quot;|grep batch</code> 查看
@@ -1144,8 +787,7 @@ function toggleThemeListener() {
 <li>审计记录应严格按照外部用户记录，而不是所有请求</li>
 </ul>
 <p>如何适配APIServer的负载能力，正如官方给的示例一样，如果 <em>kube-apiserver</em> 每秒收到100个请求，而记录事件为 <code>ResponseStarted</code> 和<code>ResponseComplete</code> 阶段，此时会记录的条数约 200/s ，如果batch缓冲区为100，那么需要配置的参数至少2Qps/s。再假设后端处理能力为5秒，那么缓冲区需要配置的大小至少为5秒的事件，即1000条evnet，10个batch。正如下图所示：</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/624219-20220802143739996-2062420228.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/624219-20220802143739996-2062420228.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：审计批处理参数调优结构图</center>
 <center><em>Source：</em>https://www.cnblogs.com/zhangmingcheng/p/16539514.html</center><br>
 <p>而kube-apiserver提供了两个Prometheus指标可以用于监控审计子系统的状态</p>
@@ -1155,111 +797,71 @@ function toggleThemeListener() {
 </ul>
 <h2 id="实验audit-webhook">实验：Audit Webhook<a hidden class="anchor" aria-hidden="true" href="#实验audit-webhook">¶</a></h2>
 <p>编写一个webhook，用于处理接收到的日志，这里直接打印</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">serveAudit</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">b</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ioutil</span><span class="p">.</span><span class="nf">ReadAll</span><span class="p">(</span><span class="nx">r</span><span class="p">.</span><span class="nx">Body</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">httpError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">eventList</span> <span class="nx">audit</span><span class="p">.</span><span class="nx">EventList</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">err</span> <span class="p">=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">Unmarshal</span><span class="p">(</span><span class="nx">b</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">eventList</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">3</span><span class="p">).</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;Json convert err: &#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">httpError</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">event</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">eventList</span><span class="p">.</span><span class="nx">Items</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">		<span class="c1">// here is your logic
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
-</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;审计ID %s: 用户&lt;%s&gt;, 请求对象&lt;%s&gt;, 操作&lt;%s&gt;, 请求阶段&lt;%s&gt;\n&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">event</span><span class="p">.</span><span class="nx">AuditID</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">event</span><span class="p">.</span><span class="nx">User</span><span class="p">.</span><span class="nx">UID</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">event</span><span class="p">.</span><span class="nx">RequestURI</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">event</span><span class="p">.</span><span class="nx">Verb</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">event</span><span class="p">.</span><span class="nx">Stage</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">w</span><span class="p">.</span><span class="nf">WriteHeader</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当使用命令执行查看Pod的操作时，会看到webhook收到的下述审计日志</p>
+<pre><code class="language-go">func serveAudit(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		httpError(w, err)
+		return
+	}
+
+	var eventList audit.EventList
+	err = json.Unmarshal(b, &amp;eventList)
+	if err != nil {
+		klog.V(3).Info(&quot;Json convert err: &quot;, err)
+		httpError(w, err)
+		return
+	}
+	for _, event := range eventList.Items {
+
+		// here is your logic
+
+		fmt.Printf(&quot;审计ID %s: 用户&lt;%s&gt;, 请求对象&lt;%s&gt;, 操作&lt;%s&gt;, 请求阶段&lt;%s&gt;\n&quot;,
+			event.AuditID,
+			event.User.UID,
+			event.RequestURI,
+			event.Verb,
+			event.Stage,
+		)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+</code></pre>
+<p>当使用命令执行查看Pod的操作时，会看到webhook收到的下述审计日志</p>
 <p>操作命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="k">for</span> n in <span class="sb">`</span>seq <span class="m">1</span> 100<span class="sb">`</span><span class="p">;</span> <span class="k">do</span> kubectl get pod --user<span class="o">=</span>admin<span class="p">;</span> <span class="k">done</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>审计日志</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">审计ID c0313416-f950-4361-9823-7c4792b143fd: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
-</span></span><span class="line"><span class="cl">&gt;, 请求阶段&lt;ResponseComplete&gt;
-</span></span><span class="line"><span class="cl">审计ID db2390c1-83cf-42e7-b589-70cd04003d0e: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
-</span></span><span class="line"><span class="cl">&gt;, 请求阶段&lt;ResponseComplete&gt;
-</span></span><span class="line"><span class="cl">审计ID a8fc2ff9-d0c5-4263-901c-b5974fd58026: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
-</span></span><span class="line"><span class="cl">&gt;, 请求阶段&lt;ResponseComplete&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">¶</a></h2>
+<pre><code class="language-bash">for n in `seq 1 100`; do kubectl get pod --user=admin; done
+</code></pre>
+<p>审计日志</p>
+<pre><code class="language-log">审计ID c0313416-f950-4361-9823-7c4792b143fd: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
+&gt;, 请求阶段&lt;ResponseComplete&gt;
+审计ID db2390c1-83cf-42e7-b589-70cd04003d0e: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
+&gt;, 请求阶段&lt;ResponseComplete&gt;
+审计ID a8fc2ff9-d0c5-4263-901c-b5974fd58026: 用户&lt;admin&gt;, 请求对象&lt;/api/v1/namespaces/default/pods?limit=500&gt;, 操作&lt;list
+&gt;, 请求阶段&lt;ResponseComplete&gt;
+</code></pre>
+<h2 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">¶</a></h2>
 <p>kubernetes通过插件的方式提供了提供了一个IT系统 4A模型为集群提供了安全保障，与传统的4A (<em><strong>Authentication</strong></em>, <em><strong>Authorization</strong></em>, <em><strong>Accounting</strong></em>, <em><strong>Auditing</strong></em>) 不同的是，对于 <em>Accounting</em> 与 <em>Authentication</em> 在kubernetes中设计来说 Kubernetes没有用户的实现而是一个抽象，这使得Kubernetes可以更灵活使用任意的用户系统完成登录（OID, X.509, webhook, proxy, SA&hellip;.），而对于授权来说，Kubernetes 通过多种授权模型(RBAC, ABAC, Node, Webhook)，为集群提供了灵活的权限；而不同的是，通过 <em><strong>Admission Control</strong></em> 可以为集群提供更多的安全策略，例如镜像策略，通过三方提供的控制器来自定义更多的安全策略，如OPA。而这种设计为Kubernetes集群提供了一种更灵活的安全。</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/"><em><strong>Auditing</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy"><em><strong>Audit policy</strong></em></a></p>
-<p><sup id="3">[3]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-backends"><em><strong>Audit backends</strong></em></a></p>
-<p><sup id="4">[4]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#log-backend"><em><strong>Log backend</strong></em></a></p>
-<p><sup id="5">[5]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#webhook-backend"><em><strong>Webhook backend</strong></em></a></p>
-<p><sup id="6">[6]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#batching"><em><strong>Event batching</strong></em></a></p>
-<p><sup id="7">[7]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#parameter-tuning"><em><strong>Parameter tuning</strong></em></a></p>
-<p><sup id="8">[8]</sup> <a href="https://ldapwiki.com/wiki/Privilege%20Management%20Infrastructure"><em><strong>Privilege Management Infrastructure</strong></em></a></p>
-<p><sup id="9">[9]</sup> <a href="https://www.cnblogs.com/zhangmingcheng/p/16539514.html"><em><strong>Kubernetes 审计（Auditing）功能详解</strong></em></a></p>
-<p><sup id="10">[10]</sup> <a href="https://blog.tianfeiyu.com/2019/01/30/k8s-audit-webhook/"><em><strong>kubernetes 审计日志功能</strong></em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Auditing</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-policy" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Audit policy</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#audit-backends" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Audit backends</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#log-backend" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Log backend</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#webhook-backend" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Webhook backend</strong></em></a></p>
+<p><sup id="6">[6]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#batching" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Event batching</strong></em></a></p>
+<p><sup id="7">[7]</sup> <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/#parameter-tuning" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Parameter tuning</strong></em></a></p>
+<p><sup id="8">[8]</sup> <a href="https://ldapwiki.com/wiki/Privilege%20Management%20Infrastructure" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Privilege Management Infrastructure</strong></em></a></p>
+<p><sup id="9">[9]</sup> <a href="https://www.cnblogs.com/zhangmingcheng/p/16539514.html" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Kubernetes 审计（Auditing）功能详解</strong></em></a></p>
+<p><sup id="10">[10]</sup> <a href="https://blog.tianfeiyu.com/2019/01/30/k8s-audit-webhook/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>kubernetes 审计日志功能</strong></em></a></p>
 </blockquote>
 
 

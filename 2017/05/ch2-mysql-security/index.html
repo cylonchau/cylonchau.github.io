@@ -10,7 +10,7 @@
 <meta name="description" content="ch02 - MySQL安全相关配置 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2017/05/ch2-mysql-security/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "mysql", "mysql安全相关配置"
   ],
-  "wordCount" : "3255",
+  "wordCount" : "3084",
   "inLanguage": "zh",
   "datePublished": "2017-05-16T00:00:00Z",
   "dateModified": "2022-12-12T23:00:36+08:00",
@@ -333,226 +333,102 @@ function toggleThemeListener() {
 <p>在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全</p>
 <p><strong>启动修改丢失的MySQL单实例root密码方法</strong></p>
 <p>停止MySQL</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/etc/init.d/mysqld stop
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 单实例</span>
-</span></span><span class="line"><span class="cl">/app/mysql/bin/mysqld_safe --skip-grant-tables --user<span class="o">=</span>mysql
-</span></span><span class="line"><span class="cl"><span class="c1"># 多实例</span>
-</span></span><span class="line"><span class="cl">/app/mysql/bin/mysqld_safe --defaults-file<span class="o">=</span>/data/3306/my.cnf --user<span class="o">=</span>mysql --skip-grant-tables <span class="p">&amp;</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 登录时空密码</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ mysql -S /data/3306/mysql.sock
-</span></span><span class="line"><span class="cl">...
-</span></span><span class="line"><span class="cl">...
-</span></span><span class="line"><span class="cl">Welcome to the MySQL monitor.  Commands end with <span class="p">;</span> or <span class="se">\g</span>.
-</span></span><span class="line"><span class="cl"><span class="c1"># 在启动时加 --skip-grant-tables参数，表示忽略授权</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>修改root密码为新密码</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; <span class="nb">set</span> <span class="nv">password</span><span class="o">=</span>password<span class="o">(</span><span class="s1">&#39;123&#39;</span><span class="o">)</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">ERROR <span class="m">1290</span> <span class="o">(</span>HY000<span class="o">)</span>: The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement
-</span></span><span class="line"><span class="cl">mysql&gt; update mysql.user <span class="nb">set</span> <span class="nv">password</span><span class="o">=</span>password<span class="o">(</span><span class="s1">&#39;123&#39;</span><span class="o">)</span> where <span class="nv">user</span><span class="o">=</span><span class="s1">&#39;root&#39;</span><span class="p">;</span>      
-</span></span><span class="line"><span class="cl">Query OK, <span class="m">4</span> rows affected <span class="o">(</span>0.00 sec<span class="o">)</span>
-</span></span><span class="line"><span class="cl">Rows matched: <span class="m">4</span>  Changed: <span class="m">4</span>  Warnings: <span class="m">0</span>
-</span></span><span class="line"><span class="cl">mysql&gt; flush privileges<span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>重启服务再登陆</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 此时发现用原密码不能登陆mysql了</span>
-</span></span><span class="line"><span class="cl">$ mysql -uroot -S /data/3306/mysql.sock
-</span></span><span class="line"><span class="cl">ERROR <span class="m">1045</span> <span class="o">(</span>28000<span class="o">)</span>: Access denied <span class="k">for</span> user <span class="s1">&#39;root&#39;</span>@<span class="s1">&#39;localhost&#39;</span> <span class="o">(</span>using password: NO<span class="o">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ mysql -uroot -S /data/3306/mysql.sock -p111
-</span></span><span class="line"><span class="cl">ERROR <span class="m">1045</span> <span class="o">(</span>28000<span class="o">)</span>: Access denied <span class="k">for</span> user <span class="s1">&#39;root&#39;</span>@<span class="s1">&#39;localhost&#39;</span> <span class="o">(</span>using password: YES<span class="o">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ mysql -uroot -S /data/3306/mysql.sock -p123
-</span></span><span class="line"><span class="cl">Welcome to the MySQL monitor.  Commands end with <span class="p">;</span> or <span class="se">\g</span>.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>提示</strong>：<font color="#659bfd;" size=3>启动时加 <code>--skip-grant-tables</code> 参数启动登陆修改完密码后一定要重启再对外提供服务，skip一定要放到后面</font></p>
+<pre><code class="language-bash">/etc/init.d/mysqld stop
+</code></pre>
+<p><strong>使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证</strong></p>
+<pre><code class="language-bash"># 单实例
+/app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql
+# 多实例
+/app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables &amp;
+# 登录时空密码
+
+$ mysql -S /data/3306/mysql.sock
+...
+...
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+# 在启动时加 --skip-grant-tables参数，表示忽略授权
+</code></pre>
+<p><strong>修改root密码为新密码</strong></p>
+<pre><code class="language-bash">mysql&gt; set password=password('123');
+ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement
+mysql&gt; update mysql.user set password=password('123') where user='root';      
+Query OK, 4 rows affected (0.00 sec)
+Rows matched: 4  Changed: 4  Warnings: 0
+mysql&gt; flush privileges;
+</code></pre>
+<p><strong>重启服务再登陆</strong></p>
+<pre><code class="language-bash"># 此时发现用原密码不能登陆mysql了
+$ mysql -uroot -S /data/3306/mysql.sock
+ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)
+
+$ mysql -uroot -S /data/3306/mysql.sock -p111
+ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES)
+
+$ mysql -uroot -S /data/3306/mysql.sock -p123
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+</code></pre>
+<p><strong>提示</strong>：<font color="#659bfd;" size=3>启动时加 <code>--skip-grant-tables</code> 参数启动登陆修改完密码后一定要重启再对外提供服务，skip一定要放到后面</font></p>
 <h2 id="清理无用的mysql用户与库">清理无用的MySQL用户与库<a hidden class="anchor" aria-hidden="true" href="#清理无用的mysql用户与库">¶</a></h2>
 <p>清理无用的库</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show databases<span class="p">;</span>
-</span></span><span class="line"><span class="cl">+---------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Database            <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+---------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> information_schema  <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> mysql               <span class="p">|</span>  <span class="c1"># 这个是mysql系统信息</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> performance_schema  <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> <span class="nb">test</span>                <span class="p">|</span>  <span class="c1"># 这个相当于linux的/tmp，不用保留，直接删掉</span>
-</span></span><span class="line"><span class="cl">+---------------------+
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>语法：dorp user &lsquo;<strong>user</strong>&rsquo;@&rsquo;<strong>host/ip</strong>&rsquo;  &lt;= 注意引号，可以使单或双引号</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; DROP USER <span class="s1">&#39;root&#39;</span>@<span class="s1">&#39;::1&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">mysql&gt; FLUSH PRIVILEGES<span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>注意：如果drop删除不了（一般为特殊字符或大写），可以用下面方式删除（以root用户，oldboy主机为例）：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">DELETE FROM mysql.user WHERE <span class="nv">user</span><span class="o">=</span> <span class="s1">&#39;root&#39;</span> AND <span class="nv">host</span><span class="o">=</span><span class="s1">&#39;oldboy&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">flush privileges<span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>处理完用户必须执行 <code>flush privileges</code></p>
+<pre><code class="language-bash">mysql&gt; show databases;
++---------------------+
+| Database            |
++---------------------+
+| information_schema  |
+| mysql               |  # 这个是mysql系统信息
+| performance_schema  |
+| test                |  # 这个相当于linux的/tmp，不用保留，直接删掉
++---------------------+
+</code></pre>
+<p>语法：dorp user &lsquo;<strong>user</strong>&rsquo;@&rsquo;<strong>host/ip</strong>&rsquo;  &lt;= 注意引号，可以使单或双引号</p>
+<pre><code class="language-bash">mysql&gt; DROP USER 'root'@'::1';
+mysql&gt; FLUSH PRIVILEGES;
+</code></pre>
+<p>注意：如果drop删除不了（一般为特殊字符或大写），可以用下面方式删除（以root用户，oldboy主机为例）：</p>
+<pre><code class="language-bash">DELETE FROM mysql.user WHERE user= 'root' AND host='oldboy';
+flush privileges;
+</code></pre>
+<p>处理完用户必须执行 <code>flush privileges</code></p>
 <h2 id="创建mysql用户及赋予用户权限">创建MySQL用户及赋予用户权限<a hidden class="anchor" aria-hidden="true" href="#创建mysql用户及赋予用户权限">¶</a></h2>
 <p>通过help查看grant命令帮助</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; <span class="nb">help</span> grant
-</span></span><span class="line"><span class="cl">Name: <span class="s1">&#39;GRANT&#39;</span>
-</span></span><span class="line"><span class="cl">Description:
-</span></span><span class="line"><span class="cl">Syntax:
-</span></span><span class="line"><span class="cl">GRANT
-</span></span><span class="line"><span class="cl">    priv_type <span class="o">[(</span>column_list<span class="o">)]</span>
-</span></span><span class="line"><span class="cl">      <span class="o">[</span>, priv_type <span class="o">[(</span>column_list<span class="o">)]]</span> ...
-</span></span><span class="line"><span class="cl">    ON <span class="o">[</span>object_type<span class="o">]</span> priv_level
-</span></span><span class="line"><span class="cl">    TO user <span class="o">[</span>auth_option<span class="o">]</span> <span class="o">[</span>, user <span class="o">[</span>auth_option<span class="o">]]</span> ...
-</span></span><span class="line"><span class="cl">    <span class="o">[</span>REQUIRE <span class="o">{</span>NONE <span class="p">|</span> tls_option <span class="o">[[</span>AND<span class="o">]</span> tls_option<span class="o">]</span> ...<span class="o">}]</span>
-</span></span><span class="line"><span class="cl">    <span class="o">[</span>WITH <span class="o">{</span>GRANT OPTION <span class="p">|</span> resource_option<span class="o">}</span> ...<span class="o">]</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">GRANT PROXY ON user
-</span></span><span class="line"><span class="cl">    TO user <span class="o">[</span>, user<span class="o">]</span> ...
-</span></span><span class="line"><span class="cl">    <span class="o">[</span>WITH GRANT OPTION<span class="o">]</span>
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">CREATE USER <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span> IDENTIFIED BY <span class="s1">&#39;mypass&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">GRANT ALL ON db1.* TO <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">GRANT SELECT ON db2.invoice TO <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">GRANT USAGE ON *.* TO <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span> WITH MAX_QUERIES_PER_HOUR 90<span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过查看grant的命令帮助，可以很容易的找到创建用户并授权的例子。</p>
+<pre><code class="language-bash">mysql&gt; help grant
+Name: 'GRANT'
+Description:
+Syntax:
+GRANT
+    priv_type [(column_list)]
+      [, priv_type [(column_list)]] ...
+    ON [object_type] priv_level
+    TO user [auth_option] [, user [auth_option]] ...
+    [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
+    [WITH {GRANT OPTION | resource_option} ...]
+
+GRANT PROXY ON user
+    TO user [, user] ...
+    [WITH GRANT OPTION]
+....
+....
+
+CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';
+GRANT ALL ON db1.* TO 'jeffrey'@'localhost';
+GRANT SELECT ON db2.invoice TO 'jeffrey'@'localhost';
+GRANT USAGE ON *.* TO 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 90;
+</code></pre>
+<p>通过查看grant的命令帮助，可以很容易的找到创建用户并授权的例子。</p>
 <p><strong><font color="#f8070d" size=3>比较常见的创建用户的方法是，使用grant命令在创建用户的通同时进行授权。具体例子：</font></strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">GRANT ALL ON db1.* TO <span class="s1">&#39;lc&#39;</span>@<span class="s1">&#39;localhost&#39;</span> IDENTIFIED BY <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong><font color="#f8070d" size=3>上述grant命令帮助里还提供了一个先用create命令创建用户，然后再用grant授权的方法，即创建用户和授权分开进行</font></strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">CREATE USER <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span> IDENTIFIED BY <span class="s1">&#39;mypass&#39;</span><span class="p">;</span>	 <span class="c1"># 创建用户</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">useradd Jeffrey<span class="p">|</span>passwd --stdin jeffrey
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">GRANT ALL ON db1.* TO <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span> 	<span class="c1"># 对用户授权</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong><font color="#f8070d" size=3>通过grant命令创建用户并授权</font></strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all privileges on dbname.* to username@<span class="s1">&#39;localhost&#39;</span> identified by <span class="s1">&#39;passwd&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>列表说明如下</p>
+<pre><code class="language-bash">GRANT ALL ON db1.* TO 'lc'@'localhost' IDENTIFIED BY '111';
+</code></pre>
+<p><strong><font color="#f8070d" size=3>上述grant命令帮助里还提供了一个先用create命令创建用户，然后再用grant授权的方法，即创建用户和授权分开进行</font></strong></p>
+<pre><code class="language-bash">CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';	 # 创建用户
+
+useradd Jeffrey|passwd --stdin jeffrey
+
+GRANT ALL ON db1.* TO 'jeffrey'@'localhost'; 	# 对用户授权
+</code></pre>
+<p><strong><font color="#f8070d" size=3>通过grant命令创建用户并授权</font></strong></p>
+<pre><code class="language-bash">grant all privileges on dbname.* to username@'localhost' identified by 'passwd'
+</code></pre>
+<p>列表说明如下</p>
 <table>
 <thead>
 <tr>
@@ -576,309 +452,140 @@ function toggleThemeListener() {
 <p>说明：上述命令是授权localhost主机上通过用户username管理dbname数据库的所有权限，密码为passwd。其中username，dbname，passwd可根据业务的情况修改。</p>
 <p><strong><font color="#f8070d" size=3>create和grant配合法</font></strong></p>
 <p>创建用户名username及密码passwd，授权主机localhost。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">create user <span class="s1">&#39;username&#39;</span>@<span class="s1">&#39;localhost&#39;</span> identified by <span class="s1">&#39;passwd&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>然后授权localhost主机上通过用户名username管理dbname数据库的所有权限，无需密码。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all on dbname.* to <span class="s1">&#39;username&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="操作示例">操作示例<a hidden class="anchor" aria-hidden="true" href="#操作示例">¶</a></h2>
+<pre><code class="language-bash">create user 'username'@'localhost' identified by 'passwd';
+</code></pre>
+<p>然后授权localhost主机上通过用户名username管理dbname数据库的所有权限，无需密码。</p>
+<pre><code class="language-bash">grant all on dbname.* to 'username'@'localhost';
+</code></pre>
+<h2 id="操作示例">操作示例<a hidden class="anchor" aria-hidden="true" href="#操作示例">¶</a></h2>
 <p>案例1：创建oldboy用户，对zhangsan库具备所有权限，允许localhost主机登陆管理数据库，密码是oldboy123</p>
 <p>实现具体命令：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">GRANT ALL PRIVILEGES ON oldboy.* TO zhangsan@<span class="s1">&#39;localhost&#39;</span> IDENTIFIED BY <span class="s1">&#39;123&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>演示</strong>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 查看当前数据库情况，然后执行对应命令授权如下：</span>
-</span></span><span class="line"><span class="cl"><span class="k">select</span> user,host from mysql.user<span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看zhangsan具体权限</span>
-</span></span><span class="line"><span class="cl">show grants <span class="k">for</span> zhangsan@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>案例2：创建oldgirl用户，对test库具备所有权限，允许localhost主机登陆管理数据库的所有权限，无需密码</strong></p>
+<pre><code class="language-bash">GRANT ALL PRIVILEGES ON oldboy.* TO zhangsan@'localhost' IDENTIFIED BY '123';
+</code></pre>
+<p><strong>演示</strong>：</p>
+<pre><code class="language-bash"># 查看当前数据库情况，然后执行对应命令授权如下：
+select user,host from mysql.user;
+
+# 查看zhangsan具体权限
+show grants for zhangsan@'localhost';
+</code></pre>
+<p><strong>案例2：创建oldgirl用户，对test库具备所有权限，允许localhost主机登陆管理数据库的所有权限，无需密码</strong></p>
 <p><font color="#0215cd" size=3> 查看当前数据库用户情况，然后执行命令创建用户</font></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; <span class="k">select</span> user,host from mysql.user<span class="p">;</span>
-</span></span><span class="line"><span class="cl">+----------+--------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> user     	<span class="p">|</span> host        <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+----------+--------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> root   	<span class="p">|</span> 127.0.0.1   <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> zhangsan	<span class="p">|</span> 172.168.1.% <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> root     	<span class="p">|</span> localhost   <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> zhangsan	<span class="p">|</span> localhost   <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+----------+--------------+
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><font color="#0215cd" size=3>创建用户，指定密码，提示：仅仅是创建用户并未授权</font></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">create user <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">grant all on test.* to <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><font color="#0215cd" size=3> 查看授权后的MySQL用户列表情况</font></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show grants <span class="k">for</span> <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Grants <span class="k">for</span> oldgirl@localhost                              <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT USAGE ON *.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span>			    <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT ALL PRIVILEGES ON <span class="sb">`</span><span class="nb">test</span><span class="sb">`</span>.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="c1"># 默认权限是usage，即连接的权限，因为此时还没有权限。</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 第二个表示对test库有所有权限</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="授权局域网内主机远程链接数据库">授权局域网内主机远程链接数据库<a hidden class="anchor" aria-hidden="true" href="#授权局域网内主机远程链接数据库">¶</a></h2>
+<pre><code class="language-bash">mysql&gt; select user,host from mysql.user;
++----------+--------------+
+| user     	| host        |
++----------+--------------+
+| root   	| 127.0.0.1   |
+| zhangsan	| 172.168.1.% |
+| root     	| localhost   |
+| zhangsan	| localhost   |
++----------+--------------+
+</code></pre>
+<p><font color="#0215cd" size=3>创建用户，指定密码，提示：仅仅是创建用户并未授权</font></p>
+<pre><code class="language-bash">create user 'oldgirl'@'localhost';
+grant all on test.* to 'oldgirl'@'localhost';
+</code></pre>
+<p><font color="#0215cd" size=3> 查看授权后的MySQL用户列表情况</font></p>
+<pre><code class="language-bash">mysql&gt; show grants for 'oldgirl'@'localhost';
++-----------------------------------------------------------+
+| Grants for oldgirl@localhost                              |
++-----------------------------------------------------------+
+| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'			    |
+| GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' |
++-----------------------------------------------------------+
+# 默认权限是usage，即连接的权限，因为此时还没有权限。
+# 第二个表示对test库有所有权限
+</code></pre>
+<h2 id="授权局域网内主机远程链接数据库">授权局域网内主机远程链接数据库<a hidden class="anchor" aria-hidden="true" href="#授权局域网内主机远程链接数据库">¶</a></h2>
 <p>根据grant命令语法，知道test@&rsquo;localhsot&rsquo;位置为授权方位数据库的主机，localhost可以用域名，IP或IP段来代替，因此，要授权局域网内主机可以通过如下方法实现</p>
 <p><strong>一条命令，“百分号” 匹配法</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all on *.* to test@<span class="s1">&#39;10.0.0.%&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>一条命令，“子网掩码” 配置法</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all on *.* to test@<span class="s1">&#39;10.0.0.0/255.255.255.0&#39;</span> identified by <span class="s1">&#39;111&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 子网掩码部分不要用24</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>两条命令实现</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">create user test@<span class="s1">&#39;10.0.0.%&#39;</span> identified by <span class="s1">&#39;111&#39;</span>
-</span></span><span class="line"><span class="cl">grant all on *.* to test@<span class="s1">&#39;10.0.0.%&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong><font color="#f8070d" size=3>最后记得上述每条grant命令都要刷新权限</font></strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">flush privileges
-</span></span></code></pre></td></tr></table>
-</div>
-</div><hr>
+<pre><code class="language-bash">grant all on *.* to test@'10.0.0.%' identified by '111';
+</code></pre>
+<p><strong>一条命令，“子网掩码” 配置法</strong></p>
+<pre><code class="language-bash">grant all on *.* to test@'10.0.0.0/255.255.255.0' identified by '111'
+# 子网掩码部分不要用24
+</code></pre>
+<p><strong>两条命令实现</strong></p>
+<pre><code class="language-bash">create user test@'10.0.0.%' identified by '111'
+grant all on *.* to test@'10.0.0.%'
+</code></pre>
+<p><strong><font color="#f8070d" size=3>最后记得上述每条grant命令都要刷新权限</font></strong></p>
+<pre><code class="language-bash">flush privileges
+</code></pre>
+<hr>
 <p><font color="#0215cd" size=3> 提示：如果是web链接数据库的用户，尽量不要授权all，而是select,insert,update,delete&hellip;.</font></p>
 <hr>
 <h2 id="通过mysql客户端链接异地数据库服务">通过MySQL客户端链接异地数据库服务<a hidden class="anchor" aria-hidden="true" href="#通过mysql客户端链接异地数据库服务">¶</a></h2>
 <p>本地 <code>mysql -uroot -p111</code> 连接相当于 <code>mysql -uroot -p111 -hlocalhost</code></p>
 <p>要远程链接10.0.0.7的数据库，命令为 <code>mysql -utest -p111 -h10.0.0.7</code>，如果要能链接成功，还需要在10.0.0.7 的数据库服务器上通过如下命令授权：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all on *.*  to test@<span class="s1">&#39;10.0.0.%&#39;</span>identified by <span class="s1">&#39;111&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="用户可以授权的权限都有那些">用户可以授权的权限都有那些?<a hidden class="anchor" aria-hidden="true" href="#用户可以授权的权限都有那些">¶</a></h2>
+<pre><code class="language-bash">grant all on *.*  to test@'10.0.0.%'identified by '111'
+</code></pre>
+<h2 id="用户可以授权的权限都有那些">用户可以授权的权限都有那些?<a hidden class="anchor" aria-hidden="true" href="#用户可以授权的权限都有那些">¶</a></h2>
 <p>通过实验获得all privileges包括那些权限，</p>
 <p><strong>先看看前面授权过的oldgirl的权限</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; show grants <span class="k">for</span> oldgirl@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Grants <span class="k">for</span> oldgirl@localhost                              <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT USAGE ON *.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span>			 	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT ALL PRIVILEGES ON <span class="sb">`</span><span class="nb">test</span><span class="sb">`</span>.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="c1"># 此时查看，还是all privileges权限，但并未细分</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>取消 oldgirl 的只读权限（SELECT）看看结果</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; <span class="nb">help</span> revoke
-</span></span><span class="line"><span class="cl">Name: <span class="s1">&#39;REVOKE&#39;</span>
-</span></span><span class="line"><span class="cl">Description:
-</span></span><span class="line"><span class="cl">Syntax:
-</span></span><span class="line"><span class="cl">REVOKE
-</span></span><span class="line"><span class="cl">    priv_type <span class="o">[(</span>column_list<span class="o">)]</span>
-</span></span><span class="line"><span class="cl">      <span class="o">[</span>, priv_type <span class="o">[(</span>column_list<span class="o">)]]</span> ...
-</span></span><span class="line"><span class="cl">    ON <span class="o">[</span>object_type<span class="o">]</span> priv_level
-</span></span><span class="line"><span class="cl">    FROM user <span class="o">[</span>, user<span class="o">]</span> ...
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">REVOKE ALL PRIVILEGES, GRANT OPTION
-</span></span><span class="line"><span class="cl">    FROM user <span class="o">[</span>, user<span class="o">]</span> ...
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">REVOKE PROXY ON user
-</span></span><span class="line"><span class="cl">    FROM user <span class="o">[</span>, user<span class="o">]</span> ...
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">REVOKE INSERT ON *.* FROM <span class="s1">&#39;jeffrey&#39;</span>@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl"><span class="c1"># 通过help revoke可以看出删除一个权限的方法</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>使用revoke移除授权</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mysql&gt; revoke SELECT on test.* from oldgirl@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">Query OK, <span class="m">0</span> rows affected <span class="o">(</span>0.00 sec<span class="o">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">mysql&gt; show grants <span class="k">for</span> oldgirl@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Grants <span class="k">for</span> oldgirl@localhost                                                         ---------------<span class="p">|</span> GRANT USAGE ON *.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span>--------------------------                         
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON <span class="sb">`</span><span class="nb">test</span><span class="sb">`</span>.* TO <span class="s1">&#39;oldgirl&#39;</span>@<span class="s1">&#39;localhost&#39;</span> <span class="p">|</span>
-</span></span><span class="line"><span class="cl">--------------------------------2 rows in <span class="nb">set</span> <span class="o">(</span>0.01 sec<span class="o">)</span>------------------------------
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>此时我们再查看oldgirl用户权限，ALL PRIVILEGES权限已经被细分了，但是没有SELECT权限了。</p>
+<pre><code class="language-bash">mysql&gt; show grants for oldgirl@'localhost';
++-----------------------------------------------------------+
+| Grants for oldgirl@localhost                              |
++-----------------------------------------------------------+
+| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'			 	|
+| GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' |
++-----------------------------------------------------------+
+# 此时查看，还是all privileges权限，但并未细分
+</code></pre>
+<p>取消 oldgirl 的只读权限（SELECT）看看结果</p>
+<pre><code class="language-bash">mysql&gt; help revoke
+Name: 'REVOKE'
+Description:
+Syntax:
+REVOKE
+    priv_type [(column_list)]
+      [, priv_type [(column_list)]] ...
+    ON [object_type] priv_level
+    FROM user [, user] ...
+
+REVOKE ALL PRIVILEGES, GRANT OPTION
+    FROM user [, user] ...
+
+REVOKE PROXY ON user
+    FROM user [, user] ...
+....
+....
+REVOKE INSERT ON *.* FROM 'jeffrey'@'localhost';
+....
+....
+# 通过help revoke可以看出删除一个权限的方法
+</code></pre>
+<p>使用revoke移除授权</p>
+<pre><code class="language-bash">mysql&gt; revoke SELECT on test.* from oldgirl@'localhost';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql&gt; show grants for oldgirl@'localhost';
+| Grants for oldgirl@localhost                                                         ---------------| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'--------------------------                         
+| GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON `test`.* TO 'oldgirl'@'localhost' |
+--------------------------------2 rows in set (0.01 sec)------------------------------
+</code></pre>
+<p>此时我们再查看oldgirl用户权限，ALL PRIVILEGES权限已经被细分了，但是没有SELECT权限了。</p>
 <p>因此我们就可以得出结论：ALL PRIVILEGES包括</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"> SELECT
-</span></span><span class="line"><span class="cl"> INSERT
-</span></span><span class="line"><span class="cl"> UPDATE
-</span></span><span class="line"><span class="cl"> DELETE
-</span></span><span class="line"><span class="cl"> CREATE
-</span></span><span class="line"><span class="cl"> DROP
-</span></span><span class="line"><span class="cl"> REFERENCES
-</span></span><span class="line"><span class="cl"> INDEX
-</span></span><span class="line"><span class="cl"> ALTER
-</span></span><span class="line"><span class="cl"> CREATE TEMPORARY TABLES
-</span></span><span class="line"><span class="cl"> LOCK TABLES
-</span></span><span class="line"><span class="cl"> EXECUTE
-</span></span><span class="line"><span class="cl"> CREATE VIEW
-</span></span><span class="line"><span class="cl"> SHOW VIEW
-</span></span><span class="line"><span class="cl"> CREATE ROUTINE
-</span></span><span class="line"><span class="cl"> ALTER ROUTINE
-</span></span><span class="line"><span class="cl"> EVENT
-</span></span><span class="line"><span class="cl"> TRIGGER
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在授权时，可以授权用户最小的满足业务需求的权限，而不是一味的授权“ALL PRIVILEGES”</p>
+<pre><code class="language-bash"> SELECT
+ INSERT
+ UPDATE
+ DELETE
+ CREATE
+ DROP
+ REFERENCES
+ INDEX
+ ALTER
+ CREATE TEMPORARY TABLES
+ LOCK TABLES
+ EXECUTE
+ CREATE VIEW
+ SHOW VIEW
+ CREATE ROUTINE
+ ALTER ROUTINE
+ EVENT
+ TRIGGER
+</code></pre>
+<p>在授权时，可以授权用户最小的满足业务需求的权限，而不是一味的授权“ALL PRIVILEGES”</p>
 <h2 id="生产环境如何授权用户权限">生产环境如何授权用户权限<a hidden class="anchor" aria-hidden="true" href="#生产环境如何授权用户权限">¶</a></h2>
 <p><font color="#f8070d" size=3><strong>博客 CMS等产品的数据库授权</strong>：</font></p>
 <p>对于web链接用户授权尽量采用最小化原则，很多开源软件都是web界面安装，因此，在安装期间处理select, insert, update, delete4个权限外，还需要 create drop 等比较危险的权限。</p>
@@ -887,62 +594,26 @@ function toggleThemeListener() {
 <p><strong>生产环境针对主库（写为主读为辅）用户授权</strong></p>
 <p><strong><font color="#f8070d" size=3>普通的环境：</font></strong></p>
 <p><strong>本机：lnmp，lamp环境数据库授权</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all privileges on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;localhost&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>应用服务器和数据库服务器不在一个主机上的授权</strong>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant all privileges on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;10.0.0.1&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>严格的授权：重视安全，忽略了方便</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant SELECT,INSERT,UPDATE,DELETE privileges on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;10.0.0.1&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>生产环境从库（只读）用户的授权</strong>：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant SELECT privileges on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;10.0.0.1&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><font color="#0215cd" size=3> 说明：这里表示给10.0.0.0/24的用户blog管理blog数据库的所有表（ * 表示所有表）只读权限（select），密码为111。</font></p>
+<pre><code class="language-bash">grant all privileges on `blog`.* to blog@'localhost' identified by '111';
+</code></pre>
+<p><strong>应用服务器和数据库服务器不在一个主机上的授权</strong>：</p>
+<pre><code class="language-bash">grant all privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
+</code></pre>
+<p><strong>严格的授权：重视安全，忽略了方便</strong></p>
+<pre><code class="language-bash">grant SELECT,INSERT,UPDATE,DELETE privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
+</code></pre>
+<p><strong>生产环境从库（只读）用户的授权</strong>：</p>
+<pre><code class="language-bash">grant SELECT privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
+</code></pre>
+<p><font color="#0215cd" size=3> 说明：这里表示给10.0.0.0/24的用户blog管理blog数据库的所有表（ * 表示所有表）只读权限（select），密码为111。</font></p>
 <h2 id="生产场景授权具体命令为">生产场景授权具体命令为<a hidden class="anchor" aria-hidden="true" href="#生产场景授权具体命令为">¶</a></h2>
 <p><strong>主库授权的命令</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant <span class="k">select</span>,insert,update,delete on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;10.0.0.%&#39;</span> identified by <span class="s1">&#39;111&#39;</span><span class="p">;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>从库授权用户命令</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">grant SELECT on <span class="sb">`</span>blog<span class="sb">`</span>.* to blog@<span class="s1">&#39;localhost&#39;</span> identified by <span class="s1">&#39;111&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当然从库除了做SELECT授权外，还可以加read-only等只读参数，严格控制web用户写从库。</p>
+<pre><code class="language-bash">grant select,insert,update,delete on `blog`.* to blog@'10.0.0.%' identified by '111';
+</code></pre>
+<p><strong>从库授权用户命令</strong></p>
+<pre><code class="language-bash">grant SELECT on `blog`.* to blog@'localhost' identified by '111'
+</code></pre>
+<p>当然从库除了做SELECT授权外，还可以加read-only等只读参数，严格控制web用户写从库。</p>
 <p>重要问题：就是主从库的MySQL库和表是同步的，无法针对同一个用户授权不同的权限。应为，主库授权后会自动同步到从库上，导致从库的授权只读失败。</p>
 <p>解决方法：</p>
 <ol>
@@ -958,27 +629,15 @@ function toggleThemeListener() {
 </ol>
 <p><strong>查看MySQL数据库中的用户和主机信息</strong></p>
 <p>查询授权用户oldboy的具体的授权权限</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash\" data-lang="bash\"><span class="line"><span class="cl">mysql&gt; show grants <span class="k">for</span> root@<span class="s1">&#39;localhost&#39;</span><span class="p">;</span>    
-</span></span><span class="line"><span class="cl">+--------------------------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> Grants <span class="k">for</span> root@localhost                                                <span class="p">|</span>           
-</span></span><span class="line"><span class="cl">+--------------------------------------------------------------------------+
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT ALL PRIVILEGES ON *.* TO <span class="s1">&#39;root&#39;</span>@<span class="s1">&#39;localhost&#39;</span> IDENTIFIED BY PASSWORD <span class="s1">&#39;*23AE809DDACAF96AF0FD78ED04B6A265E05AA257&#39;</span> WITH GRANT OPTION 			  <span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span> GRANT PROXY ON <span class="s1">&#39;&#39;</span>@<span class="s1">&#39;&#39;</span> TO <span class="s1">&#39;root&#39;</span>@<span class="s1">&#39;localhost&#39;</span> WITH GRANT OPTION   		   <span class="p">|</span>           
-</span></span><span class="line"><span class="cl">+--------------------------------------------------------------------------+
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
+<pre><code class="language-bash\">mysql&gt; show grants for root@'localhost';    
++--------------------------------------------------------------------------+
+| Grants for root@localhost                                                |           
++--------------------------------------------------------------------------+
+| GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY PASSWORD '*23AE809DDACAF96AF0FD78ED04B6A265E05AA257' WITH GRANT OPTION 			  |
+| GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION   		   |           
++--------------------------------------------------------------------------+
+</code></pre>
+
 
     
     

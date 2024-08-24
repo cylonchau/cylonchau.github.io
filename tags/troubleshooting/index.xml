@@ -17,177 +17,87 @@
       <content:encoded><![CDATA[<h2 id="处理记录">处理记录</h2>
 <p>Ceph版本：octopus</p>
 <p>首先遇到問題是，业务端无法挂在 cephfs 查看内核日志发现是 <code> bad authorize reply</code> ，以为是 ceph keyring被替换了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span><span class="line"><span class="cl">2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在排查完 keyring 后，手动尝试挂载 cephfs 提示 <code>Input/output error</code> ，此时看出是集群问题了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ mount -t ceph 10.80.20.100:6789:/tmp /tmp/ceph -o <span class="nv">secret</span><span class="o">=</span><span class="nv">AQCoW0dgQk4qGhAAwayKv70OSyyWB3XpZ1JLYQ</span><span class="o">==</span>,name<span class="o">=</span>cephuser
-</span></span><span class="line"><span class="cl">mount error <span class="nv">5</span> <span class="o">=</span> Input/output error
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>因为一开始看到日志是 <em>bad authorize reply</em> 以为是认证错误，重新登录了一下发现是相同的提示，这时查看 ceph status 发现集群异常，除了下面报错外，还有一个 osd down 的状态。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl">HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data redundancy: 39560/118680 objects degraded (33.333%), 201 pgs degraded, 255 pgs undersized; 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">[WRN] CEPHADM_HOST_CHECK_FAIL: 1 hosts fail cephadm check
-</span></span><span class="line"><span class="cl">    host localhost failed check: [&#39;podman|docker (/bin/docker) is present&#39;, &#39;systemctl is present&#39;, &#39;lvcreate is present&#39;, &#34;No time sync service is running; checked for [&#39;chrony.service&#39;, &#39;chronyd.service&#39;, &#39;systemd-timesyncd.service&#39;, &#39;ntpd.service&#39;, &#39;ntp.service&#39;]&#34;, &#39;ERROR: No time synchronizetion is active&#39;]
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_METADATA_IO: 1 MDSs report slow metadata IOs
-</span></span><span class="line"><span class="cl">    mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 4830 secs
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_REQUEST: 1 MDSs report slow requests
-</span></span><span class="line"><span class="cl">    mds.cephfs.localhost.mhlzaj(mds.0): 14 slow metadata IOs are blocked &gt; 30 secs
-</span></span><span class="line"><span class="cl">[WRN] MON_CLOCK_SKEW: clock skew detected on mon.localhost, mon.localhost1
-</span></span><span class="line"><span class="cl">    mon.localhost clock skew 29357.8s &gt; max 0.05s (latency 0.0132089s)
-</span></span><span class="line"><span class="cl">    mon.localhost1 clock skew 29357.8s &gt; max 0.05s (latency 0.0117421s)
-</span></span><span class="line"><span class="cl">[WRN] PG_DEGRADED: Degraded data redundancy: 39501/118680 objects degraded (33.333%), 189 pgs degraded, 241 pgs undersized
-</span></span><span class="line"><span class="cl">    pg 1.0 is stuck undersized for 22m, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.8 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 2.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 2.1b is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.9 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
-</span></span><span class="line"><span class="cl">    pg 3.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">    pg 3.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
-</span></span><span class="line"><span class="cl">[WRN] RECENT_CRASH: 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<pre><code>2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+2019-01-30 17:26:58 localhost kernel: libceph: mds0 10.80.20.100:6801 bad authorize reply
+</code></pre>
+<p>在排查完 keyring 后，手动尝试挂载 cephfs 提示 <code>Input/output error</code> ，此时看出是集群问题了</p>
+<pre><code class="language-bash">$ mount -t ceph 10.80.20.100:6789:/tmp /tmp/ceph -o secret=AQCoW0dgQk4qGhAAwayKv70OSyyWB3XpZ1JLYQ==,name=cephuser
+mount error 5 = Input/output error
+</code></pre>
+<p>因为一开始看到日志是 <em>bad authorize reply</em> 以为是认证错误，重新登录了一下发现是相同的提示，这时查看 ceph status 发现集群异常，除了下面报错外，还有一个 osd down 的状态。</p>
+<pre><code>$ ceph health detail
+HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data redundancy: 39560/118680 objects degraded (33.333%), 201 pgs degraded, 255 pgs undersized; 4 daemons have recently crashed
+[WRN] CEPHADM_HOST_CHECK_FAIL: 1 hosts fail cephadm check
+    host localhost failed check: ['podman|docker (/bin/docker) is present', 'systemctl is present', 'lvcreate is present', &quot;No time sync service is running; checked for ['chrony.service', 'chronyd.service', 'systemd-timesyncd.service', 'ntpd.service', 'ntp.service']&quot;, 'ERROR: No time synchronizetion is active']
+[WRN] MDS_SLOW_METADATA_IO: 1 MDSs report slow metadata IOs
+    mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 4830 secs
+[WRN] MDS_SLOW_REQUEST: 1 MDSs report slow requests
+    mds.cephfs.localhost.mhlzaj(mds.0): 14 slow metadata IOs are blocked &gt; 30 secs
+[WRN] MON_CLOCK_SKEW: clock skew detected on mon.localhost, mon.localhost1
+    mon.localhost clock skew 29357.8s &gt; max 0.05s (latency 0.0132089s)
+    mon.localhost1 clock skew 29357.8s &gt; max 0.05s (latency 0.0117421s)
+[WRN] PG_DEGRADED: Degraded data redundancy: 39501/118680 objects degraded (33.333%), 189 pgs degraded, 241 pgs undersized
+    pg 1.0 is stuck undersized for 22m, current state active+undersized+degraded, last acting [1]
+    pg 2.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.8 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 2.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 2.1b is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.0 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.1 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.2 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.3 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.4 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.5 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.6 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.7 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.9 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.c is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.d is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.e is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.f is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.10 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.11 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.12 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.13 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.14 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.15 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.16 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.17 is stuck undersized for 4d, current state active+undersized+degraded, last acting [0]
+    pg 3.18 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.19 is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+    pg 3.1a is stuck undersized for 4d, current state active+undersized+degraded, last acting [1]
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+</code></pre>
+<ul>
 <li>
 <p>CEPHADM_HOST_CHECK_FAIL：一台或多台主机未通过基本 cephadm 主机检查，该检查验证 (1) 主机可访问并且可以在其中执行 cephadm，以及 (2) 主机满足基本先决条件，例如工作容器运行时（podman 或 docker）和工作时间同步。如果此测试失败，cephadm 将无法管理该主机上的服务。</p>
 </li>
@@ -210,52 +120,28 @@
 <li>cephfs no such file or director</li>
 <li>ceph orch 命令还是没有反应</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl">HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data 
-</span></span><span class="line"><span class="cl">[WRN] FS_DEGRADED: 1 filesystem is degraded
-</span></span><span class="line"><span class="cl">    fs cephfs is degraded
-</span></span><span class="line"><span class="cl">[WRN] MDS_SLOW_METADATA_IO: 1 MDSs slow metadata IOs
-</span></span><span class="line"><span class="cl">     mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 930 secs
-</span></span><span class="line"><span class="cl">[WRN] RECENT_CRASH: 4 daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">[WRN] SLOW_OPS: 2 slow ops, oldset one blocked for 474 sec, mon.localhost has slow ops
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过 search 了一下，查询到 orch 是 MGR 模块</p>
+<pre><code>$ ceph health detail
+HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs report slow requests; clock skew detected on mon.localhost; Degraded data 
+[WRN] FS_DEGRADED: 1 filesystem is degraded
+    fs cephfs is degraded
+[WRN] MDS_SLOW_METADATA_IO: 1 MDSs slow metadata IOs
+     mds.cephfs.localhost.mhlzaj(mds.0): 20 slow metadata IOs are blocked &gt; 30 secs, oldest blocked for 930 secs
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+[WRN] SLOW_OPS: 2 slow ops, oldset one blocked for 474 sec, mon.localhost has slow ops
+</code></pre>
+<p>通过 search 了一下，查询到 orch 是 MGR 模块</p>
 <blockquote>
 <p>The orchestrator is a MGR module, have you checked if the containers   are up and running <sup><a href="#1">[1]</a></sup></p>
 </blockquote>
 <p>此时操作登录对应ceph node，docker restart ceph-mgr的模块，并且重启 mds 模块</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph health detail
-</span></span><span class="line"><span class="cl"><span class="o">[</span>WRN<span class="o">]</span> RECENT_CRASH: <span class="m">4</span> daemons have recently crashed
-</span></span><span class="line"><span class="cl">    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span><span class="line"><span class="cl">    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>此时集群恢复正常，cephfs 恢复</p>
+<pre><code class="language-bash">$ ceph health detail
+[WRN] RECENT_CRASH: 4 daemons have recently crashed
+    osd4 crhash on host xxxxxx at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+    client.xxx.xxxx.hostname.xxxx crashed on host hostname at 20xx-0x-xxT04xx:xx:xx.xxxxxxz
+</code></pre>
+<p>此时集群恢复正常，cephfs 恢复</p>
 <h2 id="总结">总结</h2>
 <p>由于长期没有在处理 ceph 方向问题，对排查有以下生疏：</p>
 <ul>
@@ -263,9 +149,12 @@
 <li>对 ceph 故障代码没有了解过，如果有了解，可以很明确的定位问题，而不用耽误2小时。</li>
 </ul>
 <h2 id="reference">Reference</h2>
-<p><sup id="1">[1]</sup> <a href="https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/2OSO26WYFBS4HZ4LPHNMBZUQ6Y3GI6GG/">ceph orch status hangs forever</a></p>
-<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/quincy/rados/operations/health-checks/">HEALTH CHECKS</a></p>
-<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/quincy/cephfs/health-messages/?highlight=MDS_SLOW_METADATA_IO">CEPHFS HEALTH MESSAGES</a></p>
+<p><sup id="1">[1]</sup> <a href="https://lists.ceph.io/hyperkitty/list/ceph-users@ceph.io/thread/2OSO26WYFBS4HZ4LPHNMBZUQ6Y3GI6GG/" target="_blank"
+   rel="noopener nofollow noreferrer" >ceph orch status hangs forever</a></p>
+<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/quincy/rados/operations/health-checks/" target="_blank"
+   rel="noopener nofollow noreferrer" >HEALTH CHECKS</a></p>
+<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/quincy/cephfs/health-messages/?highlight=MDS_SLOW_METADATA_IO" target="_blank"
+   rel="noopener nofollow noreferrer" >CEPHFS HEALTH MESSAGES</a></p>
 ]]></content:encoded>
     </item>
     
@@ -293,83 +182,43 @@
 </li>
 </ul>
 <p>下图是一个 NFS 使用 fscache 的示意图，CephFS 原理与其类似</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/Cache-NFS-Share-Data-with-FS-Cache-1.webp" alt="Cache-NFS-Share-Data-with-FS-Cache-1"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/Cache-NFS-Share-Data-with-FS-Cache-1.webp" alt="Cache-NFS-Share-Data-with-FS-Cache-1" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图1：FS-Cache 架构 </center>
 <center><em>Source：</em>https://computingforgeeks.com/how-to-cache-nfs-share-data-with-fs-cache-on-linux/</center><br>
 <p>CephFS 也是可以被缓存的一种网络文件系统，可以通过其内核模块看到对应的依赖</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">root@client:~# lsmod <span class="p">|</span> grep ceph
-</span></span><span class="line"><span class="cl">ceph                  <span class="m">376832</span>  <span class="m">1</span>
-</span></span><span class="line"><span class="cl">libceph               <span class="m">315392</span>  <span class="m">1</span> ceph
-</span></span><span class="line"><span class="cl">fscache                <span class="m">65536</span>  <span class="m">1</span> ceph
-</span></span><span class="line"><span class="cl">libcrc32c              <span class="m">16384</span>  <span class="m">3</span> xfs,raid456,libceph
-</span></span><span class="line"><span class="cl">root@client:~# modinfo ceph
-</span></span><span class="line"><span class="cl">filename:       /lib/modules/4.15.0-112-generic/kernel/fs/ceph/ceph.ko
-</span></span><span class="line"><span class="cl">license:        GPL
-</span></span><span class="line"><span class="cl">description:    Ceph filesystem <span class="k">for</span> Linux
-</span></span><span class="line"><span class="cl">author:         Patience Warnick &lt;patience@newdream.net&gt;
-</span></span><span class="line"><span class="cl">author:         Yehuda Sadeh &lt;yehuda@hq.newdream.net&gt;
-</span></span><span class="line"><span class="cl">author:         Sage Weil &lt;sage@newdream.net&gt;
-</span></span><span class="line"><span class="cl">alias:          fs-ceph
-</span></span><span class="line"><span class="cl">srcversion:     B2806F4EAACAC1E19EE7AFA
-</span></span><span class="line"><span class="cl">depends:        libceph,fscache
-</span></span><span class="line"><span class="cl">retpoline:      Y
-</span></span><span class="line"><span class="cl">intree:         Y
-</span></span><span class="line"><span class="cl">name:           ceph
-</span></span><span class="line"><span class="cl">vermagic:       4.15.0-112-generic SMP mod_unload
-</span></span><span class="line"><span class="cl">signat:         PKCS#7
-</span></span><span class="line"><span class="cl">signer:        
-</span></span><span class="line"><span class="cl">sig_key:       
-</span></span><span class="line"><span class="cl">sig_hashalgo:   md4
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在启用了fs-cache后，内核日志可以看到对应 cephfs 挂载时 ceph 被注册到 fscache中</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[</span>  11457.592011<span class="o">]</span> FS-Cache: Loaded
-</span></span><span class="line"><span class="cl"><span class="o">[</span>  11457.617265<span class="o">]</span> Key <span class="nb">type</span> ceph registered
-</span></span><span class="line"><span class="cl"><span class="o">[</span>  11457.617686<span class="o">]</span> libceph: loaded <span class="o">(</span>mon/osd proto 15/24<span class="o">)</span>
-</span></span><span class="line"><span class="cl"><span class="o">[</span>  11457.640554<span class="o">]</span> FS-Cache: Netfs <span class="s1">&#39;ceph&#39;</span> registered <span class="k">for</span> caching
-</span></span><span class="line"><span class="cl"><span class="o">[</span>  11457.640558<span class="o">]</span> ceph: loaded <span class="o">(</span>mds proto 32<span class="o">)</span>
-</span></span><span class="line"><span class="cl"><span class="o">[</span>  11457.640978<span class="o">]</span> libceph: parse_ips bad ip <span class="s1">&#39;mon1.ichenfu.com:6789,mon2.ichenfu.com:6789,mon3.ichenfu.com:6789&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">root@client:~# lsmod | grep ceph
+ceph                  376832  1
+libceph               315392  1 ceph
+fscache                65536  1 ceph
+libcrc32c              16384  3 xfs,raid456,libceph
+root@client:~# modinfo ceph
+filename:       /lib/modules/4.15.0-112-generic/kernel/fs/ceph/ceph.ko
+license:        GPL
+description:    Ceph filesystem for Linux
+author:         Patience Warnick &lt;patience@newdream.net&gt;
+author:         Yehuda Sadeh &lt;yehuda@hq.newdream.net&gt;
+author:         Sage Weil &lt;sage@newdream.net&gt;
+alias:          fs-ceph
+srcversion:     B2806F4EAACAC1E19EE7AFA
+depends:        libceph,fscache
+retpoline:      Y
+intree:         Y
+name:           ceph
+vermagic:       4.15.0-112-generic SMP mod_unload
+signat:         PKCS#7
+signer:        
+sig_key:       
+sig_hashalgo:   md4
+</code></pre>
+<p>在启用了fs-cache后，内核日志可以看到对应 cephfs 挂载时 ceph 被注册到 fscache中</p>
+<pre><code class="language-bash">[  11457.592011] FS-Cache: Loaded
+[  11457.617265] Key type ceph registered
+[  11457.617686] libceph: loaded (mon/osd proto 15/24)
+[  11457.640554] FS-Cache: Netfs 'ceph' registered for caching
+[  11457.640558] ceph: loaded (mds proto 32)
+[  11457.640978] libceph: parse_ips bad ip 'mon1.ichenfu.com:6789,mon2.ichenfu.com:6789,mon3.ichenfu.com:6789'
+</code></pre>
+<blockquote>
 <p>当 monitor / OSD 拒绝连接时，所有该节点后续创建的挂载均会使用缓存，除非 umount 所有挂载后重新挂载才可以重新与 ceph mon 建立连接</p>
 </blockquote>
 <h2 id="cephfs-中的-fscache">cephfs 中的 fscache</h2>
@@ -424,50 +273,28 @@
 <p>注：上面故障引用都是在网络上找到相同报错的一些提示，并不完全切合本文中故障描述</p>
 </blockquote>
 <p>去对应节点查看日志会发现有下面几个特征</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231108_150726-ink.jpeg" alt="IMG_20231108_150726-ink"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231108_150726-ink.jpeg" alt="IMG_20231108_150726-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图2-1：故障发生的节点报错</center>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_193023-ink.jpeg" alt="IMG_20231109_193023-ink"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_193023-ink.jpeg" alt="IMG_20231109_193023-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图2-2：故障发生的节点报错</center>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_192930-ink.jpeg" alt="IMG_20231109_192930-ink"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_192930-ink.jpeg" alt="IMG_20231109_192930-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图2-3：故障发生的节点报错</center>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">    [ 1815.029831] ceph: mds0 closed our session
-</span></span><span class="line"><span class="cl">    [ 1815.029833] ceph: mds0 reconnect start
-</span></span><span class="line"><span class="cl">    [ 1815.052219] ceph: mds0 reconnect denied
-</span></span><span class="line"><span class="cl">    [ 1815.052229] ceph:  dropping dirty Fw state for ffff9d9085da1340 1099512175611
-</span></span><span class="line"><span class="cl">    [ 1815.052231] ceph:  dropping dirty+flushing Fw state for ffff9d9085da1340 1099512175611
-</span></span><span class="line"><span class="cl">    [ 1815.273008] libceph: mds0 10.99.10.4:6801 socket closed (con state NEGOTIATING)
-</span></span><span class="line"><span class="cl">    [ 1816.033241] ceph: mds0 rejected session
-</span></span><span class="line"><span class="cl">    [ 1829.018643] ceph: mds0 hung
-</span></span><span class="line"><span class="cl">    [ 1880.088504] ceph: mds0 came back
-</span></span><span class="line"><span class="cl">    [ 1880.088662] ceph: mds0 caps renewed
-</span></span><span class="line"><span class="cl">    [ 1880.094018] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-</span></span><span class="line"><span class="cl">    [ 1881.100367] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-</span></span><span class="line"><span class="cl">    [ 2046.768969] conntrack: generic helper won&#39;t handle protocol 47. Please consider loading the specific helper module.
-</span></span><span class="line"><span class="cl">    [ 2061.731126] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="故障分析">故障分析</h3>
+<pre><code class="language-log">    [ 1815.029831] ceph: mds0 closed our session
+    [ 1815.029833] ceph: mds0 reconnect start
+    [ 1815.052219] ceph: mds0 reconnect denied
+    [ 1815.052229] ceph:  dropping dirty Fw state for ffff9d9085da1340 1099512175611
+    [ 1815.052231] ceph:  dropping dirty+flushing Fw state for ffff9d9085da1340 1099512175611
+    [ 1815.273008] libceph: mds0 10.99.10.4:6801 socket closed (con state NEGOTIATING)
+    [ 1816.033241] ceph: mds0 rejected session
+    [ 1829.018643] ceph: mds0 hung
+    [ 1880.088504] ceph: mds0 came back
+    [ 1880.088662] ceph: mds0 caps renewed
+    [ 1880.094018] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+    [ 1881.100367] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+    [ 2046.768969] conntrack: generic helper won't handle protocol 47. Please consider loading the specific helper module.
+    [ 2061.731126] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+</code></pre>
+<h3 id="故障分析">故障分析</h3>
 <p>由上面的三张图我们可以得到几个关键点</p>
 <ol>
 <li>connection reset</li>
@@ -487,19 +314,11 @@ This can happen after client gets evicted.  <sup><a href="#4">[4]</a></sup></p>
 <h3 id="kubelet的错误日志">kubelet的错误日志</h3>
 <p>此时当新的使用了 volumes 去挂载 cephfs时，由于旧的 Pod 产生的工作目录 (/var/lib/kubelet) 下的 Pod 挂载会因为 cephfs caps stale  而导致无法卸载，这是就会存在 “孤儿Pod”，“不能同步 Pod 的状态”，“不能创建新的Pod挂载，因为目录已存在”。</p>
 <p>kubelet 日志如下所示：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubelet_volumes.go:66<span class="o">]</span> pod <span class="s2">&#34;5446c441-9162-45e8-e11f46893932&#34;</span> found, but error stat /var/lib/kubelet/pods/5446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxx: permission denied occurred during checking mounted volumes from disk
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">pod_workers.go:119<span class="o">]</span> Error syncing pod <span class="s2">&#34;5446c441-9162-45e8-e11f46893932&#34;</span> <span class="o">(</span><span class="s2">&#34;xxxxx-xxx-xxx-xxxx-xxx_xxxxx(5446c441-9162-45e8-e11f46893932)&#34;</span>, skipping: failed to <span class="s2">&#34;StartContainer&#34;</span> <span class="k">for</span> <span class="s2">&#34;xxxxx-xxx-xxx&#34;</span> with RunContainerError: <span class="s2">&#34;failed to start container \&#34;719346531es654113s3216e1456313d51as132156\&#34;: Error response from daemon: error while createing mount source path &#39;/var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx&#39;: mkdir /var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx: file exists&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="问题如何解决">问题如何解决</h2>
+<pre><code class="language-bash">kubelet_volumes.go:66] pod &quot;5446c441-9162-45e8-e11f46893932&quot; found, but error stat /var/lib/kubelet/pods/5446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxx: permission denied occurred during checking mounted volumes from disk
+
+pod_workers.go:119] Error syncing pod &quot;5446c441-9162-45e8-e11f46893932&quot; (&quot;xxxxx-xxx-xxx-xxxx-xxx_xxxxx(5446c441-9162-45e8-e11f46893932)&quot;, skipping: failed to &quot;StartContainer&quot; for &quot;xxxxx-xxx-xxx&quot; with RunContainerError: &quot;failed to start container \&quot;719346531es654113s3216e1456313d51as132156\&quot;: Error response from daemon: error while createing mount source path '/var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx': mkdir /var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx: file exists&quot;
+</code></pre>
+<h2 id="问题如何解决">问题如何解决</h2>
 <p>首先上面我们阐述了问题出现背景以及原因，要想解决这些错误，要分为两个步骤：</p>
 <ol>
 <li>首先驱逐 Kubernetes  Node 节点上所有挂载 cephfs 的 Pod，这步骤是为了优雅的结束 fscache 的 cookie cache 机制，使节点可以正常的提供服务</li>
@@ -514,80 +333,47 @@ This can happen after client gets evicted.  <sup><a href="#4">[4]</a></sup></p>
 <p>最终在配置后，上述问题解决</p>
 <h3 id="附ceph-mds-管理客户端">附：ceph mds 管理客户端</h3>
 <p>查看一个客户端的连接</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph daemon mds.xxxxxxxx session ls <span class="p">|</span>grep -E <span class="s1">&#39;inst|hostname|kernel_version&#39;</span><span class="p">|</span>grep xxxx
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;inst&#34;</span>: <span class="s2">&#34;client.105123 v1:192.168.0.0:0/11243531&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;hostname&#34;</span>: <span class="s2">&#34;xxxxxxxxxxxxxxxxxx&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>手动驱逐一个客户端</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph tell mds.0 client evict <span class="nv">id</span><span class="o">=</span><span class="m">105123</span>
-</span></span><span class="line"><span class="cl">2023-11-12 13:25:23:381 7fa3a67fc700 <span class="m">0</span> client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
-</span></span><span class="line"><span class="cl">2023-11-12 13:25:23:421 7fa3a67fc700 <span class="m">0</span> client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看 ceph 的配置参数</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph config dump
-</span></span><span class="line"><span class="cl">WHO     MASK  LEVEL     OPTION                                VALUE RO
-</span></span><span class="line"><span class="cl">  mon         advanced  auth_allow_insecure_global_id_reclaim <span class="nb">false</span>
-</span></span><span class="line"><span class="cl">  mon         advanced  mon_allow_pool_delete                 <span class="nb">false</span>
-</span></span><span class="line"><span class="cl">  mds         advanced  mds_session_blacklist_on_evict        <span class="nb">false</span>
-</span></span><span class="line"><span class="cl">  mds         advanced  mds_session_blacklist_on_timeout      <span class="nb">false</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当出现问题无法卸载时应如何解决？</p>
+<pre><code class="language-bash">ceph daemon mds.xxxxxxxx session ls |grep -E 'inst|hostname|kernel_version'|grep xxxx
+        &quot;inst&quot;: &quot;client.105123 v1:192.168.0.0:0/11243531&quot;,
+            &quot;hostname&quot;: &quot;xxxxxxxxxxxxxxxxxx&quot;
+</code></pre>
+<p>手动驱逐一个客户端</p>
+<pre><code class="language-bash">ceph tell mds.0 client evict id=105123
+2023-11-12 13:25:23:381 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
+2023-11-12 13:25:23:421 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
+</code></pre>
+<p>查看 ceph 的配置参数</p>
+<pre><code class="language-bash">ceph config dump
+WHO     MASK  LEVEL     OPTION                                VALUE RO
+  mon         advanced  auth_allow_insecure_global_id_reclaim false
+  mon         advanced  mon_allow_pool_delete                 false
+  mds         advanced  mds_session_blacklist_on_evict        false
+  mds         advanced  mds_session_blacklist_on_timeout      false
+</code></pre>
+<p>当出现问题无法卸载时应如何解决？</p>
 <p>当我们遇到问题时，卸载目录会出现被占用情况，通过 mount 和 fuser 都无法卸载</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">umount -f /tmp/998
-</span></span><span class="line"><span class="cl">umount： /tmp/998: target is buy.
-</span></span><span class="line"><span class="cl">        <span class="o">(</span>In some cases useful info about processes that use th device is found by losf<span class="o">(</span>8<span class="o">)</span> or fuser<span class="o">(</span>1<span class="o">))</span>
-</span></span><span class="line"><span class="cl">        the device is found by losf<span class="o">(</span>8<span class="o">)</span> or fuser<span class="o">(</span>1<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">fuser -v1 /root/test
-</span></span><span class="line"><span class="cl">Cannot stat /root/test: Input/output error
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这个时候由于 cephfs 挂载问题会导致整个文件系统不可用，例如 df -h, ls dir 等，此时可以使用 umount 的懒卸载模式 <code>umount -l</code>，这会告诉内核当不占用时被卸载，由于这个问题是出现问题，而不是长期占用，这里用懒卸载后会立即卸载，从而解决了 stuck 的问题。</p>
+<pre><code class="language-bash">umount -f /tmp/998
+umount： /tmp/998: target is buy.
+        (In some cases useful info about processes that use th device is found by losf(8) or fuser(1))
+        the device is found by losf(8) or fuser(1)
+        
+fuser -v1 /root/test
+Cannot stat /root/test: Input/output error
+</code></pre>
+<p>这个时候由于 cephfs 挂载问题会导致整个文件系统不可用，例如 df -h, ls dir 等，此时可以使用 umount 的懒卸载模式 <code>umount -l</code>，这会告诉内核当不占用时被卸载，由于这个问题是出现问题，而不是长期占用，这里用懒卸载后会立即卸载，从而解决了 stuck 的问题。</p>
 <h2 id="reference">Reference</h2>
-<p><sup id="1">[1]</sup> <a href="https://ceph.io/en/news/blog/2013/first-impressions-through-fscache-and-ceph/">First Impressions Through Fscache and Ceph</a></p>
-<p><sup id="2">[2]</sup> <a href="https://lwn.net/Articles/563146/">ceph: persistent caching with fscache</a></p>
-<p><sup id="3">[3]</sup> <a href="https://tracker.ceph.com/issues/51191">Cannot Mount CephFS No Timeout, mount error 5 = Input/output error</a></p>
-<p><sup id="4">[4]</sup> <a href="https://patchwork.kernel.org/project/ceph-devel/patch/20190531122802.12814-3-zyan@redhat.com/">ceph: fix infinite loop in get_quota_realm()</a></p>
-<p><sup id="5">[5]</sup> <a href="https://drunkard.github.io/cephfs/eviction/">Ceph 文件系统客户端的驱逐</a></p>
-<p><sup id="6">[6]</sup> <a href="https://docs.ceph.com/en/mimic/cephfs/eviction/#advanced-configuring-blacklisting">advanced-configuring-blacklisting</a></p>
+<p><sup id="1">[1]</sup> <a href="https://ceph.io/en/news/blog/2013/first-impressions-through-fscache-and-ceph/" target="_blank"
+   rel="noopener nofollow noreferrer" >First Impressions Through Fscache and Ceph</a></p>
+<p><sup id="2">[2]</sup> <a href="https://lwn.net/Articles/563146/" target="_blank"
+   rel="noopener nofollow noreferrer" >ceph: persistent caching with fscache</a></p>
+<p><sup id="3">[3]</sup> <a href="https://tracker.ceph.com/issues/51191" target="_blank"
+   rel="noopener nofollow noreferrer" >Cannot Mount CephFS No Timeout, mount error 5 = Input/output error</a></p>
+<p><sup id="4">[4]</sup> <a href="https://patchwork.kernel.org/project/ceph-devel/patch/20190531122802.12814-3-zyan@redhat.com/" target="_blank"
+   rel="noopener nofollow noreferrer" >ceph: fix infinite loop in get_quota_realm()</a></p>
+<p><sup id="5">[5]</sup> <a href="https://drunkard.github.io/cephfs/eviction/" target="_blank"
+   rel="noopener nofollow noreferrer" >Ceph 文件系统客户端的驱逐</a></p>
+<p><sup id="6">[6]</sup> <a href="https://docs.ceph.com/en/mimic/cephfs/eviction/#advanced-configuring-blacklisting" target="_blank"
+   rel="noopener nofollow noreferrer" >advanced-configuring-blacklisting</a></p>
 ]]></content:encoded>
     </item>
     
@@ -600,206 +386,89 @@ This can happen after client gets evicted.  <sup><a href="#4">[4]</a></sup></p>
       <description></description>
       <content:encoded><![CDATA[<h4 id="测试上传下载对象">测试上传/下载对象</h4>
 <p>存取故据时，客户端必须首先连接至RAD05集群上某存储地，而后根据对像名称由相关的中CRUSH规则完成数据对象寻址。于是为了测试集群的数据存储功能，首先创建一个用于测试的存储池mypool，并设定其PG数量为16个。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph osd pool create mypool <span class="m">16</span> <span class="m">16</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而后，即可将测试文件上传至存储池中。例如下面的<code>rados put</code>命令将/etc/hosts</p>
+<pre><code class="language-sh">ceph osd pool create mypool 16 16
+</code></pre>
+<p>而后，即可将测试文件上传至存储池中。例如下面的<code>rados put</code>命令将/etc/hosts</p>
 <p>rados</p>
 <p>lspool 显示存储池</p>
 <p>rmpool 删除存储池</p>
 <p>mkpool 创建存储池</p>
 <p>rados mkpool mypool  32 32</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">rados mkpool <span class="o">{</span>name<span class="o">}</span> <span class="o">{</span>pgnum<span class="o">}</span> <span class="o">{</span>pgpnum<span class="o">}</span>
-</span></span><span class="line"><span class="cl">rados mkpool <span class="nb">test</span> <span class="m">32</span> <span class="m">32</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ceph osd pool create testpool <span class="m">32</span> <span class="m">32</span>
-</span></span><span class="line"><span class="cl">pool <span class="s1">&#39;testpool&#39;</span> created
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>列出存储池</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph osd pool ls
-</span></span><span class="line"><span class="cl">mypool
-</span></span><span class="line"><span class="cl">rbdpool
-</span></span><span class="line"><span class="cl">testpool
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ rados lspools  
-</span></span><span class="line"><span class="cl">mypool
-</span></span><span class="line"><span class="cl">rbdpool
-</span></span><span class="line"><span class="cl">testpool
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而后即可将测试文件上传到存储池中，例如将<code>rados put</code>命令将<code>/etc/issue</code>文件上传至testpool存储池，对象名称仍然较保留文件名issue，而<code>rados ls</code>可以列出指定存储池中的数据对象</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">rados put issue /etc/issue --pool<span class="o">=</span>testpool    
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ rados ls --pool<span class="o">=</span>testpool  <span class="c1"># --pool 指定放入那个存储池中去</span>
-</span></span><span class="line"><span class="cl">issue
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而<font color="#f8070d" size=3><code>ceph osd map</code></font>可查看获取到存储池中数据对象的具体位置信息（数据和元数据怎么映射存储的)</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph osd map testpool issue
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ceph osd map mypool passwd
-</span></span><span class="line"><span class="cl">osdmap e36 pool <span class="s1">&#39;mypool&#39;</span> <span class="o">(</span>1<span class="o">)</span> object <span class="s1">&#39;passwd&#39;</span> -&gt; pg 1.27292a34 <span class="o">(</span>1.14<span class="o">)</span> -&gt; up <span class="o">([</span>0,3,2<span class="o">]</span>, p0<span class="o">)</span> acting <span class="o">([</span>0,3,2<span class="o">]</span>, p0<span class="o">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>    mypool存储池中的对象<code>passwd</code>被放在pg上<code>1.27292a34</code> 1为存储池编号<code>.</code>后面的编号可以理解为pg的位图。是pg的编号；<code>up ([0,3,2], p0)</code>正常可访问编号0、3、2，副本型存储池，crush算法计算得到，0为主osd。活动集<code>acting ([0,3,2], p0)</code>，此组pg(<code>pg 1.27292a34 (1.14)</code>)之下所有的osd(<code>[0,3,2]</code>)都处于正常活动状态。</p>
+<pre><code class="language-sh">rados mkpool {name} {pgnum} {pgpnum}
+rados mkpool test 32 32
+</code></pre>
+<pre><code class="language-sh">$ ceph osd pool create testpool 32 32
+pool 'testpool' created
+</code></pre>
+<p>列出存储池</p>
+<pre><code>$ ceph osd pool ls
+mypool
+rbdpool
+testpool
+
+$ rados lspools  
+mypool
+rbdpool
+testpool
+</code></pre>
+<p>而后即可将测试文件上传到存储池中，例如将<code>rados put</code>命令将<code>/etc/issue</code>文件上传至testpool存储池，对象名称仍然较保留文件名issue，而<code>rados ls</code>可以列出指定存储池中的数据对象</p>
+<pre><code class="language-sh">rados put issue /etc/issue --pool=testpool    
+
+$ rados ls --pool=testpool  # --pool 指定放入那个存储池中去
+issue
+</code></pre>
+<p>而<font color="#f8070d" size=3><code>ceph osd map</code></font>可查看获取到存储池中数据对象的具体位置信息（数据和元数据怎么映射存储的)</p>
+<pre><code class="language-sh">ceph osd map testpool issue
+
+$ ceph osd map mypool passwd
+osdmap e36 pool 'mypool' (1) object 'passwd' -&gt; pg 1.27292a34 (1.14) -&gt; up ([0,3,2], p0) acting ([0,3,2], p0)
+</code></pre>
+<p>    mypool存储池中的对象<code>passwd</code>被放在pg上<code>1.27292a34</code> 1为存储池编号<code>.</code>后面的编号可以理解为pg的位图。是pg的编号；<code>up ([0,3,2], p0)</code>正常可访问编号0、3、2，副本型存储池，crush算法计算得到，0为主osd。活动集<code>acting ([0,3,2], p0)</code>，此组pg(<code>pg 1.27292a34 (1.14)</code>)之下所有的osd(<code>[0,3,2]</code>)都处于正常活动状态。</p>
 <h4 id="删除数据对象">删除数据对象</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ceph osd pool rm testpool --yes-i-really-really-mean-it
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>    删除存储池命令存在数据丢失的风险，Ceph于是默认禁止此类操作。管理员需要在<font color="#f8070d" size=3><code>ceph.conf</code></font>配置文件中启用支持删除存储池的操作后，方可使用如下命令删除存储池。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">rados rm issue --pool<span class="o">=</span>mypool
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="ceph集群的访问接口">ceph集群的访问接口</h3>
+<pre><code>ceph osd pool rm testpool --yes-i-really-really-mean-it
+</code></pre>
+<p>    删除存储池命令存在数据丢失的风险，Ceph于是默认禁止此类操作。管理员需要在<font color="#f8070d" size=3><code>ceph.conf</code></font>配置文件中启用支持删除存储池的操作后，方可使用如下命令删除存储池。</p>
+<pre><code class="language-bash">rados rm issue --pool=mypool
+</code></pre>
+<h3 id="ceph集群的访问接口">ceph集群的访问接口</h3>
 <h4 id="ceph块设备接口">Ceph块设备接口</h4>
 <p>Ceph块设备，也称为RADOS块设备（简称RBD），是一种基于RADOS存储系统支持超配，（thin-provisioned）、可伸缩的条带化数据存储系统，它通过librbd库与OSD进行交互。RBD为KVM等虚拟化技术和云OS（如OpenStack和CloudStack）提供高可用和无限扩展性的存储后端，这些系统以来与libvirt和QEMU实用程序与RBD进行集。</p>
 <p>在集群部署完成以后，就具有了RBD接口，RBD接口关键是在客户端的配置。服务端本身可以直接使用。只需创建出存储池，在存储池中就可以创建块设备。块设备主要表现为存储池当中的镜像或映像文件（image）。</p>
 <p>客户端基于librbd库即可将RADOS存储集群用作块设备，不过，用于rbd的存储池需要实现启用rbd功能并进行初始化。例如，创建一个名为rbddata的存储池，在启动rbd功能后对其进行初始化</p>
 <p>对于rbdpool而言，创建完成后并不能直接使用，因为三种应用程序需要单独进行启用。相关存储池的应用才可以。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph osd pool create rbpool <span class="m">64</span> <span class="c1">## 指明pg数量</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="c1"># 默认情况下是裸池</span>
-</span></span><span class="line"><span class="cl">$ ceph osd pool application <span class="nb">enable</span> rbdpool rbd
-</span></span><span class="line"><span class="cl">enabled application <span class="s1">&#39;rbd&#39;</span> on pool <span class="s1">&#39;rbdpool&#39;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">osd pool application <span class="nb">enable</span> &lt;poolname&gt; &lt;app&gt; <span class="o">{</span>--yes-i-really-mean-it<span class="o">}</span>             <span class="nb">enable</span> use of an application &lt;app&gt; <span class="o">[</span>cephfs,rbd,rgw<span class="o">]</span> on pool &lt;poolname&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">rbd pool init -p rbddata
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>不过，rbd存储池并不能直接用于块设备，而是需要事先在其中按需创建映像（image），以及可用映像、创建快照、将映像回滚到快照和查看快照等管理操作。</p>
+<pre><code class="language-sh">ceph osd pool create rbpool 64 ## 指明pg数量
+</code></pre>
+<pre><code class="language-sh"># 默认情况下是裸池
+$ ceph osd pool application enable rbdpool rbd
+enabled application 'rbd' on pool 'rbdpool'
+
+osd pool application enable &lt;poolname&gt; &lt;app&gt; {--yes-i-really-mean-it}             enable use of an application &lt;app&gt; [cephfs,rbd,rgw] on pool &lt;poolname&gt;
+</code></pre>
+<pre><code class="language-sh">
+rbd pool init -p rbddata
+</code></pre>
+<p>不过，rbd存储池并不能直接用于块设备，而是需要事先在其中按需创建映像（image），以及可用映像、创建快照、将映像回滚到快照和查看快照等管理操作。</p>
 <p>创建名为img1的映像</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">rbd create rbdpool/img --size 1G
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ rbd ls -p rbdpool
-</span></span><span class="line"><span class="cl">img
-</span></span><span class="line"><span class="cl">img1
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>显示映像的相关信息，<code>rbd info</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ rbd info rbdpool/img
-</span></span><span class="line"><span class="cl">rbd image <span class="s1">&#39;img&#39;</span>:
-</span></span><span class="line"><span class="cl">        size <span class="m">1</span> GiB in <span class="m">256</span> objects
-</span></span><span class="line"><span class="cl">        order <span class="m">22</span> <span class="o">(</span><span class="m">4</span> MiB objects<span class="o">)</span>
-</span></span><span class="line"><span class="cl">        id: 38bb6b8b4567
-</span></span><span class="line"><span class="cl">        block_name_prefix: rbd_data.38bb6b8b4567
-</span></span><span class="line"><span class="cl">        format: <span class="m">2</span>
-</span></span><span class="line"><span class="cl">        features: layering, exclusive-lock, object-map, fast-diff, deep-flatten
-</span></span><span class="line"><span class="cl">        op_features: 
-</span></span><span class="line"><span class="cl">        flags: 
-</span></span><span class="line"><span class="cl">        create_timestamp: Fri Jun <span class="m">14</span> 17:08:48 <span class="m">2019</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在客户端主机上，用户通过内核级的rbd驱动识别相关设备，即可对其进行分区、创建文件系统并挂载使用。</p>
+<pre><code class="language-sh">rbd create rbdpool/img --size 1G
+</code></pre>
+<pre><code class="language-sh">$ rbd ls -p rbdpool
+img
+img1
+</code></pre>
+<p>显示映像的相关信息，<code>rbd info</code></p>
+<pre><code class="language-sh">$ rbd info rbdpool/img
+rbd image 'img':
+        size 1 GiB in 256 objects
+        order 22 (4 MiB objects)
+        id: 38bb6b8b4567
+        block_name_prefix: rbd_data.38bb6b8b4567
+        format: 2
+        features: layering, exclusive-lock, object-map, fast-diff, deep-flatten
+        op_features: 
+        flags: 
+        create_timestamp: Fri Jun 14 17:08:48 2019
+</code></pre>
+<p>在客户端主机上，用户通过内核级的rbd驱动识别相关设备，即可对其进行分区、创建文件系统并挂载使用。</p>
 <p>Rank 层级
 MDS MDS在哪台服务器 上
 Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看到的空间大小是一样的。</p>
@@ -849,57 +518,30 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 </ul>
 </li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph osd tree
-</span></span><span class="line"><span class="cl">ID CLASS WEIGHT  TYPE NAME       STATUS REWEIGHT PRI-AFF 
-</span></span><span class="line"><span class="cl">-1       0.09775 root default                            
-</span></span><span class="line"><span class="cl">-3       0.03897     host stor01                         
-</span></span><span class="line"><span class="cl"> 0   hdd 0.01949         osd.0       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl"> 7   hdd 0.01949         osd.7       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl">-5       0.01959     host stor02                         
-</span></span><span class="line"><span class="cl"> 1   hdd 0.00980         osd.1       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl"> 6   hdd 0.00980         osd.6       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl">-7       0.01959     host stor03                         
-</span></span><span class="line"><span class="cl"> 2   hdd 0.00980         osd.2       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl"> 5   hdd 0.00980         osd.5       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl">-9       0.01959     host stor04                         
-</span></span><span class="line"><span class="cl"> 3   hdd 0.00980         osd.3       up  1.00000 1.00000 
-</span></span><span class="line"><span class="cl"> 4   hdd 0.00980         osd.4       up  1.00000 1.00000 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>集群中存在多个Mon主机时，应该在启动集群之后读取或写入数据之前检查Mon的种裁状态：事实上，管理员也应该定期检查这种仲裁结果。</p>
+<pre><code>$ ceph osd tree
+ID CLASS WEIGHT  TYPE NAME       STATUS REWEIGHT PRI-AFF 
+-1       0.09775 root default                            
+-3       0.03897     host stor01                         
+ 0   hdd 0.01949         osd.0       up  1.00000 1.00000 
+ 7   hdd 0.01949         osd.7       up  1.00000 1.00000 
+-5       0.01959     host stor02                         
+ 1   hdd 0.00980         osd.1       up  1.00000 1.00000 
+ 6   hdd 0.00980         osd.6       up  1.00000 1.00000 
+-7       0.01959     host stor03                         
+ 2   hdd 0.00980         osd.2       up  1.00000 1.00000 
+ 5   hdd 0.00980         osd.5       up  1.00000 1.00000 
+-9       0.01959     host stor04                         
+ 3   hdd 0.00980         osd.3       up  1.00000 1.00000 
+ 4   hdd 0.00980         osd.4       up  1.00000 1.00000 
+</code></pre>
+<p>集群中存在多个Mon主机时，应该在启动集群之后读取或写入数据之前检查Mon的种裁状态：事实上，管理员也应该定期检查这种仲裁结果。</p>
 <ul>
 <li>显示监视器映射：<code>ceph mon stat</code>命令或者<code>ceph mon dump</code></li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ ceph mon stat
-</span></span><span class="line"><span class="cl">e3: 3 mons at {stor01=10.0.0.4:6789/0,stor02=10.0.0.5:6789/0,stor03=10.0.0.6:6789/0}, election epoch 20, leader 0 stor01, quorum 0,1,2 stor01,stor02,stor03
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ul>
+<pre><code>$ ceph mon stat
+e3: 3 mons at {stor01=10.0.0.4:6789/0,stor02=10.0.0.5:6789/0,stor03=10.0.0.6:6789/0}, election epoch 20, leader 0 stor01, quorum 0,1,2 stor01,stor02,stor03
+</code></pre>
+<ul>
 <li>显示伸裁状态：<code>ceph quorum status</code></li>
 </ul>
 <h4 id="使用管理套接字">使用管理套接字</h4>
@@ -910,24 +552,12 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <li>此接口的使用不能以远程方式进程</li>
 </ul>
 <p>命令的使用格式</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph --admin-daemon /var/run/ceph/<span class="o">{</span>socket-name<span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>获取使用帮助：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ceph --admin-daemon /var/run/ceph/{socket-name}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="停止或重启ceph集群">停止或重启Ceph集群</h4>
+<pre><code class="language-sh">ceph --admin-daemon /var/run/ceph/{socket-name}
+</code></pre>
+<p>获取使用帮助：</p>
+<pre><code>ceph --admin-daemon /var/run/ceph/{socket-name}
+</code></pre>
+<h4 id="停止或重启ceph集群">停止或重启Ceph集群</h4>
 <h5 id="停止">停止</h5>
 <ul>
 <li>告知Ceph集群不要将osd标记为out，命令<code>ceph osd set noout</code></li>
@@ -1012,41 +642,19 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <p>进程的运行时配置</p>
 <p>在进程的运行当中，设定<code>osd</code>、<code>mon</code>、<code>mgr</code>等工作特性。</p>
 <p>要查看运行时配置，请登录Ceph节点并执行：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ceph daemon {daemon-type}.{id} config show
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>获取帮助信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph daemon <span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>id<span class="o">}</span> <span class="nb">help</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在运行时获取特定配置设置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">ceph daemon <span class="o">{</span>daemon-type<span class="o">}</span>.<span class="o">{</span>id<span class="o">}</span> config get <span class="o">{</span>parameter<span class="o">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 例如：</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">ceph daemon osd.0 config get public_addr
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在运行时设置特定配置</p>
+<pre><code>ceph daemon {daemon-type}.{id} config show
+</code></pre>
+<p>获取帮助信息</p>
+<pre><code class="language-sh">ceph daemon {daemon-type}.{id} help
+</code></pre>
+<p>在运行时获取特定配置设置</p>
+<pre><code class="language-sh">ceph daemon {daemon-type}.{id} config get {parameter}
+
+# 例如：
+
+ceph daemon osd.0 config get public_addr
+</code></pre>
+<p>在运行时设置特定配置</p>
 <p>设置运行时配置有两种常用方法：</p>
 <ul>
 <li>使用Ceph mmonitor
@@ -1074,33 +682,17 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <description></description>
       <content:encoded><![CDATA[<h2 id="场景">场景</h2>
 <p>在配置代理后，GET 请求的变量全部失效，配置如下</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">location /fw {
-</span></span><span class="line"><span class="cl">    proxy_pass http://127.0.0.1:2952;
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>我的需求是，<code>/fw/</code> 的都发往 2952端口，但实际情况是404，原因为“在没有指定 URI 的情况下，在1.12版本后会传递原有的URI” 这时会导致一个404错误，因为我的后端接口本身就是 <code>/fw/xxx/</code> 会出现重复</p>
+<pre><code class="language-conf">location /fw {
+    proxy_pass http://127.0.0.1:2952;
+}
+</code></pre>
+<p>我的需求是，<code>/fw/</code> 的都发往 2952端口，但实际情况是404，原因为“在没有指定 URI 的情况下，在1.12版本后会传递原有的URI” 这时会导致一个404错误，因为我的后端接口本身就是 <code>/fw/xxx/</code> 会出现重复</p>
 <p>接下来做了一个变量传递</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">location ~* /fw/(?&lt;section&gt;.*) {
-</span></span><span class="line"><span class="cl">    proxy_pass http://127.0.0.1:2952/fw/$section;
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这时存在一个问题，就是 GET 请求的变量无法传递过去</p>
+<pre><code class="language-conf">location ~* /fw/(?&lt;section&gt;.*) {
+    proxy_pass http://127.0.0.1:2952/fw/$section;
+}
+</code></pre>
+<p>这时存在一个问题，就是 GET 请求的变量无法传递过去</p>
 <h2 id="解决">解决</h2>
 <p>nginx 官方给出一个样例，说明了，存在某种情况下，nginx 不会确定请求 URI 中的部分参数</p>
 <ul>
@@ -1108,43 +700,27 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <li>在 localtion 名称内</li>
 </ul>
 <p>例如，在这个场景下，proxy_pass 就会忽略原有的请求的URI，而将拼接后的请求转发</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">location /name/ {
-</span></span><span class="line"><span class="cl">    rewrite    /name/([^/]+) /users?name=$1 break;
-</span></span><span class="line"><span class="cl">    proxy_pass http://127.0.0.1;
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>那么这服务我遇到的问题，nginx官方给出了使用方式</p>
+<pre><code class="language-conf">location /name/ {
+    rewrite    /name/([^/]+) /users?name=$1 break;
+    proxy_pass http://127.0.0.1;
+}
+</code></pre>
+<p>那么这服务我遇到的问题，nginx官方给出了使用方式</p>
 <p>当在 <code>proxy_pass</code> 中需要变量，可以使用 <code>$request_uri;</code></p>
 <p>另外也可以使用 <code>$is_args$args </code>参数 来保证原有的请求参数被传递</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">location ~* /fw/(?&lt;section&gt;.*) {
-</span></span><span class="line"><span class="cl">    proxy_pass http://127.0.0.1:2952/fw/$section$is_args$args;
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-conf">location ~* /fw/(?&lt;section&gt;.*) {
+    proxy_pass http://127.0.0.1:2952/fw/$section$is_args$args;
+}
+</code></pre>
+<blockquote>
 <p>$is_args</p>
 <p>“<code>?</code>”  if a request line has arguments, or an empty string otherwise</p>
 <p>$args</p>
 <p>arguments in the request line</p>
 </blockquote>
 <p>Reference</p>
-<p><a href="http://nginx.org/en/docs/varindex.html">Alphabetical index of variables</a></p>
+<p><a href="http://nginx.org/en/docs/varindex.html" target="_blank"
+   rel="noopener nofollow noreferrer" >Alphabetical index of variables</a></p>
 ]]></content:encoded>
     </item>
     
@@ -1156,17 +732,10 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <guid>https://www.oomkill.com/2023/05/ngx-in-docker-500/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>vue项目部署在裸机Linux上运行正常，部署在docker中nginx出现下列错误</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Nginx &#34;rewrite or internal redirection cycle while internally redirecting to &#34;/index.html&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>表现在用户界面 500 Internal Server Error</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/202305201300482.png" alt="image-20230518215938566"  /></p>
+<pre><code>Nginx &quot;rewrite or internal redirection cycle while internally redirecting to &quot;/index.html&quot;
+</code></pre>
+<p>表现在用户界面 500 Internal Server Error</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/202305201300482.png" alt="image-20230518215938566" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>原因：nginx配置路径不对，改成正确的后恢复</p>
 ]]></content:encoded>
     </item>
@@ -1179,15 +748,14 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <guid>https://www.oomkill.com/2022/03/wsl-problem-with-windows-terminal/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>在Windows Terminal中WSL无法打开错误代码是 <code>process exited with code 4294967295 (0xffffffff)</code>，但在命令行中 通过 <code>&quot;C:\Windows\System32\wsl.exe&quot; -d ubuntu18</code> 是正常的</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20220330221629562-2038164960.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20220330221629562-2038164960.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p><strong>解决方法是</strong>：通过修改启动的命令为 <code>wsl.exe ~ -d Ubuntu</code> 中间加一个 <code>~</code> 可以很好的解决掉</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20220330222938218-1759026485.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20220330222938218-1759026485.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>这种方法存在一个问题，打开的wsl终端将为根目录而不是当前windows目录</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://github.com/microsoft/terminal/issues/12474">Unable to launch WSL Ubuntu</a></p>
+<p><a href="https://github.com/microsoft/terminal/issues/12474" target="_blank"
+   rel="noopener nofollow noreferrer" >Unable to launch WSL Ubuntu</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -1199,41 +767,25 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       
       <guid>https://www.oomkill.com/2021/10/account-locked-due-to-10-failed-logins/</guid>
       <description></description>
-      <content:encoded><![CDATA[<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/dd613b500c634056a17ca2247e8aba0f.png" alt="在这里插入图片描述"  /></p>
+      <content:encoded><![CDATA[<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/dd613b500c634056a17ca2247e8aba0f.png" alt="在这里插入图片描述" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>进入后，找到linux16 开头的一行！将ro改为 <code>rw init=/sysroot/bin/sh</code></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/d505b39b548344158698e416855155ce.png" alt="在这里插入图片描述"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/c2baea4125f74c2bb23769bdb34b1c72.png" alt="在这里插入图片描述"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/d505b39b548344158698e416855155ce.png" alt="在这里插入图片描述" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/c2baea4125f74c2bb23769bdb34b1c72.png" alt="在这里插入图片描述" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>查看passwd和 shadow 发现用户并没有锁，于是想到，应该是pam的设置。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">pam_tally2.so deny=6 onerr=fail unlock_time=120
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>默认log在： <code>/var/log/tallylog</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">chroot /sysroot
-</span></span><span class="line"><span class="cl"># 使用pam_tally2命令解锁
-</span></span><span class="line"><span class="cl">pam_tally2 --user=root --reset
-</span></span><span class="line"><span class="cl">rw init=/sysroot/bin/sh
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="reference">Reference</h2>
+<pre><code>pam_tally2.so deny=6 onerr=fail unlock_time=120
+</code></pre>
+<p>默认log在： <code>/var/log/tallylog</code></p>
+<pre><code>chroot /sysroot
+# 使用pam_tally2命令解锁
+pam_tally2 --user=root --reset
+rw init=/sysroot/bin/sh
+</code></pre>
+<h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://www.cnblogs.com/luckyall/p/6609915.html">Centos7.x破解密码</a></p>
-<p><a href="http://www.jiangjiang.space/2016/11/15/maven-%E7%BC%96%E8%AF%91%E6%97%B6%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/">pam_tally2锁用户</a></p>
+<p><a href="https://www.cnblogs.com/luckyall/p/6609915.html" target="_blank"
+   rel="noopener nofollow noreferrer" >Centos7.x破解密码</a></p>
+<p><a href="http://www.jiangjiang.space/2016/11/15/maven-%E7%BC%96%E8%AF%91%E6%97%B6%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA/" target="_blank"
+   rel="noopener nofollow noreferrer" >pam_tally2锁用户</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -1258,10 +810,14 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <p>因为建表是时索引没设置大小，默认是超过255的，后面开启了前缀限制，大小会为3072，此时无法做表修改</p>
 <blockquote>
 <p><strong>Reference</strong></p>
-<p><a href="https://forums.percona.com/t/utf8mb4-error-1709-hy000-index-column-size-too-large-the-maximum-column-size-is-767-bytes/8336">Utf8mb4 / ERROR 1709 (HY000): Index column size too large. The maximum column size is 767 bytes </a></p>
-<p><a href="https://support.cpanel.net/hc/en-us/articles/4403725847959-MySQL-8-innodb-large-prefix">MySQL8 innodb large prefix</a></p>
-<p><a href="https://dba.stackexchange.com/questions/233751/are-innodb-large-prefix-and-innodb-file-format-settings-backwards-compatible">innodb_file_format settings backwards compatible</a></p>
-<p><a href="https://dev.mysql.com/doc/refman/5.7/en/innodb-limits.html">innodb limits</a></p>
+<p><a href="https://forums.percona.com/t/utf8mb4-error-1709-hy000-index-column-size-too-large-the-maximum-column-size-is-767-bytes/8336" target="_blank"
+   rel="noopener nofollow noreferrer" >Utf8mb4 / ERROR 1709 (HY000): Index column size too large. The maximum column size is 767 bytes </a></p>
+<p><a href="https://support.cpanel.net/hc/en-us/articles/4403725847959-MySQL-8-innodb-large-prefix" target="_blank"
+   rel="noopener nofollow noreferrer" >MySQL8 innodb large prefix</a></p>
+<p><a href="https://dba.stackexchange.com/questions/233751/are-innodb-large-prefix-and-innodb-file-format-settings-backwards-compatible" target="_blank"
+   rel="noopener nofollow noreferrer" >innodb_file_format settings backwards compatible</a></p>
+<p><a href="https://dev.mysql.com/doc/refman/5.7/en/innodb-limits.html" target="_blank"
+   rel="noopener nofollow noreferrer" >innodb limits</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -1281,39 +837,38 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <blockquote>
 <p><code>stdin</code> <code>stdout </code> <code>stderr </code> 如果这些参数为 <code>PIPE</code>, 此时会为一个文件句柄，而传入其他（例如 <code>sys.stdout</code> 、<code>None</code> 等）的则为<code>None</code></p>
 </blockquote>
-<p>正如这里介绍的一样，<a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin">subprocess</a> 。</p>
+<p>正如这里介绍的一样，<a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin" target="_blank"
+   rel="noopener nofollow noreferrer" >subprocess</a> 。</p>
 <p>而使用 <code>PIPE</code>，却导致程序 hanging。一般来说不推荐使用 <code>stdout=PIPE</code>  <code>stderr=PIPE</code>，这样会导致一个死锁，子进程会将输入的内容输入到 <code>pipe</code>，直到操作系统从buffer中读取出输入的内容。</p>
-<p>查询手册可以看到确实是这个问题 <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate">Refernce</a></p>
+<p>查询手册可以看到确实是这个问题 <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate" target="_blank"
+   rel="noopener nofollow noreferrer" >Refernce</a></p>
 <blockquote>
-<p><strong>Warning</strong> This will deadlock when using <code>stdout=PIPE</code> and/or <code>stderr=PIPE</code> and the child process generates enough output to a pipe such that it blocks waiting for the OS pipe buffer to accept more data. Use <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate"><code>communicate()</code></a> to avoid that.</p>
+<p><strong>Warning</strong> This will deadlock when using <code>stdout=PIPE</code> and/or <code>stderr=PIPE</code> and the child process generates enough output to a pipe such that it blocks waiting for the OS pipe buffer to accept more data. Use <a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.communicate" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>communicate()</code></a> to avoid that.</p>
 </blockquote>
 <p>而在linux中 <code>PIPE</code> 的容量（capacity）是内核中具有固定大小的一块缓冲区，如果用来接收但不消费就会阻塞，所以当用来接收命令的输出基本上100% 阻塞所以会导致整个任务 hanging。<em>（ -Linux2.6.11 ，pipe capacity 和system page size 一样（如， i386 为 4096 bytes ）。 since Linux 2.6.11+，pipe capacity 为 65536  bytes。）</em></p>
-<p>关于更多的信息可以参考：<a href="https://linux.die.net/man/7/pipe">pipe</a></p>
+<p>关于更多的信息可以参考：<a href="https://linux.die.net/man/7/pipe" target="_blank"
+   rel="noopener nofollow noreferrer" >pipe</a></p>
 <p>所以如果既要拿到对应的输出进行格式化，又要防止程序hang，可以自己创建一个缓冲区，这样可以根据需求控制其容量，可以有效的避免hanging。列如：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">cmd</span> <span class="o">=</span> <span class="s2">&#34;this is complex command&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="n">outPipe</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">SpooledTemporaryFile</span><span class="p">(</span><span class="n">bufsize</span><span class="o">=</span><span class="mi">10</span><span class="o">*</span><span class="mi">10000</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="n">fileno</span> <span class="o">=</span> <span class="n">outPipe</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span><span class="n">stdout</span><span class="o">=</span><span class="n">fileno</span><span class="p">,</span><span class="n">stderr</span><span class="o">=</span><span class="n">fileno</span><span class="p">,</span><span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>另外，几个参数设置的不通的区别如下：</p>
+<pre><code class="language-python">cmd = &quot;this is complex command&quot;
+outPipe = tempfile.SpooledTemporaryFile(bufsize=10*10000)
+fileno = outPipe.fileno()
+process = subprocess.Popen(cmd,stdout=fileno,stderr=fileno,shell=True)
+</code></pre>
+<p>另外，几个参数设置的不通的区别如下：</p>
 <p><code>stdout=None</code> 为继承父进程的句柄，通俗来说为标准输出。</p>
 <p><code>stderr=STDOUT</code> 重定向错误输出到标准输出</p>
 <p><code>stdout=PIPE</code> 将标准输出到linux pipe</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p><a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin">subprocess</a></p>
-<p><a href="https://stackoverflow.com/questions/25370347/python-subprocess-stderr-stdout-field-is-none-if-created">subprocess stderr/stdout field is None</a></p>
-<p><a href="https://stackoverflow.com/questions/39477003/python-subprocess-popen-hanging">subprocess-popen-hanging</a></p>
-<p><a href="https://unix.stackexchange.com/questions/11946/how-big-is-the-pipe-buffer">pipe size</a></p>
+<p><a href="https://docs.python.org/2/library/subprocess.html#subprocess.Popen.stdin" target="_blank"
+   rel="noopener nofollow noreferrer" >subprocess</a></p>
+<p><a href="https://stackoverflow.com/questions/25370347/python-subprocess-stderr-stdout-field-is-none-if-created" target="_blank"
+   rel="noopener nofollow noreferrer" >subprocess stderr/stdout field is None</a></p>
+<p><a href="https://stackoverflow.com/questions/39477003/python-subprocess-popen-hanging" target="_blank"
+   rel="noopener nofollow noreferrer" >subprocess-popen-hanging</a></p>
+<p><a href="https://unix.stackexchange.com/questions/11946/how-big-is-the-pipe-buffer" target="_blank"
+   rel="noopener nofollow noreferrer" >pipe size</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -1333,16 +888,13 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <li>goland：201903</li>
 </ul>
 <p>goland 打开项目时使用mod模式，无法识别外部包的依赖</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223548527-786340550.png" alt=""  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223808063-2002771119.png" alt=""  /></p>
-<p>根据<a href="https://www.jetbrains.com/help/go/configuring-build-constraints-and-vendoring.html#vendoring">goland</a>官方提示，开启时，将忽略go.mod依赖描述，所以就找不到相对应的依赖，但是编译时正常的。可以看到下图中，<code>external libraries</code> 并没有加载外部的库导致了无法识别。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223827606-198056237.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223548527-786340550.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223808063-2002771119.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p>根据<a href="https://www.jetbrains.com/help/go/configuring-build-constraints-and-vendoring.html#vendoring" target="_blank"
+   rel="noopener nofollow noreferrer" >goland</a>官方提示，开启时，将忽略go.mod依赖描述，所以就找不到相对应的依赖，但是编译时正常的。可以看到下图中，<code>external libraries</code> 并没有加载外部的库导致了无法识别。</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213223827606-198056237.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>此时想要正常使用的话，可以按照提示操作</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213224355732-1993575476.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1380340-20201213224355732-1993575476.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>将 goland 改为gopath模式，执行<code>go mod vendor</code> 将依赖同步到vendor 。此时正常。</p>
 <p>当依赖更新时，可以手动添加对应的依赖库，<code>go mod tidy</code> 后 。因为vendor中没有新的依赖，需要手动执行下<code>go mod vendor</code>即可正常使用。</p>
 <h2 id="使用vendor编译">使用vendor编译</h2>
@@ -1359,70 +911,35 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <guid>https://www.oomkill.com/2020/10/zimbra-troubleshooing/</guid>
       <description></description>
       <content:encoded><![CDATA[<h2 id="启动故障zimbra-postsuper-fatal-scan_dir_push-open-directory-defer-permission-denied">启动故障：<code>zimbra postsuper: fatal: scan_dir_push: open directory defer: Permission denied</code></h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Host mail.domain.com
-</span></span><span class="line"><span class="cl">        Starting ldap...Done.
-</span></span><span class="line"><span class="cl">        Starting zmconfigd...Done.
-</span></span><span class="line"><span class="cl">        Starting dnscache...Done.
-</span></span><span class="line"><span class="cl">        Starting logger...Done.
-</span></span><span class="line"><span class="cl">        Starting mailbox...Done.
-</span></span><span class="line"><span class="cl">        Starting memcached...Done.
-</span></span><span class="line"><span class="cl">        Starting proxy...Done.
-</span></span><span class="line"><span class="cl">        Starting amavis...Done.
-</span></span><span class="line"><span class="cl">        Starting antispam...Done.
-</span></span><span class="line"><span class="cl">        Starting antivirus...Done.
-</span></span><span class="line"><span class="cl">        Starting opendkim...Done.
-</span></span><span class="line"><span class="cl">        Starting snmp...Done.
-</span></span><span class="line"><span class="cl">        Starting spell...Done.
-</span></span><span class="line"><span class="cl">        Starting mta...Failed.
-</span></span><span class="line"><span class="cl">Starting saslauthd...done.
-</span></span><span class="line"><span class="cl">postsuper: fatal: scan_dir_push: open directory defer: Permission denied
-</span></span><span class="line"><span class="cl">postfix failed to start
-</span></span><span class="line"><span class="cl">        Starting stats...Done.
-</span></span><span class="line"><span class="cl">        Starting service webapp...Done.
-</span></span><span class="line"><span class="cl">        Starting zimbra webapp...Done.
-</span></span><span class="line"><span class="cl">        Starting zimbraAdmin webapp...Done.
-</span></span><span class="line"><span class="cl">        Starting zimlet webapp...Done.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看服务器状态：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mta   Stopped
-</span></span><span class="line"><span class="cl">postfix is not running
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>经查看mta服务是由postfix启动。</p>
+<pre><code class="language-bash">Host mail.domain.com
+        Starting ldap...Done.
+        Starting zmconfigd...Done.
+        Starting dnscache...Done.
+        Starting logger...Done.
+        Starting mailbox...Done.
+        Starting memcached...Done.
+        Starting proxy...Done.
+        Starting amavis...Done.
+        Starting antispam...Done.
+        Starting antivirus...Done.
+        Starting opendkim...Done.
+        Starting snmp...Done.
+        Starting spell...Done.
+        Starting mta...Failed.
+Starting saslauthd...done.
+postsuper: fatal: scan_dir_push: open directory defer: Permission denied
+postfix failed to start
+        Starting stats...Done.
+        Starting service webapp...Done.
+        Starting zimbra webapp...Done.
+        Starting zimbraAdmin webapp...Done.
+        Starting zimlet webapp...Done.
+</code></pre>
+<p>查看服务器状态：</p>
+<pre><code class="language-bash">mta   Stopped
+postfix is not running
+</code></pre>
+<p>经查看mta服务是由postfix启动。</p>
 <ul>
 <li>
 <p>查看系统是否已经对自带的sendmail和postfix进行关闭，端口25是否被占用，如果是请关闭并重启zimbra</p>
@@ -1432,276 +949,148 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 </li>
 </ul>
 <blockquote>
-<p>Refer：<a href="https://www.chenxie.net/archives/635.html">Zimbra 启动时mta无法启动  postsuper: fatal: scan_dir_push: open directory defer: Permission denied</a></p>
+<p>Refer：<a href="https://www.chenxie.net/archives/635.html" target="_blank"
+   rel="noopener nofollow noreferrer" >Zimbra 启动时mta无法启动  postsuper: fatal: scan_dir_push: open directory defer: Permission denied</a></p>
 </blockquote>
 <h2 id="错误">错误：</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">opendkim: /opt/zimbra/conf/opendkim.conf: ldap://xxxx333.com:389/?DKIMSelector?sub?<span class="o">(</span><span class="nv">DKIMIdentity</span><span class="o">=</span><span class="nv">$d</span><span class="o">)</span>: dkimf_db_open<span class="o">()</span>: Connect error
-</span></span><span class="line"><span class="cl">Failed to start opendkim: <span class="m">0</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：无法连接至ldap服务，检查ldap服务是否正常</p>
+<pre><code class="language-bash">opendkim: /opt/zimbra/conf/opendkim.conf: ldap://xxxx333.com:389/?DKIMSelector?sub?(DKIMIdentity=$d): dkimf_db_open(): Connect error
+Failed to start opendkim: 0
+</code></pre>
+<p>原因：无法连接至ldap服务，检查ldap服务是否正常</p>
 <blockquote>
-<p>Refer：<a href="https://forums.zimbra.org/viewtopic.php?t=13946">ZCS 8.0 mta error with zmopendkimctl error </a></p>
+<p>Refer：<a href="https://forums.zimbra.org/viewtopic.php?t=13946" target="_blank"
+   rel="noopener nofollow noreferrer" >ZCS 8.0 mta error with zmopendkimctl error </a></p>
 </blockquote>
 <h2 id="错误error-queue-report-unavailable">错误：Error: Queue report unavailable</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">zmcontrol status
-</span></span><span class="line"><span class="cl">Host mail.ttdconline.com
-</span></span><span class="line"><span class="cl">amavis                  Running
-</span></span><span class="line"><span class="cl">antispam                Running
-</span></span><span class="line"><span class="cl">antivirus               Running
-</span></span><span class="line"><span class="cl">ldap                    Running
-</span></span><span class="line"><span class="cl">logger                  Running
-</span></span><span class="line"><span class="cl">mailbox                 Running
-</span></span><span class="line"><span class="cl">memcached               Running
-</span></span><span class="line"><span class="cl">mta                     Running
-</span></span><span class="line"><span class="cl">opendkim                Running
-</span></span><span class="line"><span class="cl">proxy                   Running
-</span></span><span class="line"><span class="cl">service webapp          Running
-</span></span><span class="line"><span class="cl">snmp                    Running
-</span></span><span class="line"><span class="cl">spell                   Running
-</span></span><span class="line"><span class="cl">stats                   Running
-</span></span><span class="line"><span class="cl">zimbra webapp           Running
-</span></span><span class="line"><span class="cl">zimbraAdmin webapp      Running
-</span></span><span class="line"><span class="cl">zimlet webapp           Running
-</span></span><span class="line"><span class="cl">zmconfigd               Running
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">We reviewed logs and services and we see that the MTA is down:
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ tail -f /var/log/mail.log
-</span></span><span class="line"><span class="cl">Jan 22 11:08:00 zcs postfix/postqueue[19195]: fatal: Queue report unavailable – mail system is down
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Refer: <a href="https://dilliganesh.wordpress.com/2016/10/12/error-queue-report-unavailable-mail-system-is-down/">Error: Queue report unavailable – mail system is down					</a></p>
+<pre><code>zmcontrol status
+Host mail.ttdconline.com
+amavis                  Running
+antispam                Running
+antivirus               Running
+ldap                    Running
+logger                  Running
+mailbox                 Running
+memcached               Running
+mta                     Running
+opendkim                Running
+proxy                   Running
+service webapp          Running
+snmp                    Running
+spell                   Running
+stats                   Running
+zimbra webapp           Running
+zimbraAdmin webapp      Running
+zimlet webapp           Running
+zmconfigd               Running
+
+We reviewed logs and services and we see that the MTA is down:
+
+$ tail -f /var/log/mail.log
+Jan 22 11:08:00 zcs postfix/postqueue[19195]: fatal: Queue report unavailable – mail system is down
+</code></pre>
+<blockquote>
+<p>Refer: <a href="https://dilliganesh.wordpress.com/2016/10/12/error-queue-report-unavailable-mail-system-is-down/" target="_blank"
+   rel="noopener nofollow noreferrer" >Error: Queue report unavailable – mail system is down					</a></p>
 </blockquote>
 <h2 id="错误-logswatch-failed">错误 Logswatch Failed</h2>
 <p>zimbra logswatch failed</p>
 <p>. /opt/zimbra/.bashrc</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Starting logger...Failed.
-</span></span><span class="line"><span class="cl">[b]Starting logswatch...failed.[/b]
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Refer: <a href="https://forums.zimbra.org/viewtopic.php?f=13&amp;t=66900">8.8.15 Starting Logswatch Failed</a></p>
+<pre><code>Starting logger...Failed.
+[b]Starting logswatch...failed.[/b]
+</code></pre>
+<blockquote>
+<p>Refer: <a href="https://forums.zimbra.org/viewtopic.php?f=13&amp;t=66900" target="_blank"
+   rel="noopener nofollow noreferrer" >8.8.15 Starting Logswatch Failed</a></p>
 </blockquote>
 <h2 id="修改管理员账户密码">修改管理员账户密码</h2>
 <p>server.domain.com (<code>https://server.domain.com:7071</code>) 是当前运行的zimbra的域名或者IP地址，默认的http监听端口为7071
-输入用户名： <a href="https://link.jianshu.com?t=mailto:admin@domain.com">admin@domain.com</a> 和密码，完成登录</p>
+输入用户名： <a href="https://link.jianshu.com?t=mailto:admin@domain.com" target="_blank"
+   rel="noopener nofollow noreferrer" >admin@domain.com</a> 和密码，完成登录</p>
 <p>在zimbra安装配置时创建了管理员账户，可以在web端的账户工具栏任何时候进行账户密码修改，选择administrator 用户并选择密码修改
 也可以在命令行中运行zmprov进行管理员账户密码的修改：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">zmprov sp admin@domain.com &lt;password&gt;
-</span></span><span class="line"><span class="cl">zmprov gaaa //列出所有管理员
-</span></span><span class="line"><span class="cl">zmprov sp admin q1w2e3r4 或 zmprov sp admin@wish.com q12e3r4  <span class="c1"># 修改管理员账号密码</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="清除队列">清除队列</h2>
+<pre><code class="language-bash">zmprov sp admin@domain.com &lt;password&gt;
+zmprov gaaa //列出所有管理员
+zmprov sp admin q1w2e3r4 或 zmprov sp admin@wish.com q12e3r4  # 修改管理员账号密码
+</code></pre>
+<h2 id="清除队列">清除队列</h2>
 <p>查看发送队列数量:</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">/opt/zimbra/libexec/zmqstat
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看队列内容</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">mailq
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>删除队列</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">/opt/zimbra/postfix/sbin/postqueue -f
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查看邮件队列</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">/opt/zimbra/postfix/sbin/postcat -qv EC753D0D00
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code>/opt/zimbra/libexec/zmqstat
+</code></pre>
+<p>查看队列内容</p>
+<pre><code>mailq
+</code></pre>
+<p>删除队列</p>
+<pre><code>/opt/zimbra/postfix/sbin/postqueue -f
+</code></pre>
+<p>查看邮件队列</p>
+<pre><code>/opt/zimbra/postfix/sbin/postcat -qv EC753D0D00
+</code></pre>
+<blockquote>
 <p>Refer：</p>
-<p><a href="https://wiki.zimbra.com/wiki/Managing-The-Postfix-Queues">Managing The Postfix Queues</a></p>
+<p><a href="https://wiki.zimbra.com/wiki/Managing-The-Postfix-Queues" target="_blank"
+   rel="noopener nofollow noreferrer" >Managing The Postfix Queues</a></p>
 <p>[Zimbra – deleting all email in queue by sender](Zimbra – deleting all email in queue by sender)</p>
 </blockquote>
 <h2 id="被攻击状态">被攻击状态</h2>
 <p>查看邮件状态</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ /opt/zimbra/libexec/zmqstat
-</span></span><span class="line"><span class="cl">hold=0
-</span></span><span class="line"><span class="cl">corrupt=0
-</span></span><span class="line"><span class="cl">deferred=563344
-</span></span><span class="line"><span class="cl">active=19992
-</span></span><span class="line"><span class="cl">incoming=45830
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">postmap /opt/zimbra/conf/restricted_senders
-</span></span><span class="line"><span class="cl">postmap /opt/zimbra/conf/local_domains 
-</span></span><span class="line"><span class="cl">postmap ../common/conf/main.cf
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>问题</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Feb 23 00:36:56 ${domainname} postfix/postscreen[7614]: PASS OLD [193.26.3.10]:63396
-</span></span><span class="line"><span class="cl">Feb 23 00:36:56 ${domainname} postfix/smtpd[7615]: connect from mail.health.kiev.ua[193.26.3.10]
-</span></span><span class="line"><span class="cl">Feb 23 00:36:57 ${domainname} postfix/smtpd[7615]: Anonymous TLS connection established from mail.health.kiev.ua[193.26.3.10]: TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits)
-</span></span><span class="line"><span class="cl">Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span><span class="line"><span class="cl">Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span><span class="line"><span class="cl">Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span><span class="line"><span class="cl">Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:37:00 ${domainname} postfix/postqueue[13129]: fatal: Queue report unavailable - mail system is down
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span><span class="line"><span class="cl">Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:37:05 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
-</span></span><span class="line"><span class="cl">Feb 23 00:37:05 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：找其他服务器处理这个问题并修改配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">local_only = check_recipient_access lmdb:/opt/zimbra/conf/local_domains, reject
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>正常</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: connect from iZj6c4jc5vsy383um5cgomZ[172.31.108.227]
-</span></span><span class="line"><span class="cl">Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: NOQUEUE: reject: RCPT from iZj6c4jc5vsy383um5cgomZ[172.31.108.227]: 554 5.7.1 &lt;test1@${domainname}.com&gt;: Sender address rejected: Access denied; from=&lt;test1@${domainname}.com&gt; to=&lt;test@163.com&gt; proto=ESMTP helo=&lt;${domainname}.com&gt;
-</span></span><span class="line"><span class="cl">Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: disconnect from iZj6c4jc5vsy383um5cgomZ[172.31.108.227] ehlo=1 mail=1 rcpt=0/1 quit=1 commands=3/4
-</span></span><span class="line"><span class="cl">Feb 23 00:49:31 ${domainname} zmconfigd[17300]: Tracking service snmp
-</span></span><span class="line"><span class="cl">Feb 23 00:49:32 ${domainname} zmconfigd[17300]: Watchdog: service antivirus status is OK.
-</span></span><span class="line"><span class="cl">Feb 23 00:49:32 ${domainname} zmconfigd[17300]: All rewrite threads completed in 0.00 se
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>配置安全策略</p>
+<pre><code>$ /opt/zimbra/libexec/zmqstat
+hold=0
+corrupt=0
+deferred=563344
+active=19992
+incoming=45830
+</code></pre>
+<pre><code>postmap /opt/zimbra/conf/restricted_senders
+postmap /opt/zimbra/conf/local_domains 
+postmap ../common/conf/main.cf
+</code></pre>
+<p>问题</p>
+<pre><code>Feb 23 00:36:56 ${domainname} postfix/postscreen[7614]: PASS OLD [193.26.3.10]:63396
+Feb 23 00:36:56 ${domainname} postfix/smtpd[7615]: connect from mail.health.kiev.ua[193.26.3.10]
+Feb 23 00:36:57 ${domainname} postfix/smtpd[7615]: Anonymous TLS connection established from mail.health.kiev.ua[193.26.3.10]: TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits)
+Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+Feb 23 00:36:58 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
+Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+Feb 23 00:36:59 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
+Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+Feb 23 00:37:00 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
+Feb 23 00:37:00 ${domainname} postfix/postqueue[13129]: fatal: Queue report unavailable - mail system is down
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+Feb 23 00:37:01 ${domainname} postfix/smtpd[7615]: NOQUEUE: reject: RCPT from mail.health.kiev.ua[193.26.3.10]: 451 4.3.5 &lt;&gt;: Sender address rejected: Server configuration error; from=&lt;&gt; to=&lt;vivian@${domainname}.com&gt; proto=ESMTP helo=&lt;mail.health.kiev.ua&gt;
+Feb 23 00:37:05 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders is unavailable. open database /opt/zimbra/conf/restricted_senders.lmdb: MDB_INVALID: File is not an LMDB file
+Feb 23 00:37:05 ${domainname} postfix/smtpd[7615]: warning: lmdb:/opt/zimbra/conf/restricted_senders: table lookup problem
+</code></pre>
+<p>解决：找其他服务器处理这个问题并修改配置</p>
+<pre><code>local_only = check_recipient_access lmdb:/opt/zimbra/conf/local_domains, reject
+</code></pre>
+<p>正常</p>
+<pre><code>Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: connect from iZj6c4jc5vsy383um5cgomZ[172.31.108.227]
+Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: NOQUEUE: reject: RCPT from iZj6c4jc5vsy383um5cgomZ[172.31.108.227]: 554 5.7.1 &lt;test1@${domainname}.com&gt;: Sender address rejected: Access denied; from=&lt;test1@${domainname}.com&gt; to=&lt;test@163.com&gt; proto=ESMTP helo=&lt;${domainname}.com&gt;
+Feb 23 00:49:31 ${domainname} postfix/smtpd[24306]: disconnect from iZj6c4jc5vsy383um5cgomZ[172.31.108.227] ehlo=1 mail=1 rcpt=0/1 quit=1 commands=3/4
+Feb 23 00:49:31 ${domainname} zmconfigd[17300]: Tracking service snmp
+Feb 23 00:49:32 ${domainname} zmconfigd[17300]: Watchdog: service antivirus status is OK.
+Feb 23 00:49:32 ${domainname} zmconfigd[17300]: All rewrite threads completed in 0.00 se
+</code></pre>
+<p>配置安全策略</p>
 <blockquote>
-<p><a href="https://blog.csdn.net/qq_38209584/article/details/73867569">Zimbra 8.7.11规则：只能发送内部邮件</a></p>
-<p><a href="https://wiki.zimbra.com/wiki/Domain_level_blocking_of_users#ZCS_8.7_and_later">Domain level blocking of users</a></p>
-<p><a href="https://wiki.zimbra.com/wiki/Rejecting_Emails_at_SMTP_Level">Rejecting Emails at SMTP Level</a></p>
+<p><a href="https://blog.csdn.net/qq_38209584/article/details/73867569" target="_blank"
+   rel="noopener nofollow noreferrer" >Zimbra 8.7.11规则：只能发送内部邮件</a></p>
+<p><a href="https://wiki.zimbra.com/wiki/Domain_level_blocking_of_users#ZCS_8.7_and_later" target="_blank"
+   rel="noopener nofollow noreferrer" >Domain level blocking of users</a></p>
+<p><a href="https://wiki.zimbra.com/wiki/Rejecting_Emails_at_SMTP_Level" target="_blank"
+   rel="noopener nofollow noreferrer" >Rejecting Emails at SMTP Level</a></p>
 </blockquote>
 <p>配置监控策略</p>
 <blockquote>
-<p><a href="https://zimbra.github.io/adminguide/latest/#_configuring_disk_space_notifications">配置磁盘空间的告警</a></p>
+<p><a href="https://zimbra.github.io/adminguide/latest/#_configuring_disk_space_notifications" target="_blank"
+   rel="noopener nofollow noreferrer" >配置磁盘空间的告警</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -1714,92 +1103,55 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <guid>https://www.oomkill.com/2020/09/centos7-dbus-troubleshooting/</guid>
       <description></description>
       <content:encoded><![CDATA[<h2 id="authorization-not-available-check-if-polkit">Authorization not available. Check if polkit</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Authorization not available. Check if polkit service is running or see debug message for more information.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus.socket failed to listen on sockets: Address family not supported by protocol
-</span></span><span class="line"><span class="cl">Failed to listen on D-Bus System Message Bus Socket.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这个问题是因为dbus.socket状态异常，所有依赖dbus的启动都会去通过systemcall连接 dbus，当服务不可用时，所有服务无法以systemd方式正常启动/关闭。需要检查dbus.socket是否正常。本地使用需保证unix套接字的监听时启动的</p>
+<pre><code>Authorization not available. Check if polkit service is running or see debug message for more information.
+
+dbus.socket failed to listen on sockets: Address family not supported by protocol
+Failed to listen on D-Bus System Message Bus Socket.
+</code></pre>
+<p>这个问题是因为dbus.socket状态异常，所有依赖dbus的启动都会去通过systemcall连接 dbus，当服务不可用时，所有服务无法以systemd方式正常启动/关闭。需要检查dbus.socket是否正常。本地使用需保证unix套接字的监听时启动的</p>
 <h2 id="did-not-receive-a-reply">Did not receive a reply</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Failed to open connection to &#34;system&#34; message bus: Did not receive a reply. Possible causes include: the remote application did not send a reply, the message bus security policy blocked the reply, the reply timeout expired, or the network connection was broken.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这是因为你的配置不对，客户端无法连接上</p>
+<pre><code>Failed to open connection to &quot;system&quot; message bus: Did not receive a reply. Possible causes include: the remote application did not send a reply, the message bus security policy blocked the reply, the reply timeout expired, or the network connection was broken.
+</code></pre>
+<p>这是因为你的配置不对，客户端无法连接上</p>
 <h2 id="d-bus-重启后登陆慢">D-Bus 重启后登陆慢</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">systemd-logind: Failed to connect to system bus: Connection refused
-</span></span><span class="line"><span class="cl">systemd-logind: Failed to fully start up daemon: Connection refused
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service: main process exited, code=exited, status=1/FAILURE
-</span></span><span class="line"><span class="cl">systemd: Unit systemd-logind.service entered failed state.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service failed.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service has no holdoff time, scheduling restart.
-</span></span><span class="line"><span class="cl">systemd: start request repeated too quickly for systemd-logind.service
-</span></span><span class="line"><span class="cl">systemd: Unit systemd-logind.service entered failed state.
-</span></span><span class="line"><span class="cl">systemd: systemd-logind.service failed.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dbus[7782]: [system] Failed to activate service &#39;org.freedesktop.login1&#39;: timed out
-</span></span><span class="line"><span class="cl">dbus-daemon: dbus[7782]: [system] Failed to activate service &#39;org.freedesktop.login1&#39;:   timed out
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考：<a href="https://serverfault.com/questions/707377/slow-ssh-login-activation-of-org-freedesktop-login1-timed-out">ssh登陆缓慢</a></p>
+<pre><code>systemd-logind: Failed to connect to system bus: Connection refused
+systemd-logind: Failed to fully start up daemon: Connection refused
+systemd: systemd-logind.service: main process exited, code=exited, status=1/FAILURE
+systemd: Unit systemd-logind.service entered failed state.
+systemd: systemd-logind.service failed.
+systemd: systemd-logind.service has no holdoff time, scheduling restart.
+systemd: start request repeated too quickly for systemd-logind.service
+systemd: Unit systemd-logind.service entered failed state.
+systemd: systemd-logind.service failed.
+
+dbus[7782]: [system] Failed to activate service 'org.freedesktop.login1': timed out
+dbus-daemon: dbus[7782]: [system] Failed to activate service 'org.freedesktop.login1':   timed out
+</code></pre>
+<p>参考：<a href="https://serverfault.com/questions/707377/slow-ssh-login-activation-of-org-freedesktop-login1-timed-out" target="_blank"
+   rel="noopener nofollow noreferrer" >ssh登陆缓慢</a></p>
 <p>systemd-logind主要功能是为每一个登陆session创建一个systemd角度的cgroup管理对象，更方便对session使用cgroup，在dbus服务异常时，systemd-logind会导致登陆缓慢，并不影响正常登陆和ssh登陆。重启dbus.socket后需要也重启systemd-logind</p>
 <h2 id="d-bus-开启远程连接">D-Bus 开启远程连接</h2>
 <p>编辑 <code>/usr/share/dbus-1/system.conf</code> 或 <code>/etc/dbus-1/session.conf</code></p>
 <p>通常情况下生效的是 <code>/etc/dbus-1/system.conf</code> ,需要根据dbus应用是system bus 还是 session bus进行选择配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">&lt;listen&gt;tcp:host=&lt;ip&gt;,bind=*,port=&lt;port&gt;,family=ipv4&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">&lt;listen&gt;unix:path=/run/user/&lt;username&gt;/dbus/user_bus_socket&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">&lt;listen&gt;unix:tmpdir=/tmp&lt;/listen&gt;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">&lt;auth&gt;ANONYMOUS&lt;/auth&gt;
-</span></span><span class="line"><span class="cl">&lt;allow_anonymous/&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
-<p>Reference</p>
-<p><a href="https://blog.fpmurphy.com/2018/10/using-the-d-bus-interface-to-firewalld.html">dbus-send使用</a></p>
-<p><a href="https://stackoverflow.com/questions/61327052/linux-dbus-remote-tcp-connection-with-systemd-fails">Linux DBus远程TCP连接失败</a></p>
-</blockquote>
+<pre><code>&lt;listen&gt;tcp:host=&lt;ip&gt;,bind=*,port=&lt;port&gt;,family=ipv4&lt;/listen&gt;
+&lt;listen&gt;unix:path=/run/user/&lt;username&gt;/dbus/user_bus_socket&lt;/listen&gt;
+&lt;listen&gt;unix:tmpdir=/tmp&lt;/listen&gt;
+
+&lt;auth&gt;ANONYMOUS&lt;/auth&gt;
+&lt;allow_anonymous/&gt;
+</code></pre>
+<h2 id="reference">Reference</h2>
+<ul>
+<li><a href="https://blog.fpmurphy.com/2018/10/using-the-d-bus-interface-to-firewalld.html" target="_blank"
+   rel="noopener nofollow noreferrer" >dbus-send使用</a></li>
+<li><a href="https://stackoverflow.com/questions/61327052/linux-dbus-remote-tcp-connection-with-systemd-fails" target="_blank"
+   rel="noopener nofollow noreferrer" >Linux DBus远程TCP连接失败</a></li>
+</ul>
 <h2 id="dbus-faq">dbus faq</h2>
-<p><a href="https://dbus.freedesktop.org/doc/">faq</a></p>
+<ul>
+<li><a href="https://dbus.freedesktop.org/doc/" target="_blank"
+   rel="noopener nofollow noreferrer" >faq</a></li>
+</ul>
 ]]></content:encoded>
     </item>
     
@@ -1814,50 +1166,31 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <p>明明镜像中有对应的二进制文件，但是执行时却提示 <code>not found</code> 或 <code>no such file</code> 或 <code>standard_init_linux.go:211: exec user process caused &quot;no such file or directory&quot;</code></p>
 <p>网上常说都是因为windows换行符编码问题。此处实际问题是<strong>该二进制文件是使用动态链接方式编译</strong>.</p>
 <p>解决方法：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">CGO_ENABLED=0  GOOS=linux  GOARCH=amd64 go build --ldflags &#34;-extldflags -static&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>注意：<code>CGO_ENABLED=0 GOOS=linux GOARCH=amd64</code> 和 <code>cgo_enabled=0 goos=linux goarch=amd64</code> 是有区别的。</p>
+<pre><code>CGO_ENABLED=0  GOOS=linux  GOARCH=amd64 go build --ldflags &quot;-extldflags -static&quot;
+</code></pre>
+<p>注意：<code>CGO_ENABLED=0 GOOS=linux GOARCH=amd64</code> 和 <code>cgo_enabled=0 goos=linux goarch=amd64</code> 是有区别的。</p>
 <p><strong>保存信息</strong></p>
 <p>诸如此类信息都是上述问题</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">standard_init_linux.go:211: exec user process caused &#34;no such file or directory&#34;
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">/tmp # ./envoy_end 
-</span></span><span class="line"><span class="cl">/bin/sh: ./envoy_end: not found
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="替换为国内源">替换为国内源</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">RUN sed -i &#39;s@http://dl-cdn.alpinelinux.org/@https://mirrors.aliyun.com/@g&#39; /etc/apk/repositories
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="基于alpine制作php镜像">基于alpine制作PHP镜像</h2>
+<pre><code>standard_init_linux.go:211: exec user process caused &quot;no such file or directory&quot;
+
+/tmp # ./envoy_end 
+/bin/sh: ./envoy_end: not found
+</code></pre>
+<h2 id="替换为国内源">替换为国内源</h2>
+<pre><code>RUN sed -i 's@http://dl-cdn.alpinelinux.org/@https://mirrors.aliyun.com/@g' /etc/apk/repositories
+</code></pre>
+<h2 id="基于alpine制作php镜像">基于alpine制作PHP镜像</h2>
 <ul>
 <li>
-<p>alpine包搜索 <a href="https://pkgs.alpinelinux.org/">https://pkgs.alpinelinux.org/</a></p>
+<p>alpine包搜索 <a href="https://pkgs.alpinelinux.org/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://pkgs.alpinelinux.org/</a></p>
 </li>
 <li>
 <p>安装依赖库 <code>apk add  --no-cache  xxx</code></p>
 </li>
 <li>
-<p>基于php apline镜像自行增加或删除扩展。 <a href="https://github.com/docker-library/php">offcial-repo</a></p>
+<p>基于php apline镜像自行增加或删除扩展。 <a href="https://github.com/docker-library/php" target="_blank"
+   rel="noopener nofollow noreferrer" >offcial-repo</a></p>
 </li>
 <li>
 <p>增加扩展可以使用 <code>pecl install xxx</code> 如 <code>pecl install redis</code></p>
@@ -1869,7 +1202,8 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <blockquote>
 <p>此中方式制作镜像，常见扩展安装完成后，容器大小可控制在100M左右</p>
 </blockquote>
-<p>参考资料：<a href="https://stackoverflow.com/questions/46221063/what-is-build-deps-for-apk-add-virtual-command">What is .build-deps for apk add &ndash;virtual command?</a></p>
+<p>参考资料：<a href="https://stackoverflow.com/questions/46221063/what-is-build-deps-for-apk-add-virtual-command" target="_blank"
+   rel="noopener nofollow noreferrer" >What is .build-deps for apk add &ndash;virtual command?</a></p>
 ]]></content:encoded>
     </item>
     
@@ -1885,108 +1219,56 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <blockquote>
 <p>ubuntu示例</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">RUN sed -i &#39;s/archive.ubuntu.com/mirrors.aliyun.com/g&#39; /etc/apt/sources.list
-</span></span><span class="line"><span class="cl">RUN sed -i &#39;s/security.ubuntu.com/mirrors.aliyun.com/g&#39; /etc/apt/sources.list
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code>RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+RUN sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+</code></pre>
+<blockquote>
 <p>apline示例</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">RUN sed -i &#39;s@http://dl-cdn.alpinelinux.org/@https://mirrors.aliyun.com/@g&#39; /etc/apk/repositories
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>方法二：使用http代理，</p>
-<p>ubuntu 参考 <a href="https://medium.com/@airman604/getting-docker-to-work-with-a-proxy-server-fadec841194e">命令行使用代理</a></p>
+<pre><code>RUN sed -i 's@http://dl-cdn.alpinelinux.org/@https://mirrors.aliyun.com/@g' /etc/apk/repositories
+</code></pre>
+<p>方法二：使用http代理，</p>
+<p>ubuntu 参考 <a href="https://medium.com/@airman604/getting-docker-to-work-with-a-proxy-server-fadec841194e" target="_blank"
+   rel="noopener nofollow noreferrer" >命令行使用代理</a></p>
 <h2 id="下载镜像失败处理">下载镜像失败处理</h2>
 <p>方法一：docker宿主机使用ss，开启局域网可连接。同局域网中的都可直接连此代理
 方法二： docker systemd的 service文件中增加http代理</p>
 <p>可看到已经可以成功运行envoy example示例</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200912185345368-159241184.png" alt=""  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20200912185345368-159241184.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h2 id="cannot-bind-000080-permission-denied">cannot bind &lsquo;0.0.0.0:80&rsquo;: Permission denied</h2>
 <p>docker-compose文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;3&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">services</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoy</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">envoyproxy/envoy-alpine:v1.15-latest</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">./envoy.yaml:/etc/envoy/envoy.yaml</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">network_mode</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;service:mainserver&#34;</span><span class="w"> 
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">mainserver</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">mainserver</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">cylonchau/envoy-end:latest</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">networks</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">aliases</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">webserver</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">httpserver</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>- <span class="l">envoy_end</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">networks</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">envoymesh</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>启动时报错</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">envoy_1       | [2020-09-06 07:09:48.618][8][critical][main] [source/server/server.cc:101] error initializing configuration &#39;/etc/envoy/envoy.yaml&#39;: cannot bind &#39;0.0.0.0:80&#39;: Permission denied
-</span></span><span class="line"><span class="cl">envoy_1       | [2020-09-06 07:09:48.618][8][info][main] [source/server/server.cc:704] exiting
-</span></span><span class="line"><span class="cl">envoy_1       | cannot bind &#39;0.0.0.0:80&#39;: Permission denied
-</span></span><span class="line"><span class="cl">root_envoy_1 exited with code 1
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考 <a href="https://github.com/envoyproxy/envoy/issues/11506">list</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">environment:
-</span></span><span class="line"><span class="cl">- &#34;ENVOY_UID=0&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-yaml">version: '3'
+services:
+  envoy:
+    image: envoyproxy/envoy-alpine:v1.15-latest
+    volumes:
+    - ./envoy.yaml:/etc/envoy/envoy.yaml
+    network_mode: &quot;service:mainserver&quot; 
+    depends_on:
+    - mainserver
+  mainserver:
+    image: cylonchau/envoy-end:latest
+    networks:
+      envoymesh:
+        aliases:
+        - webserver
+        - httpserver
+        - envoy_end
+networks:
+  envoymesh: {}
+</code></pre>
+<p>启动时报错</p>
+<pre><code>envoy_1       | [2020-09-06 07:09:48.618][8][critical][main] [source/server/server.cc:101] error initializing configuration '/etc/envoy/envoy.yaml': cannot bind '0.0.0.0:80': Permission denied
+envoy_1       | [2020-09-06 07:09:48.618][8][info][main] [source/server/server.cc:704] exiting
+envoy_1       | cannot bind '0.0.0.0:80': Permission denied
+root_envoy_1 exited with code 1
+</code></pre>
+<p>参考 <a href="https://github.com/envoyproxy/envoy/issues/11506" target="_blank"
+   rel="noopener nofollow noreferrer" >list</a></p>
+<pre><code>environment:
+- &quot;ENVOY_UID=0&quot;
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -1997,48 +1279,24 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <guid>https://www.oomkill.com/2018/05/oracle-tcp.validnode_checking/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>对Oracle 检查ip合法性,就必须在服务器端的sqlnet.ora文件中设置如下参数</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">TCP.INVITED_NODES=(10.0.0.36,10.0.0.1,10.0.0.35)  
-</span></span><span class="line"><span class="cl">TCP.EXCLUDED_NODES=(10.0.0.2)  
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>启动监听出现如下错误</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ lsnrctl status  
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">LSNRCTL for Linux: Version 11.2.0.1.0 - Production on 12-MAR-2018 18:32:13  
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">Copyright (c) 1991, 2009, Oracle.  All rights reserved.  
-</span></span><span class="line"><span class="cl">  
-</span></span><span class="line"><span class="cl">Connecting to (ADDRESS=(PROTOCOL=tcp)(HOST=)(PORT=1521))  
-</span></span><span class="line"><span class="cl">TNS-12541: TNS:no listener  
-</span></span><span class="line"><span class="cl"> TNS-12560: TNS:protocol adapter error  
-</span></span><span class="line"><span class="cl">  TNS-00511: No listener  
-</span></span><span class="line"><span class="cl">   Linux Error: 111: Connection refused
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>错误输出并没有打印详细的信息,从lisenter.ora,tnsnames.ora入手,但没有发现文件是错误的。最后检查sqlnet.ora,发现TCP.INVITED_NODES参数有如下约束是官方文档没有给出的</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20210930150150079-1727667534.png" alt=""  /></p>
+<pre><code>TCP.INVITED_NODES=(10.0.0.36,10.0.0.1,10.0.0.35)  
+TCP.EXCLUDED_NODES=(10.0.0.2)  
+</code></pre>
+<p>启动监听出现如下错误</p>
+<pre><code>$ lsnrctl status  
+  
+LSNRCTL for Linux: Version 11.2.0.1.0 - Production on 12-MAR-2018 18:32:13  
+  
+Copyright (c) 1991, 2009, Oracle.  All rights reserved.  
+  
+Connecting to (ADDRESS=(PROTOCOL=tcp)(HOST=)(PORT=1521))  
+TNS-12541: TNS:no listener  
+ TNS-12560: TNS:protocol adapter error  
+  TNS-00511: No listener  
+   Linux Error: 111: Connection refused
+</code></pre>
+<p>错误输出并没有打印详细的信息,从lisenter.ora,tnsnames.ora入手,但没有发现文件是错误的。最后检查sqlnet.ora,发现TCP.INVITED_NODES参数有如下约束是官方文档没有给出的</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20210930150150079-1727667534.png" alt="" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p><strong><font style="color:red"> tcp.invited_nodes需要满足如下条件才可成功启动监听</font></strong></p>
 <ul>
 <li>1、需要设置参数TCP.VALIDNODE_CHECKING为YES才能激活该特性。</li>
@@ -2069,43 +1327,30 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
 <h2 id="问题分析">问题分析</h2>
 <p>当在windows客户端使用sqlplus或navicat时如果数据库中文显示“????”</p>
 <p>这种情况是在客户端与服务器端字符集不一致时，从客户端输入了汉字信息。输入的这些信息即便是把客户端字符集更改正确，也无法显示汉字。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215302334-117370933.png" alt="img"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215313731-33925628.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215302334-117370933.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215313731-33925628.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>解决方法：退出sqlplus,设置相应的环境变量NLS_LANG</p>
 <p>linux：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">export NLS_LANG=&#34;SIMPLIFIED CHINESE_CHINA.ZHS16GBK&#34; 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>windows：</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215414786-1063538995.png" alt="img"  /></p>
+<pre><code>export NLS_LANG=&quot;SIMPLIFIED CHINESE_CHINA.ZHS16GBK&quot; 
+</code></pre>
+<p>windows：</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215414786-1063538995.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h2 id="出现问题">出现问题</h2>
 <p>此时。系统cmd命令行使用sqlplus已经正常显示中文，但是navicat中依旧是？？？？</p>
 <p>图为cmd命令行访问sqlplus客户端查询</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215432087-917488218.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215432087-917488218.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>图为navicat f6弹出的sqlplus客户端</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215446566-878106693.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215446566-878106693.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>原因是因为Navicat Premium默认自带的instant client，但是其是base lite版本的（Basic Lite： Basic  的精简版本，其中仅带有英文错误消息和 Unicode、ASCII  以及西欧字符集支持），不支持中文字符集，而本文中的服务器端oracle恰好是中文字符集。自带版本不支持。此处需要去oracle官网下载相对应的版本。</p>
-<p><a href="http://www.oracle.com/technetwork/database/database-technologies/instant-client/downloads/index.html">http://www.oracle.com/technetwork/database/database-technologies/instant-client/downloads/index.html</a></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215502943-2034092654.png" alt="img"  /></p>
+<p><a href="http://www.oracle.com/technetwork/database/database-technologies/instant-client/downloads/index.html" target="_blank"
+   rel="noopener nofollow noreferrer" >http://www.oracle.com/technetwork/database/database-technologies/instant-client/downloads/index.html</a></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215502943-2034092654.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>将下载的文件解压覆盖navicat中的instantclient目录里的文件。</p>
 <p>此时连接oracle实例提示如下信息</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215518269-1348254446.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215518269-1348254446.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>尽管我们下载了64位的版本。却提示如图信息。这是因为Navicat仅支持32位的，因此还需下载一个32位的客户端。替换到instantclient目录中</p>
 <p>替换完成后连接实例。f6使用sqlplus查询发现中文已经正常显示</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215532150-1754188108.png" alt="img"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/1380340-20180419215532150-1754188108.png" alt="img" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 ]]></content:encoded>
     </item>
     
@@ -2118,276 +1363,125 @@ Pool 两个存储池，存储池都位于同一个ceph集群之上，所以看�
       <description></description>
       <content:encoded><![CDATA[<h2 id="编译错误">编译错误</h2>
 <h3 id="错误同时指定了fpm与aspxs2方式错误">错误：同时指定了fpm与aspxs2方式错误</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">You<span class="err">&#39;</span>ve configured multiple SAPIs to be build.You can build only one SAPI module 
-</span></span><span class="line"><span class="cl">and CLI binary at the same <span class="nb">time</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：导致的原因是我的配置参数中同时使用了&ndash;enable-fpm 与&ndash;with-apxs2，因此编译的时候出错了，去掉其中的任意一个参数编译成功。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214223427069.png" alt="image-20221214223427069"  /></p>
+<pre><code class="language-bash">You've configured multiple SAPIs to be build.You can build only one SAPI module 
+and CLI binary at the same time
+</code></pre>
+<p>原因：导致的原因是我的配置参数中同时使用了&ndash;enable-fpm 与&ndash;with-apxs2，因此编译的时候出错了，去掉其中的任意一个参数编译成功。</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214223427069.png" alt="image-20221214223427069" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h3 id="系统缺少libtool">系统缺少libtool</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">make ***<span class="o">[</span>libphp5.la<span class="o">]</span> Error <span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：在编译PHP版本时，产生错误 <code>make ***[libphp5.la] Error 1</code></p>
+<pre><code class="language-bash">make ***[libphp5.la] Error 1
+</code></pre>
+<p>解决方法：在编译PHP版本时，产生错误 <code>make ***[libphp5.la] Error 1</code></p>
 <p>错误原因：系统缺少libtool</p>
 <p>解决办法：<code>yum install libtool-ltdl-devel</code></p>
 <h2 id="make过程错误">make过程错误</h2>
 <h3 id="make--sapicliphp-error-1">make: *** [sapi/cli/php] Error 1</h3>
 <p>原因：在 「<code>./configure</code> 」 沒抓好一些环境变数值。错误发生点在建立「<code>-o sapi/cli/php</code>」是出错，没給到要 link 的 iconv 库参数。</p>
 <p>报错提示：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">libiconv.so.2: cannot open shared object file: No such file or directory mak
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/iconv/iconv.c:2591: undefined reference to <span class="sb">`</span>libiconv_open<span class="s1">&#39;
-</span></span></span><span class="line"><span class="cl"><span class="s1">ext/xmlrpc/libxmlrpc/.libs/encodings.o: In function `convert&#39;</span>:
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:74: undefined reference to <span class="sb">`</span>libiconv_open<span class="s1">&#39;
-</span></span></span><span class="line"><span class="cl"><span class="s1">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:82: undefined reference to `libiconv&#39;</span>
-</span></span><span class="line"><span class="cl">/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:102: undefined reference to <span class="sb">`</span>libiconv_close<span class="err">&#39;</span>
-</span></span><span class="line"><span class="cl">collect2: ld returned <span class="m">1</span> <span class="nb">exit</span> status
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>sapi/cli/php<span class="o">]</span> Error <span class="m">1</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法1：编辑Makefile 我的php7.1.3在88行的地方:在最后加上 <code>-liconv</code>，或者编译时，编译参数指定 iconv 安装目录不会报此错误。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"> <span class="m">113</span> <span class="nv">EXTRA_LIBS</span> <span class="o">=</span> -lcrypt -lz -lexslt -lcrypt -lrt -lmcrypt -lpng -lz -ljpeg -lcurl -lz -lrt -lm -ldl -lnsl -lrt -lxml2 -l
-</span></span><span class="line"><span class="cl">     z -lm -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lssl -lcrypto -lcurl -lxml2 -lz -lm -lfreetype -lmysqlclient -lm -lr
-</span></span><span class="line"><span class="cl">     t -ldl -lxml2 -lz -lm -lxml2 -lz -lm -lcrypt -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxslt -lxml
-</span></span><span class="line"><span class="cl">     <span class="m">2</span> -lz -lm -lssl -lcrypto -lcrypt 「-liconv」
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法2：自己打包替换系统内的iconv包</p>
+<pre><code class="language-bash">libiconv.so.2: cannot open shared object file: No such file or directory mak
+
+/root/tools/php-7.1.3/ext/iconv/iconv.c:2591: undefined reference to `libiconv_open'
+ext/xmlrpc/libxmlrpc/.libs/encodings.o: In function `convert':
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:74: undefined reference to `libiconv_open'
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:82: undefined reference to `libiconv'
+/root/tools/php-7.1.3/ext/xmlrpc/libxmlrpc/encodings.c:102: undefined reference to `libiconv_close'
+collect2: ld returned 1 exit status
+make: *** [sapi/cli/php] Error 1
+</code></pre>
+<p>解决方法1：编辑Makefile 我的php7.1.3在88行的地方:在最后加上 <code>-liconv</code>，或者编译时，编译参数指定 iconv 安装目录不会报此错误。</p>
+<pre><code class="language-bash"> 113 EXTRA_LIBS = -lcrypt -lz -lexslt -lcrypt -lrt -lmcrypt -lpng -lz -ljpeg -lcurl -lz -lrt -lm -ldl -lnsl -lrt -lxml2 -l
+     z -lm -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err -lssl -lcrypto -lcurl -lxml2 -lz -lm -lfreetype -lmysqlclient -lm -lr
+     t -ldl -lxml2 -lz -lm -lxml2 -lz -lm -lcrypt -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxml2 -lz -lm -lxslt -lxml
+     2 -lz -lm -lssl -lcrypto -lcrypt 「-liconv」
+</code></pre>
+<p>解决方法2：自己打包替换系统内的iconv包</p>
 <h3 id="make--extpharpharphp-error-127">make: *** [ext/phar/phar.php] Error 127</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/root/dev/php-5.3.6/sapi/cli/php: error <span class="k">while</span> loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>ext/phar/phar.php<span class="o">]</span> Error <span class="m">127</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决：网上找到的解决办法是</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>照做后仍然报错，原因是该方法适用于32位系统，64位系统应使用下面的这行</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib64/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>另外：在编译的时候，不写mysql的路径，而使用mysqlnd代替，也可解决该问题的出现。</p>
+<pre><code class="language-bash">/root/dev/php-5.3.6/sapi/cli/php: error while loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
+make: *** [ext/phar/phar.php] Error 127
+</code></pre>
+<p>解决：网上找到的解决办法是</p>
+<pre><code class="language-bash">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib/
+</code></pre>
+<p>照做后仍然报错，原因是该方法适用于32位系统，64位系统应使用下面的这行</p>
+<pre><code class="language-bash">ln -s /usr/local/mysql/lib/libmysqlclient.so.18  /usr/lib64/
+</code></pre>
+<p>另外：在编译的时候，不写mysql的路径，而使用mysqlnd代替，也可解决该问题的出现。</p>
 <p>参考：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;/app/mysql/lib/libmysqlclient.so.18&#34;</span> &gt;&gt;/etc/ld.so.conf
-</span></span><span class="line"><span class="cl">ldconfig
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="configure-error-dont-know-how-to-define-struct-flock-on-this-system-set---enable-opcacheno">configure: error: Don&rsquo;t know how to define struct flock on this system, set &ndash;enable-opcache=no</h3>
+<pre><code class="language-bash">echo &quot;/app/mysql/lib/libmysqlclient.so.18&quot; &gt;&gt;/etc/ld.so.conf
+ldconfig
+</code></pre>
+<h3 id="configure-error-dont-know-how-to-define-struct-flock-on-this-system-set---enable-opcacheno">configure: error: Don&rsquo;t know how to define struct flock on this system, set &ndash;enable-opcache=no</h3>
 <p>原因:目前不明</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">  checking <span class="k">for</span> sysvipc shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using MAP_ANON shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using /dev/zero shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using shm_open<span class="o">()</span> shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="k">for</span> mmap<span class="o">()</span> using regular file shared memory support... no
-</span></span><span class="line"><span class="cl">  checking <span class="s2">&#34;whether flock struct is linux ordered&#34;</span>... <span class="s2">&#34;no&#34;</span>
-</span></span><span class="line"><span class="cl">  checking <span class="s2">&#34;whether flock struct is BSD ordered&#34;</span>... <span class="s2">&#34;no&#34;</span>
-</span></span><span class="line"><span class="cl">  configure: error: Don<span class="err">&#39;</span>t know how to define struct flock on this system, <span class="nb">set</span> --enable-opcache<span class="o">=</span>no
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：执行如下后，重新编译即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/app/mysql/lib
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考资料：http://www.jianshu.com/p/0d6d188c2ddc</p>
+<pre><code class="language-bash">  checking for sysvipc shared memory support... no
+  checking for mmap() using MAP_ANON shared memory support... no
+  checking for mmap() using /dev/zero shared memory support... no
+  checking for mmap() using shm_open() shared memory support... no
+  checking for mmap() using regular file shared memory support... no
+  checking &quot;whether flock struct is linux ordered&quot;... &quot;no&quot;
+  checking &quot;whether flock struct is BSD ordered&quot;... &quot;no&quot;
+  configure: error: Don't know how to define struct flock on this system, set --enable-opcache=no
+</code></pre>
+<p>解决方法：执行如下后，重新编译即可</p>
+<pre><code class="language-bash">export LD_LIBRARY_PATH=/app/mysql/lib
+</code></pre>
+<p>参考资料：http://www.jianshu.com/p/0d6d188c2ddc</p>
 <h3 id="php55-mysql56">php5.5 mysql5.6</h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Don<span class="err">&#39;</span>t know how to define struct flock on this system, <span class="nb">set</span> --enable-opcache<span class="o">=</span>no
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ln -s /app/mysql/lib/libmysqlclient.so /usr/lib
-</span></span><span class="line"><span class="cl">ln -s /app/mysql/lib/libmysqlclient.so.18.1.0 /usr/lib
-</span></span><span class="line"><span class="cl">vim /etc/ld.so.conf
-</span></span><span class="line"><span class="cl">/usr/lib
-</span></span><span class="line"><span class="cl">ldconfig -v 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="在虚拟机中编译php问题">在虚拟机中编译PHP问题</h3>
+<pre><code class="language-bash">Don't know how to define struct flock on this system, set --enable-opcache=no
+</code></pre>
+<p>解决方法：</p>
+<pre><code class="language-bash">ln -s /app/mysql/lib/libmysqlclient.so /usr/lib
+ln -s /app/mysql/lib/libmysqlclient.so.18.1.0 /usr/lib
+vim /etc/ld.so.conf
+/usr/lib
+ldconfig -v 
+</code></pre>
+<h3 id="在虚拟机中编译php问题">在虚拟机中编译PHP问题</h3>
 <p>错误 <em><strong>make: *** [ext/fileinfo/libmagic/apprentice.lo] Error 1</strong></em></p>
 <p>原因：这是由于内存小于1G所导致。</p>
 <p>解决办法：在./configure加上选项。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">--disable-fileinfo Disable  <span class="c1"># &lt;==fileinfo support 禁用 fileinfo</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="configure-error-cannot-find-libmysqlclient-under-appmysql">configure: error: Cannot find libmysqlclient under /app/mysql.</h3>
+<pre><code class="language-bash">--disable-fileinfo Disable  # &lt;==fileinfo support 禁用 fileinfo
+</code></pre>
+<h3 id="configure-error-cannot-find-libmysqlclient-under-appmysql">configure: error: Cannot find libmysqlclient under /app/mysql.</h3>
 <p>经查，问题是64位系统中 libmysqlclient 默认安装到了 /usr/lib64/mysql/ 目录下，而 <code>/usr/lib</code> 目录下没有相应文件，但是php编译时，要去 /usr/lib目录下查找</p>
 <p>解决：<code>ln -s /app/mysql/lib /app/mysql/lib64</code></p>
 <h2 id="make-install错误">make install错误</h2>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/home/tools/php-5.3.27/sapi/cli/php: error <span class="k">while</span> loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
-</span></span><span class="line"><span class="cl">make<span class="o">[</span>1<span class="o">]</span>: *** <span class="o">[</span>install-pear-installer<span class="o">]</span> 错误 <span class="m">127</span>
-</span></span><span class="line"><span class="cl">make: *** <span class="o">[</span>install-pear<span class="o">]</span> 错误 <span class="m">2</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>原因：mysql5.5的的lib路径跟之前的不一样
+<pre><code class="language-bash">/home/tools/php-5.3.27/sapi/cli/php: error while loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
+make[1]: *** [install-pear-installer] 错误 127
+make: *** [install-pear] 错误 2
+</code></pre>
+<p>原因：mysql5.5的的lib路径跟之前的不一样
 解决：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;/app/mysql/lib&#34;</span> &gt;&gt; /etc/ld.so.conf
-</span></span><span class="line"><span class="cl">ldconfig
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="make-install正确安装">make install正确安装</h2>
+<pre><code class="language-bash">echo &quot;/app/mysql/lib&quot; &gt;&gt; /etc/ld.so.conf
+ldconfig
+</code></pre>
+<h2 id="make-install正确安装">make install正确安装</h2>
 <p>PHP5.3</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">/home/tools/php-5.3.27/build/shtool install -c ext/phar/phar.phar /app/php-5.3.27/bin
-</span></span><span class="line"><span class="cl">ln -s -f /app/php-5.3.27/bin/phar.phar /app/php-5.3.27/bin/phar
-</span></span><span class="line"><span class="cl">Installing PDO headers:          /app/php-5.3.27/include/php/ext/pdo/
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>PHP5.5</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Thank you <span class="k">for</span> using PHP.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">config.status: creating php5.spec
-</span></span><span class="line"><span class="cl">config.status: creating main/build-defs.h
-</span></span><span class="line"><span class="cl">config.status: creating scripts/phpize
-</span></span><span class="line"><span class="cl">config.status: creating scripts/man1/phpize.1
-</span></span><span class="line"><span class="cl">config.status: creating scripts/php-config
-</span></span><span class="line"><span class="cl">config.status: creating scripts/man1/php-config.1
-</span></span><span class="line"><span class="cl">config.status: creating sapi/cli/php.1
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.conf
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/init.d.php-fpm
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.service
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/php-fpm.8
-</span></span><span class="line"><span class="cl">config.status: creating sapi/fpm/status.html
-</span></span><span class="line"><span class="cl">config.status: creating sapi/cgi/php-cgi.1
-</span></span><span class="line"><span class="cl">config.status: creating ext/phar/phar.1
-</span></span><span class="line"><span class="cl">config.status: creating ext/phar/phar.phar.1
-</span></span><span class="line"><span class="cl">config.status: creating main/php_config.h
-</span></span><span class="line"><span class="cl">config.status: executing default commands
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-bash">/home/tools/php-5.3.27/build/shtool install -c ext/phar/phar.phar /app/php-5.3.27/bin
+ln -s -f /app/php-5.3.27/bin/phar.phar /app/php-5.3.27/bin/phar
+Installing PDO headers:          /app/php-5.3.27/include/php/ext/pdo/
+</code></pre>
+<p>PHP5.5</p>
+<pre><code class="language-bash">Thank you for using PHP.
+
+config.status: creating php5.spec
+config.status: creating main/build-defs.h
+config.status: creating scripts/phpize
+config.status: creating scripts/man1/phpize.1
+config.status: creating scripts/php-config
+config.status: creating scripts/man1/php-config.1
+config.status: creating sapi/cli/php.1
+config.status: creating sapi/fpm/php-fpm.conf
+config.status: creating sapi/fpm/init.d.php-fpm
+config.status: creating sapi/fpm/php-fpm.service
+config.status: creating sapi/fpm/php-fpm.8
+config.status: creating sapi/fpm/status.html
+config.status: creating sapi/cgi/php-cgi.1
+config.status: creating ext/phar/phar.1
+config.status: creating ext/phar/phar.phar.1
+config.status: creating main/php_config.h
+config.status: executing default commands
+</code></pre>
+]]></content:encoded>
     </item>
     
   </channel>

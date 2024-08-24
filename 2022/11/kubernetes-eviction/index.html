@@ -10,7 +10,7 @@
 <meta name="description" content="kubernetes概念 - 理解Kubernetes的驱逐机制 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/11/kubernetes-eviction/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "kubernetes eviction"
   ],
-  "wordCount" : "2954",
+  "wordCount" : "2892",
   "inLanguage": "zh",
   "datePublished": "2022-11-29T00:00:00Z",
   "dateModified": "2022-11-29T23:00:36+08:00",
@@ -373,7 +373,8 @@ function toggleThemeListener() {
 <li>被 controller-manager 驱逐</li>
 </ul>
 <h3 id="抢占和优先级">抢占和优先级<a hidden class="anchor" aria-hidden="true" href="#抢占和优先级">¶</a></h3>
-<p>抢占是指当节点资源不足以运行新添加的Pod时，<em>kube-scheduler</em> 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 <a href="https://cylonchau.github.io/ch00.0-pod-network-troubleshooting.html#%E9%9B%86%E7%BE%A4pod%E8%AE%BF%E9%97%AE%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E8%B6%85%E6%97%B6"><em>kube-proxy</em> 被驱逐的场景</a></p>
+<p>抢占是指当节点资源不足以运行新添加的Pod时，<em>kube-scheduler</em> 会检查低优先级Pod而后驱逐掉这些Pod以将资源分配给优先级高的Pod。这个过程称为 “抢占” 例如这个实例是 <a href="https://cylonchau.github.io/ch00.0-pod-network-troubleshooting.html#%E9%9B%86%E7%BE%A4pod%E8%AE%BF%E9%97%AE%E5%AF%B9%E8%B1%A1%E5%AD%98%E5%82%A8%E8%B6%85%E6%97%B6" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>kube-proxy</em> 被驱逐的场景</a></p>
 <h3 id="节点压力驱逐">节点压力驱逐<a hidden class="anchor" aria-hidden="true" href="#节点压力驱逐">¶</a></h3>
 <p>节点压力驱逐是指，Pod所在节点的资源，如CPU, 内存, inode等，这些资源被分为可压缩资源CPU (<em><strong>compressible resources</strong></em>) 与不可压缩资源 (<em><strong>incompressible resources</strong></em>) 磁盘IO, 内存等，当不可压缩资源不足时，Pod会被驱逐。对于此类问题的驱逐 是每个计算节点的 kubelet 通过捕获 cAdvisor 指标来监控节点的资源使用情况。</p>
 <h3 id="被-controller-manager-驱逐">被 controller-manager 驱逐<a hidden class="anchor" aria-hidden="true" href="#被-controller-manager-驱逐">¶</a></h3>
@@ -381,117 +382,57 @@ function toggleThemeListener() {
 <h3 id="通过api发起驱逐">通过API发起驱逐<a hidden class="anchor" aria-hidden="true" href="#通过api发起驱逐">¶</a></h3>
 <p>Kubernetes为用户提供了驱逐的API，用户可以通过调用API来实现自定义的驱逐。</p>
 <p>对于 1.22 以上版本，可以通过API <code>policy/v1</code> 进行驱逐</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl -v <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-H <span class="s1">&#39;Content-type: application/json&#39;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	https://your-cluster-api-endpoint.example/api/v1/namespaces/default/pods/quux/eviction -d <span class="s1">&#39;\
-</span></span></span><span class="line"><span class="cl"><span class="s1">	{
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;apiVersion&#34;: &#34;policy/v1&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;kind&#34;: &#34;Eviction&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;metadata&#34;: {
-</span></span></span><span class="line"><span class="cl"><span class="s1">            &#34;name&#34;: &#34;quux&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">            &#34;namespace&#34;: &#34;default&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">        }
-</span></span></span><span class="line"><span class="cl"><span class="s1">    }&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>例如，要驱逐Pod <code>netbox-85865d5556-hfg6v</code>，可以通过下述命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 1.22+</span>
-</span></span><span class="line"><span class="cl">$ curl -v <span class="s1">&#39;https://10.0.0.4:6443/api/v1/namespaces/default/pods/netbox-85865d5556-hfg6v/eviction&#39;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--header <span class="s1">&#39;Content-Type: application/json&#39;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--cert /etc/kubernetes/pki/apiserver-kubelet-client.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--key /etc/kubernetes/pki/apiserver-kubelet-client.key <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--cacert /etc/kubernetes/pki/ca.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>-d <span class="s1">&#39;{
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;apiVersion&#34;: &#34;policy/v1&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;kind&#34;: &#34;Eviction&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;metadata&#34;: {
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;name&#34;: &#34;netbox-85865d5556-hfg6v&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;namespace&#34;: &#34;default&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">    }
-</span></span></span><span class="line"><span class="cl"><span class="s1">}&#39;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 1.22-</span>
-</span></span><span class="line"><span class="cl">curl -v <span class="s1">&#39;https://10.0.0.4:6443/api/v1/namespaces/default/pods/netbox-85865d5556-hfg6v/eviction&#39;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--header <span class="s1">&#39;Content-Type: application/json&#39;</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--cert /etc/kubernetes/pki/apiserver-kubelet-client.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--key /etc/kubernetes/pki/apiserver-kubelet-client.key <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>--cacert /etc/kubernetes/pki/ca.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>-d <span class="s1">&#39;{
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;apiVersion&#34;: &#34;policy/v1beta1&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;kind&#34;: &#34;Eviction&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">    &#34;metadata&#34;: {
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;name&#34;: &#34;netbox-85865d5556-hfg6v&#34;,
-</span></span></span><span class="line"><span class="cl"><span class="s1">        &#34;namespace&#34;: &#34;default&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">    }
-</span></span></span><span class="line"><span class="cl"><span class="s1">}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>可以看到结果，旧Pod被驱逐，而新Pod被创建，在这里实验环境节点较少，所以体现为没有更换节点</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -o wide
-</span></span><span class="line"><span class="cl">NAME                      READY   STATUS        RESTARTS   AGE    IP              NODE             NOMINATED NODE   READINESS GATES
-</span></span><span class="line"><span class="cl">netbox-85865d5556-hfg6v   1/1     Terminating   <span class="m">0</span>          101d   192.168.1.213   master-machine   &lt;none&gt;           &lt;none&gt;
-</span></span><span class="line"><span class="cl">netbox-85865d5556-vlgr4   1/1     Running       <span class="m">0</span>          101d   192.168.0.4     node01           &lt;none&gt;           &lt;none&gt;
-</span></span><span class="line"><span class="cl">netbox-85865d5556-z6vqx   1/1     Running       <span class="m">0</span>          11s    192.168.1.220   master-machine   &lt;none&gt;           &lt;none&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="通过api驱逐返回状态">通过API驱逐返回状态<a hidden class="anchor" aria-hidden="true" href="#通过api驱逐返回状态">¶</a></h4>
+<pre><code class="language-bash">curl -v \
+	-H 'Content-type: application/json' \
+	https://your-cluster-api-endpoint.example/api/v1/namespaces/default/pods/quux/eviction -d '\
+	{
+        &quot;apiVersion&quot;: &quot;policy/v1&quot;,
+        &quot;kind&quot;: &quot;Eviction&quot;,
+        &quot;metadata&quot;: {
+            &quot;name&quot;: &quot;quux&quot;,
+            &quot;namespace&quot;: &quot;default&quot;
+        }
+    }'
+</code></pre>
+<p>例如，要驱逐Pod <code>netbox-85865d5556-hfg6v</code>，可以通过下述命令</p>
+<pre><code class="language-bash"># 1.22+
+$ curl -v 'https://10.0.0.4:6443/api/v1/namespaces/default/pods/netbox-85865d5556-hfg6v/eviction' \
+--header 'Content-Type: application/json' \
+--cert /etc/kubernetes/pki/apiserver-kubelet-client.crt \
+--key /etc/kubernetes/pki/apiserver-kubelet-client.key \
+--cacert /etc/kubernetes/pki/ca.crt \
+-d '{
+    &quot;apiVersion&quot;: &quot;policy/v1&quot;,
+    &quot;kind&quot;: &quot;Eviction&quot;,
+    &quot;metadata&quot;: {
+        &quot;name&quot;: &quot;netbox-85865d5556-hfg6v&quot;,
+        &quot;namespace&quot;: &quot;default&quot;
+    }
+}'
+
+# 1.22-
+curl -v 'https://10.0.0.4:6443/api/v1/namespaces/default/pods/netbox-85865d5556-hfg6v/eviction' \
+--header 'Content-Type: application/json' \
+--cert /etc/kubernetes/pki/apiserver-kubelet-client.crt \
+--key /etc/kubernetes/pki/apiserver-kubelet-client.key \
+--cacert /etc/kubernetes/pki/ca.crt \
+-d '{
+    &quot;apiVersion&quot;: &quot;policy/v1beta1&quot;,
+    &quot;kind&quot;: &quot;Eviction&quot;,
+    &quot;metadata&quot;: {
+        &quot;name&quot;: &quot;netbox-85865d5556-hfg6v&quot;,
+        &quot;namespace&quot;: &quot;default&quot;
+    }
+}'
+</code></pre>
+<p>可以看到结果，旧Pod被驱逐，而新Pod被创建，在这里实验环境节点较少，所以体现为没有更换节点</p>
+<pre><code class="language-bash">$ kubectl get pods -o wide
+NAME                      READY   STATUS        RESTARTS   AGE    IP              NODE             NOMINATED NODE   READINESS GATES
+netbox-85865d5556-hfg6v   1/1     Terminating   0          101d   192.168.1.213   master-machine   &lt;none&gt;           &lt;none&gt;
+netbox-85865d5556-vlgr4   1/1     Running       0          101d   192.168.0.4     node01           &lt;none&gt;           &lt;none&gt;
+netbox-85865d5556-z6vqx   1/1     Running       0          11s    192.168.1.220   master-machine   &lt;none&gt;           &lt;none&gt;
+</code></pre>
+<h4 id="通过api驱逐返回状态">通过API驱逐返回状态<a hidden class="anchor" aria-hidden="true" href="#通过api驱逐返回状态">¶</a></h4>
 <ul>
 <li><strong>200 OK|201 Success</strong>：允许驱逐，<code>Eviction</code> 类似于向Pod URL发送 <code>DELETE</code> 请求</li>
 <li><strong>429 Too Many Requests</strong>：由于API限速可能会看到该相应，另外也为配置原因，不允许驱逐 <code>poddisruptionbudget</code> (PDB是一种保护机制，将总是确保一定数量或百分比的Pod 被自愿驱逐)</li>
@@ -517,8 +458,7 @@ function toggleThemeListener() {
 </ul>
 <h2 id="转实例pod被驱逐故障排除过程-supa-href77asup">【转】实例：Pod被驱逐故障排除过程 <sup><a href="#7">[7]</a></sup><a hidden class="anchor" aria-hidden="true" href="#转实例pod被驱逐故障排除过程-supa-href77asup">¶</a></h2>
 <p>设想一个场景：，有三个工作节点的Kubernetes 集群，版本为 v1.19.0。发现在 worker 1 上运行的一些 pod 被驱逐了</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221129225911143.png" alt="image-20221129225911143"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221129225911143.png" alt="image-20221129225911143" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Pod被驱逐的日志</center>
 <center><em>Source：</em>https://www.containiq.com/post/kubernetes-pod-evictions</center><br>
 <p>从上图可以看出有很多pod被驱逐了，报错信息也很清楚。由于节点上存储资源不足，导致kubelet触发驱逐过程。</p>
@@ -538,52 +478,27 @@ function toggleThemeListener() {
 <h3 id="检查思路">检查思路<a hidden class="anchor" aria-hidden="true" href="#检查思路">¶</a></h3>
 <h4 id="查看pod容忍度">查看Pod容忍度<a hidden class="anchor" aria-hidden="true" href="#查看pod容忍度">¶</a></h4>
 <p>当Pod故障无法连接或节点无法响应时，可以使用 <code>tolerationSeconds</code> 配置对应时长长短</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">tolerations</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;node.kubernetes.io/unreachable&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">operator</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Exists&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">effect</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;NoExecute&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">tolerationSeconds</span><span class="p">:</span><span class="w"> </span><span class="m">6000</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="查看防止-pod-驱逐的条件">查看防止 Pod 驱逐的条件<a hidden class="anchor" aria-hidden="true" href="#查看防止-pod-驱逐的条件">¶</a></h4>
+<pre><code class="language-yaml">tolerations:
+  - key: &quot;node.kubernetes.io/unreachable&quot;
+    operator: &quot;Exists&quot;
+    effect: &quot;NoExecute&quot;
+    tolerationSeconds: 6000
+</code></pre>
+<h4 id="查看防止-pod-驱逐的条件">查看防止 Pod 驱逐的条件<a hidden class="anchor" aria-hidden="true" href="#查看防止-pod-驱逐的条件">¶</a></h4>
 <p>如果<strong>集群中的节点数小于50，并且故障节点数超过总节点数的55%</strong>，则暂停 Pod 驱逐。在这种情况下，Kubernetes 将尝试驱逐故障节点的工作负载（运行在kubernetes中的APP）。</p>
 <p>下属json描述了一个健康的节点</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="s2">&#34;conditions&#34;</span><span class="err">:</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;Ready&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;status&#34;</span><span class="p">:</span> <span class="s2">&#34;True&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;reason&#34;</span><span class="p">:</span> <span class="s2">&#34;KubeletReady&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;message&#34;</span><span class="p">:</span> <span class="s2">&#34;kubelet is posting ready status&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;lastHearbeatTime&#34;</span><span class="p">:</span> <span class="s2">&#34;2019-06-05T18:38:35Z&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;lastTransitionTime&#34;</span><span class="p">:</span> <span class="s2">&#34;2019-06-05T11:41:27Z&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">]</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果就绪条件为 <code>Unknown </code> 或 <code>False</code> 的时间超过了 pod-eviction-timeout，node controller 将对分配给该节点上的所有 Pod 执行 <code>API-initiated</code> 类型驱逐。</p>
+<pre><code class="language-json">&quot;conditions&quot;: [
+    {
+        &quot;type&quot;: &quot;Ready&quot;,
+        &quot;status&quot;: &quot;True&quot;,
+        &quot;reason&quot;: &quot;KubeletReady&quot;,
+        &quot;message&quot;: &quot;kubelet is posting ready status&quot;,
+        &quot;lastHearbeatTime&quot;: &quot;2019-06-05T18:38:35Z&quot;,
+        &quot;lastTransitionTime&quot;: &quot;2019-06-05T11:41:27Z&quot;
+    }
+]
+</code></pre>
+<p>如果就绪条件为 <code>Unknown </code> 或 <code>False</code> 的时间超过了 pod-eviction-timeout，node controller 将对分配给该节点上的所有 Pod 执行 <code>API-initiated</code> 类型驱逐。</p>
 <h4 id="检查pod的已分配资源">检查Pod的已分配资源<a hidden class="anchor" aria-hidden="true" href="#检查pod的已分配资源">¶</a></h4>
 <p>Pod会根据节点的资源使用情况被逐出。被逐出的Pod将会根据分配给Pod的节点资源进行调度。管理驱逐”和“调度”的条件由不同的规则组成。这种结果会导致，被逐出的容器可能会被重新安排到原始节点。因此，要合理分配资源给每个容器。</p>
 <h4 id="检查pod-是否定期失败">检查Pod 是否定期失败<a hidden class="anchor" aria-hidden="true" href="#检查pod-是否定期失败">¶</a></h4>
@@ -591,15 +506,9 @@ function toggleThemeListener() {
 <p>如果驱逐动作是由 <em>kube-controller-manager</em> 触发的，则保留处于 <em>Terminating</em> 状态的 Pod 。在节点恢复后，Pod将被 自动销毁。如果节点已经被删除或者其他原因无法恢复，可以强制删除Pod。</p>
 <p>如果是由 <em>kubelet</em> 触发的驱逐，Pod 状态将保留为 Evicted 状态。仅用于后期故障定位，可直接删除。</p>
 <p>删除被逐出的 Pod 命令为：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods <span class="p">|</span> grep Evicted <span class="p">|</span> awk ‘<span class="o">{</span>print <span class="nv">$1</span><span class="o">}</span>’ <span class="p">|</span> xargs kubectl delete pod
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">kubectl get pods | grep Evicted | awk ‘{print $1}’ | xargs kubectl delete pod
+</code></pre>
+<blockquote>
 <p>Notes：</p>
 <ul>
 <li>被Kubernetes驱逐的Pod，不会被自动重新创建 pod。如果要重新创建Pod，需要使用replicationcontroller、replicaset和 deployment 机制，这也是上述提到的Kubernetes的工作负载。</li>
@@ -608,26 +517,28 @@ function toggleThemeListener() {
 </blockquote>
 <h2 id="如何监控被驱逐的pod">如何监控被驱逐的Pod<a hidden class="anchor" aria-hidden="true" href="#如何监控被驱逐的pod">¶</a></h2>
 <h3 id="使用prometheus">使用Prometheus<a hidden class="anchor" aria-hidden="true" href="#使用prometheus">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kube_pod_status_reason<span class="o">{</span><span class="nv">reason</span><span class="o">=</span><span class="s2">&#34;Evicted&#34;</span><span class="o">}</span> &gt; <span class="m">0</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用-containiq">使用 ContainIQ<a hidden class="anchor" aria-hidden="true" href="#使用-containiq">¶</a></h3>
+<pre><code class="language-bash">kube_pod_status_reason{reason=&quot;Evicted&quot;} &gt; 0
+</code></pre>
+<h3 id="使用-containiq">使用 ContainIQ<a hidden class="anchor" aria-hidden="true" href="#使用-containiq">¶</a></h3>
 <p>ContainIQ 是为Kubernetes设计的可观测性工具，其中包含Kubernetes 事件仪表板，这就包括 Pod 驱逐事件</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/"><em><strong>Scheduling, Preemption and Eviction</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/"><em><strong>Node-pressure Eviction</strong></em></a></p>
-<p><sup id="3">[3]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"><em><strong>Taints and Tolerations</strong></em></a></p>
-<p><sup id="4">[4]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/"><em><strong>API-initiated Eviction</strong></em></a></p>
-<p><sup id="5">[5]</sup> <a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/"><em><strong>Safely Drain a Node</strong></em></a></p>
-<p><sup id="6">[6]</sup> <a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/#draining-multiple-nodes-in-parallel"><em><strong>Draining multiple nodes in parallel</strong></em></a></p>
-<p><sup id="7">[7]</sup> <a href="https://www.containiq.com/post/kubernetes-pod-evictions"><em><strong>Kubernetes Pod Evictions | Troubleshooting and Examples</strong></em></a></p>
-<p><sup id="8">[8]</sup> <a href="https://sysdig.com/blog/kubernetes-pod-evicted/"><em><strong>kubernetes pod evicted</strong></em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Scheduling, Preemption and Eviction</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Node-pressure Eviction</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Taints and Tolerations</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/api-eviction/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>API-initiated Eviction</strong></em></a></p>
+<p><sup id="5">[5]</sup> <a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Safely Drain a Node</strong></em></a></p>
+<p><sup id="6">[6]</sup> <a href="https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/#draining-multiple-nodes-in-parallel" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Draining multiple nodes in parallel</strong></em></a></p>
+<p><sup id="7">[7]</sup> <a href="https://www.containiq.com/post/kubernetes-pod-evictions" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Kubernetes Pod Evictions | Troubleshooting and Examples</strong></em></a></p>
+<p><sup id="8">[8]</sup> <a href="https://sysdig.com/blog/kubernetes-pod-evicted/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>kubernetes pod evicted</strong></em></a></p>
 </blockquote>
 
 

@@ -18,287 +18,152 @@
 <h2 id="为什么需要事件">为什么需要事件</h2>
 <p>Kubernetes 在设计时就是 “声明式”，而声明式的最大特点就是 “多组件的协同工作”，而在多组件协同工作时，势必需要传递一些事件，以告知用户任务的状态如何；而事件本身上是一种资源，在很早版本就以及被移入 api/v1 中。下面是 “事件” 资源的定义。</p>
 <p>位于 <a href="vendor/k8s.io/api/core/v1/types.go">vendor/k8s.io/api/core/v1/types.go</a> ，因为 <code>vendor/k8s.io</code> 实际上是做了一个软连接，那么真实的实际上位于 <code>{kubernetes_repo}/staging/src/k8s.io/api/core/v1</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Event</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// 标准的元数据
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span> <span class="s">`json:&#34;metadata&#34; protobuf:&#34;bytes,1,opt,name=metadata&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 事件涉及的对象
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">InvolvedObject</span> <span class="nx">ObjectReference</span> <span class="s">`json:&#34;involvedObject&#34; protobuf:&#34;bytes,2,opt,name=involvedObject&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 这里表示的是事件原因，通常为简短的的一种状态名称
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: provide exact specification for format.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Reason</span> <span class="kt">string</span> <span class="s">`json:&#34;reason,omitempty&#34; protobuf:&#34;bytes,3,opt,name=reason&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 以人类可读取的方式描述，类似于 tcmpdump -A
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: decide on maximum length.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Message</span> <span class="kt">string</span> <span class="s">`json:&#34;message,omitempty&#34; protobuf:&#34;bytes,4,opt,name=message&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 报告事件的组件，通常包含这个结构体包含 “组件+主机名” 的结构
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Source</span> <span class="nx">EventSource</span> <span class="s">`json:&#34;source,omitempty&#34; protobuf:&#34;bytes,5,opt,name=source&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 首次上报事件的事件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">FirstTimestamp</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&#34;firstTimestamp,omitempty&#34; protobuf:&#34;bytes,6,opt,name=firstTimestamp&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 最近一次记录事件的事件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">LastTimestamp</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&#34;lastTimestamp,omitempty&#34; protobuf:&#34;bytes,7,opt,name=lastTimestamp&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 事件发生的次数
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Count</span> <span class="kt">int32</span> <span class="s">`json:&#34;count,omitempty&#34; protobuf:&#34;varint,8,opt,name=count&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// 事件的类型(Normal, Warning)
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Type</span> <span class="kt">string</span> <span class="s">`json:&#34;type,omitempty&#34; protobuf:&#34;bytes,9,opt,name=type&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 首次观察到事件的.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">EventTime</span> <span class="nx">metav1</span><span class="p">.</span><span class="nx">MicroTime</span> <span class="s">`json:&#34;eventTime,omitempty&#34; protobuf:&#34;bytes,10,opt,name=eventTime&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// 事件相关的序列，如果事件为单例事件，那么则为nil
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Series</span> <span class="o">*</span><span class="nx">EventSeries</span> <span class="s">`json:&#34;series,omitempty&#34; protobuf:&#34;bytes,11,opt,name=series&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 对事件对象采取的行动
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Action</span> <span class="kt">string</span> <span class="s">`json:&#34;action,omitempty&#34; protobuf:&#34;bytes,12,opt,name=action&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Optional secondary object for more complex actions.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Related</span> <span class="o">*</span><span class="nx">ObjectReference</span> <span class="s">`json:&#34;related,omitempty&#34; protobuf:&#34;bytes,13,opt,name=related&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 发出事件的对应的控制器，也可以理解为组件，因为通常controller-manager 包含多个控制器
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// e.g. `kubernetes.io/kubelet`.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ReportingController</span> <span class="kt">string</span> <span class="s">`json:&#34;reportingComponent&#34; protobuf:&#34;bytes,14,opt,name=reportingComponent&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 控制器实例的ID, e.g. `kubelet-xyzf`.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">ReportingInstance</span> <span class="kt">string</span> <span class="s">`json:&#34;reportingInstance&#34; protobuf:&#34;bytes,15,opt,name=reportingInstance&#34;`</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="事件管理器">事件管理器</h2>
+<pre><code class="language-go">type Event struct {
+	metav1.TypeMeta `json:&quot;,inline&quot;`
+	// 标准的元数据
+	metav1.ObjectMeta `json:&quot;metadata&quot; protobuf:&quot;bytes,1,opt,name=metadata&quot;`
+
+	// 事件涉及的对象
+	InvolvedObject ObjectReference `json:&quot;involvedObject&quot; protobuf:&quot;bytes,2,opt,name=involvedObject&quot;`
+
+	// 这里表示的是事件原因，通常为简短的的一种状态名称
+	// TODO: provide exact specification for format.
+	// +optional
+	Reason string `json:&quot;reason,omitempty&quot; protobuf:&quot;bytes,3,opt,name=reason&quot;`
+
+	// 以人类可读取的方式描述，类似于 tcmpdump -A
+	// TODO: decide on maximum length.
+	// +optional
+	Message string `json:&quot;message,omitempty&quot; protobuf:&quot;bytes,4,opt,name=message&quot;`
+
+	// 报告事件的组件，通常包含这个结构体包含 “组件+主机名” 的结构
+	// +optional
+	Source EventSource `json:&quot;source,omitempty&quot; protobuf:&quot;bytes,5,opt,name=source&quot;`
+
+	// 首次上报事件的事件
+	// +optional
+	FirstTimestamp metav1.Time `json:&quot;firstTimestamp,omitempty&quot; protobuf:&quot;bytes,6,opt,name=firstTimestamp&quot;`
+
+	// 最近一次记录事件的事件
+	// +optional
+	LastTimestamp metav1.Time `json:&quot;lastTimestamp,omitempty&quot; protobuf:&quot;bytes,7,opt,name=lastTimestamp&quot;`
+
+	// 事件发生的次数
+	// +optional
+	Count int32 `json:&quot;count,omitempty&quot; protobuf:&quot;varint,8,opt,name=count&quot;`
+
+    // 事件的类型(Normal, Warning)
+	// +optional
+	Type string `json:&quot;type,omitempty&quot; protobuf:&quot;bytes,9,opt,name=type&quot;`
+
+	// 首次观察到事件的.
+	// +optional
+	EventTime metav1.MicroTime `json:&quot;eventTime,omitempty&quot; protobuf:&quot;bytes,10,opt,name=eventTime&quot;`
+
+    // 事件相关的序列，如果事件为单例事件，那么则为nil
+	// +optional
+	Series *EventSeries `json:&quot;series,omitempty&quot; protobuf:&quot;bytes,11,opt,name=series&quot;`
+
+	// 对事件对象采取的行动
+	// +optional
+	Action string `json:&quot;action,omitempty&quot; protobuf:&quot;bytes,12,opt,name=action&quot;`
+
+	// Optional secondary object for more complex actions.
+	// +optional
+	Related *ObjectReference `json:&quot;related,omitempty&quot; protobuf:&quot;bytes,13,opt,name=related&quot;`
+
+	// 发出事件的对应的控制器，也可以理解为组件，因为通常controller-manager 包含多个控制器
+    // e.g. `kubernetes.io/kubelet`.
+	// +optional
+	ReportingController string `json:&quot;reportingComponent&quot; protobuf:&quot;bytes,14,opt,name=reportingComponent&quot;`
+
+	// 控制器实例的ID, e.g. `kubelet-xyzf`.
+	// +optional
+	ReportingInstance string `json:&quot;reportingInstance&quot; protobuf:&quot;bytes,15,opt,name=reportingInstance&quot;`
+}
+</code></pre>
+<h2 id="事件管理器">事件管理器</h2>
 <p>通过上面知道了事件这个资源的设计，里面存在一个 ”发出事件的对应的控制器“ 那么必然是作为每一个组件的内置功能，也就是说这可以作为 client-go 中的一个组件。</p>
 <p>代码 <a href="vendor/k8s.io/client-go/tools/events/interfaces.go">vendor/k8s.io/client-go/tools/events/interfaces.go</a> 中定义了一个事件管理器，这将定义了如何接收或发送事件到任何地方，例如事件接收器 (<em>EventSink</em>) 或 log</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">EventBroadcaster</span> <span class="kd">interface</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 发送从指定的eventBroadcaster接收到的事件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartRecordingToSink</span><span class="p">(</span><span class="nx">stopCh</span> <span class="o">&lt;-</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// 返回一个 EventRecorder 并可以使用发送事件到 EventBroadcaster，并将事件源设置为给定的事件源。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">NewRecorder</span><span class="p">(</span><span class="nx">scheme</span> <span class="o">*</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">Scheme</span><span class="p">,</span> <span class="nx">reportingController</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">EventRecorder</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// StartEventWatcher 可以使在不使用 StartRecordingToSink 的情况下发送事件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 这使得可以通过自定义方式记录事件
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// NOTE: 在使用 eventHandler 接收到的事件时应先进行复制一份。
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// TODO: figure out if this can be removed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartEventWatcher</span><span class="p">(</span><span class="nx">eventHandler</span> <span class="kd">func</span><span class="p">(</span><span class="nx">event</span> <span class="nx">runtime</span><span class="p">.</span><span class="nx">Object</span><span class="p">))</span> <span class="kd">func</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// StartStructuredLogging 可以接收 EventBroadcaster 发送的结构化日志功能
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// 如果需要可以忽略返回值或使用于停止记录
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">StartStructuredLogging</span><span class="p">(</span><span class="nx">verbosity</span> <span class="nx">klog</span><span class="p">.</span><span class="nx">Level</span><span class="p">)</span> <span class="kd">func</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    <span class="c1">// 关闭广播
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">Shutdown</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>EventBroadcaster 的实现只有一个 eventBroadcasterImpl</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">type eventBroadcasterImpl struct {
-</span></span><span class="line"><span class="cl">   *watch.Broadcaster
-</span></span><span class="line"><span class="cl">   mu            sync.Mutex
-</span></span><span class="line"><span class="cl">   eventCache    map[eventKey]*eventsv1.Event
-</span></span><span class="line"><span class="cl">   sleepDuration time.Duration
-</span></span><span class="line"><span class="cl">   sink          EventSink
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里面最重要的就是 sink，sink就是决定如何去存储事件的一个组件，他返回的是一组 client-go 的 REST 客户端。</p>
+<pre><code class="language-go">type EventBroadcaster interface {
+    // 发送从指定的eventBroadcaster接收到的事件
+	StartRecordingToSink(stopCh &lt;-chan struct{})
+
+    // 返回一个 EventRecorder 并可以使用发送事件到 EventBroadcaster，并将事件源设置为给定的事件源。
+	NewRecorder(scheme *runtime.Scheme, reportingController string) EventRecorder
+
+    // StartEventWatcher 可以使在不使用 StartRecordingToSink 的情况下发送事件
+    // 这使得可以通过自定义方式记录事件
+    // NOTE: 在使用 eventHandler 接收到的事件时应先进行复制一份。
+	// TODO: figure out if this can be removed.
+	StartEventWatcher(eventHandler func(event runtime.Object)) func()
+
+    // StartStructuredLogging 可以接收 EventBroadcaster 发送的结构化日志功能
+    // 如果需要可以忽略返回值或使用于停止记录
+	StartStructuredLogging(verbosity klog.Level) func()
+
+    // 关闭广播
+	Shutdown()
+}
+</code></pre>
+<p>EventBroadcaster 的实现只有一个 eventBroadcasterImpl</p>
+<pre><code>type eventBroadcasterImpl struct {
+   *watch.Broadcaster
+   mu            sync.Mutex
+   eventCache    map[eventKey]*eventsv1.Event
+   sleepDuration time.Duration
+   sink          EventSink
+}
+</code></pre>
+<p>这里面最重要的就是 sink，sink就是决定如何去存储事件的一个组件，他返回的是一组 client-go 的 REST 客户端。</p>
 <h3 id="事件管理器的设计">事件管理器的设计</h3>
 <h3 id="事件生产者">事件生产者</h3>
 <p>事件生产者在事件管理器中是作为</p>
 <h2 id="控制器">控制器</h2>
 <p>service的资源创建很奇妙，继不属于 <code>controller-manager</code> 组件，也不属于 <code>kube-proxy</code> 组件，而是存在于 <code>apiserver</code> 中的一个被成为控制器的组件；而这个控制器又区别于准入控制器。更准确来说，准入控制器是位于kubeapiserver中的组件，而 <strong>控制器</strong> 则是存在于单独的一个包，这里包含了很多kubernetes集群的公共组件的功能，其中就有service。这也就是在操作kubernetes时 当 <code>controller-manager</code> 于  <code>kube-proxy</code> 未工作时，也可以准确的为service分配IP。</p>
 <p>首先在构建出apiserver时，也就是代码 <a href="cmd/kube-apiserver/app/server.go">cmd/kube-apiserver/app/server.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">serviceIPRange</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">master</span><span class="p">.</span><span class="nf">ServiceIPRange</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">PrimaryServiceClusterIPRange</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/pkg/master/services.go#L34-L54">master.ServiceIPRange</a> 承接了为service分配IP的功能，这部分逻辑就很简单了</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">ServiceIPRange</span><span class="p">(</span><span class="nx">passedServiceClusterIPRange</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">)</span> <span class="p">(</span><span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">,</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">serviceClusterIPRange</span> <span class="o">:=</span> <span class="nx">passedServiceClusterIPRange</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">passedServiceClusterIPRange</span><span class="p">.</span><span class="nx">IP</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">klog</span><span class="p">.</span><span class="nf">Warningf</span><span class="p">(</span><span class="s">&#34;No CIDR for service cluster IPs specified. Default value which was %s is deprecated and will be removed in future releases. Please specify it using --service-cluster-ip-range on kube-apiserver.&#34;</span><span class="p">,</span> <span class="nx">kubeoptions</span><span class="p">.</span><span class="nx">DefaultServiceIPCIDR</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">serviceClusterIPRange</span> <span class="p">=</span> <span class="nx">kubeoptions</span><span class="p">.</span><span class="nx">DefaultServiceIPCIDR</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">size</span> <span class="o">:=</span> <span class="nx">integer</span><span class="p">.</span><span class="nf">Int64Min</span><span class="p">(</span><span class="nx">utilnet</span><span class="p">.</span><span class="nf">RangeSize</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">serviceClusterIPRange</span><span class="p">),</span> <span class="mi">1</span><span class="o">&lt;&lt;</span><span class="mi">16</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">size</span> <span class="p">&lt;</span> <span class="mi">8</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">{},</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{},</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;the service cluster IP range must be at least %d IP addresses&#34;</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Select the first valid IP from ServiceClusterIPRange to use as the GenericAPIServer service IP.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">utilnet</span><span class="p">.</span><span class="nf">GetIndexedIP</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">serviceClusterIPRange</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IPNet</span><span class="p">{},</span> <span class="nx">net</span><span class="p">.</span><span class="nx">IP</span><span class="p">{},</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">klog</span><span class="p">.</span><span class="nf">V</span><span class="p">(</span><span class="mi">4</span><span class="p">).</span><span class="nf">Infof</span><span class="p">(</span><span class="s">&#34;Setting service IP to %q (read-write).&#34;</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">serviceClusterIPRange</span><span class="p">,</span> <span class="nx">apiServerServiceIP</span><span class="p">,</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而后kube-apiserver为service分为两类</p>
+<pre><code class="language-go">serviceIPRange, apiServerServiceIP, err := master.ServiceIPRange(s.PrimaryServiceClusterIPRange)
+if err != nil {
+    return nil, nil, nil, nil, err
+}
+</code></pre>
+<p><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/pkg/master/services.go#L34-L54" target="_blank"
+   rel="noopener nofollow noreferrer" >master.ServiceIPRange</a> 承接了为service分配IP的功能，这部分逻辑就很简单了</p>
+<pre><code class="language-go">func ServiceIPRange(passedServiceClusterIPRange net.IPNet) (net.IPNet, net.IP, error) {
+	serviceClusterIPRange := passedServiceClusterIPRange
+	if passedServiceClusterIPRange.IP == nil {
+		klog.Warningf(&quot;No CIDR for service cluster IPs specified. Default value which was %s is deprecated and will be removed in future releases. Please specify it using --service-cluster-ip-range on kube-apiserver.&quot;, kubeoptions.DefaultServiceIPCIDR.String())
+		serviceClusterIPRange = kubeoptions.DefaultServiceIPCIDR
+	}
+
+	size := integer.Int64Min(utilnet.RangeSize(&amp;serviceClusterIPRange), 1&lt;&lt;16)
+	if size &lt; 8 {
+		return net.IPNet{}, net.IP{}, fmt.Errorf(&quot;the service cluster IP range must be at least %d IP addresses&quot;, 8)
+	}
+
+	// Select the first valid IP from ServiceClusterIPRange to use as the GenericAPIServer service IP.
+	apiServerServiceIP, err := utilnet.GetIndexedIP(&amp;serviceClusterIPRange, 1)
+	if err != nil {
+		return net.IPNet{}, net.IP{}, err
+	}
+	klog.V(4).Infof(&quot;Setting service IP to %q (read-write).&quot;, apiServerServiceIP)
+
+	return serviceClusterIPRange, apiServerServiceIP, nil
+}
+</code></pre>
+<p>而后kube-apiserver为service分为两类</p>
 <ul>
-<li>apiserver 地址在集群内的service，在代码中表示为 <a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L351">APIServerServiceIP</a></li>
-<li><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L352">Service</a>，<code>--service-cluster-ip-range</code> 配置指定的ip，通过『逗号』分割可以为两个</li>
+<li>apiserver 地址在集群内的service，在代码中表示为 <a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L351" target="_blank"
+   rel="noopener nofollow noreferrer" >APIServerServiceIP</a></li>
+<li><a href="https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L352" target="_blank"
+   rel="noopener nofollow noreferrer" >Service</a>，<code>--service-cluster-ip-range</code> 配置指定的ip，通过『逗号』分割可以为两个</li>
 </ul>
-<p>有了对 service 更好的理解后，接下来开始本系列第二节<a href="https://cylonchau.github.io/kubernetes-without-service.html">深入理解Kubernetes service - kube-proxy软件架构分析</a></p>
+<p>有了对 service 更好的理解后，接下来开始本系列第二节<a href="https://cylonchau.github.io/kubernetes-without-service.html" target="_blank"
+   rel="noopener nofollow noreferrer" >深入理解Kubernetes service - kube-proxy软件架构分析</a></p>
 <blockquote>
 <p><strong>Reference</strong></p>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/concepts/services-networking/dual-stack/"><em>dual-stack service</em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/concepts/services-networking/dual-stack/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>dual-stack service</em></a></p>
 </blockquote>
 ]]></content:encoded>
     </item>

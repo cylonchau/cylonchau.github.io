@@ -10,7 +10,7 @@
 <meta name="description" content="Kubernetes集群中的IP伪装 - ip-masq-agent - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/10/ch24-ip-masq/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "ip-masq-agent", "k8sIP伪装"
   ],
-  "wordCount" : "2642",
+  "wordCount" : "2542",
   "inLanguage": "zh",
   "datePublished": "2023-10-28T00:00:00Z",
   "dateModified": "2023-11-05T22:33:36+08:00",
@@ -378,327 +378,159 @@ function toggleThemeListener() {
 </blockquote>
 <h2 id="ip-masquerade-agent">IP Masquerade Agent<a hidden class="anchor" aria-hidden="true" href="#ip-masquerade-agent">¶</a></h2>
 <p>IP伪装在 kubernetes 中的应用是名为 <em>ip-masq-agent</em> 的项目， <em>ip-masq-agent</em> 是用于配置 iptables 规则，以便在将流量发送到集群节点的 IP 和集群 IP 范围之外的目标时处理伪装节点或 Pod 的 IP 地址。这本质上隐藏了集群节点 IP 地址后面的 Pod IP 地址。在某些环境中，去往&quot;外部&quot;地址的流量必须从已知的机器地址发出。 例如，在 GCP 中，任何到互联网的流量都必须来自 VM 的 IP。 使用容器时，如 GKE，从 Pod IP 发出的流量将被拒绝出站。 为了避免这种情况，我们必须将 Pod IP 隐藏在 VM 自己的 IP 地址后面 - 通常称为&quot;伪装&quot;。 默认情况下，代理配置为将 RFC 1918指定的三个私有 IP 范围视为非伪装 CIDR。 这些范围是 <code>10.0.0.0/8</code>、<code>172.16.0.0/12</code> 和 <code>192.168.0.0/16</code>。 默认情况下，代理还将链路本地地址（169.254.0.0/16）视为非伪装 CIDR。 代理程序配置为每隔 60 秒从 <strong>/etc/config/ip-masq-agent</strong> 重新加载其配置， 这也是可修改的。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/ip-masq.png" alt="masq/non-masq example"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/ip-masq.png" alt="masq/non-masq example" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：ip-masq-agent工作原理</center>
 <center><em>Source：</em>https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/ip-masq-agent/</center><br>
 <p>默认情况下，CIDR <em>10.0.0.0/8</em>，<em>172.16.0.0/12</em>, <em>192.168.0.0/16</em> 范围内的流量不会被伪装。 任何其他 CIDR 流量将被伪装。 Pod 访问本地目的地的例子，可以是其节点 (Node) 的 IP 地址，另一节点 (Node) 的地址或集群的 IP 地址 (ClusterIP) 范围内的一个 IP 地址。 默认情况下，任何其他流量都将伪装。以下条目展示了 ip-masq-agent 的默认使用的规则：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ iptables -t nat -L IP-MASQ-AGENT
-</span></span><span class="line"><span class="cl">target     prot opt <span class="nb">source</span>               destination
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             169.254.0.0/16       /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             10.0.0.0/8           /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             172.16.0.0/12        /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             192.168.0.0/16       /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
-</span></span><span class="line"><span class="cl">MASQUERADE  all  --  anywhere             anywhere             /* ip-masq-agent: outbound traffic should be subject to MASQUERADE <span class="o">(</span>this match must come after cluster-local CIDR matches<span class="o">)</span> */ ADDRTYPE match dst-type !LOCAL
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="部署-ip-masq-agent">部署 ip-masq-agent<a hidden class="anchor" aria-hidden="true" href="#部署-ip-masq-agent">¶</a></h2>
+<pre><code class="language-bash">$ iptables -t nat -L IP-MASQ-AGENT
+target     prot opt source               destination
+RETURN     all  --  anywhere             169.254.0.0/16       /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
+RETURN     all  --  anywhere             10.0.0.0/8           /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
+RETURN     all  --  anywhere             172.16.0.0/12        /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
+RETURN     all  --  anywhere             192.168.0.0/16       /* ip-masq-agent: cluster-local traffic should not be subject to MASQUERADE */ ADDRTYPE match dst-type !LOCAL
+MASQUERADE  all  --  anywhere             anywhere             /* ip-masq-agent: outbound traffic should be subject to MASQUERADE (this match must come after cluster-local CIDR matches) */ ADDRTYPE match dst-type !LOCAL
+</code></pre>
+<h2 id="部署-ip-masq-agent">部署 ip-masq-agent<a hidden class="anchor" aria-hidden="true" href="#部署-ip-masq-agent">¶</a></h2>
 <p>ip-masq-agent 的部署可以直接使用官方提供的资源清单 <sup><a href="#1">[1]</a></sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/ip-masq-agent/master/ip-masq-agent.yaml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>清除 ip-masq-agent</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="l">kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/ip-masq-agent/master/ip-masq-agent.yaml</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>部署后需要同时将对应的节点标签应用于集群中希望代理运行的任何节点</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl label nodes my-node node.kubernetes.io/masq-agent-ds-ready<span class="o">=</span><span class="nb">true</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>配置好之后，需要创建配置，以对不伪装的地址增加白名单</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">nonMasqueradeCIDRs:
-</span></span><span class="line"><span class="cl">  - 10.0.0.0/8
-</span></span><span class="line"><span class="cl">resyncInterval: 60s
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="ip-masq-agent-深入解析">ip-masq-agent 深入解析<a hidden class="anchor" aria-hidden="true" href="#ip-masq-agent-深入解析">¶</a></h2>
+<pre><code class="language-bash">kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/ip-masq-agent/master/ip-masq-agent.yaml
+</code></pre>
+<p>清除 ip-masq-agent</p>
+<pre><code class="language-yaml">kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/ip-masq-agent/master/ip-masq-agent.yaml
+</code></pre>
+<p>部署后需要同时将对应的节点标签应用于集群中希望代理运行的任何节点</p>
+<pre><code class="language-bash">kubectl label nodes my-node node.kubernetes.io/masq-agent-ds-ready=true
+</code></pre>
+<p>配置好之后，需要创建配置，以对不伪装的地址增加白名单</p>
+<pre><code class="language-bash">nonMasqueradeCIDRs:
+  - 10.0.0.0/8
+resyncInterval: 60s
+</code></pre>
+<h2 id="ip-masq-agent-深入解析">ip-masq-agent 深入解析<a hidden class="anchor" aria-hidden="true" href="#ip-masq-agent-深入解析">¶</a></h2>
 <p>ip-masq-agent 的代码很少，只有400多行，但是作用却很大，直接可以解决管理员集群网络规划与大拓扑网络的网络冲突问题，下面就分析他的原理，以及如何完成集群 IP 伪装功能</p>
 <h3 id="ip-masq-agent源码的分析">ip-masq-agent源码的分析<a hidden class="anchor" aria-hidden="true" href="#ip-masq-agent源码的分析">¶</a></h3>
 <p>ip-masq-agent 只有这一个文件 cmd/ip-masq-agent/ip-masq-agent.go，包含了整个的业务逻辑</p>
-<p>首先在 <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/master/cmd/ip-masq-agent/ip-masq-agent.go#L139">main()</a> 启动时，定义了这个链的名称，之后调用 Run()</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">masqChain</span> <span class="p">=</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nf">Chain</span><span class="p">(</span><span class="o">*</span><span class="nx">masqChainFlag</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="p">..</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">m</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在 <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/1a093b8aad7c372c535c1fb104377728c1e54a7a/cmd/ip-masq-agent/ip-masq-agent.go#L153-L175">Run()</a> 中，只是做了周期性同步</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">MasqDaemon</span><span class="p">)</span> <span class="nf">Run</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Periodically resync to reconfigure or heal from any rule decay
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="k">defer</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">ResyncInterval</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// resync config
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">osSyncConfig</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">glog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;error syncing configuration: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// resync rules
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">syncMasqRules</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">glog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;error syncing masquerade rules: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">			<span class="c1">// resync ipv6 rules
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">syncMasqRulesIPv6</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">				<span class="nx">glog</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;error syncing masquerade rules for ipv6: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">				<span class="k">return</span>
-</span></span><span class="line"><span class="cl">			<span class="p">}</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}()</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>重点就在 m.osSyncConfig() , 这里做的是同步实际的规则</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">MasqDaemon</span><span class="p">)</span> <span class="nf">syncMasqRules</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 指定的链是否存在，如果不存在则创建，masqChain全局变量 是 main() 中初始化的名称，默认为IP-MASQ-AGENT
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">m</span><span class="p">.</span><span class="nx">iptables</span><span class="p">.</span><span class="nf">EnsureChain</span><span class="p">(</span><span class="nx">utiliptables</span><span class="p">.</span><span class="nx">TableNAT</span><span class="p">,</span> <span class="nx">masqChain</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// ensure that any non-local in POSTROUTING jumps to masqChain
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ensurePostroutingJump</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// build up lines to pass to iptables-restore
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">lines</span> <span class="o">:=</span> <span class="nx">bytes</span><span class="p">.</span><span class="nf">NewBuffer</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nf">writeLine</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="s">&#34;*nat&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nf">writeLine</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nf">MakeChainLine</span><span class="p">(</span><span class="nx">masqChain</span><span class="p">))</span> <span class="c1">// effectively flushes masqChain atomically with rule restore
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// local-link cidr 不伪装（&#34;169.254.0.0/16&#34;） 固定值
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="p">!</span><span class="nx">m</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">MasqLinkLocal</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nf">writeNonMasqRule</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="nx">linkLocalCIDR</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// 用户定义的不伪装的 CIDR 部分
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">cidr</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">NonMasqueradeCIDRs</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="p">!</span><span class="nf">isIPv6CIDR</span><span class="p">(</span><span class="nx">cidr</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nf">writeNonMasqRule</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="nx">cidr</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// masquerade all other traffic that is not bound for a --dst-type LOCAL destination
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nf">writeMasqRule</span><span class="p">(</span><span class="nx">lines</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nf">writeLine</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="s">&#34;COMMIT&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">iptables</span><span class="p">.</span><span class="nf">RestoreAll</span><span class="p">(</span><span class="nx">lines</span><span class="p">.</span><span class="nf">Bytes</span><span class="p">(),</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nx">NoFlushTables</span><span class="p">,</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nx">NoRestoreCounters</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">err</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>看完同步规则后，了解到上面就是两个操作，”伪装“ 和 “不伪装” 的操作如下所示</p>
+<p>首先在 <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/master/cmd/ip-masq-agent/ip-masq-agent.go#L139" target="_blank"
+   rel="noopener nofollow noreferrer" >main()</a> 启动时，定义了这个链的名称，之后调用 Run()</p>
+<pre><code class="language-go">masqChain = utiliptables.Chain(*masqChainFlag)
+
+..
+
+m.Run()
+</code></pre>
+<p>在 <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/1a093b8aad7c372c535c1fb104377728c1e54a7a/cmd/ip-masq-agent/ip-masq-agent.go#L153-L175" target="_blank"
+   rel="noopener nofollow noreferrer" >Run()</a> 中，只是做了周期性同步</p>
+<pre><code class="language-go">func (m *MasqDaemon) Run() {
+	// Periodically resync to reconfigure or heal from any rule decay
+	for {
+		func() {
+			defer time.Sleep(time.Duration(m.config.ResyncInterval))
+			// resync config
+			if err := m.osSyncConfig(); err != nil {
+				glog.Errorf(&quot;error syncing configuration: %v&quot;, err)
+				return
+			}
+			// resync rules
+			if err := m.syncMasqRules(); err != nil {
+				glog.Errorf(&quot;error syncing masquerade rules: %v&quot;, err)
+				return
+			}
+			// resync ipv6 rules
+			if err := m.syncMasqRulesIPv6(); err != nil {
+				glog.Errorf(&quot;error syncing masquerade rules for ipv6: %v&quot;, err)
+				return
+			}
+		}()
+	}
+}
+</code></pre>
+<p>重点就在 m.osSyncConfig() , 这里做的是同步实际的规则</p>
+<pre><code class="language-go">func (m *MasqDaemon) syncMasqRules() error {
+    // 指定的链是否存在，如果不存在则创建，masqChain全局变量 是 main() 中初始化的名称，默认为IP-MASQ-AGENT
+	m.iptables.EnsureChain(utiliptables.TableNAT, masqChain)
+
+	// ensure that any non-local in POSTROUTING jumps to masqChain
+	if err := m.ensurePostroutingJump(); err != nil {
+		return err
+	}
+
+	// build up lines to pass to iptables-restore
+	lines := bytes.NewBuffer(nil)
+	writeLine(lines, &quot;*nat&quot;)
+	writeLine(lines, utiliptables.MakeChainLine(masqChain)) // effectively flushes masqChain atomically with rule restore
+
+	// local-link cidr 不伪装（&quot;169.254.0.0/16&quot;） 固定值
+	if !m.config.MasqLinkLocal {
+		writeNonMasqRule(lines, linkLocalCIDR)
+	}
+
+	// 用户定义的不伪装的 CIDR 部分
+	for _, cidr := range m.config.NonMasqueradeCIDRs {
+		if !isIPv6CIDR(cidr) {
+			writeNonMasqRule(lines, cidr)
+		}
+	}
+
+	// masquerade all other traffic that is not bound for a --dst-type LOCAL destination
+	writeMasqRule(lines)
+
+	writeLine(lines, &quot;COMMIT&quot;)
+
+	if err := m.iptables.RestoreAll(lines.Bytes(), utiliptables.NoFlushTables, utiliptables.NoRestoreCounters); err != nil {
+		return err
+	}
+	return nil
+}
+
+</code></pre>
+<p>看完同步规则后，了解到上面就是两个操作，”伪装“ 和 “不伪装” 的操作如下所示</p>
 <p>不伪装部分实际上就是关键词 RETURN</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">writeNonMasqRule</span><span class="p">(</span><span class="nx">lines</span> <span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">,</span> <span class="nx">cidr</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nf">writeRule</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nx">Append</span><span class="p">,</span> <span class="nx">masqChain</span><span class="p">,</span> <span class="nx">nonMasqRuleComment</span><span class="p">,</span> <span class="s">&#34;-d&#34;</span><span class="p">,</span> <span class="nx">cidr</span><span class="p">,</span> <span class="s">&#34;-j&#34;</span><span class="p">,</span> <span class="s">&#34;RETURN&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>伪装部分实际上就是关键词 MASQUERADE</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">writeMasqRule</span><span class="p">(</span><span class="nx">lines</span> <span class="o">*</span><span class="nx">bytes</span><span class="p">.</span><span class="nx">Buffer</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nf">writeRule</span><span class="p">(</span><span class="nx">lines</span><span class="p">,</span> <span class="nx">utiliptables</span><span class="p">.</span><span class="nx">Append</span><span class="p">,</span> <span class="nx">masqChain</span><span class="p">,</span> <span class="nx">masqRuleComment</span><span class="p">,</span> <span class="s">&#34;-j&#34;</span><span class="p">,</span> <span class="s">&#34;MASQUERADE&#34;</span><span class="p">,</span> <span class="s">&#34;--random-fully&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="伪装网络包的分析">伪装网络包的分析<a hidden class="anchor" aria-hidden="true" href="#伪装网络包的分析">¶</a></h3>
+<pre><code class="language-go">func writeNonMasqRule(lines *bytes.Buffer, cidr string) {
+	writeRule(lines, utiliptables.Append, masqChain, nonMasqRuleComment, &quot;-d&quot;, cidr, &quot;-j&quot;, &quot;RETURN&quot;)
+}
+</code></pre>
+<p>伪装部分实际上就是关键词 MASQUERADE</p>
+<pre><code class="language-go">func writeMasqRule(lines *bytes.Buffer) {
+	writeRule(lines, utiliptables.Append, masqChain, masqRuleComment, &quot;-j&quot;, &quot;MASQUERADE&quot;, &quot;--random-fully&quot;)
+}
+</code></pre>
+<h3 id="伪装网络包的分析">伪装网络包的分析<a hidden class="anchor" aria-hidden="true" href="#伪装网络包的分析">¶</a></h3>
 <p>创建一个 ip-masq-agent 的配置文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">tee &gt; config <span class="s">&lt;&lt;EOF
-</span></span></span><span class="line"><span class="cl"><span class="s">nonMasqueradeCIDRs:
-</span></span></span><span class="line"><span class="cl"><span class="s">  - 10.244.0.0/16
-</span></span></span><span class="line"><span class="cl"><span class="s">  - 192.0.0.0/8
-</span></span></span><span class="line"><span class="cl"><span class="s">resyncInterval: 60s
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>创建 configmap</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="l">kubectl create configmap ip-masq-agent --from-file=config --namespace=kube-system</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>验证规则是否生效</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ iptables -t nat -L IP-MASQ-AGENT
-</span></span><span class="line"><span class="cl">Chain IP-MASQ-AGENT <span class="o">(</span><span class="m">1</span> references<span class="o">)</span>
-</span></span><span class="line"><span class="cl">target     prot opt <span class="nb">source</span>               destination         
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             link-local/16        /* ip-masq-agent: <span class="nb">local</span> traffic is not subject to MASQUERADE */
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             10.244.0.0/16        /* ip-masq-agent: <span class="nb">local</span> traffic is not subject to MASQUERADE */
-</span></span><span class="line"><span class="cl">RETURN     all  --  anywhere             192.0.0.0/8          /* ip-masq-agent: <span class="nb">local</span> traffic is not subject to MASQUERADE */
-</span></span><span class="line"><span class="cl">MASQUERADE  all  --  anywhere             anywhere             /* ip-masq-agent: outbound traffic is subject to MASQUERADE <span class="o">(</span>must be last in chain<span class="o">)</span> */
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>抓包查看包是否被伪装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ <span class="nv">cpid</span><span class="o">=</span><span class="sb">`</span>docker inspect --format <span class="s1">&#39;{{.State.Pid}}&#39;</span> 6b0a92ca4327<span class="sb">`</span>
-</span></span><span class="line"><span class="cl">$ nsenter -t <span class="nv">$cpid</span> -n ifconfig eth0<span class="p">|</span>grep inet
-</span></span><span class="line"><span class="cl">        inet 10.244.196.132  netmask 255.255.255.255  broadcast 10.244.196.132
-</span></span><span class="line"><span class="cl">$ nsenter -t <span class="nv">$cpid</span> -n ping 10.0.0.2
-</span></span><span class="line"><span class="cl">$ tcpdump -i any icmp and host 10.0.0.2 -w icap.cap
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通过导出的 wireshark 包，可以很清楚的看到，去往 10.0.0.2 的已经被伪装了</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20231105222224315.png" alt="image-20231105222224315"  /></p>
+<pre><code class="language-bash">tee &gt; config &lt;&lt;EOF
+nonMasqueradeCIDRs:
+  - 10.244.0.0/16
+  - 192.0.0.0/8
+resyncInterval: 60s
+EOF
+</code></pre>
+<p>创建 configmap</p>
+<pre><code class="language-yaml">kubectl create configmap ip-masq-agent --from-file=config --namespace=kube-system
+</code></pre>
+<p>验证规则是否生效</p>
+<pre><code class="language-bash">$ iptables -t nat -L IP-MASQ-AGENT
+Chain IP-MASQ-AGENT (1 references)
+target     prot opt source               destination         
+RETURN     all  --  anywhere             link-local/16        /* ip-masq-agent: local traffic is not subject to MASQUERADE */
+RETURN     all  --  anywhere             10.244.0.0/16        /* ip-masq-agent: local traffic is not subject to MASQUERADE */
+RETURN     all  --  anywhere             192.0.0.0/8          /* ip-masq-agent: local traffic is not subject to MASQUERADE */
+MASQUERADE  all  --  anywhere             anywhere             /* ip-masq-agent: outbound traffic is subject to MASQUERADE (must be last in chain) */
+</code></pre>
+<p>抓包查看包是否被伪装</p>
+<pre><code class="language-bash">$ cpid=`docker inspect --format '{{.State.Pid}}' 6b0a92ca4327`
+$ nsenter -t $cpid -n ifconfig eth0|grep inet
+        inet 10.244.196.132  netmask 255.255.255.255  broadcast 10.244.196.132
+$ nsenter -t $cpid -n ping 10.0.0.2
+$ tcpdump -i any icmp and host 10.0.0.2 -w icap.cap
+</code></pre>
+<p>通过导出的 wireshark 包，可以很清楚的看到，去往 10.0.0.2 的已经被伪装了</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20231105222224315.png" alt="image-20231105222224315" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Kubernetes集群节点IP伪装抓包</center>
 <h2 id="reference"><strong>Reference</strong><a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/master/ip-masq-agent.yaml">ip-masq-agent.yaml</a></p>
-<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/ip-masq-agent/">IP Masquerade Agent 用户指南</a></p>
-<p><sup id="3">[3]</sup> <a href="https://medium.com/google-cloud/ip-address-management-strategy-a-crucial-aspect-of-running-gke-f063fe90cfbd">IP address management strategy — a crucial aspect of running GKE</a></p>
+<p><sup id="1">[1]</sup> <a href="https://github.com/kubernetes-sigs/ip-masq-agent/blob/master/ip-masq-agent.yaml" target="_blank"
+   rel="noopener nofollow noreferrer" >ip-masq-agent.yaml</a></p>
+<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/ip-masq-agent/" target="_blank"
+   rel="noopener nofollow noreferrer" >IP Masquerade Agent 用户指南</a></p>
+<p><sup id="3">[3]</sup> <a href="https://medium.com/google-cloud/ip-address-management-strategy-a-crucial-aspect-of-running-gke-f063fe90cfbd" target="_blank"
+   rel="noopener nofollow noreferrer" >IP address management strategy — a crucial aspect of running GKE</a></p>
 
 
     

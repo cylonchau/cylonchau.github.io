@@ -10,7 +10,7 @@
 <meta name="description" content="SSH服务详解 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2016/08/ssh-service/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "Linux", "ssh", "SSH服务详解"
   ],
-  "wordCount" : "4263",
+  "wordCount" : "4164",
   "inLanguage": "zh",
   "datePublished": "2016-08-05T00:00:00Z",
   "dateModified": "2023-03-22T23:00:36+08:00",
@@ -329,49 +329,25 @@ function toggleThemeListener() {
 <p>SSH全称(<font color="#f8070d" size=3><strong>S</strong></font>ecure<font color="#f8070d" size=3><strong>SH</strong></font>ell)是一种网络协议，顾名思义就是非常安全的shell，主要用于计算机间加密传输。早期，互联网通信都是基于明文通信，一旦被截获，内容就暴露无遗。1995年，芬兰学者Tatu Ylonen设计了SSH协议，将登录信息全部加密，成为互联网安全的一个基本解决方案，迅速在全世界获得推广，目前已经成为Linux系统的标准配置。</p>
 <p>SSH服务是由OpenSSH服务端软件OpenSSH和客户端（常见的由SSH，SecureCRT，Xshell，putty）组成，默认使用<font color="#f8070d" size=3><strong>22</strong></font>端口提供服务，有两个不兼容的ssh协议版本，分别为1.x和2.x。</p>
 <p>SSH协议目前有SSH1和SSH2两个主流版本，SSH2协议兼容SSH1，强烈建议使用SSH2版本。目前实现SSH1和SSH2协议的主要软件有OpenSSH 和SSH Communications Security Corporation　公司的SSH Communications 软件。前者是OpenBSD组织开发的一款免费的SSH软件，后者是商业软件，因此在linux、FreeBSD、OpenBSD 、NetBSD等免费类UNIX系统种，通常都使用OpenSSH作为SSH协议的实现软件。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ rpm -qa openssh openssl
-</span></span><span class="line"><span class="cl">openssl-1.0.1e-30.el6.x86_64
-</span></span><span class="line"><span class="cl">openssh-5.3p1-104.el6.x86_64
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-sh">$ rpm -qa openssh openssl
+openssl-1.0.1e-30.el6.x86_64
+openssh-5.3p1-104.el6.x86_64
+</code></pre>
+<blockquote>
 <p><strong>SSH1.x</strong></p>
 </blockquote>
 <p>每台ssh服务器主机都可以使用rsa加密方式来产生一个1024bit的RSAKey，这个RSA的加密方式就是用来产生公钥与私钥的算法之一，SSH1.x的整个联机加密步骤如下：
 当SSH服务启动时，会产生一个768-bit的临时公钥（sshd_config配置文件中ServerKeyBits 768）存放在server中</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="c1"># centos5为768 centos6为1024</span>
-</span></span><span class="line"><span class="cl">$ grep ServerKey /etc/ssh/sshd_config 
-</span></span><span class="line"><span class="cl"><span class="c1">#ServerKeyBits 1024</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当客户端联机请求传送过来时，服务器就会将这个768-bit的公钥传给客户端，此时客户端会将此公钥与先前存储的公钥进行对比，看是否一致。判断标准是服务器端联机用户目录下~/.ssh/know_hosts文件的内容（linux客户端）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ssh -p22 lamp@192.168.65.62
-</span></span><span class="line"><span class="cl">$ ll .ssh/known_hosts 
-</span></span><span class="line"><span class="cl">-rw-r--r--. <span class="m">1</span> root root <span class="m">395</span> Jun <span class="m">16</span> 13:15 .ssh/known_hosts
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>windows SecureCRT图示
+<pre><code class="language-sh"># centos5为768 centos6为1024
+$ grep ServerKey /etc/ssh/sshd_config 
+#ServerKeyBits 1024
+</code></pre>
+<p>当客户端联机请求传送过来时，服务器就会将这个768-bit的公钥传给客户端，此时客户端会将此公钥与先前存储的公钥进行对比，看是否一致。判断标准是服务器端联机用户目录下~/.ssh/know_hosts文件的内容（linux客户端）</p>
+<pre><code class="language-sh">$ ssh -p22 lamp@192.168.65.62
+$ ll .ssh/known_hosts 
+-rw-r--r--. 1 root root 395 Jun 16 13:15 .ssh/known_hosts
+</code></pre>
+<p>windows SecureCRT图示
 在客户端接收到这个768-bit的Server Key后，客户端本地也会产生一个256bit的私钥（private key或host key），并且以加密的方式（具体的加密算法由客户端在服务器提供的所有可用算法中选择，默认为3DES算法），将Server key与host</p>
 <h2 id="sshd_config配置文件详解">SSHD_CONFIG配置文件详解<a hidden class="anchor" aria-hidden="true" href="#sshd_config配置文件详解">¶</a></h2>
 <table>
@@ -487,31 +463,17 @@ function toggleThemeListener() {
 <blockquote>
 <p><strong>口令验证测试</strong></p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ssh -p52113 root@192.168.252.61
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  The authenticity of host <span class="s1">&#39;[192.168.252.61]:52113 ([192.168.252.61]:52113)&#39;</span> can<span class="s1">&#39;t be established.
-</span></span></span><span class="line"><span class="cl"><span class="s1">RSA key fingerprint is 38:68:34:4e:09:c0:75:18:be:72:17:20:2c:95:0a:e6.
-</span></span></span><span class="line"><span class="cl"><span class="s1">Are you sure you want to continue connecting (yes/no)? yes 
-</span></span></span><span class="line"><span class="cl"><span class="s1">Warning: Permanently added &#39;</span><span class="o">[</span>192.168.252.61<span class="o">]</span>:52113<span class="s1">&#39; (RSA) to the list of known hosts.
-</span></span></span><span class="line"><span class="cl"><span class="s1">root@192.168.252.61&#39;</span>s password: 
-</span></span><span class="line"><span class="cl">Last login: Thu May <span class="m">11</span> 21:37:33 <span class="m">2017</span> from 192.168.252.1
-</span></span><span class="line"><span class="cl">$   
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="基于秘钥的安全验证">基于秘钥的安全验证<a hidden class="anchor" aria-hidden="true" href="#基于秘钥的安全验证">¶</a></h3>
+<pre><code class="language-sh">$ ssh -p52113 root@192.168.252.61
+
+  The authenticity of host '[192.168.252.61]:52113 ([192.168.252.61]:52113)' can't be established.
+RSA key fingerprint is 38:68:34:4e:09:c0:75:18:be:72:17:20:2c:95:0a:e6.
+Are you sure you want to continue connecting (yes/no)? yes 
+Warning: Permanently added '[192.168.252.61]:52113' (RSA) to the list of known hosts.
+root@192.168.252.61's password: 
+Last login: Thu May 11 21:37:33 2017 from 192.168.252.1
+$   
+</code></pre>
+<h3 id="基于秘钥的安全验证">基于秘钥的安全验证<a hidden class="anchor" aria-hidden="true" href="#基于秘钥的安全验证">¶</a></h3>
 <p>基于秘钥的安全验证方式是指，需要依靠秘钥。也就是必须实现建立一对秘钥对，然后吧<font style="background:#ffff00;" size=3>公用秘钥<font color="#f8070d" size=3>（public key）</font>放在需要访问的目标服务器上</font>，另外，还需要把<font style="background:#ffff00;" size=3>私钥<font color="#f8070d" size=3>（private key）</font>放到SSH客户端或对应的客户端服务器上</font>。</p>
 <p>此时，如果想要连接到这个带有公用秘钥的SSH服务器，客户端SSH软件或客户端服务器就会向SSH服务器发出请求，请求用联机的用户秘钥进行安全验证。SSH服务器收到请求后，会先在该SSH服务器上连接的用户的家目录下寻找事先放上去的对应用户的公共密钥，然后把它和连接的SSH客户端发送过来的公用密钥进行比较。如果两个密钥一致，SSH服务器就用公用密钥加密“质询”（challenge）并把他发送给SSH客户端。</p>
 <p>SSH客户端收到“质询”之后就可以用自己的私钥解密，再把发送给SSH服务器。使用这种方式，需要使用联机用户的密钥文件。与第一种基于口令验证的方式相比，第二种方式<font style="background:#ffff00;" size=3>不需要在网络上传送口令密码</font>，所以安全性更高了，这时我们也要注意保护我们的密钥文件。特别是私钥文件，一旦被黑客获取，危险就大了。</p>
@@ -520,268 +482,153 @@ function toggleThemeListener() {
 <blockquote>
 <p><strong>方法一：在linux服务器上生成密钥对</strong></p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ ssh-keygen -t dsa
-</span></span><span class="line"><span class="cl">Generating public/private dsa key pair.
-</span></span><span class="line"><span class="cl"><span class="c1"># 输入文件中要保存的key</span>
-</span></span><span class="line"><span class="cl">Enter file in which to save the key <span class="o">(</span>/root/.ssh/id_dsa<span class="o">)</span>: zhangsan
-</span></span><span class="line"><span class="cl"><span class="c1"># 输入一个要解密的密码，空为无密码</span>
-</span></span><span class="line"><span class="cl">Enter passphrase <span class="o">(</span>empty <span class="k">for</span> no passphrase<span class="o">)</span>: 
-</span></span><span class="line"><span class="cl"><span class="c1"># 再次输入密码，空为无密码</span>
-</span></span><span class="line"><span class="cl">Enter same passphrase again: 
-</span></span><span class="line"><span class="cl"><span class="c1"># 身份证明以保存至zhangsan这个文件</span>
-</span></span><span class="line"><span class="cl">Your identification has been saved in zhangsan.
-</span></span><span class="line"><span class="cl"><span class="c1"># 公钥以保存为zhangsan.pub这个文件</span>
-</span></span><span class="line"><span class="cl">Your public key has been saved in zhangsan.pub.
-</span></span><span class="line"><span class="cl"><span class="c1"># lamp主机的root用户的key的指纹为那些</span>
-</span></span><span class="line"><span class="cl">The key fingerprint is:
-</span></span><span class="line"><span class="cl">10:d2:e8:03:30:4b:c9:8b:76:97:d0:6e:09:52:f7:06 root@lamp
-</span></span><span class="line"><span class="cl">The key<span class="err">&#39;</span>s randomart image is:
-</span></span><span class="line"><span class="cl">+--<span class="o">[</span> DSA 1024<span class="o">]</span>----+
-</span></span><span class="line"><span class="cl"><span class="p">|</span>+oo.oE.          	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>.*.ooo+.         	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>o oo+ +o         	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>.o .o*..         	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>. . o.  S        	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>                 	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>                 	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>                 	<span class="p">|</span>
-</span></span><span class="line"><span class="cl"><span class="p">|</span>                 	<span class="p">|</span>
-</span></span><span class="line"><span class="cl">+-----------------+
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ls
-</span></span><span class="line"><span class="cl">known_hosts  zhangsan  zhangsan.pub
-</span></span><span class="line"><span class="cl"><span class="c1"># 在服务器上将公钥重命名,名字错误将验证不成功</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ mv id_dsa.pub authorized_keys
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看是否重命名成功</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ll
-</span></span><span class="line"><span class="cl">-rw-r--r--. <span class="m">1</span> root root <span class="m">599</span> Jun <span class="m">17</span> 03:23 authorized_keys
-</span></span><span class="line"><span class="cl">-rw-------. <span class="m">1</span> root root <span class="m">668</span> Jun <span class="m">17</span> 03:23 id_dsa
-</span></span><span class="line"><span class="cl"><span class="c1"># 修改公钥权限</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ chmod <span class="m">600</span> authorized_keys 
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看公钥权限是否修改成功</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ ll
-</span></span><span class="line"><span class="cl">-rw-------. <span class="m">1</span> root root <span class="m">599</span> Jun <span class="m">17</span> 03:23 authorized_keys
-</span></span><span class="line"><span class="cl">-rw-------. <span class="m">1</span> root root <span class="m">668</span> Jun <span class="m">17</span> 03:23 id_dsa  
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>使用SecureCRT将私钥转换为openSSH格式的私钥</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233019524.png" alt="image-20221214233019524"  /></p>
+<pre><code class="language-sh">$ ssh-keygen -t dsa
+Generating public/private dsa key pair.
+# 输入文件中要保存的key
+Enter file in which to save the key (/root/.ssh/id_dsa): zhangsan
+# 输入一个要解密的密码，空为无密码
+Enter passphrase (empty for no passphrase): 
+# 再次输入密码，空为无密码
+Enter same passphrase again: 
+# 身份证明以保存至zhangsan这个文件
+Your identification has been saved in zhangsan.
+# 公钥以保存为zhangsan.pub这个文件
+Your public key has been saved in zhangsan.pub.
+# lamp主机的root用户的key的指纹为那些
+The key fingerprint is:
+10:d2:e8:03:30:4b:c9:8b:76:97:d0:6e:09:52:f7:06 root@lamp
+The key's randomart image is:
++--[ DSA 1024]----+
+|+oo.oE.          	|
+|.*.ooo+.         	|
+|o oo+ +o         	|
+|.o .o*..         	|
+|. . o.  S        	|
+|                 	|
+|                 	|
+|                 	|
+|                 	|
++-----------------+
+
+$ ls
+known_hosts  zhangsan  zhangsan.pub
+# 在服务器上将公钥重命名,名字错误将验证不成功
+
+$ mv id_dsa.pub authorized_keys
+# 查看是否重命名成功
+
+$ ll
+-rw-r--r--. 1 root root 599 Jun 17 03:23 authorized_keys
+-rw-------. 1 root root 668 Jun 17 03:23 id_dsa
+# 修改公钥权限
+
+$ chmod 600 authorized_keys 
+# 查看公钥权限是否修改成功
+
+$ ll
+-rw-------. 1 root root 599 Jun 17 03:23 authorized_keys
+-rw-------. 1 root root 668 Jun 17 03:23 id_dsa  
+</code></pre>
+<p>使用SecureCRT将私钥转换为openSSH格式的私钥</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233019524.png" alt="image-20221214233019524" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>选择之前下载的私钥的路径</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233039966.png" alt="image-20221214233039966"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233039966.png" alt="image-20221214233039966" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>如果没输入密码则无这一步</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233124937.png" alt="image-20221214233124937"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233209994.png" alt="image-20221214233209994"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233124937.png" alt="image-20221214233124937" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233209994.png" alt="image-20221214233209994" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>测试过程</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233231147.png" alt="image-20221214233231147"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233248106.png" alt="image-20221214233248106"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233231147.png" alt="image-20221214233231147" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233248106.png" alt="image-20221214233248106" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <blockquote>
 <p><strong>方法二：使用SecureCRT创建秘钥对</strong></p>
 </blockquote>
 <ol>
 <li><strong>选择当前要生成的秘钥窗口，然后点击“工具”中的创建公钥选项，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233337089.png" alt="image-20221214233337089"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233337089.png" alt="image-20221214233337089" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="2">
 <li><strong>秘钥生成向导选择下一步，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233355827.png" alt="image-20221214233355827"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233355827.png" alt="image-20221214233355827" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="3">
 <li><strong>秘钥类型选择DSA或RSA，然后点击下一步，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233415756.png" alt="image-20221214233415756"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233427261.png" alt="image-20221214233427261"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233415756.png" alt="image-20221214233415756" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233427261.png" alt="image-20221214233427261" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="4">
 <li><strong>生成秘钥长度，保持默认即可，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233507874.png" alt="image-20221214233507874"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233507874.png" alt="image-20221214233507874" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="5">
 <li><strong>秘钥生成过程，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233520164.png" alt="image-20221214233520164"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233520164.png" alt="image-20221214233520164" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="6">
 <li><strong>秘钥生成后选择下一步，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233539086.png" alt="image-20221214233539086"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233539086.png" alt="image-20221214233539086" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="7">
 <li><strong>秘钥生成后，点击下一步，选择秘钥的私钥保存的路径和，然后点击完成。如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233550840.png" alt="image-20221214233550840"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233550840.png" alt="image-20221214233550840" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="8">
 <li><strong>点击完成后，弹出是否使用此秘钥为全局公钥，以个人习惯选择是或否，这里选择否，如下图所示</strong>：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233610803.png" alt="image-20221214233610803"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233610803.png" alt="image-20221214233610803" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <ol start="9">
 <li><strong>将SecureCRT生成的公钥上传到linux服务器上</strong></li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233646475.png" alt="image-20221214233646475"  /></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl"><span class="c1"># 创建公钥存放目录</span>
-</span></span><span class="line"><span class="cl">$ mkdir .ssh
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 修改.ssh目录的权限</span>
-</span></span><span class="line"><span class="cl">$ chmod <span class="m">700</span> .ssh/
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看ssh2兼容格式转换成openssh的格式结果</span>
-</span></span><span class="line"><span class="cl">$ ssh-keygen -i -f Identity.pub  
-</span></span><span class="line"><span class="cl">ssh-dss AAAAB3NzaC1kc3MAAACBAIJLJsIZJ0G/RKBnWQ04uRfqnv3Vkm8iusrI3Bm784lP64kn/IVZnC/2wcs6xjwjuGFt8GgNVKty+
-</span></span><span class="line"><span class="cl">s5/jf4uMBse7Ju3alIv42iOmS5+qeztb3Yio1r0rEjLcEdFZVEW3dbVsYX3ufwvBa9GhPum4q3eYwY7TziKR9ub2UJZTqVzAAAAFQDSfk
-</span></span><span class="line"><span class="cl">HVhjW7J80YBBI2PdqVcRfZ3wAAAIBwmHcLm+BVCcMmpKfYzl+W1/79Cd7vSbeFMW+linn82Li/RcVnWF47hxeKwOwJ/O2UJ879cW1xPUG
-</span></span><span class="line"><span class="cl">nJUNfEvHJs93rn3zthlbwLCmyH8Ugp2pF38DgyydbU6Xs/6lyiUc14WlzvL3QqO1H+QBX/18ZgXsZjoxakd86pz329r9wTgAAAIAVakBN
-</span></span><span class="line"><span class="cl">8DtSRZqPLeaXDhevg3texOTlmDsmhmqBcAOmH6VnzP1VB0E8DhTB8/MWJChSJalslyEzaa1PhBNwZEn3SmG6vWe+CXSuEtHBXbVBQHsDb
-</span></span><span class="line"><span class="cl">xois6L+oqkL86PA7JdzTDSfiZKoGOks5f37Qb+CREnhyYcXJIjPZTE/0aIsdA<span class="o">==</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 将ssh2兼容格式转换成openssl的格式结果</span>
-</span></span><span class="line"><span class="cl">$ ssh-keygen -i -f Identity.pub &gt;&gt;.ssh/authorized_keys
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 修改公钥的权限</span>
-</span></span><span class="line"><span class="cl">$ chmod <span class="m">600</span> .ssh/authorized_keys 
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 查看权限是否修改成功</span>
-</span></span><span class="line"><span class="cl">$ ll .ssh/
-</span></span><span class="line"><span class="cl">-rw-------. <span class="m">1</span> root root <span class="m">589</span> Jun <span class="m">17</span> 04:37 authorized_keys  
-</span></span></code></pre></td></tr></table>
-</div>
-</div><ol start="10">
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233646475.png" alt="image-20221214233646475" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<pre><code class="language-sh"># 创建公钥存放目录
+$ mkdir .ssh
+
+# 修改.ssh目录的权限
+$ chmod 700 .ssh/
+
+# 查看ssh2兼容格式转换成openssh的格式结果
+$ ssh-keygen -i -f Identity.pub  
+ssh-dss AAAAB3NzaC1kc3MAAACBAIJLJsIZJ0G/RKBnWQ04uRfqnv3Vkm8iusrI3Bm784lP64kn/IVZnC/2wcs6xjwjuGFt8GgNVKty+
+s5/jf4uMBse7Ju3alIv42iOmS5+qeztb3Yio1r0rEjLcEdFZVEW3dbVsYX3ufwvBa9GhPum4q3eYwY7TziKR9ub2UJZTqVzAAAAFQDSfk
+HVhjW7J80YBBI2PdqVcRfZ3wAAAIBwmHcLm+BVCcMmpKfYzl+W1/79Cd7vSbeFMW+linn82Li/RcVnWF47hxeKwOwJ/O2UJ879cW1xPUG
+nJUNfEvHJs93rn3zthlbwLCmyH8Ugp2pF38DgyydbU6Xs/6lyiUc14WlzvL3QqO1H+QBX/18ZgXsZjoxakd86pz329r9wTgAAAIAVakBN
+8DtSRZqPLeaXDhevg3texOTlmDsmhmqBcAOmH6VnzP1VB0E8DhTB8/MWJChSJalslyEzaa1PhBNwZEn3SmG6vWe+CXSuEtHBXbVBQHsDb
+xois6L+oqkL86PA7JdzTDSfiZKoGOks5f37Qb+CREnhyYcXJIjPZTE/0aIsdA==
+
+# 将ssh2兼容格式转换成openssl的格式结果
+$ ssh-keygen -i -f Identity.pub &gt;&gt;.ssh/authorized_keys
+
+# 修改公钥的权限
+$ chmod 600 .ssh/authorized_keys 
+
+# 查看权限是否修改成功
+$ ll .ssh/
+-rw-------. 1 root root 589 Jun 17 04:37 authorized_keys  
+</code></pre>
+<ol start="10">
 <li><strong>测试结果</strong>
 新建快速链接，在鉴权中选择公钥，如下图所示：</li>
 </ol>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233705203.png" alt="image-20221214233705203"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233722816.png" alt="image-20221214233722816"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233705203.png" alt="image-20221214233705203" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233722816.png" alt="image-20221214233722816" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>如果设置了通行短语，就会出现以下框</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233734945.png" alt="image-20221214233734945"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233756074.png" alt="image-20221214233756074"  /></p>
-<p><a href="http://blog.51cto.com/phenixikki/1546669">裸奔的后果！一次ssh被篡改的入侵事件</a></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233734945.png" alt="image-20221214233734945" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed//img/image-20221214233756074.png" alt="image-20221214233756074" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><a href="http://blog.51cto.com/phenixikki/1546669" target="_blank"
+   rel="noopener nofollow noreferrer" >裸奔的后果！一次ssh被篡改的入侵事件</a></p>
 <p>扫描端口实例：牤牛阵解决ssh安全问题</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ nmap 192.168.65.62 -p1-65535
-</span></span><span class="line"><span class="cl">Starting Nmap 5.51 <span class="o">(</span> http://nmap.org <span class="o">)</span> at 2016-06-17 05:11 CST
-</span></span><span class="line"><span class="cl">Nmap scan report <span class="k">for</span> 192.168.65.62
-</span></span><span class="line"><span class="cl">Host is up <span class="o">(</span>0.0000040s latency<span class="o">)</span>.
-</span></span><span class="line"><span class="cl">Not shown: <span class="m">65532</span> closed ports
-</span></span><span class="line"><span class="cl">PORT     STATE SERVICE
-</span></span><span class="line"><span class="cl">22/tcp   open  ssh
-</span></span><span class="line"><span class="cl">80/tcp   open  http
-</span></span><span class="line"><span class="cl">3306/tcp open  mysql
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Nmap <span class="k">done</span>: <span class="m">1</span> IP address <span class="o">(</span><span class="m">1</span> host up<span class="o">)</span> scanned in 0.79 seconds  
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
+<pre><code class="language-sh">$ nmap 192.168.65.62 -p1-65535
+Starting Nmap 5.51 ( http://nmap.org ) at 2016-06-17 05:11 CST
+Nmap scan report for 192.168.65.62
+Host is up (0.0000040s latency).
+Not shown: 65532 closed ports
+PORT     STATE SERVICE
+22/tcp   open  ssh
+80/tcp   open  http
+3306/tcp open  mysql
+
+Nmap done: 1 IP address (1 host up) scanned in 0.79 seconds  
+</code></pre>
+
 
     
     

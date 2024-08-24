@@ -1,0 +1,824 @@
+https://www.cnblogs.com/leeSmall/p/9220535.html
+
+https://blog.csdn.net/zhibiyus/article/details/107907450
+
+https://www.cnblogs.com/kebibuluan/p/13750293.html
+
+##  索引管理
+
+### 创建索引
+
+直接创建索引 `PUT newindex1`，创建索引可以通过 `number_of_shares` 和  `number_of_replicas` 数量来修饰分片和副本的数量。
+
+```
+PUT newindex
+{
+  "settings": {
+    "index" : {
+      "number_of_shares" : 2,
+      "number_of_replicas": 1
+    }
+  }
+}
+```
+
+`number_of_shares` 分片数在创建索引后不能修改
+
+`number_of_replicas`  副本数可以随时完成修改
+
+### 删除索引
+
+`DEL index_name`
+
+### 打开/关闭索引
+
+`POST {index_name}/_close`
+
+`POST {index_name}/_open`
+
+关闭的索引无法进行【增删改查】操作
+
+```
+{
+  "error" : {
+    "root_cause" : [
+      {
+        "type" : "index_closed_exception",
+        "reason" : "closed",
+        "index_uuid" : "3eCslZZ3Q9amlUyDtqTXWA",
+        "index" : "newindex"
+      }
+    ],
+    "type" : "index_closed_exception",
+    "reason" : "closed",
+    "index_uuid" : "3eCslZZ3Q9amlUyDtqTXWA",
+    "index" : "newindex"
+  },
+  "status" : 400
+}
+```
+
+### 索引的映射 mapping
+
+mapping是定义文档及包含字段的存储与索引方式。可以理解为是elasticsearch的表结构，定义mapping，即在创建index时，自行判断每个字段的类型，而不是有ES自动自动判断每个纬度的类型。这种更贴合业务场景，如分词、存储。
+
+每个索引仅有一个映射类型（elasticsearch6.x+，之前版本一个索引下有多个类型），它决定了文档将如何被索引。而映射类型分为两部分 `meta-fields` 与 `field of properties`
+
+ `meta-fields` ：为文档的源数据，如 `_index` （索引的名称）、`_type` （文档的类型，7.0+弃用）、`_id` （索引的ID）和 `_source`（用于关联文档源数据）字段
+
+`field of properties`：字段属性，包含文档的字段或属性列表。
+
+#### 字段的数据类型
+
+##### 常见类型
+
+- `binary`：二进制或Base64字符串。
+- `boolean`: 布尔值`true`和`false`。
+- `keywords`：`keyword`, `constant_keyword`, 和 `wildcard`.
+- `Numbers`：数值类型，例如`long`和`double`
+- `dates`：日期类型，`date` 和 `date_nanos`。
+- `alias`： 为以有字段定义别名。
+
+##### 对象嵌套类型
+
+- `object` ：JSON对象。
+- `flattened`：整个JSON对象作为单个字段值。
+- `nested`：嵌套，与子字段之间保留关系的json对象。
+- `join`：为同一索引中的文档定义父/子关系。
+
+##### 结构化类型
+
+- `range`：，`long_range`，`double_range`， `date_range`，和`ip_range`。
+- `ip`：IPv4和IPv6地址。
+- `version` ：软件版本号。支持 [语义化版本号](https://semver.org/) 优先规则。
+- `murmur3`：计算并存储值的散列。
+
+##### 汇总数据类型
+
+- `aggregate_metric_double`：预汇总的指标值。
+- `histogram`：以直方图形式预汇总的数值。
+
+##### 文字搜寻类型
+
+- `text`：分析的非结构化文本。
+- `annotated-text`：包含特殊标记的文本。用于标识命名实体。
+- `completion`：用于自动补全建议。
+- `search_as_you_type` `text`类似类型，用于按需输入完成。
+- `token_count`：计数令牌。
+
+等等 [reference](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-types.html#object-types)。
+
+#### 常用字段数据类型参数
+
+更多参数可以参考官方文档：[mapping-params](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-params.html)
+
+| 字段           | 说明                                                         |
+| -------------- | ------------------------------------------------------------ |
+| analyzer       | 仅`text`字段支持 `analyzer` 映射参数。                       |
+| index          | 选项控制是否对字段值建立索引。默认为`true`。未索引的字段不可查询。 |
+| index_prefixes | 启用术语前缀的索引，以加快前缀搜索的速度                     |
+| ignore_above   | 长度大于 ignore_above设置的字符串将不会被索引或存储          |
+
+#### 映射的元字段
+
+文档的元字段是保证系统正常运转的内置字段，如 `_index` 索引的字段  `_type`映射类型（7.0后取消），`_id_` 文档主键。
+
+#### 动态映射 dynamic
+
+在关系型数据库中，需要事先创建好数据库，并在库中插入表。而ES中需要事先创建好索引结构（Mapping），在插入文档到索引中，系统会根据文档内容进行索引的动态映射。自动检测添加新类型和字段，被成为动态映射。
+
+禁用动态映射：`{index_name}/_mapping `  `dynamic` 为false
+
+```
+POST student/_mapping
+{
+  "dynamic":"false"
+}
+
+GET student/_mappings
+```
+
+#### 显式映射
+
+实现准备好映射关系，包含文档各字段类型，关系等，这种称之为显式映射 `Explicit mapping`
+
+#### 动态模板
+
+动态映射会自动推断数据类型，但这种并不完全符合所有的业务需求，而动态模板可以再动态映射之外更好的控制ES如何映射的数据类型。
+
+- [`match_mapping_type`](https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-templates.html#match-mapping-type) 对 Elasticsearch 检测到的数据类型进行操作
+- `match`   `unmatch `  ： `match`使用pattern匹配字段名称，`unmatch` 使用正则排除字段
+- `path_match`   `path_unmatch` 使用与match一样，这里为全名称，path指的是多层json的路径。
+
+如，需要将所有数字字段映射为integer而不是long，将所有字符串都映射为text与keyword:
+
+```
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "integers": {
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "integer"
+          }
+        }
+      },
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type":  "keyword",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+可以使用正则表达式来匹配字段
+
+```
+PUT student12345
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "longs_as_strings": {
+          "match_mapping_type": "string",  // 捕获的类型
+          "match":   "pass*", // 将以pass开头的string类型的映射为integer
+          "unmatch": "user*", // 忽略以user开头的
+          "mapping": {
+            "type": "integer"  // 需要映射的类型
+          }
+        }
+      }
+    ]
+  }
+}
+
+PUT student12345/_doc/1
+{
+  "username": "zhangsan", 
+  "password": "123456" 
+}
+```
+
+查看映射后的类型
+
+```
+{
+  "student12345" : {
+    "mappings" : {
+      "dynamic_templates" : [
+        {
+          "longs_as_strings" : {
+            "match" : "pass*",
+            "unmatch" : "user*",
+            "match_mapping_type" : "string",
+            "mapping" : {
+              "type" : "integer"
+            }
+          }
+        }
+      ],
+      "properties" : {
+        "password" : {
+          "type" : "integer"
+        },
+        "username" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword",
+              "ignore_above" : 256
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`path_match`   `path_unmatch` 
+
+```
+PUT test1
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "full_name": { 
+          "path_match":   "document.*", // 将name下的所有对象复制到外部顶级字段
+          "path_unmatch": "*.middlename", // 这个字段除外
+          "mapping": {
+            "type":       "text",
+            "copy_to":    "full_name"
+          }
+        }
+      }
+    ]
+  }
+}
+
+PUT test1/_doc/1
+{
+  "document": {
+    "firstname":  "John",
+    "middlename": "Winston",
+    "lastname":   "Lennon"
+  }
+}
+## 当插入下列时，不成功，这里映射类型为text，与address中的对象类型不匹配所以不成功
+
+PUT test1/_doc/1
+{
+  "document": {
+    "firstname":  "John",
+    "middlename": "Winston",
+    "address": {
+    	"city": "beijing",
+    	"province": "beijing",
+ 			"District": "haidian"
+    }
+  }
+}
+```
+
+
+
+
+
+##### 模板变量
+
+{name} {dynamic_type} 占位符，在映射中会替换为字段名和检测到的动态类型
+
+```json
+PUT student1
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "named_analyzers": {
+          "match_mapping_type": "string",
+          "match": "*",
+          "mapping": {
+            "type": "text",
+            "analyzer": "{name}"
+          }
+        }
+      },
+      {
+        "no_doc_values": {
+          "match_mapping_type":"*",
+          "mapping": {
+            "type": "{dynamic_type}",
+            "doc_values": false
+          }
+        }
+      }
+    ]
+  }
+}
+
+PUT student1/_doc/1
+{
+  "name": "alex chow", 
+  "age": 30
+}
+  PUT student1/_doc/1
+  {
+    "english": "Some English text", 
+    "count":   5 
+  }
+```
+
+
+
+**reference**  [template-variables](https://www.elastic.co/guide/en/elasticsearch/reference/current/dynamic-templates.html#template-variables)
+
+
+
+#### 索引的类型
+
+Elasticsearch7.x中，不在需要document的 type
+
+[schedule_for_removal_of_mapping_types](https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html#_schedule_for_removal_of_mapping_types)
+
+ElasticSearch在7.x版本之前 `index` 类似于数据库中的 `database`，而 `type` 等同于数据库中的 `table`
+
+如：6.x API
+
+```
+PUT student # index（库）
+{
+  "mappings": {
+    "_doc": { # type （表）
+      "properties": {
+        "type": { # filed (字段)
+          "type": "keyword"
+        },
+        "name": {
+          "type": "text"
+        },
+        "user_name": {
+          "type": "keyword"
+        },
+        "email": {
+          "type": "keyword"
+        },
+        "content": {
+          "type": "text"
+        },
+        "tweeted_at": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
+```
+
+而在7.x之后版本可以不需要
+
+```
+
+PUT student
+{
+  "mappings": {
+      "properties": {
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "text"
+        },
+        "user_name": {
+          "type": "keyword"
+        },
+        "email": {
+          "type": "keyword"
+        },
+        "content": {
+          "type": "text"
+        },
+        "tweeted_at": {
+          "type": "date"
+        }
+      }
+    }
+}
+```
+
+在7.0以上版本使用时，必须使用 `/{index_name}/_doc/{_id}` 进行调用。
+
+`_doc` 为路由永久组成，可以理解为 `_doc` 替换之前的 `type`
+
+```
+PUT /student/_doc/1
+{
+  "name": "zhangsan",
+  "user_name": "zhangsan",
+  "email": "1@gmail.com",
+  "content": "北京分行、天津分行、河北分行、山西分行、辽宁分行"
+}
+
+GET /student/_doc/1
+```
+
+对于7.0之前的`/{index}/{type}/{action}` ，的操作如`_update` 、`_search` 将紧跟`{action}`后面。
+
+```
+POST /student/_update/1
+{
+  "doc": {
+    "user_name": "lisi"
+  }
+}
+
+GET /student/_search
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+查询doc的version，`_search?version=true` 返回结果中就会返回 version 。
+
+```
+GET doc_detail/_search?version=true
+```
+
+外部版本控制
+
+外部版本控制：elasticsearch在处理外部版本号时会对内部版本号的处理有些不同。他不在是检查version是否与请求中指定的数值相同，而是检查当前的_version是否比指定的数值小。如果请求成功，那么外部的版本号就会被存储到文档中的_version中。
+
+```
+index/type/4?version=10&version_type=external
+```
+
+
+
+插入数据
+
+```
+PUT index/type/id2
+{
+  "name": "谭嗣同"
+  
+}
+```
+
+
+
+```
+GET _search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+PUT index/type/id2
+{
+  "name": "谭嗣同"
+  
+}
+
+PUT index/type/1
+{
+  "name": "王迪",
+  "age": 20,
+  "tag": "闷骚",
+  "brithday": 19970521
+}
+
+PUT index/type/2
+{
+  "name": "路晨",
+  "age": 31,
+  "tag": "美",
+  "brithday": 19900521
+}
+
+PUT index/type/3
+{
+  "name": "金沙",
+  "age": 25,
+  "tag": "没烧",
+  "brithday": 198606521
+}
+
+
+PUT index/type/4?version=10&version_type=external
+{
+  "name": "唐三",
+  "age": 25,
+  "tag": "贱货",
+  "brithday": 19960101
+}
+
+
+GET index/type/_search?version=2
+
+
+POST index/type/4/_update
+{
+  "doc": {
+    "tag": "candy"
+  }
+}
+
+# 更新/插入
+PUT index/type/3
+{
+  "name": "韦小宝"
+  
+}
+# 获取
+GET index/type/1
+
+GET index/type/_search
+
+GET index/type/_search
+
+## 获取全部
+
+GET index/type/_search
+
+DELETE index/type/id
+DELETE index
+
+POST index/type/_delete_by_query?q=name:谭嗣同
+# 结构化查询
+
+GET index/type/_search
+{
+  "query": {
+    "match": {
+      "name": "唐三"
+    }
+  }
+}
+
+GET index/type/_search
+{
+  "query": {
+    "match": {
+      "tag": "爆,骚"
+    }
+  }
+}
+
+GET index/type/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": {
+    "age": {
+      "order":"desc"
+    }
+  }
+}
+
+## 分页
+
+GET index/type/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "sort": {
+    "_id": {
+      "order":"desc"
+    }
+  },
+  "from": 1,
+  "size":2
+}
+
+### 布尔值查询
+
+GET index/type/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "name": "唐嫣"
+          }
+        },
+        {
+          "match": {
+            "tag": "美"
+          }
+        }
+      ]
+    }
+  }
+}
+
+## 查看类型
+GET index/_mapping
+## 查看配置
+GET index/_settings
+
+GET index
+
+GET bid/BID/1
+
+PUT bid/BID/1
+{
+	"latestExecInfo": "",
+	"uid": "BID_test-all_heimdall-acquirer_97809-CREATE",
+	"locale": "zh-CN",
+	"strategyDescription": [{
+		"task_result": {
+			"detail": [{
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:instance-94sr85v8-24.bcc-bjdd:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "instance-94sr85v8-24.bcc-bjdd"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:k8s-monitor01:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "k8s-monitor01"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:k8s-monitor02:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "k8s-monitor02"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:k8s-monitor04:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "k8s-monitor04"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:test-all-Y32-3.BD-HB.bcc-bdbl:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "test-all-Y32-3.BD-HB.bcc-bdbl"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:test-all-Y32-1.BD-HB.bcc-bdbl:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "test-all-Y32-1.BD-HB.bcc-bdbl"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:test-all-Y32-2.BD-HB.bcc-bdbl:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "test-all-Y32-2.BD-HB.bcc-bdbl"
+			}, {
+				"taskId": "HOST:30fa7bc9-255a-437a-9ae7-81f342c15b41:instance-6534xfcz-44.bcc-bjdd:1",
+				"status": "FINISHED",
+				"exitcode": 0,
+				"target": "instance-6534xfcz-44.bcc-bjdd"
+			}],
+			"errno": 5000000,
+			"info": "success."
+		},
+		"status": "FINISHED",
+		"type": "deploy_task",
+		"stage_id": "BID_test-all_heimdall-acquirer_97809_stage_1",
+		"deploy_params": {
+			"target": ["k8s-monitor01", "k8s-monitor04", "test-all-Y32-1.BD-HB.bcc-bdbl", "test-all-Y32-2.BD-HB.bcc-bdbl", "test-all-Y32-3.BD-HB.bcc-bdbl", "instance-94sr85v8-24.bcc-bjdd", "instance-6534xfcz-44.bcc-bjdd", "k8s-monitor02"],
+			"concurrency": 3,
+			"failure_tolerance": 0
+		}
+	}, {
+		"check_params": {
+			"check_type": "manual",
+			"check_url": ""
+		},
+		"task_result": {
+			"detail": {},
+			"errno": 0,
+			"info": "the last stage is automatically set to finished"
+		},
+		"status": "FINISHED",
+		"type": "check_task",
+		"stage_id": "BID_test-all_heimdall-acquirer_97809_stage_2"
+	}],
+	"cancelCause": "",
+	"couldRollback": true,
+	"jobStatus": "FINISHED",
+	"type": "BID",
+	"product": {
+		"type": "product",
+		"name": "test-all",
+		"refer": ""
+	},
+	"hostnameDict": {
+		"k8s-monitor01": "0.heimdall-acquirer.test-all",
+		"test-all-Y32-2.BD-HB.bcc-bdbl": "5.heimdall-acquirer.test-all",
+		"k8s-monitor02": "1.heimdall-acquirer.test-all",
+		"instance-6534xfcz-44.bcc-bjdd": "8.heimdall-acquirer.test-all",
+		"instance-94sr85v8-24.bcc-bjdd": "7.heimdall-acquirer.test-all",
+		"test-all-Y32-1.BD-HB.bcc-bdbl": "4.heimdall-acquirer.test-all",
+		"k8s-monitor04": "3.heimdall-acquirer.test-all",
+		"test-all-Y32-3.BD-HB.bcc-bdbl": "6.heimdall-acquirer.test-all"
+	},
+	"jobContent": {
+		"source_info": {
+			"module_type": "ARCHER",
+			"module_source": "http://noahproxy.duxiaoman-int.com:80/proxy/download/dxm/dxmqa-monitor/heimdall/1.0.0.1034/",
+			"pre_cmd": "sh /home/work/opScripts/op_before_heimdall_acquirer.sh",
+			"limit_rate": 10,
+			"module_id": 1,
+			"deploy_path": "/home/work/heimdall/heimdall-acquirer",
+			"post_cmd": "sh /home/work/opScripts/op_after_heimdall_acquirer.sh",
+			"MD5": ""
+		},
+		"cmd_info": {
+			"exec_path": "",
+			"cmd": ""
+		}
+	},
+	"timeZone": "UTC+08:00",
+	"operateTime": 0,
+	"reviewInfo": {
+		"reviewer": "caiqinwei_dxm",
+		"reviewTime": 1621218756
+	},
+	"startTime": 1621218751,
+	"impactedOpObject": [{
+		"type": "app",
+		"name": "heimdall-acquirer",
+		"refer": ""
+	}],
+	"opObject": [],
+	"lastInterveneId": "",
+	"intervene": "None",
+	"jobDescription": {
+		"app_path": "/home/work/heimdall",
+		"subsystem_id": "monitor",
+		"template_name": "heimdall-acquirer",
+		"derive_tag": "",
+		"job_type": "CREATE",
+		"app_id": "heimdall-acquirer",
+		"alarm_receiver": "caiqinwei_dxm",
+		"node_info": "测试公共产品线-monitor-heimdall-acquirer",
+		"is_derive": "False",
+		"machine_timeout": 600,
+		"module_version": "1.0.0.1034",
+		"job_id": 97809,
+		"email_recv_person": "",
+		"is_public_cmd": false,
+		"creator": "caiqinwei_dxm",
+		"close_alarm": false,
+		"is_skip_check": false,
+		"productId": "test-all",
+		"email_receivers": [{
+			"receiverAlias": "",
+			"receiverType": "person",
+			"receiverName": "caiqinwei_dxm"
+		}],
+		"relative_path": "heimdall-acquirer",
+		"failure_tolerance": 0,
+		"user": "work",
+		"email_recv_group": "",
+		"name": "caiqinwei_dxm操作dxmqa-monitor/heimdall1个模块",
+		"sms_recv_person": "",
+		"package_type": "manager",
+		"sms_recv_group": "",
+		"be_rollbacked_id": null,
+		"alias": "",
+		"module_name": "dxmqa-monitor/heimdall",
+		"sms_receivers": [{
+			"receiverAlias": "",
+			"receiverType": "person",
+			"receiverName": "caiqinwei_dxm"
+		}]
+	},
+	"operation_id": "BID_test-all_heimdall-acquirer_97809",
+	"endTime": 0
+}
+
+
+
+
+```
+

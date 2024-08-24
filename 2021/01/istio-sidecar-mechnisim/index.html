@@ -10,7 +10,7 @@
 <meta name="description" content="istio sidecar流量处理机制及配置 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2021/01/istio-sidecar-mechnisim/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "istio"
   ],
-  "wordCount" : "4124",
+  "wordCount" : "4021",
   "inLanguage": "zh",
   "datePublished": "2021-01-09T00:00:00Z",
   "dateModified": "2023-03-22T23:00:36+08:00",
@@ -348,7 +348,9 @@ function toggleThemeListener() {
 <h3 id="sidecar被注入的方式">sidecar被注入的方式<a hidden class="anchor" aria-hidden="true" href="#sidecar被注入的方式">¶</a></h3>
 <ul>
 <li>
-<p>手动注入，使用 <a href="https://istio.io/latest/zh/docs/reference/commands/istioctl"><code>istioctl</code></a> 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 <code>istio-sidecar-injector</code> 和的 <code>istio</code> 两个 Configmap 对象中获取配置。 <a href="https://istio.io/latest/zh/blog/2019/data-plane-setup/#manual-injection">refer-istio-sidecar-injector</a></p>
+<p>手动注入，使用 <a href="https://istio.io/latest/zh/docs/reference/commands/istioctl" target="_blank"
+   rel="noopener nofollow noreferrer" ><code>istioctl</code></a> 修改容器模板并添加前面提到的两个容器的配置。不论是手动注入还是自动注入，Istio 都从 <code>istio-sidecar-injector</code> 和的 <code>istio</code> 两个 Configmap 对象中获取配置。 <a href="https://istio.io/latest/zh/blog/2019/data-plane-setup/#manual-injection" target="_blank"
+   rel="noopener nofollow noreferrer" >refer-istio-sidecar-injector</a></p>
 </li>
 <li>
 <p>自动注入，在部署应用是，istio自动将sidecar注入到pod。这是istio推荐的方法，Istio在基于Kubernetes平台之上，需要在部署应用之前，对要标记部署应用程序的名称空间标记 <code>kubectl label namespace default istio-injection=enabled</code> <strong>这个操作是对名称空间级别生效的</strong>。而后所部署的Pod中会注入sidecar执行上面sidecar容器的操作。</p>
@@ -367,79 +369,42 @@ function toggleThemeListener() {
 <p>在运行在Kubernetes平台之上的istio，Envoy是通过Pilot将Kubernetes CRD资源 <code>DestnationRule</code> <code>VirtualService</code> <code>Gateway</code>等资源提供的配置，生成对应的Envoy配置。</p>
 <p>每个sidecar中的envoy都会生成众多的配置，这些配置在每一个网格中会对对应的流量进行拦截管理。</p>
 <p>通过envoy admin interface查看对应生产的envoy资源配置信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl <span class="nb">exec</span> reviews-v1-6549ddccc5-k995p -c istio-proxy -- curl -s 127.0.0.1:15000/listeners
-</span></span><span class="line"><span class="cl">97591f7a-0cbf-469a-a5f2-c9a76a3d0ced::0.0.0.0:15090
-</span></span><span class="line"><span class="cl">e523c9a4-da71-439f-885f-020f70349f21::0.0.0.0:15021
-</span></span><span class="line"><span class="cl">10.96.56.243_10251::10.96.56.243:10251
-</span></span><span class="line"><span class="cl">10.0.0.6_10250::10.0.0.6:10250
-</span></span><span class="line"><span class="cl">10.244.0.51_8443::10.244.0.51:8443
-</span></span><span class="line"><span class="cl">10.0.0.5_10250::10.0.0.5:10250
-</span></span><span class="line"><span class="cl">10.97.190.96_10252::10.97.190.96:10252
-</span></span><span class="line"><span class="cl">10.96.0.1_443::10.96.0.1:443
-</span></span><span class="line"><span class="cl">10.96.0.10_53::10.96.0.10:53
-</span></span><span class="line"><span class="cl">10.105.226.65_80::10.105.226.65:80
-</span></span><span class="line"><span class="cl">10.105.226.65_82::10.105.226.65:82
-</span></span><span class="line"><span class="cl">0.0.0.0_80::0.0.0.0:80
-</span></span><span class="line"><span class="cl">10.0.0.6_4194::10.0.0.6:4194
-</span></span><span class="line"><span class="cl">10.105.226.65_443::10.105.226.65:443
-</span></span><span class="line"><span class="cl">10.105.226.65_81::10.105.226.65:81
-</span></span><span class="line"><span class="cl">10.0.0.5_4194::10.0.0.5:4194
-</span></span><span class="line"><span class="cl">10.102.134.81_14250::10.102.134.81:14250
-</span></span><span class="line"><span class="cl">10.107.39.113_9090::10.107.39.113:9090
-</span></span><span class="line"><span class="cl">0.0.0.0_10255::0.0.0.0:10255
-</span></span><span class="line"><span class="cl">0.0.0.0_20001::0.0.0.0:20001
-</span></span><span class="line"><span class="cl">0.0.0.0_9090::0.0.0.0:9090
-</span></span><span class="line"><span class="cl">10.96.0.10_9153::10.96.0.10:9153
-</span></span><span class="line"><span class="cl">10.102.134.81_14268::10.102.134.81:14268
-</span></span><span class="line"><span class="cl">0.0.0.0_9411::0.0.0.0:9411
-</span></span><span class="line"><span class="cl">10.101.93.145_8000::10.101.93.145:8000
-</span></span><span class="line"><span class="cl">10.99.79.173_443::10.99.79.173:443
-</span></span><span class="line"><span class="cl">10.105.226.65_8080::10.105.226.65:8080
-</span></span><span class="line"><span class="cl">0.0.0.0_9080::0.0.0.0:9080
-</span></span><span class="line"><span class="cl">10.108.161.174_3000::10.108.161.174:3000
-</span></span><span class="line"><span class="cl">virtualOutbound::0.0.0.0:15001
-</span></span><span class="line"><span class="cl">virtualInbound::0.0.0.0:15006
-</span></span><span class="line"><span class="cl">..
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://istio.io/latest/docs/ops/deployment/requirements/">istio使用的端口</a></p>
+<pre><code class="language-bash">$ kubectl exec reviews-v1-6549ddccc5-k995p -c istio-proxy -- curl -s 127.0.0.1:15000/listeners
+97591f7a-0cbf-469a-a5f2-c9a76a3d0ced::0.0.0.0:15090
+e523c9a4-da71-439f-885f-020f70349f21::0.0.0.0:15021
+10.96.56.243_10251::10.96.56.243:10251
+10.0.0.6_10250::10.0.0.6:10250
+10.244.0.51_8443::10.244.0.51:8443
+10.0.0.5_10250::10.0.0.5:10250
+10.97.190.96_10252::10.97.190.96:10252
+10.96.0.1_443::10.96.0.1:443
+10.96.0.10_53::10.96.0.10:53
+10.105.226.65_80::10.105.226.65:80
+10.105.226.65_82::10.105.226.65:82
+0.0.0.0_80::0.0.0.0:80
+10.0.0.6_4194::10.0.0.6:4194
+10.105.226.65_443::10.105.226.65:443
+10.105.226.65_81::10.105.226.65:81
+10.0.0.5_4194::10.0.0.5:4194
+10.102.134.81_14250::10.102.134.81:14250
+10.107.39.113_9090::10.107.39.113:9090
+0.0.0.0_10255::0.0.0.0:10255
+0.0.0.0_20001::0.0.0.0:20001
+0.0.0.0_9090::0.0.0.0:9090
+10.96.0.10_9153::10.96.0.10:9153
+10.102.134.81_14268::10.102.134.81:14268
+0.0.0.0_9411::0.0.0.0:9411
+10.101.93.145_8000::10.101.93.145:8000
+10.99.79.173_443::10.99.79.173:443
+10.105.226.65_8080::10.105.226.65:8080
+0.0.0.0_9080::0.0.0.0:9080
+10.108.161.174_3000::10.108.161.174:3000
+virtualOutbound::0.0.0.0:15001
+virtualInbound::0.0.0.0:15006
+..
+</code></pre>
+<p><a href="https://istio.io/latest/docs/ops/deployment/requirements/" target="_blank"
+   rel="noopener nofollow noreferrer" >istio使用的端口</a></p>
 <table>
 <thead>
 <tr>
@@ -496,7 +461,8 @@ function toggleThemeListener() {
 </table>
 <p>envoy的listener通过绑定与IP Socket或者Unix Domain Socket，接收转发来的数据。</p>
 <p><code>VirtualOutboundListener</code> | <code>VirtualIntboundListener </code>通过一个端口接收所有出/入站流量，并根据目标端口来区分使用哪个Listener进行处理。</p>
-<p>iptables通过对应规则拦截发往所在Pod的流量并转发到对应的Envoy接收端口（如入站流量为15006），该Listener通过配置将请求转发到请求原目标地址关联的Listener之上。<a href="https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/original_dst">envoy原始目标地址</a></p>
+<p>iptables通过对应规则拦截发往所在Pod的流量并转发到对应的Envoy接收端口（如入站流量为15006），该Listener通过配置将请求转发到请求原目标地址关联的Listener之上。<a href="https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/original_dst" target="_blank"
+   rel="noopener nofollow noreferrer" >envoy原始目标地址</a></p>
 <p>若不存在对应的listener则根据全局配置选项进行处理</p>
 <ul>
 <li>ALLOW_ANY：允许外发至任何服务的请求，没有匹配到目标Listener的流量则由tcp_proxy过滤器指向的PassthroughCluster。</li>
@@ -510,92 +476,52 @@ function toggleThemeListener() {
 和 ISTIO_REDIRECT</p>
 <ul>
 <li>当进入Pod的流量会被<code>PREROUTING</code> 拦截处理。根据规则将数据包转发到<code>ISOTIO_INBOUND</code>。<code>-A PREROUTING -p tcp -j ISTIO_INBOUND</code></li>
-<li><code>ISTIO_INBOUND</code>处理对应的规则，当遇到<code>15008</code> , <code>22</code>  <code>15090</code>  <code>15021</code>  <code>15020</code> 不做处理，return给上一个链。 <a href="https://bbs.csdn.net/topics/340237926">关于iptables return</a></li>
+<li><code>ISTIO_INBOUND</code>处理对应的规则，当遇到<code>15008</code> , <code>22</code>  <code>15090</code>  <code>15021</code>  <code>15020</code> 不做处理，return给上一个链。 <a href="https://bbs.csdn.net/topics/340237926" target="_blank"
+   rel="noopener nofollow noreferrer" >关于iptables return</a></li>
 <li>剩余流量从<code>ISTIO_INBOUND</code> 转交给 <code>ISTIO_IN_REDIRECT</code> <code>-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT</code></li>
 <li><code>ISTIO_IN_REDIRECT</code> 将流量交给15006端口应用处理。</li>
 <li>Envoy根据数据包的目的地址查看  Inbound方向的监听器配置，根据监听器及路由、Cluster、
 Endpoint等配置，决定是否将数据包转发到应用。</li>
 <li>OUTPUT的流量由规则 <code>-A OUTPUT -p tcp -j ISTIO_OUTPUT</code> 由 <code>ISTIO_OUTPUT</code> ` 链处理。</li>
 </ul>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ nsenter -t <span class="sb">`</span>ps -ef<span class="p">|</span>grep details<span class="p">|</span>grep envoy<span class="p">|</span>awk <span class="s1">&#39;{print $2}&#39;</span><span class="sb">`</span> -n iptables -t nat -S 
-</span></span><span class="line"><span class="cl">-P PREROUTING ACCEPT
-</span></span><span class="line"><span class="cl">-P INPUT ACCEPT
-</span></span><span class="line"><span class="cl">-P OUTPUT ACCEPT
-</span></span><span class="line"><span class="cl">-P POSTROUTING ACCEPT
-</span></span><span class="line"><span class="cl">-N ISTIO_INBOUND
-</span></span><span class="line"><span class="cl">-N ISTIO_IN_REDIRECT
-</span></span><span class="line"><span class="cl">-N ISTIO_OUTPUT
-</span></span><span class="line"><span class="cl">-N ISTIO_REDIRECT
-</span></span><span class="line"><span class="cl">-A PREROUTING -p tcp -j ISTIO_INBOUND
-</span></span><span class="line"><span class="cl">-A OUTPUT -p tcp -j ISTIO_OUTPUT
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15008</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">22</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15090</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15021</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -m tcp --dport <span class="m">15020</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT 
-</span></span><span class="line"><span class="cl"><span class="c1"># 到此入栈流量处理完成</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_IN_REDIRECT -p tcp -j REDIRECT --to-ports <span class="m">15006</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># 这里开始执行出站流量</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 原地址为127.0.0.6/32 不做处理</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -s 127.0.0.6/32 -o lo -j RETURN
-</span></span><span class="line"><span class="cl"><span class="c1"># 默认目标127.0.0.1/32--uid-owner 1337的由ISTIO_IN_REDIRECT处理</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --uid-owner <span class="m">1337</span> -j ISTIO_IN_REDIRECT
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -o lo -m owner ! --uid-owner <span class="m">1337</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -m owner --uid-owner <span class="m">1337</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --gid-owner <span class="m">1337</span> -j ISTIO_IN_REDIRECT
-</span></span><span class="line"><span class="cl"><span class="c1"># 这些流量都不做处理。继续默认操作</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -o lo -m owner ! --gid-owner <span class="m">1337</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -m owner --gid-owner <span class="m">1337</span> -j RETURN
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -d 127.0.0.1/32 -j RETURN
-</span></span><span class="line"><span class="cl"><span class="c1"># 默认所有ISTIO_OUTPUT链的流量都由ISTIO_REDIRECT</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_OUTPUT -j ISTIO_REDIRECT
-</span></span><span class="line"><span class="cl"><span class="c1"># ISTIO_REDIRECT 的流量 默认有envoy进行处理转发到对应的应用</span>
-</span></span><span class="line"><span class="cl">-A ISTIO_REDIRECT -p tcp -j REDIRECT --to-ports <span class="m">15001</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Istio中目前有两种流量拦截模式：REDIRECT模式和TPROXY模式。</p>
+<pre><code class="language-bash">$ nsenter -t `ps -ef|grep details|grep envoy|awk '{print $2}'` -n iptables -t nat -S 
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-N ISTIO_INBOUND
+-N ISTIO_IN_REDIRECT
+-N ISTIO_OUTPUT
+-N ISTIO_REDIRECT
+-A PREROUTING -p tcp -j ISTIO_INBOUND
+-A OUTPUT -p tcp -j ISTIO_OUTPUT
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15008 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 22 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15090 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15021 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15020 -j RETURN
+-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT 
+# 到此入栈流量处理完成
+-A ISTIO_IN_REDIRECT -p tcp -j REDIRECT --to-ports 15006
+
+# 这里开始执行出站流量
+# 原地址为127.0.0.6/32 不做处理
+-A ISTIO_OUTPUT -s 127.0.0.6/32 -o lo -j RETURN
+# 默认目标127.0.0.1/32--uid-owner 1337的由ISTIO_IN_REDIRECT处理
+-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --uid-owner 1337 -j ISTIO_IN_REDIRECT
+-A ISTIO_OUTPUT -o lo -m owner ! --uid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -m owner --uid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --gid-owner 1337 -j ISTIO_IN_REDIRECT
+# 这些流量都不做处理。继续默认操作
+-A ISTIO_OUTPUT -o lo -m owner ! --gid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -m owner --gid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -d 127.0.0.1/32 -j RETURN
+# 默认所有ISTIO_OUTPUT链的流量都由ISTIO_REDIRECT
+-A ISTIO_OUTPUT -j ISTIO_REDIRECT
+# ISTIO_REDIRECT 的流量 默认有envoy进行处理转发到对应的应用
+-A ISTIO_REDIRECT -p tcp -j REDIRECT --to-ports 15001
+</code></pre>
+<p>Istio中目前有两种流量拦截模式：REDIRECT模式和TPROXY模式。</p>
 <p>TPROXY transparent proxy 透明代理，操作的是mangle表，同时需要原始客户端socket设置
 IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端口。</p>
 <p>REDIRECT ：端口重定向，将流量NAT至envoy，此模式会丢失源IP。</p>
@@ -607,11 +533,13 @@ IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端�
 <li>lables: 配置pod的标签</li>
 </ul>
 </li>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#IstioIngressListener">ingress</a>：用于指定连接workload的入站流量的sidecar配置，如省略，则从默认获取。
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#IstioIngressListener" target="_blank"
+   rel="noopener nofollow noreferrer" >ingress</a>：用于指定连接workload的入站流量的sidecar配置，如省略，则从默认获取。
 <ul>
 <li>port：Listener关联的端口</li>
 <li>bind：Listener绑定的IP，ingress不允许unix套接字</li>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode">captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode" target="_blank"
+   rel="noopener nofollow noreferrer" >captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
 <ul>
 <li><code>DEFAULT</code> 环境定义默认配置</li>
 <li><code>IPTABLES</code> ：使用IPtables重定向流量</li>
@@ -622,9 +550,11 @@ IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端�
 </li>
 <li><code>egress</code>:  用于指定workload的出站流量的sidecar配置，如省略，则继承默认值
 <ul>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/gateway/#Port">port</a>：Listener关联的端口</li>
+<li><a href="https://istio.io/latest/docs/reference/config/networking/gateway/#Port" target="_blank"
+   rel="noopener nofollow noreferrer" >port</a>：Listener关联的端口</li>
 <li>bind：Listener绑定的IP或套接字</li>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode">captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#CaptureMode" target="_blank"
+   rel="noopener nofollow noreferrer" >captureMode</a>： 流量捕获模式，仅Listener绑定到IP时适用。
 <ul>
 <li><code>DEFAULT</code> 环境定义默认配置</li>
 <li><code>IPTABLES</code> ：使用IPtables重定向流量</li>
@@ -634,9 +564,11 @@ IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端�
 <li>hosts：目标地址，<code>namespace/dnsName</code>格式显示的一台或多台服务主机</li>
 </ul>
 </li>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy">outboundTrafficPolicy</a>：出站流量策略的配置，不指定则继承默认值。
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy" target="_blank"
+   rel="noopener nofollow noreferrer" >outboundTrafficPolicy</a>：出站流量策略的配置，不指定则继承默认值。
 <ul>
-<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy-Mode">mode</a>：
+<li><a href="https://istio.io/latest/docs/reference/config/networking/sidecar/#OutboundTrafficPolicy-Mode" target="_blank"
+   rel="noopener nofollow noreferrer" >mode</a>：
 <ul>
 <li>REGISTRY_ONLY：仅允许注册到pilot的服务通过。</li>
 <li>ALLOW_ANY：没有配置的，允许流量的出站。</li>
@@ -647,88 +579,44 @@ IP_TRANSPARENT选项，此模式同时保留源IP地址和目标IP地址和端�
 </ul>
 <h3 id="声明一个出站流量">声明一个出站流量<a hidden class="anchor" aria-hidden="true" href="#声明一个出站流量">¶</a></h3>
 <p>下面的示例在<code>Sidecar</code>名为的根命名空间中声明了全局默认配置<code>istio-config</code>，该配置在所有命名空间中配置了sidecars，以仅允许将流量发送到同一命名空间中的其他<code>workload</code>以及<code>istio-system</code>命名空间中的服务 。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">networking.istio.io/v1alpha3</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Sidecar</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">default</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">istio-config</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">egress</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">hosts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;./*&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;istio-system/*&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>以下示例配置一个应用的出站与入站规则；在名称空间<code>prod-us1</code>中声明所有<code>app: ratings</code> 属于该<code>prod-us1/ratings</code> 带有标签的Pod 。workload在端口9080上接受入站HTTP通信。然后，将通信转发到侦听Unix套接字的附加workload实例。在出口流量，除了允许发给<code>istio-system</code> 名称空间任何端口任何Pod的流量，如果是9080端口，允许发送给<code>prod-us1</code>名称空间下的所有的服务。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">networking.istio.io/v1alpha3</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Sidecar</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ratings</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">prod-us1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">workloadSelector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l">ratings</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ingress</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="m">9080</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">HTTP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">somename</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">defaultEndpoint</span><span class="p">:</span><span class="w"> </span><span class="l">unix:///var/run/someuds.sock</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">egress</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span><span class="m">9080</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">HTTP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">egresshttp</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">hosts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;prod-us1/*&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">hosts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="s2">&#34;istio-system/*&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div>
+<pre><code class="language-yaml">apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: default
+  namespace: istio-config
+spec:
+  egress:
+  - hosts:
+    - &quot;./*&quot;
+    - &quot;istio-system/*&quot;
+</code></pre>
+<p>以下示例配置一个应用的出站与入站规则；在名称空间<code>prod-us1</code>中声明所有<code>app: ratings</code> 属于该<code>prod-us1/ratings</code> 带有标签的Pod 。workload在端口9080上接受入站HTTP通信。然后，将通信转发到侦听Unix套接字的附加workload实例。在出口流量，除了允许发给<code>istio-system</code> 名称空间任何端口任何Pod的流量，如果是9080端口，允许发送给<code>prod-us1</code>名称空间下的所有的服务。</p>
+<pre><code class="language-yaml">apiVersion: networking.istio.io/v1alpha3
+kind: Sidecar
+metadata:
+  name: ratings
+  namespace: prod-us1
+spec:
+  workloadSelector:
+    labels:
+      app: ratings
+  ingress:
+  - port:
+      number: 9080
+      protocol: HTTP
+      name: somename
+    defaultEndpoint: unix:///var/run/someuds.sock
+  egress:
+  - port:
+      number: 9080
+      protocol: HTTP
+      name: egresshttp
+    hosts:
+    - &quot;prod-us1/*&quot;
+  - hosts:
+    - &quot;istio-system/*&quot;
+</code></pre>
+
 
     
     

@@ -10,7 +10,7 @@
 <meta name="description" content="在 Kubernetes 集群中使用 blackbox exporter监控外部IP - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/07/blackbox_exporter-in-k8s/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "prometheus", "blackbox_exporter", "cardinality"
   ],
-  "wordCount" : "1177",
+  "wordCount" : "1043",
   "inLanguage": "zh",
   "datePublished": "2023-07-12T00:00:00Z",
   "dateModified": "2023-07-12T23:00:36+08:00",
@@ -331,336 +331,169 @@ function toggleThemeListener() {
 <p>在云原生环境中，特别是基于 Kubernetes，集群中的 “服务” 在与外部交互时，例如，一个外部的第三方 Web 服务/API 等，而监控这些不同的 endpoint 诊断服务可用性的一个关键点，这里将阐述基于 Kube-prometheus-stacks 如果做到可以监控外部 IP/URL，例如，HTTP/TCP/ICMP 等。</p>
 <p>blackbox_exporter 是 Prometheus 官方维护的 exporter之一，是提供一种用于检测 HTTP/S、DNS、TCP 和 ICMP 端点的可用性。</p>
 <h2 id="基于-kube-prometheus-stack-安装-blackbox">基于 kube-prometheus-stack 安装 blackbox<a hidden class="anchor" aria-hidden="true" href="#基于-kube-prometheus-stack-安装-blackbox">¶</a></h2>
-<p>本文使用了 helm 安装的 <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-blackbox-exporter">prometheus-community/prometheus-blackbox-exporter </a>，在安装前，需要自行修改要启动的 prober，与是否开启默认的 <em>servicemonitor</em></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">secretConfig</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">modules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ping</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">prober</span><span class="p">:</span><span class="w"> </span><span class="l">icmp</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">icmp</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">preferred_ip_protocol</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;ip4&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">http_2xx</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">prober</span><span class="p">:</span><span class="w"> </span><span class="l">http</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">http</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">valid_http_versions</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;HTTP/1.1&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;HTTP/2.0&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">follow_redirects</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">preferred_ip_protocol</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;ip4&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>安装</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">helm install prometheus-blackbox-exporter -n monitoring . -f values.yaml
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="配置-servicemonitor">配置 servicemonitor<a hidden class="anchor" aria-hidden="true" href="#配置-servicemonitor">¶</a></h2>
+<p>本文使用了 helm 安装的 <a href="https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-blackbox-exporter" target="_blank"
+   rel="noopener nofollow noreferrer" >prometheus-community/prometheus-blackbox-exporter </a>，在安装前，需要自行修改要启动的 prober，与是否开启默认的 <em>servicemonitor</em></p>
+<pre><code class="language-yaml">secretConfig: false
+config:
+  modules:
+    ping:
+      prober: icmp
+      timeout: 5s
+      icmp:
+        preferred_ip_protocol: &quot;ip4&quot;
+    http_2xx:
+      prober: http
+      timeout: 5s
+      http:
+        valid_http_versions: [&quot;HTTP/1.1&quot;, &quot;HTTP/2.0&quot;]
+        follow_redirects: true
+        preferred_ip_protocol: &quot;ip4&quot;
+</code></pre>
+<p>安装</p>
+<pre><code class="language-bash">helm install prometheus-blackbox-exporter -n monitoring . -f values.yaml
+</code></pre>
+<h2 id="配置-servicemonitor">配置 servicemonitor<a hidden class="anchor" aria-hidden="true" href="#配置-servicemonitor">¶</a></h2>
 <p>blackbox-exporter 实现了多种探针，因此可以传递多个 endpoint 进行探测，下列是 <code>ServiceMonitor</code> 实现的检测外部IP/URL，使用了 icmp 探针，也就是说是在 blackbox-exporter 中配置的模块，探针通过抓取 Kubernetes service 下挂的 endpoint，通过访问 blackbox service 的 <code>/probe</code> 抓取暴露的指标 metrics</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">monitoring.coreos.com/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceMonitor</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">blackbox-exporter-probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l">1m</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">scrapeTimeout</span><span class="p">:</span><span class="w"> </span><span class="l">10s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">params</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">tcp_prober]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">relabelings</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">sourceLabels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__address__]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">__param_target</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">__address__</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w">  </span><span class="l">black-prometheus-blackbox-exporter:9115</span><span class="w"> </span><span class="c"># is the name:port of the blackbox exporter service</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">sourceLabels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__param_target]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">instance</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">labelmap</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">__meta_kubernetes_service_label_(.+)</span><span class="w"> </span><span class="c"># specify to monitor kubernets services</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">jobLabel</span><span class="p">:</span><span class="w"> </span><span class="l">blackbox-exporter</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app.kubernetes.io/action</span><span class="p">:</span><span class="w"> </span><span class="l">probe</span><span class="w"> </span><span class="c"># monitor the services only with this label</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>这个 ServiceMonitor 会通过标签匹配对应的 Kubernets service，标签为  <code>app.kubernetes.io/action: probe</code>所有 namespace 中的存在 这个 Label 的 service。  如果有需要，可以通过指定抓取的 namespace，使用<code>namespaceSelector</code></p>
+<pre><code class="language-yaml">apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-exporter-probe
+spec:
+  endpoints:
+  - interval: 1m
+    path: /probe
+    scrapeTimeout: 10s
+    params:
+      module: [tcp_prober]
+    relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - targetLabel: __address__
+      replacement:  black-prometheus-blackbox-exporter:9115 # is the name:port of the blackbox exporter service
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+) # specify to monitor kubernets services
+  jobLabel: blackbox-exporter
+  selector:
+    matchLabels:
+      app.kubernetes.io/action: probe # monitor the services only with this label
+</code></pre>
+<p>这个 ServiceMonitor 会通过标签匹配对应的 Kubernets service，标签为  <code>app.kubernetes.io/action: probe</code>所有 namespace 中的存在 这个 Label 的 service。  如果有需要，可以通过指定抓取的 namespace，使用<code>namespaceSelector</code></p>
 <h3 id="创建一个外部-service">创建一个外部 service<a hidden class="anchor" aria-hidden="true" href="#创建一个外部-service">¶</a></h3>
 <p>这里使用了 Kubernetes 外部 service 方式将外部IP引入到内部</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Service</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">app.kubernetes.io/action</span><span class="p">:</span><span class="w"> </span><span class="l">probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">icmp-prober</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">clusterIP</span><span class="p">:</span><span class="w"> </span><span class="l">None</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ports</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">db</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">TCP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">Endpoints</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">app.kubernetes.io/action</span><span class="p">:</span><span class="w"> </span><span class="l">probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">rahasak</span><span class="w"> </span><span class="c"># name is same as service name</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">subsets</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">addresses</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="m">10.0.0.4</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">ip</span><span class="p">:</span><span class="w"> </span><span class="m">10.0.0.5</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ports</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">db</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">protocol</span><span class="p">:</span><span class="w"> </span><span class="l">TCP</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="m">9100</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="创建-servicemonitor">创建 servicemonitor<a hidden class="anchor" aria-hidden="true" href="#创建-servicemonitor">¶</a></h3>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/action: probe
+  name: icmp-prober
+spec:
+  clusterIP: None
+  ports:
+  - name: db
+    protocol: TCP
+    port: 9100
+    targetPort: 9100
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  labels:
+    app.kubernetes.io/action: probe
+  name: rahasak # name is same as service name
+subsets:
+- addresses:
+  - ip: 10.0.0.4
+  - ip: 10.0.0.5
+  ports:
+  - name: db
+    protocol: TCP
+    port: 9100
+</code></pre>
+<h3 id="创建-servicemonitor">创建 servicemonitor<a hidden class="anchor" aria-hidden="true" href="#创建-servicemonitor">¶</a></h3>
 <p>创建一个 ServiceMonitor 来探测每个 endpoint，使用了 icmp 探针来抓取 带有标签 <code>app.kubernetes.io/action: probe</code> 的Kubernets service</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">monitoring.coreos.com/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceMonitor</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">blackbox-exporter</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l">1m</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">scrapeTimeout</span><span class="p">:</span><span class="w"> </span><span class="l">10s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">params</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">ping]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">relabelings</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">sourceLabels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__address__]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">__param_target</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">__address__</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c"># blackbox_service_name.namespace:port</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w">  </span><span class="l">prometheus-blackbox-prometheus-blackbox-exporter:9115</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">sourceLabels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__param_target]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">instance</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">labelmap</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">__meta_kubernetes_endpoints_label_(.+)</span><span class="w"> </span><span class="c"># specify to monitor kubernetes endpoints </span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">jobLabel</span><span class="p">:</span><span class="w"> </span><span class="l">blackbox-exporter</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app.kubernetes.io/action</span><span class="p">:</span><span class="w"> </span><span class="l">probe</span><span class="w"> </span><span class="c"># monitor endpoints only with the given label</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="notes">Notes<a hidden class="anchor" aria-hidden="true" href="#notes">¶</a></h2>
+<pre><code class="language-yaml">apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-exporter
+spec:
+  endpoints:
+  - interval: 1m
+    path: /probe
+    scrapeTimeout: 10s
+    params:
+      module: [ping]
+    relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - targetLabel: __address__
+    # blackbox_service_name.namespace:port
+      replacement:  prometheus-blackbox-prometheus-blackbox-exporter:9115
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - action: labelmap
+      regex: __meta_kubernetes_endpoints_label_(.+) # specify to monitor kubernetes endpoints 
+  jobLabel: blackbox-exporter
+  selector:
+    matchLabels:
+      app.kubernetes.io/action: probe # monitor endpoints only with the given label
+</code></pre>
+<h2 id="notes">Notes<a hidden class="anchor" aria-hidden="true" href="#notes">¶</a></h2>
 <p>blackbox_exporter 如果想要使用 icmp 探针，必须拥有 root 权限，直接修改 <code>runAsGroup: 0</code> 即可</p>
 <p>对于 直接使用 servicemonitor 中的 endpoint 只能识别出一个 IP，原因是，balckbox 暴漏的指标需要带参数访问，下列格式</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="s2">&#34;http://10.104.202.8:9115/probe?module=ping&amp;target=10.0.0.5&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而传入多个 target 没有用，只会返回第一个 target 的指标，所以说会出现多个 endpoint 只会出现一个，同样的问题，如果 service 设置为 ClusterIP，也会只有一个指标，必须 <code>type: None</code> 才可以，这就是只有多个 endpoint 才会在拉去指标时请求多个 balckbox exporter 的 API</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230713005706664.png" alt="image-20230713005706664"  /></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">monitoring.coreos.com/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">ServiceMonitor</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">blackbox-probe-tcp</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l">default </span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">release</span><span class="p">:</span><span class="w"> </span><span class="l">kube-prometheus-stacks</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">endpoints</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l">http</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/probe</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">scrapeTimeout</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">params</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">ping</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">target</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="m">10.0.0.4</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="m">10.0.0.5</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">relabelings</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">(.*)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">$1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">sourceLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">__meta_kubernetes_service_label_cluster</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">cluster</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">(.*)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">$1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">sourceLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">__param_module</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">module</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">labelmap</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">(.*)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">$1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">sourceLabels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__param_target]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">targetLabel</span><span class="p">:</span><span class="w"> </span><span class="l">__address__</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">selector</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">app.kubernetes.io/instance</span><span class="p">:</span><span class="w"> </span><span class="l">prometheus-blackbox</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>目前暂未找到有效的解决方法，但是在清单配置多个 endpoint 就出现多条 serivcemonitor 记录，持续更进该问题，可能可以通过 <code>additionalScrapeConfigs</code> 可以解决该问题</p>
+<pre><code class="language-bash">&quot;http://10.104.202.8:9115/probe?module=ping&amp;target=10.0.0.5&quot;
+</code></pre>
+<p>而传入多个 target 没有用，只会返回第一个 target 的指标，所以说会出现多个 endpoint 只会出现一个，同样的问题，如果 service 设置为 ClusterIP，也会只有一个指标，必须 <code>type: None</code> 才可以，这就是只有多个 endpoint 才会在拉去指标时请求多个 balckbox exporter 的 API</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230713005706664.png" alt="image-20230713005706664" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<pre><code class="language-yaml">apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-probe-tcp
+  namespace: default 
+  labels:
+    release: kube-prometheus-stacks
+spec:
+  endpoints:
+  - port: http
+    path: /probe
+    interval: 5s
+    scrapeTimeout: 5s
+    params:
+      module:
+      - ping
+      target:
+      - 10.0.0.4
+      - 10.0.0.5
+    relabelings:
+    - action: replace
+      regex: (.*)
+      replacement: $1
+      sourceLabels:
+      - __meta_kubernetes_service_label_cluster
+      targetLabel: cluster
+    - action: replace
+      regex: (.*)
+      replacement: $1
+      sourceLabels:
+      - __param_module
+      targetLabel: module
+    - action: labelmap
+      regex: (.*)
+      replacement: $1
+      sourceLabels: [__param_target]
+      targetLabel: __address__
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: prometheus-blackbox
+</code></pre>
+<p>目前暂未找到有效的解决方法，但是在清单配置多个 endpoint 就出现多条 serivcemonitor 记录，持续更进该问题，可能可以通过 <code>additionalScrapeConfigs</code> 可以解决该问题</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://medium.com/@lambdaEranga/monitor-kubernets-services-endpoints-with-prometheus-blackbox-exporter-a64e062c05d5">Monitor Kubernets Services/Endpoints with Prometheus Blackbox Exporter</a></p>
-<p><sup id="2">[2] </sup><a href="https://www.voidking.com/dev-prometheus-operator-blackbox-exporter/">Prometheus Operator + Blackbox exporter</a></p>
+<p><sup id="1">[1]</sup> <a href="https://medium.com/@lambdaEranga/monitor-kubernets-services-endpoints-with-prometheus-blackbox-exporter-a64e062c05d5" target="_blank"
+   rel="noopener nofollow noreferrer" >Monitor Kubernets Services/Endpoints with Prometheus Blackbox Exporter</a></p>
+<p><sup id="2">[2] </sup><a href="https://www.voidking.com/dev-prometheus-operator-blackbox-exporter/" target="_blank"
+   rel="noopener nofollow noreferrer" >Prometheus Operator + Blackbox exporter</a></p>
 </blockquote>
 
 

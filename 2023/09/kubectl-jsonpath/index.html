@@ -10,7 +10,7 @@
 <meta name="description" content="探索kubectl - 巧用jsonpath提取有用数据 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/09/kubectl-jsonpath/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "jsonpath", "kubectl"
   ],
-  "wordCount" : "3178",
+  "wordCount" : "2954",
   "inLanguage": "zh",
   "datePublished": "2023-09-25T00:00:00Z",
   "dateModified": "2023-09-25T23:10:36+08:00",
@@ -282,7 +282,7 @@ function toggleThemeListener() {
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
   <span class="post-tags"><a href="https://www.oomkill.com/tags/kubernetes/">kubernetes</a></span></span><span class="meta-item">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>7 分钟</span></span>
+  <span>6 分钟</span></span>
 
       
       
@@ -452,376 +452,181 @@ function toggleThemeListener() {
 <p>例如，通常在生产环境中处理 Kubernetes 问题时，您将需要查看数百个节点和数千个 Pod 的信息，例如 Deployment, Pod, Replicat, Service, Secret 等资源信息，但要获取这些类型的资源，通常会使用 kubectl 命令，然而在50%以上的高级场景下，是过滤信息并进行整理。在这种场景下，使用 kubectl + shell 命令进行整理的却没有 jsonpath 来的实在。假设在一个大规模集群中，例如 10 万个 Node 节点，这时如果你想获得一些节点信息，或者 Pod 信息，再或者某些需要循环的条件，这时候多次的请求对你在统计数据上造成的时间成本及频繁请求API都会造成压力，这个时候 <em>jsonpath</em> 的功能就很好的解决了这个问题，通过一次请求，快速循环可以在很短时间内得出结果，并减少了大量请求 <em>kube-apiserver</em> 的压力。</p>
 <h3 id="kubectl-jsonpath-示例">kubectl jsonpath 示例<a hidden class="anchor" aria-hidden="true" href="#kubectl-jsonpath-示例">¶</a></h3>
 <h3 id="仅获取某个资源的名称">仅获取某个资源的名称<a hidden class="anchor" aria-hidden="true" href="#仅获取某个资源的名称">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 语法</span>
-</span></span><span class="line"><span class="cl">kubectl -n &lt;my_namespace&gt; get deploy/&lt;my_deployment&gt; -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.name}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>获取一个 deployment的 信息</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get deploy/traefik -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.metadata.name}&#39;</span>
-</span></span><span class="line"><span class="cl">traefik
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>通常使用 json path 不会获取一个资源的信息，而是获取所有资源的信息，例如获取所有 Pod 的 name</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pod -A -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s2">&#34;{.items[*][&#39;metadata.name&#39;]}&#34;</span>
-</span></span><span class="line"><span class="cl">echo-hello-world-task-run-1-pod-ksdtm echo-hello-world-task-run-pod-4sx9n traefik-679bf6459c-sz9jv calico-kube-controllers-577f77cb5c-kwhph calico-node-59d5x calico-node-82zgm coredns-6b9bb479b9-wnc8n minio spin-clouddriver-88df48858-dfzkg spin-deck-5dc8f847b8-m4tbk spin-echo-69868fd866-nxn8g spin-front50-54fb4b6d67-jfkds spin-gate-7b6f4d4566-gdjkd spin-orca-7765fb5c96-9gmvr spin-redis-8485df6b88-bgrgm spin-rosco-6d77f8cb-bf2nj tekton-pipelines-controller-5cdb46974f-8rjbx tekton-pipelines-webhook-6479d769ff-756gq
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash"># 语法
+kubectl -n &lt;my_namespace&gt; get deploy/&lt;my_deployment&gt; -o jsonpath='{.metadata.name}'
+</code></pre>
+<p>获取一个 deployment的 信息</p>
+<pre><code class="language-bash">$ kubectl get deploy/traefik -o jsonpath='{.metadata.name}'
+traefik
+</code></pre>
+<p>通常使用 json path 不会获取一个资源的信息，而是获取所有资源的信息，例如获取所有 Pod 的 name</p>
+<pre><code class="language-bash">$ kubectl get pod -A -o jsonpath=&quot;{.items[*]['metadata.name']}&quot;
+echo-hello-world-task-run-1-pod-ksdtm echo-hello-world-task-run-pod-4sx9n traefik-679bf6459c-sz9jv calico-kube-controllers-577f77cb5c-kwhph calico-node-59d5x calico-node-82zgm coredns-6b9bb479b9-wnc8n minio spin-clouddriver-88df48858-dfzkg spin-deck-5dc8f847b8-m4tbk spin-echo-69868fd866-nxn8g spin-front50-54fb4b6d67-jfkds spin-gate-7b6f4d4566-gdjkd spin-orca-7765fb5c96-9gmvr spin-redis-8485df6b88-bgrgm spin-rosco-6d77f8cb-bf2nj tekton-pipelines-controller-5cdb46974f-8rjbx tekton-pipelines-webhook-6479d769ff-756gq
+</code></pre>
+<blockquote>
 <p>Tips：jsonpath 的输出是以字符串方式输出，不会携带换行之类的</p>
 </blockquote>
 <h3 id="-的用法">@ 的用法<a hidden class="anchor" aria-hidden="true" href="#-的用法">¶</a></h3>
 <p><em>@</em> 表示当前对象，例如 <em>kubectl get pods</em> 这获取的是一个 list 列表，那么 <em>@</em> 就代表这个 list，例如</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span><span class="lnt">56
-</span><span class="lnt">57
-</span><span class="lnt">58
-</span><span class="lnt">59
-</span><span class="lnt">60
-</span><span class="lnt">61
-</span><span class="lnt">62
-</span><span class="lnt">63
-</span><span class="lnt">64
-</span><span class="lnt">65
-</span><span class="lnt">66
-</span><span class="lnt">67
-</span><span class="lnt">68
-</span><span class="lnt">69
-</span><span class="lnt">70
-</span><span class="lnt">71
-</span><span class="lnt">72
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{@}&#39;</span><span class="p">|</span>jq
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;items&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">    <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;Pod&#34;</span>,
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;metadata&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;annotations&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;cni.projectcalico.org/containerID&#34;</span>: <span class="s2">&#34;aedb0d3f11b2572d82a7ccb456cec393f88de2c8befa4d19e69a577bb8c0e20f&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;cni.projectcalico.org/podIP&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;cni.projectcalico.org/podIPs&#34;</span>: <span class="s2">&#34;&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;kubectl.kubernetes.io/last-applied-configuration&#34;</span>: <span class="s2">&#34;{\&#34;apiVersion\&#34;:\&#34;tekton.dev/v1beta1\&#34;,\&#34;kind\&#34;:\&#34;Task\&#34;,\&#34;metadata\&#34;:{\&#34;annotations\&#34;:{},\&#34;name\&#34;:\&#34;echo-hello-world\&#34;,\&#34;namespace\&#34;:\&#34;default\&#34;},\&#34;spec\&#34;:{\&#34;steps\&#34;:[{\&#34;args\&#34;:[\&#34;Hello World\&#34;],\&#34;command\&#34;:[\&#34;echo\&#34;],\&#34;image\&#34;:\&#34;busybox\&#34;,\&#34;name\&#34;:\&#34;echo\&#34;}]}}\n&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;pipeline.tekton.dev/release&#34;</span>: <span class="s2">&#34;v0.19.0&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;tekton.dev/ready&#34;</span>: <span class="s2">&#34;READY&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;creationTimestamp&#34;</span>: <span class="s2">&#34;2023-06-26T15:05:54Z&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;labels&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;app.kubernetes.io/managed-by&#34;</span>: <span class="s2">&#34;tekton-pipelines&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;tekton.dev/task&#34;</span>: <span class="s2">&#34;echo-hello-world&#34;</span>,
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;tekton.dev/taskRun&#34;</span>: <span class="s2">&#34;echo-hello-world-task-run-1&#34;</span>
-</span></span><span class="line"><span class="cl">        <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;managedFields&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">          <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;fieldsType&#34;</span>: <span class="s2">&#34;FieldsV1&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;fieldsV1&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">              <span class="s2">&#34;f:metadata&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;f:annotations&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:cni.projectcalico.org/containerID&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:cni.projectcalico.org/podIP&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:cni.projectcalico.org/podIPs&#34;</span>: <span class="o">{}</span>
-</span></span><span class="line"><span class="cl">                <span class="o">}</span>
-</span></span><span class="line"><span class="cl">              <span class="o">}</span>
-</span></span><span class="line"><span class="cl">            <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;manager&#34;</span>: <span class="s2">&#34;calico&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;operation&#34;</span>: <span class="s2">&#34;Update&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;time&#34;</span>: <span class="s2">&#34;2023-06-26T15:05:55Z&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">          <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;fieldsType&#34;</span>: <span class="s2">&#34;FieldsV1&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;fieldsV1&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">              <span class="s2">&#34;f:metadata&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s2">&#34;f:annotations&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;.&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:kubectl.kubernetes.io/last-applied-configuration&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:pipeline.tekton.dev/release&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">                  <span class="s2">&#34;f:tekton.dev/ready&#34;</span>: <span class="o">{}</span>
-</span></span><span class="line"><span class="cl"> ...
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;nodeName&#34;</span>: <span class="s2">&#34;node01&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;preemptionPolicy&#34;</span>: <span class="s2">&#34;PreemptLowerPriority&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;priority&#34;</span>: 0,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;restartPolicy&#34;</span>: <span class="s2">&#34;Never&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;schedulerName&#34;</span>: <span class="s2">&#34;default-scheduler&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;securityContext&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;serviceAccount&#34;</span>: <span class="s2">&#34;default&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;serviceAccountName&#34;</span>: <span class="s2">&#34;default&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;terminationGracePeriodSeconds&#34;</span>: 30,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;tolerations&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">          <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;effect&#34;</span>: <span class="s2">&#34;NoExecute&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;key&#34;</span>: <span class="s2">&#34;node.kubernetes.io/not-ready&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;operator&#34;</span>: <span class="s2">&#34;Exists&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;tolerationSeconds&#34;</span>: <span class="m">300</span>
-</span></span><span class="line"><span class="cl">          <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">          <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;effect&#34;</span>: <span class="s2">&#34;NoExecute&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;key&#34;</span>: <span class="s2">&#34;node.kubernetes.io/unreachable&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;operator&#34;</span>: <span class="s2">&#34;Exists&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;tolerationSeconds&#34;</span>: <span class="m">300</span>
-</span></span><span class="line"><span class="cl">          <span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="-和--的用法">. 和 [] 的用法<a hidden class="anchor" aria-hidden="true" href="#-和--的用法">¶</a></h3>
+<pre><code class="language-bash">$ kubectl get pods -o=jsonpath='{@}'|jq
+{
+  &quot;apiVersion&quot;: &quot;v1&quot;,
+  &quot;items&quot;: [
+    {
+      &quot;apiVersion&quot;: &quot;v1&quot;,
+      &quot;kind&quot;: &quot;Pod&quot;,
+      &quot;metadata&quot;: {
+        &quot;annotations&quot;: {
+          &quot;cni.projectcalico.org/containerID&quot;: &quot;aedb0d3f11b2572d82a7ccb456cec393f88de2c8befa4d19e69a577bb8c0e20f&quot;,
+          &quot;cni.projectcalico.org/podIP&quot;: &quot;&quot;,
+          &quot;cni.projectcalico.org/podIPs&quot;: &quot;&quot;,
+          &quot;kubectl.kubernetes.io/last-applied-configuration&quot;: &quot;{\&quot;apiVersion\&quot;:\&quot;tekton.dev/v1beta1\&quot;,\&quot;kind\&quot;:\&quot;Task\&quot;,\&quot;metadata\&quot;:{\&quot;annotations\&quot;:{},\&quot;name\&quot;:\&quot;echo-hello-world\&quot;,\&quot;namespace\&quot;:\&quot;default\&quot;},\&quot;spec\&quot;:{\&quot;steps\&quot;:[{\&quot;args\&quot;:[\&quot;Hello World\&quot;],\&quot;command\&quot;:[\&quot;echo\&quot;],\&quot;image\&quot;:\&quot;busybox\&quot;,\&quot;name\&quot;:\&quot;echo\&quot;}]}}\n&quot;,
+          &quot;pipeline.tekton.dev/release&quot;: &quot;v0.19.0&quot;,
+          &quot;tekton.dev/ready&quot;: &quot;READY&quot;
+        },
+        &quot;creationTimestamp&quot;: &quot;2023-06-26T15:05:54Z&quot;,
+        &quot;labels&quot;: {
+          &quot;app.kubernetes.io/managed-by&quot;: &quot;tekton-pipelines&quot;,
+          &quot;tekton.dev/task&quot;: &quot;echo-hello-world&quot;,
+          &quot;tekton.dev/taskRun&quot;: &quot;echo-hello-world-task-run-1&quot;
+        },
+        &quot;managedFields&quot;: [
+          {
+            &quot;apiVersion&quot;: &quot;v1&quot;,
+            &quot;fieldsType&quot;: &quot;FieldsV1&quot;,
+            &quot;fieldsV1&quot;: {
+              &quot;f:metadata&quot;: {
+                &quot;f:annotations&quot;: {
+                  &quot;f:cni.projectcalico.org/containerID&quot;: {},
+                  &quot;f:cni.projectcalico.org/podIP&quot;: {},
+                  &quot;f:cni.projectcalico.org/podIPs&quot;: {}
+                }
+              }
+            },
+            &quot;manager&quot;: &quot;calico&quot;,
+            &quot;operation&quot;: &quot;Update&quot;,
+            &quot;time&quot;: &quot;2023-06-26T15:05:55Z&quot;
+          },
+          {
+            &quot;apiVersion&quot;: &quot;v1&quot;,
+            &quot;fieldsType&quot;: &quot;FieldsV1&quot;,
+            &quot;fieldsV1&quot;: {
+              &quot;f:metadata&quot;: {
+                &quot;f:annotations&quot;: {
+                  &quot;.&quot;: {},
+                  &quot;f:kubectl.kubernetes.io/last-applied-configuration&quot;: {},
+                  &quot;f:pipeline.tekton.dev/release&quot;: {},
+                  &quot;f:tekton.dev/ready&quot;: {}
+ ...
+        &quot;nodeName&quot;: &quot;node01&quot;,
+        &quot;preemptionPolicy&quot;: &quot;PreemptLowerPriority&quot;,
+        &quot;priority&quot;: 0,
+        &quot;restartPolicy&quot;: &quot;Never&quot;,
+        &quot;schedulerName&quot;: &quot;default-scheduler&quot;,
+        &quot;securityContext&quot;: {},
+        &quot;serviceAccount&quot;: &quot;default&quot;,
+        &quot;serviceAccountName&quot;: &quot;default&quot;,
+        &quot;terminationGracePeriodSeconds&quot;: 30,
+        &quot;tolerations&quot;: [
+          {
+            &quot;effect&quot;: &quot;NoExecute&quot;,
+            &quot;key&quot;: &quot;node.kubernetes.io/not-ready&quot;,
+            &quot;operator&quot;: &quot;Exists&quot;,
+            &quot;tolerationSeconds&quot;: 300
+          },
+          {
+            &quot;effect&quot;: &quot;NoExecute&quot;,
+            &quot;key&quot;: &quot;node.kubernetes.io/unreachable&quot;,
+            &quot;operator&quot;: &quot;Exists&quot;,
+            &quot;tolerationSeconds&quot;: 300
+          }
+
+</code></pre>
+<h3 id="-和--的用法">. 和 [] 的用法<a hidden class="anchor" aria-hidden="true" href="#-和--的用法">¶</a></h3>
 <p><em>.</em> 和 <em>[]</em> 是子操作符，用于获取到列表的元素，返回值也是 list，例如获取 Pod 列表中第一个 Pod，下面是一个 [] 的使用示例，可以获取某个元素</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0]}&#39;</span> <span class="p">|</span> jq
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;apiVersion&#34;</span>: <span class="s2">&#34;v1&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;kind&#34;</span>: <span class="s2">&#34;Pod&#34;</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;metadata&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;annotations&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">      <span class="s2">&#34;cni.projectcalico.org/containerID&#34;</span>: <span class="s2">&#34;aedb0d3f11b2572d82a7ccb456cec393f88de2c8befa4d19e69a577bb8c0e20f&#34;</span>,
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">...
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  <span class="o">}</span>,
-</span></span><span class="line"><span class="cl">  <span class="s2">&#34;status&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;conditions&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">      <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;lastProbeTime&#34;</span>: null,
-</span></span><span class="line"><span class="cl">     
-</span></span><span class="line"><span class="cl">     ...
-</span></span><span class="line"><span class="cl">     
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;hostIP&#34;</span>: <span class="s2">&#34;10.0.0.5&#34;</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;initContainerStatuses&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">      <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;containerID&#34;</span>: <span class="s2">&#34;docker://8129d155a9e9f204a22947ae3268513a1bf4d1ce98012120ab30cfd0eca04564&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;image&#34;</span>: <span class="s2">&#34;sha256:5d54c55f19bc6fdda7629a4f2015255ec1bed2750a81909817bede45a4d360b5&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;imageID&#34;</span>: <span class="s2">&#34;docker-pullable://gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint@sha256:67fceb87f3f76baefcfdb35fd04d0ebfc8d91117dccb7f3194056d6727bac636&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;lastState&#34;</span>: <span class="o">{}</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;name&#34;</span>: <span class="s2">&#34;place-tools&#34;</span>,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;ready&#34;</span>: true,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;restartCount&#34;</span>: 0,
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;state&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">          <span class="s2">&#34;terminated&#34;</span>: <span class="o">{</span>
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;containerID&#34;</span>: <span class="s2">&#34;docker://8129d155a9e9f204a22947ae3268513a1bf4d1ce98012120ab30cfd0eca04564&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;exitCode&#34;</span>: 0,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;finishedAt&#34;</span>: <span class="s2">&#34;2023-06-26T15:05:55Z&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;reason&#34;</span>: <span class="s2">&#34;Completed&#34;</span>,
-</span></span><span class="line"><span class="cl">            <span class="s2">&#34;startedAt&#34;</span>: <span class="s2">&#34;2023-06-26T15:05:55Z&#34;</span>
-</span></span><span class="line"><span class="cl">          <span class="o">}</span>
-</span></span><span class="line"><span class="cl">        <span class="o">}</span>
-</span></span><span class="line"><span class="cl">      <span class="o">}</span>
-</span></span><span class="line"><span class="cl">    <span class="o">]</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;phase&#34;</span>: <span class="s2">&#34;Succeeded&#34;</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;podIP&#34;</span>: <span class="s2">&#34;10.244.196.131&#34;</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;podIPs&#34;</span>: <span class="o">[</span>
-</span></span><span class="line"><span class="cl">      <span class="o">{</span>
-</span></span><span class="line"><span class="cl">        <span class="s2">&#34;ip&#34;</span>: <span class="s2">&#34;10.244.196.131&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="o">}</span>
-</span></span><span class="line"><span class="cl">    <span class="o">]</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;qosClass&#34;</span>: <span class="s2">&#34;BestEffort&#34;</span>,
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;startTime&#34;</span>: <span class="s2">&#34;2023-06-26T15:05:54Z&#34;</span>
-</span></span><span class="line"><span class="cl">  <span class="o">}</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>. 是 [] 的子操作符，可以获取某一个元素下的某个值，与 json 中语法相同，例如获取 Pod 列表中==第一个 Pod 的名称==</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0].metadata.name}&#39;</span>
-</span></span><span class="line"><span class="cl">echo-hello-world-task-run-1-pod-ksdtm
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="下标操作符-">下标操作符 :<a hidden class="anchor" aria-hidden="true" href="#下标操作符-">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods -o=jsonpath='{.items[0]}' | jq
+{
+  &quot;apiVersion&quot;: &quot;v1&quot;,
+  &quot;kind&quot;: &quot;Pod&quot;,
+  &quot;metadata&quot;: {
+    &quot;annotations&quot;: {
+      &quot;cni.projectcalico.org/containerID&quot;: &quot;aedb0d3f11b2572d82a7ccb456cec393f88de2c8befa4d19e69a577bb8c0e20f&quot;,
+
+...
+
+  },
+  &quot;status&quot;: {
+    &quot;conditions&quot;: [
+      {
+        &quot;lastProbeTime&quot;: null,
+     
+     ...
+     
+    &quot;hostIP&quot;: &quot;10.0.0.5&quot;,
+    &quot;initContainerStatuses&quot;: [
+      {
+        &quot;containerID&quot;: &quot;docker://8129d155a9e9f204a22947ae3268513a1bf4d1ce98012120ab30cfd0eca04564&quot;,
+        &quot;image&quot;: &quot;sha256:5d54c55f19bc6fdda7629a4f2015255ec1bed2750a81909817bede45a4d360b5&quot;,
+        &quot;imageID&quot;: &quot;docker-pullable://gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint@sha256:67fceb87f3f76baefcfdb35fd04d0ebfc8d91117dccb7f3194056d6727bac636&quot;,
+        &quot;lastState&quot;: {},
+        &quot;name&quot;: &quot;place-tools&quot;,
+        &quot;ready&quot;: true,
+        &quot;restartCount&quot;: 0,
+        &quot;state&quot;: {
+          &quot;terminated&quot;: {
+            &quot;containerID&quot;: &quot;docker://8129d155a9e9f204a22947ae3268513a1bf4d1ce98012120ab30cfd0eca04564&quot;,
+            &quot;exitCode&quot;: 0,
+            &quot;finishedAt&quot;: &quot;2023-06-26T15:05:55Z&quot;,
+            &quot;reason&quot;: &quot;Completed&quot;,
+            &quot;startedAt&quot;: &quot;2023-06-26T15:05:55Z&quot;
+          }
+        }
+      }
+    ],
+    &quot;phase&quot;: &quot;Succeeded&quot;,
+    &quot;podIP&quot;: &quot;10.244.196.131&quot;,
+    &quot;podIPs&quot;: [
+      {
+        &quot;ip&quot;: &quot;10.244.196.131&quot;
+      }
+    ],
+    &quot;qosClass&quot;: &quot;BestEffort&quot;,
+    &quot;startTime&quot;: &quot;2023-06-26T15:05:54Z&quot;
+  }
+}
+</code></pre>
+<p>. 是 [] 的子操作符，可以获取某一个元素下的某个值，与 json 中语法相同，例如获取 Pod 列表中==第一个 Pod 的名称==</p>
+<pre><code class="language-bash">$ kubectl get pods -o=jsonpath='{.items[0].metadata.name}'
+echo-hello-world-task-run-1-pod-ksdtm
+</code></pre>
+<h3 id="下标操作符-">下标操作符 :<a hidden class="anchor" aria-hidden="true" href="#下标操作符-">¶</a></h3>
 <p>下标操作符 “:” 可以视为一个切片，获取列表中某一些元素，语法为 <code>[start:end :step]</code></p>
 <p>例如获取前三个元素的名称</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0:2].metadata.name}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>获取最后两个元素</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ kubectl get pods -n spinnaker -o jsonpath=&#39;{range .items[*]}{.metadata.name}{&#34;\n&#34;}{end}&#39;
-</span></span><span class="line"><span class="cl">spin-clouddriver-88df48858-dfzkg
-</span></span><span class="line"><span class="cl">spin-deck-5dc8f847b8-m4tbk
-</span></span><span class="line"><span class="cl">spin-echo-69868fd866-nxn8g
-</span></span><span class="line"><span class="cl">spin-front50-54fb4b6d67-jfkds
-</span></span><span class="line"><span class="cl">spin-gate-7b6f4d4566-gdjkd
-</span></span><span class="line"><span class="cl">spin-orca-7765fb5c96-9gmvr
-</span></span><span class="line"><span class="cl">spin-redis-8485df6b88-bgrgm
-</span></span><span class="line"><span class="cl">spin-rosco-6d77f8cb-bf2nj
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">$ kubectl get pods -n spinnaker -o jsonpath=&#39;{range .items[-2:]}{.metadata.name}{&#34;\n&#34;}{end}&#39;
-</span></span><span class="line"><span class="cl">spin-redis-8485df6b88-bgrgm
-</span></span><span class="line"><span class="cl">spin-rosco-6d77f8cb-bf2nj
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="过滤表达式">过滤表达式<a hidden class="anchor" aria-hidden="true" href="#过滤表达式">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods -o=jsonpath='{.items[0:2].metadata.name}'
+</code></pre>
+<p>获取最后两个元素</p>
+<pre><code class="language-bash'">$ kubectl get pods -n spinnaker -o jsonpath='{range .items[*]}{.metadata.name}{&quot;\n&quot;}{end}'
+spin-clouddriver-88df48858-dfzkg
+spin-deck-5dc8f847b8-m4tbk
+spin-echo-69868fd866-nxn8g
+spin-front50-54fb4b6d67-jfkds
+spin-gate-7b6f4d4566-gdjkd
+spin-orca-7765fb5c96-9gmvr
+spin-redis-8485df6b88-bgrgm
+spin-rosco-6d77f8cb-bf2nj
+
+$ kubectl get pods -n spinnaker -o jsonpath='{range .items[-2:]}{.metadata.name}{&quot;\n&quot;}{end}'
+spin-redis-8485df6b88-bgrgm
+spin-rosco-6d77f8cb-bf2nj
+</code></pre>
+<h3 id="过滤表达式">过滤表达式<a hidden class="anchor" aria-hidden="true" href="#过滤表达式">¶</a></h3>
 <p>如果设置了 <em>limit</em> 参数则打印其名称</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -n spinnaker -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[?(@.spec.containers[*].resources.limits.memory != &#34;&#34;)].metadata.name}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>价格大于 10 的 元素的 name</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="s2">&#34;</span>$<span class="s2">.store.book[?(@.price &gt; 10)].name&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>json path 支持下列过滤操作符参考  <sup><a href="#2">[2]</a></sup></p>
+<pre><code class="language-bash">kubectl get pods -n spinnaker -o jsonpath='{.items[?(@.spec.containers[*].resources.limits.memory != &quot;&quot;)].metadata.name}'
+</code></pre>
+<p>价格大于 10 的 元素的 name</p>
+<pre><code class="language-bash">&quot;$.store.book[?(@.price &gt; 10)].name&quot;
+</code></pre>
+<p>json path 支持下列过滤操作符参考  <sup><a href="#2">[2]</a></sup></p>
 <table>
 <thead>
 <tr>
@@ -899,298 +704,133 @@ function toggleThemeListener() {
 <h3 id="正则表达式">正则表达式<a hidden class="anchor" aria-hidden="true" href="#正则表达式">¶</a></h3>
 <p>kubectl jsonpath 不支持正则表达式，如果需要使用正则表达式可以使用 <em><strong>jq</strong></em> 替换</p>
 <p>例如获取 <em>spin</em> 开头的 Pod 是否配置了 <em>resources</em></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -n spinnaker -o json <span class="p">|</span> jq -r <span class="s1">&#39;.items[] | select(.metadata.name | test(&#34;spin-&#34;)).spec.resources&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>example</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -n spinnaker -o json <span class="p">|</span> jq -r <span class="s1">&#39;.items[] | select(.metadata.name | test(&#34;spin-&#34;)).spec.resources&#39;</span>
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span><span class="line"><span class="cl">null
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="kubectl-example-示例">kubectl example 示例<a hidden class="anchor" aria-hidden="true" href="#kubectl-example-示例">¶</a></h2>
+<pre><code class="language-bash">kubectl get pods -n spinnaker -o json | jq -r '.items[] | select(.metadata.name | test(&quot;spin-&quot;)).spec.resources'
+</code></pre>
+<p>example</p>
+<pre><code class="language-bash">$ kubectl get pods -n spinnaker -o json | jq -r '.items[] | select(.metadata.name | test(&quot;spin-&quot;)).spec.resources'
+null
+null
+null
+null
+null
+null
+null
+null
+</code></pre>
+<h2 id="kubectl-example-示例">kubectl example 示例<a hidden class="anchor" aria-hidden="true" href="#kubectl-example-示例">¶</a></h2>
 <h3 id="获取-pod-为-web-的-pod-name">获取 Pod 为 web 的 Pod name<a hidden class="anchor" aria-hidden="true" href="#获取-pod-为-web-的-pod-name">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -o  <span class="nv">jsonpath</span>  <span class="o">=</span>  <span class="s1">&#39;{.items[?(@.metadata.labels.name==&#34;web&#34;)].metadata.name}&#39;</span> 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="过滤一个元素">过滤一个元素<a hidden class="anchor" aria-hidden="true" href="#过滤一个元素">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods -o  jsonpath  =  '{.items[?(@.metadata.labels.name==&quot;web&quot;)].metadata.name}' 
+</code></pre>
+<h3 id="过滤一个元素">过滤一个元素<a hidden class="anchor" aria-hidden="true" href="#过滤一个元素">¶</a></h3>
 <p>过滤 Node 地址模式</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get nodes -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].status.addresses[?(@.type==&#34;InternalIP&#34;)]}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>过滤元素并只打印想要的属性</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get nodes -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[*].status.addresses[?(@.type==&#34;InternalIP&#34;)].address}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="从数组中获取每个元素的单个字段">从数组中获取每个元素的单个字段<a hidden class="anchor" aria-hidden="true" href="#从数组中获取每个元素的单个字段">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -o <span class="nv">jsonpath</span><span class="o">={</span>$.items<span class="o">[</span>*<span class="o">]</span>.status.hostIP<span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="换行">换行<a hidden class="anchor" aria-hidden="true" href="#换行">¶</a></h3>
+<pre><code class="language-bash">kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type==&quot;InternalIP&quot;)]}'
+</code></pre>
+<p>过滤元素并只打印想要的属性</p>
+<pre><code class="language-bash">kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type==&quot;InternalIP&quot;)].address}'
+</code></pre>
+<h3 id="从数组中获取每个元素的单个字段">从数组中获取每个元素的单个字段<a hidden class="anchor" aria-hidden="true" href="#从数组中获取每个元素的单个字段">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods -o jsonpath={$.items[*].status.hostIP}
+</code></pre>
+<h3 id="换行">换行<a hidden class="anchor" aria-hidden="true" href="#换行">¶</a></h3>
 <p>jsonpath 在获取元素后，是一个单行字符串，如果需要换行操作可以使用下面示例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}{.status.hostIP}{&#34;\n&#34;}{end}&#39;</span>
-</span></span><span class="line"><span class="cl">10.0.0.5
-</span></span><span class="line"><span class="cl">10.0.0.5
-</span></span><span class="line"><span class="cl">10.0.0.5
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="循环并获得多个元素">循环并获得多个元素<a hidden class="anchor" aria-hidden="true" href="#循环并获得多个元素">¶</a></h3>
+<pre><code class="language-bash">$ kubectl get pods -o jsonpath='{range .items[*]}{.status.hostIP}{&quot;\n&quot;}{end}'
+10.0.0.5
+10.0.0.5
+10.0.0.5
+</code></pre>
+<h3 id="循环并获得多个元素">循环并获得多个元素<a hidden class="anchor" aria-hidden="true" href="#循环并获得多个元素">¶</a></h3>
 <p>如果想获取两个元素，可以使用下面示例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -o <span class="nv">jsonpath</span><span class="o">={</span>range .items<span class="o">[</span>*<span class="o">]}{</span>.status.hostIP<span class="o">}{</span><span class="s2">&#34;\t&#34;</span><span class="o">}{</span>.status.phase<span class="o">}{</span><span class="s2">&#34;\n&#34;</span><span class="o">}{</span>end<span class="o">}</span>
-</span></span><span class="line"><span class="cl">10.154.196.228	Running
-</span></span><span class="line"><span class="cl">10.154.202.136	Running
-</span></span><span class="line"><span class="cl">10.154.201.54	Running
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="递归">递归<a hidden class="anchor" aria-hidden="true" href="#递归">¶</a></h3>
+<pre><code class="language-bash">$ kubectl get pods -o jsonpath={range .items[*]}{.status.hostIP}{&quot;\t&quot;}{.status.phase}{&quot;\n&quot;}{end}
+10.154.196.228	Running
+10.154.202.136	Running
+10.154.201.54	Running
+</code></pre>
+<h3 id="递归">递归<a hidden class="anchor" aria-hidden="true" href="#递归">¶</a></h3>
 <p>如果想获取一个元素下所有相同名称的字段，可以使用下面示例</p>
 <p>递归获取所有 name 字段</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pod -A -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{..name}&#39;</span>
-</span></span><span class="line"><span class="cl">step-echo place-tools echo-hello-world-task-run-1-pod-ksdtm echo-hello-world-task-run-1 tekton-internal-workspace tekton-internal-home tekton-internal-results tekton-internal-tools tekton-internal-downward tekton-creds-init-home-tlvg8 default-token-6762j step-echo HOME tekton-internal-tools tekton-internal-downward tekton-creds-init-home-tlvg8 tekton-internal-workspace tekton-i..
-</span></span><span class="line"><span class="cl">...
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>巧用递归简化语句，如果一个元素 (元素名称) 是独有的，那么可以使用递归直接获取到这个元素的值，例如，过去所有 containers</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get pods -A -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}{&#34;pod: &#34;}{.metadata.name} {&#34;\n&#34;}{range ..containers[*]}{&#34;\tcontainer: &#34;}{.name}{&#34;\n\timage: &#34;}{.image}{&#34;\n&#34;}{end}{end}&#39;</span>
-</span></span><span class="line"><span class="cl">pod: echo-hello-world-task-run-1-pod-ksdtm 
-</span></span><span class="line"><span class="cl">	container: step-echo
-</span></span><span class="line"><span class="cl">	image: busybox
-</span></span><span class="line"><span class="cl">pod: echo-hello-world-task-run-pod-4sx9n 
-</span></span><span class="line"><span class="cl">	container: step-echo
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取每个-pod-limit-值">获取每个 Pod limit 值<a hidden class="anchor" aria-hidden="true" href="#获取每个-pod-limit-值">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl  get pod -A -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{&#34;Pod: &#34;}{.metadata.name}{&#34;\n&#34;} {&#34;  limit_mem: &#34;}{.spec.containers[*].resources.limits.memory}{&#34;\n&#34;}{end}&#39;</span>
-</span></span><span class="line"><span class="cl">Pod: echo-hello-world-task-run-1-pod-ksdtm
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: echo-hello-world-task-run-pod-4sx9n
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: traefik-679bf6459c-sz9jv
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: calico-kube-controllers-577f77cb5c-kwhph
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: calico-node-59d5x
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: calico-node-82zgm
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: coredns-6b9bb479b9-wnc8n
-</span></span><span class="line"><span class="cl">   limit_mem: 170Mi
-</span></span><span class="line"><span class="cl">Pod: minio
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-clouddriver-88df48858-dfzkg
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-deck-7fbf94d8bc-k7zrk
-</span></span><span class="line"><span class="cl">   limit_mem: 200Mi
-</span></span><span class="line"><span class="cl">Pod: spin-echo-69868fd866-nxn8g
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-front50-54fb4b6d67-jfkds
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-gate-6d7dbf74b9-4l89r
-</span></span><span class="line"><span class="cl">   limit_mem: 600Mi
-</span></span><span class="line"><span class="cl">Pod: spin-orca-7765fb5c96-9gmvr
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-redis-8485df6b88-bgrgm
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: spin-rosco-6d77f8cb-bf2nj
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: tekton-pipelines-controller-5cdb46974f-8rjbx
-</span></span><span class="line"><span class="cl">   limit_mem: 
-</span></span><span class="line"><span class="cl">Pod: tekton-pipelines-webhook-6479d769ff-756gq
-</span></span><span class="line"><span class="cl">   limit_mem: 500Mi
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取容器的-ip">获取容器的 IP<a hidden class="anchor" aria-hidden="true" href="#获取容器的-ip">¶</a></h3>
+<pre><code class="language-bash">$ kubectl get pod -A -o jsonpath='{..name}'
+step-echo place-tools echo-hello-world-task-run-1-pod-ksdtm echo-hello-world-task-run-1 tekton-internal-workspace tekton-internal-home tekton-internal-results tekton-internal-tools tekton-internal-downward tekton-creds-init-home-tlvg8 default-token-6762j step-echo HOME tekton-internal-tools tekton-internal-downward tekton-creds-init-home-tlvg8 tekton-internal-workspace tekton-i..
+...
+</code></pre>
+<p>巧用递归简化语句，如果一个元素 (元素名称) 是独有的，那么可以使用递归直接获取到这个元素的值，例如，过去所有 containers</p>
+<pre><code class="language-bash">$ kubectl get pods -A -o=jsonpath='{range .items[*]}{&quot;pod: &quot;}{.metadata.name} {&quot;\n&quot;}{range ..containers[*]}{&quot;\tcontainer: &quot;}{.name}{&quot;\n\timage: &quot;}{.image}{&quot;\n&quot;}{end}{end}'
+pod: echo-hello-world-task-run-1-pod-ksdtm 
+	container: step-echo
+	image: busybox
+pod: echo-hello-world-task-run-pod-4sx9n 
+	container: step-echo
+</code></pre>
+<h3 id="获取每个-pod-limit-值">获取每个 Pod limit 值<a hidden class="anchor" aria-hidden="true" href="#获取每个-pod-limit-值">¶</a></h3>
+<pre><code class="language-bash">kubectl  get pod -A -o jsonpath='{range $.items[*]}{&quot;Pod: &quot;}{.metadata.name}{&quot;\n&quot;} {&quot;  limit_mem: &quot;}{.spec.containers[*].resources.limits.memory}{&quot;\n&quot;}{end}'
+Pod: echo-hello-world-task-run-1-pod-ksdtm
+   limit_mem: 
+Pod: echo-hello-world-task-run-pod-4sx9n
+   limit_mem: 
+Pod: traefik-679bf6459c-sz9jv
+   limit_mem: 
+Pod: calico-kube-controllers-577f77cb5c-kwhph
+   limit_mem: 
+Pod: calico-node-59d5x
+   limit_mem: 
+Pod: calico-node-82zgm
+   limit_mem: 
+Pod: coredns-6b9bb479b9-wnc8n
+   limit_mem: 170Mi
+Pod: minio
+   limit_mem: 
+Pod: spin-clouddriver-88df48858-dfzkg
+   limit_mem: 
+Pod: spin-deck-7fbf94d8bc-k7zrk
+   limit_mem: 200Mi
+Pod: spin-echo-69868fd866-nxn8g
+   limit_mem: 
+Pod: spin-front50-54fb4b6d67-jfkds
+   limit_mem: 
+Pod: spin-gate-6d7dbf74b9-4l89r
+   limit_mem: 600Mi
+Pod: spin-orca-7765fb5c96-9gmvr
+   limit_mem: 
+Pod: spin-redis-8485df6b88-bgrgm
+   limit_mem: 
+Pod: spin-rosco-6d77f8cb-bf2nj
+   limit_mem: 
+Pod: tekton-pipelines-controller-5cdb46974f-8rjbx
+   limit_mem: 
+Pod: tekton-pipelines-webhook-6479d769ff-756gq
+   limit_mem: 500Mi
+</code></pre>
+<h3 id="获取容器的-ip">获取容器的 IP<a hidden class="anchor" aria-hidden="true" href="#获取容器的-ip">¶</a></h3>
 <p>获取单独一个 Pod</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl  get pod nginx-67d5fc57d8-jkfjp -n quota-example  -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.podIPs[].ip}{&#34;\n&#34;}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>循环获取</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl  get pod  -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.status.podIPs[].ip}{&#34;\n&#34;}{end}&#39;</span>
-</span></span><span class="line"><span class="cl">10.244.196.131
-</span></span><span class="line"><span class="cl">10.244.196.129
-</span></span><span class="line"><span class="cl">10.244.196.186
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取所有的-container-id-和-pod-ip">获取所有的 Container ID 和 Pod IP<a hidden class="anchor" aria-hidden="true" href="#获取所有的-container-id-和-pod-ip">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods --all-namespaces    -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}[{.status.containerStatuses[0].containerID}, {.status.podIP}]{&#34;\n&#34;}{end}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取所有的容器名称和镜像名称">获取所有的容器名称和镜像名称<a hidden class="anchor" aria-hidden="true" href="#获取所有的容器名称和镜像名称">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pods -n kube-system -o<span class="o">=</span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range .items[*]}[{.metadata.name},{.status.containerStatuses[0].image}]{&#34;\n&#34;}{end}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取所有状态条件中的类型">获取所有状态条件中的类型<a hidden class="anchor" aria-hidden="true" href="#获取所有状态条件中的类型">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pod cm-test-pod -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.conditions[*].type}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="获取-pod-的-apiversion">获取 Pod 的 apiversion<a hidden class="anchor" aria-hidden="true" href="#获取-pod-的-apiversion">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pod cm-test-pod -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.apiVersion}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="从第一个状态条件开始到最后一个结束每隔2个获取一次">从第一个状态条件开始到最后一个结束，每隔2个获取一次<a hidden class="anchor" aria-hidden="true" href="#从第一个状态条件开始到最后一个结束每隔2个获取一次">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get pod cm-test-pod -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.conditions[0:3:2].type}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/kubectl/jsonpath/"><em>jsonpath</em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://support.smartbear.com/alertsite/docs/monitors/api/endpoint/jsonpath.html"><em>JSONPath Syntax</em></a></p>
-<p><sup id="2">[3]</sup> <a href="https://www.ctyun.cn/zhishi/p-168130"><em>k8s学习-kubectl命令行 jsonpath的使用</em></a></p>
+<pre><code class="language-bash">kubectl  get pod nginx-67d5fc57d8-jkfjp -n quota-example  -o jsonpath='{.status.podIPs[].ip}{&quot;\n&quot;}'
+</code></pre>
+<p>循环获取</p>
+<pre><code class="language-bash">kubectl  get pod  -o jsonpath='{range $.items[*]}{.status.podIPs[].ip}{&quot;\n&quot;}{end}'
+10.244.196.131
+10.244.196.129
+10.244.196.186
+</code></pre>
+<h3 id="获取所有的-container-id-和-pod-ip">获取所有的 Container ID 和 Pod IP<a hidden class="anchor" aria-hidden="true" href="#获取所有的-container-id-和-pod-ip">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods --all-namespaces    -o=jsonpath='{range .items[*]}[{.status.containerStatuses[0].containerID}, {.status.podIP}]{&quot;\n&quot;}{end}'
+</code></pre>
+<h3 id="获取所有的容器名称和镜像名称">获取所有的容器名称和镜像名称<a hidden class="anchor" aria-hidden="true" href="#获取所有的容器名称和镜像名称">¶</a></h3>
+<pre><code class="language-bash">kubectl get pods -n kube-system -o=jsonpath='{range .items[*]}[{.metadata.name},{.status.containerStatuses[0].image}]{&quot;\n&quot;}{end}'
+</code></pre>
+<h3 id="获取所有状态条件中的类型">获取所有状态条件中的类型<a hidden class="anchor" aria-hidden="true" href="#获取所有状态条件中的类型">¶</a></h3>
+<pre><code class="language-bash">kubectl get pod cm-test-pod -o jsonpath='{.status.conditions[*].type}'
+</code></pre>
+<h3 id="获取-pod-的-apiversion">获取 Pod 的 apiversion<a hidden class="anchor" aria-hidden="true" href="#获取-pod-的-apiversion">¶</a></h3>
+<pre><code class="language-bash">kubectl get pod cm-test-pod -o jsonpath='{.apiVersion}'
+</code></pre>
+<h3 id="从第一个状态条件开始到最后一个结束每隔2个获取一次">从第一个状态条件开始到最后一个结束，每隔2个获取一次<a hidden class="anchor" aria-hidden="true" href="#从第一个状态条件开始到最后一个结束每隔2个获取一次">¶</a></h3>
+<pre><code class="language-bash">kubectl get pod cm-test-pod -o jsonpath='{.status.conditions[0:3:2].type}'
+</code></pre>
+<h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
+<p><sup id="1">[1]</sup> <a href="https://kubernetes.io/docs/reference/kubectl/jsonpath/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>jsonpath</em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://support.smartbear.com/alertsite/docs/monitors/api/endpoint/jsonpath.html" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>JSONPath Syntax</em></a></p>
+<p><sup id="2">[3]</sup> <a href="https://www.ctyun.cn/zhishi/p-168130" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>k8s学习-kubectl命令行 jsonpath的使用</em></a></p>
 
 
     

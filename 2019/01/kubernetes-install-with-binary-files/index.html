@@ -10,7 +10,7 @@
 <meta name="description" content="使用二进制文件构建k8s集群 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/01/kubernetes-install-with-binary-files/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "Kubernetes Install with binary files"
   ],
-  "wordCount" : "4184",
+  "wordCount" : "4112",
   "inLanguage": "zh",
   "datePublished": "2019-01-20T00:00:00Z",
   "dateModified": "2023-06-04T23:00:36+08:00",
@@ -453,209 +453,96 @@ function toggleThemeListener() {
 </ul>
 <p>了解了 kubelet 的签发过程，就明白在二进制部署时，为什么需要做一个 clusterrolebinding ？</p>
 <p>因为Kubernetes API 为 kubelet 的 bootstraps-token 使用的是用户 <code>system:node-bootstrapper</code> ，所以要想让这个用户可以访问 API 资源，那么就需要为这个用户绑定上集群角色（用户/组），这就需要执行一个命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole<span class="o">=</span>system:node-bootstrapper --group<span class="o">=</span>system:bootstrappers
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>此时再去查看证书颁发，这时因为有权限访问 API 资源了， 所以获得了证书的被签发</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get  csr
-</span></span><span class="line"><span class="cl">NAME                                                   AGE     REQUESTOR             CONDITION
-</span></span><span class="line"><span class="cl">node-csr-a-MREQ1IybB0U5M8RP5FasSjckQOZiCoCYlf8ipDwx8   5m11s   system:bootstrapper   Pending
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="kube-dns-的部署">kube-dns 的部署<a hidden class="anchor" aria-hidden="true" href="#kube-dns-的部署">¶</a></h2>
+<pre><code class="language-bash">$ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers
+</code></pre>
+<p>此时再去查看证书颁发，这时因为有权限访问 API 资源了， 所以获得了证书的被签发</p>
+<pre><code class="language-bash">$ kubectl get  csr
+NAME                                                   AGE     REQUESTOR             CONDITION
+node-csr-a-MREQ1IybB0U5M8RP5FasSjckQOZiCoCYlf8ipDwx8   5m11s   system:bootstrapper   Pending
+</code></pre>
+<h2 id="kube-dns-的部署">kube-dns 的部署<a hidden class="anchor" aria-hidden="true" href="#kube-dns-的部署">¶</a></h2>
 <p>coredns部署</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">$ mkdir coredns <span class="o">&amp;&amp;</span> <span class="nb">cd</span> coredns
-</span></span><span class="line"><span class="cl">$ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/coredns.yaml.sed
-</span></span><span class="line"><span class="cl">$ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/deploy.sh
-</span></span><span class="line"><span class="cl">$ bash deploy.sh -i 10.96.0.10 -r <span class="s2">&#34;10.96.0.0/12&#34;</span> -s -t coredns.yaml.sed <span class="p">|</span>kubectl apply -f - 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="开启ipvs">开启IPVS<a hidden class="anchor" aria-hidden="true" href="#开启ipvs">¶</a></h2>
+<pre><code class="language-sh">$ mkdir coredns &amp;&amp; cd coredns
+$ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/coredns.yaml.sed
+$ wget https://raw.githubusercontent.com/coredns/deployment/master/kubernetes/deploy.sh
+$ bash deploy.sh -i 10.96.0.10 -r &quot;10.96.0.0/12&quot; -s -t coredns.yaml.sed |kubectl apply -f - 
+</code></pre>
+<h2 id="开启ipvs">开启IPVS<a hidden class="anchor" aria-hidden="true" href="#开启ipvs">¶</a></h2>
 <p>内核开启IPVS功能否则降级</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sh" data-lang="sh"><span class="line"><span class="cl">cat &gt; /etc/sysconfig/modules/ipvs.modules <span class="s">&lt;&lt; EOF
-</span></span></span><span class="line"><span class="cl"><span class="s">#!/bin/bash
-</span></span></span><span class="line"><span class="cl"><span class="s">ipvs_mods_dir=&#34;/usr/lib/modules/$(uname -r)/kernel/net/netfilter/ipvs&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s">for i in \$(ls \$ipvs_mods_dir | grep -o &#34;^[^.]*&#34;); do
-</span></span></span><span class="line"><span class="cl"><span class="s">    /sbin/modinfo -F filename \$i &gt;/dev/null 
-</span></span></span><span class="line"><span class="cl"><span class="s">    if [ \$? -eq 0 ]; then
-</span></span></span><span class="line"><span class="cl"><span class="s">    /sbin/modprobe -- \$i 
-</span></span></span><span class="line"><span class="cl"><span class="s">    fi 
-</span></span></span><span class="line"><span class="cl"><span class="s">done
-</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>or</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="w">    </span><span class="l">cat &gt; /etc/sysconfig/modules/ipvs.modules &lt;&lt;EOF</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c">#!/bin/bash</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="l">ipvs_modules=&#34;ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack_ipv4&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="l">for kernel_module in \${ipvs_modules}; do</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="l">/sbin/modinfo -F filename \${kernel_module} &gt; /dev/null 2&gt;&amp;1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="l">if [ $? -eq 0 ]; then</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="l">/sbin/modprobe \${kernel_module}</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="l">fi</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="l">done</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="l">EOF</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">chmod 755 /etc/sysconfig/modules/ipvs.modules &amp;&amp; bash /etc/sysconfig/modules/ipvs.modules &amp;&amp; lsmod | grep ip_vs</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
+<pre><code class="language-sh">cat &gt; /etc/sysconfig/modules/ipvs.modules &lt;&lt; EOF
+#!/bin/bash
+ipvs_mods_dir=&quot;/usr/lib/modules/$(uname -r)/kernel/net/netfilter/ipvs&quot;
+for i in \$(ls \$ipvs_mods_dir | grep -o &quot;^[^.]*&quot;); do
+    /sbin/modinfo -F filename \$i &gt;/dev/null 
+    if [ \$? -eq 0 ]; then
+    /sbin/modprobe -- \$i 
+    fi 
+done
+EOF
+</code></pre>
+<p>or</p>
+<pre><code class="language-yaml">    cat &gt; /etc/sysconfig/modules/ipvs.modules &lt;&lt;EOF
+    #!/bin/bash
+    ipvs_modules=&quot;ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack_ipv4&quot;
+    for kernel_module in \${ipvs_modules}; do
+        /sbin/modinfo -F filename \${kernel_module} &gt; /dev/null 2&gt;&amp;1
+        if [ $? -eq 0 ]; then
+            /sbin/modprobe \${kernel_module}
+        fi
+    done
+    EOF
+chmod 755 /etc/sysconfig/modules/ipvs.modules &amp;&amp; bash /etc/sysconfig/modules/ipvs.modules &amp;&amp; lsmod | grep ip_vs
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting<a hidden class="anchor" aria-hidden="true" href="#troubleshooting">¶</a></h2>
 <h3 id="apiserver报错-没有kubeappserver用户">apiserver报错 没有kubeappserver用户<a hidden class="anchor" aria-hidden="true" href="#apiserver报错-没有kubeappserver用户">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Failed at step USER spawning  No such process
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Mar  2 04:54:56 node02 systemd: controller-manager.service: main process exited, code=exited, status=1/FAILURE
-</span></span><span class="line"><span class="cl">Mar  2 04:54:56 node02 kube-controller-manager: Get http://127.0.0.1:8443/api/v1/namespaces/kube-system/configmaps/extension-apiserver-authentication: net/http: HTTP/1.x transport connection broken: malformed HTTP response &#34;\x15\x03\x01\x00\x02\x02&#34;
-</span></span><span class="line"><span class="cl">Mar  2 04:54:56 node02 systemd: Unit controller-manager.service entered failed state.
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://blog.csdn.net/kevin_loving/article/details/81326470?utm_source=blogxgwz9">Unable to connect to the server: net/http: HTTP/1.x transport connection broken: malformed HTTP resp - kevin_loving的博客 - CSDN博客</a></p>
+<pre><code>Failed at step USER spawning  No such process
+</code></pre>
+<pre><code class="language-log">Mar  2 04:54:56 node02 systemd: controller-manager.service: main process exited, code=exited, status=1/FAILURE
+Mar  2 04:54:56 node02 kube-controller-manager: Get http://127.0.0.1:8443/api/v1/namespaces/kube-system/configmaps/extension-apiserver-authentication: net/http: HTTP/1.x transport connection broken: malformed HTTP response &quot;\x15\x03\x01\x00\x02\x02&quot;
+Mar  2 04:54:56 node02 systemd: Unit controller-manager.service entered failed state.
+</code></pre>
+<p><a href="https://blog.csdn.net/kevin_loving/article/details/81326470?utm_source=blogxgwz9" target="_blank"
+   rel="noopener nofollow noreferrer" >Unable to connect to the server: net/http: HTTP/1.x transport connection broken: malformed HTTP resp - kevin_loving的博客 - CSDN博客</a></p>
 <p>可能是启动单元文件有问题，手动启动后正常</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Mar  2 09:44:51 node02 kube-controller-manager: W0302 09:44:51.672404   39926 client_config.go:554] error creating inClusterConfig, falling 
-</span></span><span class="line"><span class="cl">back to default config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="node-xxxx-not-found">node &ldquo;xxxx&rdquo; not found<a hidden class="anchor" aria-hidden="true" href="#node-xxxx-not-found">¶</a></h3>
+<pre><code>Mar  2 09:44:51 node02 kube-controller-manager: W0302 09:44:51.672404   39926 client_config.go:554] error creating inClusterConfig, falling 
+back to default config: unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined
+</code></pre>
+<h3 id="node-xxxx-not-found">node &ldquo;xxxx&rdquo; not found<a hidden class="anchor" aria-hidden="true" href="#node-xxxx-not-found">¶</a></h3>
 <p>如下面问题，可能原因为 kubelet 正式还未签发</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Nov 14 16:31:03 master01 kubelet: E1114 16:31:03.677280    8587 kubelet.go:2270] node &#34;master01&#34; not found
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">380   19810 kubelet.go:2292] node &#34;master-machine&#34; not found
-</span></span><span class="line"><span class="cl">May 12 23:45:11 master-machine kubelet: E0512 23:45:11.415099   19810 kubelet.go:2292] node &#34;master-machine&#34; not found
-</span></span><span class="line"><span class="cl">May 12 23:45:11 master-machine kubelet: E0512 23:45:11.460097   19810 certificate_manager.go:434] Failed while requesting a signed certificate from the master: cannot create certificate signing request: certificatesigningrequests.certificates.k8s.io is forbidden: User &#34;system:anonymous&#34; cannot create resource &#34;certificatesigningrequests&#34; in API group &#34;certificates.k8s.io&#34; at the cluster scope
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="user-systemanonymous-cannot-list-resource-xxx">User &ldquo;system:anonymous&rdquo; cannot list resource xxx<a hidden class="anchor" aria-hidden="true" href="#user-systemanonymous-cannot-list-resource-xxx">¶</a></h3>
+<pre><code>Nov 14 16:31:03 master01 kubelet: E1114 16:31:03.677280    8587 kubelet.go:2270] node &quot;master01&quot; not found
+
+380   19810 kubelet.go:2292] node &quot;master-machine&quot; not found
+May 12 23:45:11 master-machine kubelet: E0512 23:45:11.415099   19810 kubelet.go:2292] node &quot;master-machine&quot; not found
+May 12 23:45:11 master-machine kubelet: E0512 23:45:11.460097   19810 certificate_manager.go:434] Failed while requesting a signed certificate from the master: cannot create certificate signing request: certificatesigningrequests.certificates.k8s.io is forbidden: User &quot;system:anonymous&quot; cannot create resource &quot;certificatesigningrequests&quot; in API group &quot;certificates.k8s.io&quot; at the cluster scope
+</code></pre>
+<h3 id="user-systemanonymous-cannot-list-resource-xxx">User &ldquo;system:anonymous&rdquo; cannot list resource xxx<a hidden class="anchor" aria-hidden="true" href="#user-systemanonymous-cannot-list-resource-xxx">¶</a></h3>
 <p>原因为：kubelet 正式还未签发</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">k8s.io/client-go/informers/factory.go:135: Failed to list *v1.CSIDriver: csidrivers.storage.k8s.io is forbidden: User &#34;system:anonymous&#34; cannot list resource &#34;csidrivers&#34; in API group &#34;storage.k8s.io&#34; at the cluster scope
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code>k8s.io/client-go/informers/factory.go:135: Failed to list *v1.CSIDriver: csidrivers.storage.k8s.io is forbidden: User &quot;system:anonymous&quot; cannot list resource &quot;csidrivers&quot; in API group &quot;storage.k8s.io&quot; at the cluster scope
+</code></pre>
+<blockquote>
 <p>问题：<code>&quot;master01&quot; is forbidden: User &quot;system:anonymous&quot; </code></p>
 <p>原因：用户未授权</p>
 <p>解决  ：<code>kubectl create clusterrolebinding kube-apiserver:kubelet-apis --clusterrole=system:kubelet-api-admin --user kubernetes-master</code> &amp;&amp; <code>kubectl certificate approve</code></p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">master01 kubelet: E1114 17:16:33.581116    8559 kubelet.go:2270] node &#34;master01&#34; not found
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">failed to ensure node lease exists, will retry in 6.4s, error: leases.coordination.k8s.io &#34;master01&#34; is forbidden: User &#34;system:anonymous&#34; cannot get resource &#34;leases&#34; in API group &#34;coordination.k8s.io&#34; in the namespace &#34;kube-node-lease&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="容器内-dial-tcp-109601443-connect-connection-timed-out">容器内 dial tcp 10.96.0.1:443: connect: connection timed out<a hidden class="anchor" aria-hidden="true" href="#容器内-dial-tcp-109601443-connect-connection-timed-out">¶</a></h3>
+<pre><code>master01 kubelet: E1114 17:16:33.581116    8559 kubelet.go:2270] node &quot;master01&quot; not found
+
+failed to ensure node lease exists, will retry in 6.4s, error: leases.coordination.k8s.io &quot;master01&quot; is forbidden: User &quot;system:anonymous&quot; cannot get resource &quot;leases&quot; in API group &quot;coordination.k8s.io&quot; in the namespace &quot;kube-node-lease&quot;
+</code></pre>
+<h3 id="容器内-dial-tcp-109601443-connect-connection-timed-out">容器内 dial tcp 10.96.0.1:443: connect: connection timed out<a hidden class="anchor" aria-hidden="true" href="#容器内-dial-tcp-109601443-connect-connection-timed-out">¶</a></h3>
 <blockquote>
 <p>问题1： flannela访问 <code>dial tcp 10.96.0.1:443: connect: connection timed out</code></p>
 <p>问题2：<code>open /run/flannel/subnet.env: no such file or directory</code></p>
 <p>问题3： <code>Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized</code></p>
 <p>解决：检查kube-proxy组件</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Nov 14 17:30:04 master01 kubelet: E1114 17:30:04.097261    1160 kubelet.go:2190] Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ kubectl logs kube-flannel-ds-dvsv7 -n kube-system
-</span></span><span class="line"><span class="cl">....
-</span></span><span class="line"><span class="cl">E1114 23:22:20.984238       1 main.go:243] Failed to create SubnetManager: error retrieving pod spec for &#39;kube-system/kube-flannel-ds-dvsv7&#39;: Get &#34;https://10.96.0.1:443/api/v1/namespaces/kube-system/pods/kube-flannel-ds-dvsv7&#34;: dial tcp 10.96.0.1:443: connect: connection timed out
-</span></span><span class="line"><span class="cl">$ 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="kubectl-get-csr-显示no-resources-found的解决记录">kubectl get csr 显示No Resources Found的解决记录<a hidden class="anchor" aria-hidden="true" href="#kubectl-get-csr-显示no-resources-found的解决记录">¶</a></h3>
+<pre><code>Nov 14 17:30:04 master01 kubelet: E1114 17:30:04.097261    1160 kubelet.go:2190] Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized
+</code></pre>
+<pre><code>$ kubectl logs kube-flannel-ds-dvsv7 -n kube-system
+....
+E1114 23:22:20.984238       1 main.go:243] Failed to create SubnetManager: error retrieving pod spec for 'kube-system/kube-flannel-ds-dvsv7': Get &quot;https://10.96.0.1:443/api/v1/namespaces/kube-system/pods/kube-flannel-ds-dvsv7&quot;: dial tcp 10.96.0.1:443: connect: connection timed out
+$ 
+</code></pre>
+<h3 id="kubectl-get-csr-显示no-resources-found的解决记录">kubectl get csr 显示No Resources Found的解决记录<a hidden class="anchor" aria-hidden="true" href="#kubectl-get-csr-显示no-resources-found的解决记录">¶</a></h3>
 <blockquote>
 <p>问题：kubectl get csr 显示No Resources Found的解决记录</p>
 <p>解决：<font size=2>需要先将 bootstrap token 文件中的 kubelet-bootstrap 用户赋予 system:node-bootstrapper 角色，然后 kubelet 才有权限创建认证请求</font></p>
@@ -664,68 +551,31 @@ function toggleThemeListener() {
 <p>kubelet启动启动时，<code>--kubeletconfig</code> 使用参数对应的文件是否存在 如果不存在<code>--bootstrap-kubeconfig</code>指定的kubeconfig文件向kube-apiserver发送CSR请求</p>
 <p>kube-apiserver 收到 CSR 请求后，对其中的 token 进行认证，认证通过后将请求的用户设置为<code>system:bootstrap:&lt;Token ID&gt;</code>，组设置为 ，<code>system:bootstrappers</code>此操作称为<code>Bootstrap Token Auth</code>。</p>
 <p>默认这个用户和组没有创建CSR的权限，kubelet没有启动，错误日志如下：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">Unable to register node &#34;master-machine&#34; with API server: nodes is forbidden: User &#34;system:anonymous&#34; cannot create resource &#34;nodes&#34; in API group &#34;&#34; at the cluster scope
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>解决方法是：创建一个集群角色绑定，绑定一个组：<code>system:bootstrapper</code> 和一个clusterrole <code>system:node-bootstrapper</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>测试授权</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl create clusterrolebinding kubelet-bootstrap --clusterrole<span class="o">=</span>system:node-bootstrapper --group<span class="o">=</span>system:bootstrappers
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">system:serviceaccount:default:default
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">kubectl create clusterrolebinding firewalld-default --clusterrole<span class="o">=</span>system:aggregate-to-admin --user<span class="o">=</span>system:serviceaccount:default:default
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">system:aggregate-to-admin
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="kube-flannel-cant-get-cidr-although-podcidr-available-on-node">kube flannel cant get cidr although podcidr available on node<a hidden class="anchor" aria-hidden="true" href="#kube-flannel-cant-get-cidr-although-podcidr-available-on-node">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">E0729 06:56:09.253632       1 main.go:330] Error registering network: failed to acquire lease: node &#34;master-machine&#34; pod cidr not assigned
-</span></span><span class="line"><span class="cl">I0729 06:56:09.253682       1 main.go:447] Stopping shutdownHandler...
-</span></span><span class="line"><span class="cl">W0729 06:56:09.253809       1 reflector.go:436] github.com/flannel-io/flannel/subnet/kube/kube.go:403: watch of *v1.Node ended with: an error on the server (&#34;unable to decode an event from the watch stream: context canceled&#34;) has prevented the request from succeeding
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>参考：<a href="https://stackoverflow.com/questions/50833616/kube-flannel-cant-get-cidr-although-podcidr-available-on-node">kube flannel cant get cidr although podcidr available on node</a> 原因为 CIDR无法分配</p>
+<pre><code>Unable to register node &quot;master-machine&quot; with API server: nodes is forbidden: User &quot;system:anonymous&quot; cannot create resource &quot;nodes&quot; in API group &quot;&quot; at the cluster scope
+</code></pre>
+<p>解决方法是：创建一个集群角色绑定，绑定一个组：<code>system:bootstrapper</code> 和一个clusterrole <code>system:node-bootstrapper</code></p>
+<pre><code>$ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers
+</code></pre>
+<p>测试授权</p>
+<pre><code class="language-bash">kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers
+
+system:serviceaccount:default:default
+
+kubectl create clusterrolebinding firewalld-default --clusterrole=system:aggregate-to-admin --user=system:serviceaccount:default:default
+
+system:aggregate-to-admin
+</code></pre>
+<h3 id="kube-flannel-cant-get-cidr-although-podcidr-available-on-node">kube flannel cant get cidr although podcidr available on node<a hidden class="anchor" aria-hidden="true" href="#kube-flannel-cant-get-cidr-although-podcidr-available-on-node">¶</a></h3>
+<pre><code>E0729 06:56:09.253632       1 main.go:330] Error registering network: failed to acquire lease: node &quot;master-machine&quot; pod cidr not assigned
+I0729 06:56:09.253682       1 main.go:447] Stopping shutdownHandler...
+W0729 06:56:09.253809       1 reflector.go:436] github.com/flannel-io/flannel/subnet/kube/kube.go:403: watch of *v1.Node ended with: an error on the server (&quot;unable to decode an event from the watch stream: context canceled&quot;) has prevented the request from succeeding
+</code></pre>
+<p>参考：<a href="https://stackoverflow.com/questions/50833616/kube-flannel-cant-get-cidr-although-podcidr-available-on-node" target="_blank"
+   rel="noopener nofollow noreferrer" >kube flannel cant get cidr although podcidr available on node</a> 原因为 CIDR无法分配</p>
 <h3 id="mvcc-required-revision-has-been-compacted">mvcc: required revision has been compacted<a hidden class="anchor" aria-hidden="true" href="#mvcc-required-revision-has-been-compacted">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">kube-apiserver: W1120 17:18:20.199950   70454 watcher.go:207] watch chan error: etcdserver: mvcc: required revision has been compacted
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里是etcd返回的错误，被apiserver视为警告，在注释中有这么一句话</p>
+<pre><code class="language-log">kube-apiserver: W1120 17:18:20.199950   70454 watcher.go:207] watch chan error: etcdserver: mvcc: required revision has been compacted
+</code></pre>
+<p>这里是etcd返回的错误，被apiserver视为警告，在注释中有这么一句话</p>
 <blockquote>
 <p>If the context is &ldquo;context.Background/TODO&rdquo;, returned &ldquo;WatchChan&rdquo; will not be closed and block until event is triggered, except when server returns a non-recoverable error (e.g. ErrCompacted).</p>
 <p>如果这个上下文返回WatchChan将在下次事件被触发前不会被关闭或阻塞，除非服务器返回一个ErrCompacted （不可恢复）</p>
@@ -734,33 +584,19 @@ function toggleThemeListener() {
 <p>etcd对每个kv的revision 都会保留一个压缩周期的值，例如每5分钟收集一次最新revision，当压缩周期达到时，将从历史记录中后去最后一个修订版本，例如为100，此时会压缩，压缩成功会重置计数器，并以最新的revision和新的历史记录进行开始，压缩失败将在5分钟后重试<code>--auto-compaction-retention=10</code> 是配置压缩周期的  每多少个小时键值存储运行定期压缩。</p>
 <p>如果最新的revision已被修订，etcd返回一个 <code>ErrCompacted</code>  表示已修订，此时表示为不可恢复状态</p>
 <p>返回错误时表示这个watch被关闭，为了优雅的关闭chan，kubernetes会对这个watch错误进行返回，而 <code>ErrCompacted</code>  本质上不算错误</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">wch</span> <span class="o">:=</span> <span class="nx">wc</span><span class="p">.</span><span class="nx">watcher</span><span class="p">.</span><span class="nx">client</span><span class="p">.</span><span class="nf">Watch</span><span class="p">(</span><span class="nx">wc</span><span class="p">.</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">wc</span><span class="p">.</span><span class="nx">key</span><span class="p">,</span> <span class="nx">opts</span><span class="o">...</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">wres</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">wch</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">wres</span><span class="p">.</span><span class="nf">Err</span><span class="p">()</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">err</span> <span class="o">:=</span> <span class="nx">wres</span><span class="p">.</span><span class="nf">Err</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// If there is an error on server (e.g. compaction), the channel will return it before closed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nf">logWatchChannelErr</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">wc</span><span class="p">.</span><span class="nf">sendError</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="o">...</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction">https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction</a></p>
+<pre><code class="language-go">wch := wc.watcher.client.Watch(wc.ctx, wc.key, opts...)
+for wres := range wch {
+    if wres.Err() != nil {
+        err := wres.Err()
+        // If there is an error on server (e.g. compaction), the channel will return it before closed.
+        logWatchChannelErr(err)
+        wc.sendError(err)
+        return
+    }
+    ...
+</code></pre>
+<p><a href="https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction" target="_blank"
+   rel="noopener nofollow noreferrer" >https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction</a></p>
 
 
     

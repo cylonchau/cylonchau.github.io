@@ -10,7 +10,7 @@
 <meta name="description" content="Spinnaker 自定义Pipeline模板思路 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2024/07/spinnaker-custom-template/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "Spinnaker"
   ],
-  "wordCount" : "1272",
+  "wordCount" : "1057",
   "inLanguage": "zh",
   "datePublished": "2024-07-27T00:00:00Z",
   "dateModified": "2024-07-27T00:00:00Z",
@@ -319,499 +319,253 @@ function toggleThemeListener() {
 </div>
 <br><h2 id="流水线模板组合思路">流水线模板组合思路<a hidden class="anchor" aria-hidden="true" href="#流水线模板组合思路">¶</a></h2>
 <p>官方流水线示例中没有给出完整的流水线模板和完整的字段，只给出了一个大致的 schema <sup><a href="#1">[1]</a></sup>，如下所示</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;schema&#34;</span><span class="p">:</span> <span class="s2">&#34;v2&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;variables&#34;</span><span class="p">:</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;type&gt;&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;defaultValue&#34;</span><span class="p">:</span> <span class="err">&lt;value&gt;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;description&gt;&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;varName&gt;&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">],</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;templateName&gt;&#34;</span><span class="p">,</span>           <span class="err">#</span> <span class="err">The</span> <span class="err">pipeline</span> <span class="err">instance</span> <span class="err">references</span> <span class="err">the</span> <span class="err">template</span> <span class="err">using</span> <span class="err">this</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;protect&#34;</span><span class="p">:</span> <span class="err">&lt;</span><span class="kc">true</span> <span class="err">|</span> <span class="kc">false</span><span class="err">&gt;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;metadata&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;displayName&#34;</span><span class="p">,</span>          <span class="err">#</span> <span class="err">The</span> <span class="err">display</span> <span class="err">name</span> <span class="err">shown</span> <span class="err">in</span> <span class="err">Deck</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;description&gt;&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;owner&#34;</span><span class="p">:</span> <span class="s2">&#34;example@example.com&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;scopes&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;global&#34;</span><span class="p">]</span>            <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
-</span></span><span class="line"><span class="cl">  <span class="p">},</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;pipeline&#34;</span><span class="p">:</span> <span class="p">{</span>                     <span class="err">#</span> <span class="err">Contains</span> <span class="err">the</span> <span class="err">templatized</span> <span class="err">pipeline</span> <span class="err">itself</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;lastModifiedBy&#34;</span><span class="p">:</span> <span class="s2">&#34;anonymous&#34;</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;updateTs&#34;</span><span class="p">:</span> <span class="s2">&#34;0&#34;</span><span class="p">,</span>                <span class="err">#</span> <span class="err">Not</span> <span class="err">used</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;parameterConfig&#34;</span><span class="p">:</span> <span class="p">[],</span>          <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;limitConcurrent&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>        <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;keepWaitingPipelines&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;&#34;</span><span class="p">,</span>              <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;triggers&#34;</span><span class="p">:</span> <span class="p">[],</span>                 <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;notifications&#34;</span><span class="p">:</span> <span class="p">[],</span>            <span class="err">#</span> <span class="err">Same</span> <span class="err">as</span> <span class="err">in</span> <span class="err">a</span> <span class="err">regular</span> <span class="err">pipeline</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;stages&#34;</span><span class="p">:</span> <span class="p">[</span>                     <span class="err">#</span> <span class="err">Contains</span> <span class="err">the</span> <span class="err">templated</span> <span class="err">stages</span>
-</span></span><span class="line"><span class="cl">      <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="err">#</span> <span class="err">This</span> <span class="err">one</span> <span class="err">is</span> <span class="err">an</span> <span class="err">example</span> <span class="err">stage:</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;waitTime&#34;</span><span class="p">:</span> <span class="s2">&#34;${ templateVariables.waitTime }&#34;</span><span class="p">,</span>  <span class="err">#</span> <span class="err">Templated</span> <span class="err">field.</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;My Wait Stage&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;wait&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;refId&#34;</span><span class="p">:</span> <span class="s2">&#34;wait1&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;requisiteStageRefIds&#34;</span><span class="p">:</span> <span class="p">[]</span>
-</span></span><span class="line"><span class="cl">      <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">]</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这个流水线模板的 Schema 只包含了大的框架，但是 Spinnaker 的每种类型的 Stage 的 Schema 并没有包含里面，需要自行定义，最好的一个思路就是，先手动先创建一个 {ipeline，然后编辑这个 Pipeline 的 Json 复制出想要的 Stage 的内容，然后再根据 Pipeline Template 的模板进行填充。</p>
+<pre><code class="language-json">{
+  &quot;schema&quot;: &quot;v2&quot;,
+  &quot;variables&quot;: [
+    {
+      &quot;type&quot;: &quot;&lt;type&gt;&quot;,
+      &quot;defaultValue&quot;: &lt;value&gt;,
+      &quot;description&quot;: &quot;&lt;description&gt;&quot;,
+      &quot;name&quot;: &quot;&lt;varName&gt;&quot;
+    }
+  ],
+  &quot;id&quot;: &quot;&lt;templateName&gt;&quot;,           # The pipeline instance references the template using this
+  &quot;protect&quot;: &lt;true | false&gt;,
+  &quot;metadata&quot;: {
+    &quot;name&quot;: &quot;displayName&quot;,          # The display name shown in Deck
+    &quot;description&quot;: &quot;&lt;description&gt;&quot;,
+    &quot;owner&quot;: &quot;example@example.com&quot;,
+    &quot;scopes&quot;: [&quot;global&quot;]            # Not used
+  },
+  &quot;pipeline&quot;: {                     # Contains the templatized pipeline itself
+    &quot;lastModifiedBy&quot;: &quot;anonymous&quot;,  # Not used
+    &quot;updateTs&quot;: &quot;0&quot;,                # Not used
+    &quot;parameterConfig&quot;: [],          # Same as in a regular pipeline
+    &quot;limitConcurrent&quot;: true,        # Same as in a regular pipeline
+    &quot;keepWaitingPipelines&quot;: false,  # Same as in a regular pipeline
+    &quot;description&quot;: &quot;&quot;,              # Same as in a regular pipeline
+    &quot;triggers&quot;: [],                 # Same as in a regular pipeline
+    &quot;notifications&quot;: [],            # Same as in a regular pipeline
+    &quot;stages&quot;: [                     # Contains the templated stages
+      {
+        # This one is an example stage:
+        &quot;waitTime&quot;: &quot;${ templateVariables.waitTime }&quot;,  # Templated field.
+        &quot;name&quot;: &quot;My Wait Stage&quot;,
+        &quot;type&quot;: &quot;wait&quot;,
+        &quot;refId&quot;: &quot;wait1&quot;,
+        &quot;requisiteStageRefIds&quot;: []
+      }
+    ]
+  }
+}
+</code></pre>
+<p>这个流水线模板的 Schema 只包含了大的框架，但是 Spinnaker 的每种类型的 Stage 的 Schema 并没有包含里面，需要自行定义，最好的一个思路就是，先手动先创建一个 {ipeline，然后编辑这个 Pipeline 的 Json 复制出想要的 Stage 的内容，然后再根据 Pipeline Template 的模板进行填充。</p>
 <p>例如，我们想顶一个选择 “多路分支” 的流水线，那么流水线类型如下</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212507497.png" alt="image-20240727212507497"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212507497.png" alt="image-20240727212507497" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：spinnaker流水线结构</center>
 <p>然后选择 “Edit stage as Json” 或者选择 “Pipeline Actions” 中 “Edit as JSON” 可以查看到该 Stage 或该 Pipelin 完整的 JSON 格式数据。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212652058.png" alt="image-20240727212652058"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212652058.png" alt="image-20240727212652058" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Pipeline Stage JSON</center>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212803192.png" alt="image-20240727212803192"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240727212803192.png" alt="image-20240727212803192" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Pipeline JSON</center>
 <p>最后将 Stage 的 JSON 复制 到 template Stage 的 数组中即可，下面是一个  Check Precondition  类型的 State 的 JSON</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;completeOtherBranchesThenFail&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;continuePipeline&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;failPipeline&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;选择禁用是否启用配置注册&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;notifications&#34;</span><span class="p">:</span> <span class="p">[],</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;preconditions&#34;</span><span class="p">:</span> <span class="p">[</span>
-</span></span><span class="line"><span class="cl">    <span class="p">{</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;context&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nt">&#34;expression&#34;</span><span class="p">:</span> <span class="s2">&#34;${ #judgment(&#39;check condition&#39;) == &#39;disable&#39; }&#34;</span>
-</span></span><span class="line"><span class="cl">      <span class="p">},</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;failPipeline&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">      <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;expression&#34;</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">  <span class="p">],</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;checkPreconditions&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="完整的基于分支判断的流水线模板示例">完整的基于分支判断的流水线模板示例<a hidden class="anchor" aria-hidden="true" href="#完整的基于分支判断的流水线模板示例">¶</a></h2>
+<pre><code class="language-json">{
+  &quot;completeOtherBranchesThenFail&quot;: false,
+  &quot;continuePipeline&quot;: false,
+  &quot;failPipeline&quot;: false,
+  &quot;name&quot;: &quot;选择禁用是否启用配置注册&quot;,
+  &quot;notifications&quot;: [],
+  &quot;preconditions&quot;: [
+    {
+      &quot;context&quot;: {
+        &quot;expression&quot;: &quot;${ #judgment('check condition') == 'disable' }&quot;
+      },
+      &quot;failPipeline&quot;: true,
+      &quot;type&quot;: &quot;expression&quot;
+    }
+  ],
+  &quot;type&quot;: &quot;checkPreconditions&quot;
+}
+</code></pre>
+<h2 id="完整的基于分支判断的流水线模板示例">完整的基于分支判断的流水线模板示例<a hidden class="anchor" aria-hidden="true" href="#完整的基于分支判断的流水线模板示例">¶</a></h2>
 <p>该模板是一个为 k8s deployment 启用/禁用 HPA 功能的流水线模板</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">  1
-</span><span class="lnt">  2
-</span><span class="lnt">  3
-</span><span class="lnt">  4
-</span><span class="lnt">  5
-</span><span class="lnt">  6
-</span><span class="lnt">  7
-</span><span class="lnt">  8
-</span><span class="lnt">  9
-</span><span class="lnt"> 10
-</span><span class="lnt"> 11
-</span><span class="lnt"> 12
-</span><span class="lnt"> 13
-</span><span class="lnt"> 14
-</span><span class="lnt"> 15
-</span><span class="lnt"> 16
-</span><span class="lnt"> 17
-</span><span class="lnt"> 18
-</span><span class="lnt"> 19
-</span><span class="lnt"> 20
-</span><span class="lnt"> 21
-</span><span class="lnt"> 22
-</span><span class="lnt"> 23
-</span><span class="lnt"> 24
-</span><span class="lnt"> 25
-</span><span class="lnt"> 26
-</span><span class="lnt"> 27
-</span><span class="lnt"> 28
-</span><span class="lnt"> 29
-</span><span class="lnt"> 30
-</span><span class="lnt"> 31
-</span><span class="lnt"> 32
-</span><span class="lnt"> 33
-</span><span class="lnt"> 34
-</span><span class="lnt"> 35
-</span><span class="lnt"> 36
-</span><span class="lnt"> 37
-</span><span class="lnt"> 38
-</span><span class="lnt"> 39
-</span><span class="lnt"> 40
-</span><span class="lnt"> 41
-</span><span class="lnt"> 42
-</span><span class="lnt"> 43
-</span><span class="lnt"> 44
-</span><span class="lnt"> 45
-</span><span class="lnt"> 46
-</span><span class="lnt"> 47
-</span><span class="lnt"> 48
-</span><span class="lnt"> 49
-</span><span class="lnt"> 50
-</span><span class="lnt"> 51
-</span><span class="lnt"> 52
-</span><span class="lnt"> 53
-</span><span class="lnt"> 54
-</span><span class="lnt"> 55
-</span><span class="lnt"> 56
-</span><span class="lnt"> 57
-</span><span class="lnt"> 58
-</span><span class="lnt"> 59
-</span><span class="lnt"> 60
-</span><span class="lnt"> 61
-</span><span class="lnt"> 62
-</span><span class="lnt"> 63
-</span><span class="lnt"> 64
-</span><span class="lnt"> 65
-</span><span class="lnt"> 66
-</span><span class="lnt"> 67
-</span><span class="lnt"> 68
-</span><span class="lnt"> 69
-</span><span class="lnt"> 70
-</span><span class="lnt"> 71
-</span><span class="lnt"> 72
-</span><span class="lnt"> 73
-</span><span class="lnt"> 74
-</span><span class="lnt"> 75
-</span><span class="lnt"> 76
-</span><span class="lnt"> 77
-</span><span class="lnt"> 78
-</span><span class="lnt"> 79
-</span><span class="lnt"> 80
-</span><span class="lnt"> 81
-</span><span class="lnt"> 82
-</span><span class="lnt"> 83
-</span><span class="lnt"> 84
-</span><span class="lnt"> 85
-</span><span class="lnt"> 86
-</span><span class="lnt"> 87
-</span><span class="lnt"> 88
-</span><span class="lnt"> 89
-</span><span class="lnt"> 90
-</span><span class="lnt"> 91
-</span><span class="lnt"> 92
-</span><span class="lnt"> 93
-</span><span class="lnt"> 94
-</span><span class="lnt"> 95
-</span><span class="lnt"> 96
-</span><span class="lnt"> 97
-</span><span class="lnt"> 98
-</span><span class="lnt"> 99
-</span><span class="lnt">100
-</span><span class="lnt">101
-</span><span class="lnt">102
-</span><span class="lnt">103
-</span><span class="lnt">104
-</span><span class="lnt">105
-</span><span class="lnt">106
-</span><span class="lnt">107
-</span><span class="lnt">108
-</span><span class="lnt">109
-</span><span class="lnt">110
-</span><span class="lnt">111
-</span><span class="lnt">112
-</span><span class="lnt">113
-</span><span class="lnt">114
-</span><span class="lnt">115
-</span><span class="lnt">116
-</span><span class="lnt">117
-</span><span class="lnt">118
-</span><span class="lnt">119
-</span><span class="lnt">120
-</span><span class="lnt">121
-</span><span class="lnt">122
-</span><span class="lnt">123
-</span><span class="lnt">124
-</span><span class="lnt">125
-</span><span class="lnt">126
-</span><span class="lnt">127
-</span><span class="lnt">128
-</span><span class="lnt">129
-</span><span class="lnt">130
-</span><span class="lnt">131
-</span><span class="lnt">132
-</span><span class="lnt">133
-</span><span class="lnt">134
-</span><span class="lnt">135
-</span><span class="lnt">136
-</span><span class="lnt">137
-</span><span class="lnt">138
-</span><span class="lnt">139
-</span><span class="lnt">140
-</span><span class="lnt">141
-</span><span class="lnt">142
-</span><span class="lnt">143
-</span><span class="lnt">144
-</span><span class="lnt">145
-</span><span class="lnt">146
-</span><span class="lnt">147
-</span><span class="lnt">148
-</span><span class="lnt">149
-</span><span class="lnt">150
-</span><span class="lnt">151
-</span><span class="lnt">152
-</span><span class="lnt">153
-</span><span class="lnt">154
-</span><span class="lnt">155
-</span><span class="lnt">156
-</span><span class="lnt">157
-</span><span class="lnt">158
-</span><span class="lnt">159
-</span><span class="lnt">160
-</span><span class="lnt">161
-</span><span class="lnt">162
-</span><span class="lnt">163
-</span><span class="lnt">164
-</span><span class="lnt">165
-</span><span class="lnt">166
-</span><span class="lnt">167
-</span><span class="lnt">168
-</span><span class="lnt">169
-</span><span class="lnt">170
-</span><span class="lnt">171
-</span><span class="lnt">172
-</span><span class="lnt">173
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;id&#34;: </span><span class="s2">&#34;a422e02d0ab94ce23jk92a6d2bf8ff9c&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;lastModifiedBy&#34;: </span><span class="s2">&#34;cylon&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;metadata&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;启用或停用 HPA&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;HPA Turn on or Turn off&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;owner&#34;: </span><span class="s2">&#34;cylonchau@outlook.com&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;scopes&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="s2">&#34;global&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;pipeline&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;expectedArtifacts&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;defaultArtifact&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;artifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;reference&#34;: </span><span class="s2">&#34;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;gitlab/file&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;version&#34;: </span><span class="s2">&#34;master&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;displayName&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa-file&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;id&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;matchArtifact&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;artifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;gitlab/file&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;useDefaultArtifact&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;usePriorArtifact&#34;: </span><span class="kc">false</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;keepWaitingPipelines&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;limitConcurrent&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;parameterConfig&#34;: </span><span class="p">[],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;stages&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;instructions&#34;: </span><span class="s2">&#34;请选择条件: \n\tenable 启用 ${ templateVariables.appName } HPA Autoscaler\n\tdisable 禁用HPA Autoscaler\n&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;judgmentInputs&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;value&#34;: </span><span class="s2">&#34;enable&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;value&#34;: </span><span class="s2">&#34;disable&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;Apply&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;notifications&#34;: </span><span class="p">[],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;propagateAuthenticationContext&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;7&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;manualJudgment&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;选择禁用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;preconditions&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;context&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">&#34;expression&#34;: </span><span class="s2">&#34;${ #judgment(&#39;Apply&#39;) == &#39;disable&#39; }&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;expression&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;9&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;7&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;checkPreconditions&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;选择启用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;preconditions&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;context&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">&#34;expression&#34;: </span><span class="s2">&#34;${ #judgment(&#39;Apply HPA&#39;) == &#39;enable&#39; }&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;expression&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;10&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;7&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;checkPreconditions&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;account&#34;: </span><span class="s2">&#34;${ templateVariables.dcName }&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;app&#34;: </span><span class="s2">&#34;${ templateVariables.appName }&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;cloudProvider&#34;: </span><span class="s2">&#34;kubernetes&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;isNew&#34;: </span><span class="kc">true</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;location&#34;: </span><span class="s2">&#34; ${ templateVariables.appLocation }&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestName&#34;: </span><span class="s2">&#34;horizontalpodautoscaler ${ templateVariables.appName }-autoscaler&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;mode&#34;: </span><span class="s2">&#34;static&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;禁用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;options&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;cascading&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;gracePeriodSeconds&#34;: </span><span class="m">300</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;12&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;9&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;deleteManifest&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;account&#34;: </span><span class="s2">&#34;${ templateVariables.dcName }&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;cloudProvider&#34;: </span><span class="s2">&#34;kubernetes&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestArtifactAccount&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;manifestArtifactId&#34;: </span><span class="s2">&#34;${ templateVariables.appName }-hpa&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;completeOtherBranchesThenFail&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;continuePipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;failPipeline&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;moniker&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;app&#34;: </span><span class="s2">&#34;${ templateVariables.appName }&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;启用 ${ templateVariables.appName } HPA&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;refId&#34;: </span><span class="s2">&#34;11&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;requisiteStageRefIds&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="s2">&#34;10&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;skipExpressionEvaluation&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;source&#34;: </span><span class="s2">&#34;artifact&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;stageTimeoutMs&#34;: </span><span class="m">500000</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;trafficManagement&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;enabled&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">&#34;options&#34;: </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;enableTraffic&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">&#34;services&#34;: </span><span class="p">[]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;deployManifest&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">],</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">&#34;triggers&#34;: </span><span class="p">[]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;protect&#34;: </span><span class="kc">false</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;schema&#34;: </span><span class="s2">&#34;v2&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;tag&#34;: </span><span class="kc">null</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;updateTs&#34;: </span><span class="s2">&#34;1701832158029&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">&#34;variables&#34;: </span><span class="p">[</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;k8s-cluster-102&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;要部署到的集群&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;dcName&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;模块名称&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;appName&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>{<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;defaultValue&#34;: </span><span class="s2">&#34;public&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;description&#34;: </span><span class="s2">&#34;名称空间&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;name&#34;: </span><span class="s2">&#34;appLocation&#34;</span><span class="p">,</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">&#34;type&#34;: </span><span class="s2">&#34;string&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>}<span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>}<span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/reference/pipeline/templates/#pipeline-template-json">Pipeline template JSON</a></p>
+<pre><code class="language-yaml">{
+  &quot;id&quot;: &quot;a422e02d0ab94ce23jk92a6d2bf8ff9c&quot;,
+  &quot;lastModifiedBy&quot;: &quot;cylon&quot;,
+  &quot;metadata&quot;: {
+    &quot;description&quot;: &quot;启用或停用 HPA&quot;,
+    &quot;name&quot;: &quot;HPA Turn on or Turn off&quot;,
+    &quot;owner&quot;: &quot;cylonchau@outlook.com&quot;,
+    &quot;scopes&quot;: [
+      &quot;global&quot;
+    ]
+  },
+  &quot;pipeline&quot;: {
+    &quot;expectedArtifacts&quot;: [
+      {
+        &quot;defaultArtifact&quot;: {
+          &quot;artifactAccount&quot;: &quot;k8s-cluster-102&quot;,
+          &quot;reference&quot;: &quot;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&quot;,
+          &quot;type&quot;: &quot;gitlab/file&quot;,
+          &quot;version&quot;: &quot;master&quot;
+        },
+        &quot;displayName&quot;: &quot;${ templateVariables.appName }-hpa-file&quot;,
+        &quot;id&quot;: &quot;${ templateVariables.appName }-hpa&quot;,
+        &quot;matchArtifact&quot;: {
+          &quot;artifactAccount&quot;: &quot;k8s-cluster-102&quot;,
+          &quot;name&quot;: &quot;https://git.chinamobile.cn/api/v4/projects/154/repository/files/hpa%2Fk8s-cluster-102%2F${ templateVariables.appName }.yaml/raw&quot;,
+          &quot;type&quot;: &quot;gitlab/file&quot;
+        },
+        &quot;useDefaultArtifact&quot;: true,
+        &quot;usePriorArtifact&quot;: false
+      }
+    ],
+    &quot;keepWaitingPipelines&quot;: false,
+    &quot;limitConcurrent&quot;: true,
+    &quot;parameterConfig&quot;: [],
+    &quot;stages&quot;: [
+      {
+        &quot;instructions&quot;: &quot;请选择条件: \n\tenable 启用 ${ templateVariables.appName } HPA Autoscaler\n\tdisable 禁用HPA Autoscaler\n&quot;,
+        &quot;judgmentInputs&quot;: [
+          {
+            &quot;value&quot;: &quot;enable&quot;
+          },
+          {
+            &quot;value&quot;: &quot;disable&quot;
+          }
+        ],
+        &quot;name&quot;: &quot;Apply&quot;,
+        &quot;completeOtherBranchesThenFail&quot;: false,
+        &quot;continuePipeline&quot;: false,
+        &quot;failPipeline&quot;: false,
+        &quot;notifications&quot;: [],
+        &quot;propagateAuthenticationContext&quot;: false,
+        &quot;refId&quot;: &quot;7&quot;,
+        &quot;requisiteStageRefIds&quot;: [],
+        &quot;type&quot;: &quot;manualJudgment&quot;
+      },
+      {
+        &quot;completeOtherBranchesThenFail&quot;: false,
+        &quot;continuePipeline&quot;: false,
+        &quot;failPipeline&quot;: false,
+        &quot;name&quot;: &quot;选择禁用 ${ templateVariables.appName } HPA&quot;,
+        &quot;preconditions&quot;: [
+          {
+            &quot;context&quot;: {
+              &quot;expression&quot;: &quot;${ #judgment('Apply') == 'disable' }&quot;
+            },
+            &quot;failPipeline&quot;: true,
+            &quot;type&quot;: &quot;expression&quot;
+          }
+        ],
+        &quot;refId&quot;: &quot;9&quot;,
+        &quot;requisiteStageRefIds&quot;: [
+          &quot;7&quot;
+        ],
+        &quot;type&quot;: &quot;checkPreconditions&quot;
+      },
+      {
+        &quot;name&quot;: &quot;选择启用 ${ templateVariables.appName } HPA&quot;,
+        &quot;completeOtherBranchesThenFail&quot;: false,
+        &quot;continuePipeline&quot;: false,
+        &quot;failPipeline&quot;: false,
+        &quot;preconditions&quot;: [
+          {
+            &quot;context&quot;: {
+              &quot;expression&quot;: &quot;${ #judgment('Apply HPA') == 'enable' }&quot;
+            },
+            &quot;failPipeline&quot;: true,
+            &quot;type&quot;: &quot;expression&quot;
+          }
+        ],
+        &quot;refId&quot;: &quot;10&quot;,
+        &quot;requisiteStageRefIds&quot;: [
+          &quot;7&quot;
+        ],
+        &quot;type&quot;: &quot;checkPreconditions&quot;
+      },
+      {
+        &quot;account&quot;: &quot;${ templateVariables.dcName }&quot;,
+        &quot;app&quot;: &quot;${ templateVariables.appName }&quot;,
+        &quot;cloudProvider&quot;: &quot;kubernetes&quot;,
+        &quot;completeOtherBranchesThenFail&quot;: false,
+        &quot;continuePipeline&quot;: false,
+        &quot;failPipeline&quot;: false,
+        &quot;isNew&quot;: true,
+        &quot;location&quot;: &quot; ${ templateVariables.appLocation }&quot;,
+        &quot;manifestName&quot;: &quot;horizontalpodautoscaler ${ templateVariables.appName }-autoscaler&quot;,
+        &quot;mode&quot;: &quot;static&quot;,
+        &quot;name&quot;: &quot;禁用 ${ templateVariables.appName } HPA&quot;,
+        &quot;options&quot;: {
+          &quot;cascading&quot;: false,
+          &quot;gracePeriodSeconds&quot;: 300
+        },
+        &quot;refId&quot;: &quot;12&quot;,
+        &quot;requisiteStageRefIds&quot;: [
+          &quot;9&quot;
+        ],
+        &quot;type&quot;: &quot;deleteManifest&quot;
+      },
+      {
+        &quot;account&quot;: &quot;${ templateVariables.dcName }&quot;,
+        &quot;cloudProvider&quot;: &quot;kubernetes&quot;,
+        &quot;manifestArtifactAccount&quot;: &quot;k8s-cluster-102&quot;,
+        &quot;manifestArtifactId&quot;: &quot;${ templateVariables.appName }-hpa&quot;,
+        &quot;completeOtherBranchesThenFail&quot;: false,
+        &quot;continuePipeline&quot;: false,
+        &quot;failPipeline&quot;: false,
+        &quot;moniker&quot;: {
+          &quot;app&quot;: &quot;${ templateVariables.appName }&quot;
+        },
+        &quot;name&quot;: &quot;启用 ${ templateVariables.appName } HPA&quot;,
+        &quot;refId&quot;: &quot;11&quot;,
+        &quot;requisiteStageRefIds&quot;: [
+          &quot;10&quot;
+        ],
+        &quot;skipExpressionEvaluation&quot;: false,
+        &quot;source&quot;: &quot;artifact&quot;,
+        &quot;stageTimeoutMs&quot;: 500000,
+        &quot;trafficManagement&quot;: {
+          &quot;enabled&quot;: false,
+          &quot;options&quot;: {
+            &quot;enableTraffic&quot;: false,
+            &quot;services&quot;: []
+          }
+        },
+        &quot;type&quot;: &quot;deployManifest&quot;
+      }
+    ],
+    &quot;triggers&quot;: []
+  },
+  &quot;protect&quot;: false,
+  &quot;schema&quot;: &quot;v2&quot;,
+  &quot;tag&quot;: null,
+  &quot;updateTs&quot;: &quot;1701832158029&quot;,
+  &quot;variables&quot;: [
+    {
+      &quot;defaultValue&quot;: &quot;k8s-cluster-102&quot;,
+      &quot;description&quot;: &quot;要部署到的集群&quot;,
+      &quot;name&quot;: &quot;dcName&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    {
+      &quot;defaultValue&quot;: &quot;&quot;,
+      &quot;description&quot;: &quot;模块名称&quot;,
+      &quot;name&quot;: &quot;appName&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    },
+    {
+      &quot;defaultValue&quot;: &quot;public&quot;,
+      &quot;description&quot;: &quot;名称空间&quot;,
+      &quot;name&quot;: &quot;appLocation&quot;,
+      &quot;type&quot;: &quot;string&quot;
+    }
+  ]
+}
+</code></pre>
+<h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
+<p><sup id="1">[1]</sup> <a href="https://spinnaker.io/docs/reference/pipeline/templates/#pipeline-template-json" target="_blank"
+   rel="noopener nofollow noreferrer" >Pipeline template JSON</a></p>
 
 
     

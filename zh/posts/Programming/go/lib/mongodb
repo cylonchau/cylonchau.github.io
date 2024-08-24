@@ -1,0 +1,228 @@
+MongoDB是一款文档型数据库
+
+
+
+特性
+
+- 文档数据库（schema free），底层存储基于二进制JSON存储文档
+- 高性能、高可用、直接加机器即可解决扩展性问题
+- 支持丰富的CRUD操作，例如：聚合统计、全文检索、坐标检索
+
+> 什么是文档数据库?
+
+MongoDB存储的一个个JSON，我们称这些JSON为文档，里面有若干个field:value，value可以为任何类型，支持数组、json嵌套
+
+```json
+{
+    name： “marry",					<== field:value
+    age: 26,
+    status: "A",
+    groups: [ "news","sports" ]
+}
+```
+
+**概念对比**
+
+| MySQL       | MongoDB                           |
+| :---------- | --------------------------------- |
+| database    | database                          |
+| table       | collection                        |
+| row         | document(bson)                    |
+| colume      | field                             |
+| index       | index                             |
+| table joins | $lookup​                           |
+| primary key | _id                               |
+| group by    | aggregation pipeline 流水线式聚合 |
+
+> **用法实例**
+
+**选择数据库**
+
+- 列举数据库 `show databases`
+- 选择数据库 `use db_name`
+- 结论：数据库无需创建，只是一个命名空间
+
+**创建collection**
+
+- 列举数据表 `show collections`
+- 建立数据表 `db.createCollection("db_name")` db.为固定前缀
+- 结论：数据表是schema free，无需定义字段
+
+**插入文档**
+
+- `db.table_name.insertOne({uid:10000,name:"anna", likes:["football","game"]})`
+
+  ```monggo
+  > db.test.insertOne({uid:10000, name:"anna", likes:["football","game"]})
+  {
+  	"acknowledged" : true,
+  	"insertedId" : ObjectId("5d9562bf8ea878a253d8caae")
+  }
+  ```
+
+  
+
+- 结论1：任意嵌套层级的BSON（二进制的JSON）
+
+- 结论2：文档ID是自动生成的，通常无需自己指定。
+
+**查询document**
+
+- `db.table_name.find(likes: 'football', name: {$in: ['anna', 'judy']}).sort({uid:1})` `.sort({uid:1})` 表示升序
+
+- 结论1：可以基于任意BSON层级过滤
+
+- 结论2：支持的功能与MYSQL相当
+
+  ```
+  > db.test.find({uid:10000})
+  { "_id" : ObjectId("5d9562bf8ea878a253d8caae"), "uid" : 10000, "name" : "anna", "likes" : [ "football", "game" ] }
+  ```
+
+**更新document**
+
+- `db.table_name.updateMany({likes: 'football'}, {$set: {name: "anna"}})`  $set操作符
+- 结论1：第一个参数是过滤条件
+- 结论2：第二个参数是更新操作
+
+**删除document**
+
+- `db.table_name.deleteMany({name: 'anna'})`
+- 结论：参数是过滤条件
+
+**创建index**
+
+如需要加速查询，需要建立索引，否则执行全表扫描
+
+- `db.table_name.createIndex({uid:1, name: -1})` 这里创建的联合索引uid,name。MongoDB中索引的顺序影响到排序的效率
+
+- 结论：可以指定建立索引时的正反顺序
+
+  ```
+  > db.test.createIndex('{uid=1}')
+  {
+  	"ok" : 0,
+  	"errmsg" : "The field 'key' must be an object, but got string",
+  	"code" : 14,
+  	"codeName" : "TypeMismatch"
+  }
+  ```
+
+  
+
+聚合类比
+
+| Mysql    | MongoDB  |
+| -------- | -------- |
+| where    | $match   |
+| group by | $group   |
+| having   | $match   |
+| select   | $project |
+| order by | $sort    |
+| limit    | $limit   |
+| sum      | $sum     |
+| count    | $sum     |
+
+**聚合统计实例**
+
+```json
+db.table_name.aggregate([{
+    {$unwind: '$like'},
+    {$group: { _id:{likes: '$likes'}}}},
+    {$project: { _id:0, like: '$_id.likes', total:{$sum:1}}}
+}])
+```
+
+$unwind 一行拆成两行，anna like football anna like game
+
+
+
+MongoDB整体存储架构
+
+- Mongod：单机版数据库，不具备高可用性。
+- Replica Set：复制集，由多个Mongod进程组成的高可用存储单元。
+- Sharding：分布式集群，由多个Replica Set组成的可扩展集群。
+
+<center><strong>Mongod架构</strong></center>
+![image-20220506224743828](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224743828.png)
+
+- 默认采用WiredTiger高性能存储引擎
+- 基于journaling log宕机恢复（类比mysql的redo log），Mongo存储引擎，当写入数据时，将要做的事情顺序追加到log中，数据是暂时修改在内存中，会定期将内存中的修改写入磁盘。如在写入磁盘前down机，重启后会根据journaling log将数据恢复。实现了高存储写入
+
+
+
+<center><strong>Replica Set架构</strong></center>
+
+
+![image-20220506224801168](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224801168.png)
+
+- 至少3个节点组成，其中1个可以充当arbiter
+- 主从基于oplog复制同步（类比mysql binlog）
+- 客户端默认读写primary节点
+
+<center><strong>Sharding架构</strong></center>
+![image-20220506224815054](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224815054.png)
+
+mongos：mongos作为代理，路由请求到特定shard
+
+config server：配置服务器，用于存储元数据，3个mongd节点组成config server，保存数据元信息
+
+每个shard是一个replica set，可以无限扩容
+
+<center><strong>Colection分片</strong></center>
+![image-20220506224828779](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224828779.png)
+
+- Collection自动分裂成多个chunk
+- 每个chunk被自动负载均衡到不同的shard
+- 每个shard可以保证其上的chunk高可用
+
+
+
+<center><strong>按range拆分chunk</strong></center>
+​		![image-20220506224843347](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224843347.png)			
+​				
+
+   - Shard key可以是单索引字段者联合索引字段
+
+   - 超过16MB的chunk被一分为二
+
+   - 一个collection的所有chunk首尾相连，构成整个表
+
+     <center><strong>按hash拆分chunk</strong></center>
+解决写入热点问题				 
+
+![image-20220506224857365](https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220506224857365.png)
+
+MongoDB支持hash index，会先将字段做hash，得到一个int，将int去建立索引
+
+hash是用重复率的，不同的数据会出现相同的值，MongoDB不允许对hash索引建立唯一
+
+- 5hard key必须是希索引字段
+- Shard key经过hash函数打散，避免写热点
+- 支持预分配chunk，避免运行时分裂影响写入
+
+
+
+### shard用法示例
+
+- 为DB激活特性：`sh.enableSharding(table_name)` 
+- 配置hash分片：`sh.shardcollection("db_name.table_name"，{_id："hashed"}，false，{numInitialChunks：10240})` 基于自增_id做hash索引，\_id是MongoDB自行生成。当插入数据时会基于ID取模存储到10240的chunk上。
+
+提示：
+
+- 按非shard key查询，请求被扇出给所有shard
+
+
+
+
+
+启动MongoDB
+
+```
+bin/mongod --dbpath=./data --bind_ip=0.0.0.0 &
+```
+
+
+
+
+

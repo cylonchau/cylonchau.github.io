@@ -21,395 +21,215 @@
 <p>在这种背景的情况下， <code>OpenTracing</code> 应运而生。<code>OpenTracing </code> 是一个与应用供应商无关的 API，它可帮助开发人员轻松地跟踪单一请求的域。目前有多种开源产品都支持 OpenTracing（例如，<code>Jaeger</code>, <code>skywalking </code>等），并将其作为一种检测分布式追踪的标准化方法。</p>
 <p>本文将围绕，从0到1实现在nginx配置分布式追踪的架构的简单实例说明。本文实例使用的组件为</p>
 <ul>
-<li><a href="https://nginx.org/en/download.html">nginx</a> v1.22</li>
-<li><a href="https://www.jaegertracing.io/docs/1.35/getting-started/">jaeger-all-in-on</a> v1.38</li>
-<li><a href="https://github.com/opentracing-contrib/nginx-opentracing">nginx-opentracing</a> v1.22</li>
-<li><a href="https://github.com/jaegertracing/jaeger-client-cpp">jaeger-client-cpp</a> v0.9</li>
+<li><a href="https://nginx.org/en/download.html" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx</a> v1.22</li>
+<li><a href="https://www.jaegertracing.io/docs/1.35/getting-started/" target="_blank"
+   rel="noopener nofollow noreferrer" >jaeger-all-in-on</a> v1.38</li>
+<li><a href="https://github.com/opentracing-contrib/nginx-opentracing" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx-opentracing</a> v1.22</li>
+<li><a href="https://github.com/jaegertracing/jaeger-client-cpp" target="_blank"
+   rel="noopener nofollow noreferrer" >jaeger-client-cpp</a> v0.9</li>
 </ul>
 <h2 id="源码构建nginx-opentracing">源码构建nginx-opentracing</h2>
 <h3 id="准备nginx-opentracing">准备nginx-opentracing</h3>
-<p><a href="https://github.com/opentracing-contrib/nginx-opentracing">nginx-opentracing</a> 仓库中可以看到，官方为每个nginx版本都提供了一个编译好的动态库（Nginx1.19.13+），我们可以直接拿来使用这个动态库，如果你想将这个利用Nginx 提供的编译参数 <code>--add-module=/path/to/module</code> 构建为nginx的内置功能的话，可能会出现一些问题，例如下面的一些错误：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">ngx_http_opentracing_module.so/config was found
-</span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">	/root/nginx-opentracing-0.25.0/opentracing//src/ngx_http_opentracing_module.cpp
-</span></span><span class="line"><span class="cl">In file included from /root/nginx-opentracing-0.25.0/opentracing//src/ngx_http_opentracing_module.cpp:1:0:
-</span></span><span class="line"><span class="cl">/root/nginx-opentracing-0.25.0/opentracing//src/load_tracer.h:3:38: fatal error: opentracing/dynamic_load.h: No such file or directory
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>根据 <a href="https://github.com/opentracing-contrib/nginx-opentracing/issues/120">issue</a> 中查询得知 <code>nginx-opentracing</code> 需要嵌入到nginx中，是需要一些 <a href="https://github.com/opentracing/opentracing-cpp">opentracing-cpp</a> 因为对c++不熟，尝试调试很久还是上面的错误，故直接使用了官方提供的动态库。</p>
+<p><a href="https://github.com/opentracing-contrib/nginx-opentracing" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx-opentracing</a> 仓库中可以看到，官方为每个nginx版本都提供了一个编译好的动态库（Nginx1.19.13+），我们可以直接拿来使用这个动态库，如果你想将这个利用Nginx 提供的编译参数 <code>--add-module=/path/to/module</code> 构建为nginx的内置功能的话，可能会出现一些问题，例如下面的一些错误：</p>
+<pre><code>ngx_http_opentracing_module.so/config was found
+</code></pre>
+<pre><code class="language-bash">	/root/nginx-opentracing-0.25.0/opentracing//src/ngx_http_opentracing_module.cpp
+In file included from /root/nginx-opentracing-0.25.0/opentracing//src/ngx_http_opentracing_module.cpp:1:0:
+/root/nginx-opentracing-0.25.0/opentracing//src/load_tracer.h:3:38: fatal error: opentracing/dynamic_load.h: No such file or directory
+</code></pre>
+<p>根据 <a href="https://github.com/opentracing-contrib/nginx-opentracing/issues/120" target="_blank"
+   rel="noopener nofollow noreferrer" >issue</a> 中查询得知 <code>nginx-opentracing</code> 需要嵌入到nginx中，是需要一些 <a href="https://github.com/opentracing/opentracing-cpp" target="_blank"
+   rel="noopener nofollow noreferrer" >opentracing-cpp</a> 因为对c++不熟，尝试调试很久还是上面的错误，故直接使用了官方提供的动态库。</p>
 <h3 id="准备jaeger-client-cpp">准备jaeger-client-cpp</h3>
-<p>根据 <code>nginx-opentracing</code> 中提到的，还需要一个 <a href="https://github.com/jaegertracing/jaeger-client-cpp">jaeger-client-cpp</a> 的 <code>tracer</code> 才可以正常运行（这也是作为jaeger架构中的角色）</p>
+<p>根据 <code>nginx-opentracing</code> 中提到的，还需要一个 <a href="https://github.com/jaegertracing/jaeger-client-cpp" target="_blank"
+   rel="noopener nofollow noreferrer" >jaeger-client-cpp</a> 的 <code>tracer</code> 才可以正常运行（这也是作为jaeger架构中的角色）</p>
 <p>来到 <code>jaeger-client-cpp</code> 看到Release提供的编译好的动态库已经很久了，而最新版都没有提供相应编译的版本，需要我们自己编译</p>
 <blockquote>
 <p><strong>说明</strong>： 编译依赖CMake 3.3+，gcc 4.9.2+</p>
 </blockquote>
 <p>我们的编译环境使用CentOS 7 默认gcc与CMake都符合要求需要自行编译两个的版本。</p>
 <h4 id="编译gcc">编译gcc</h4>
-<p>gcc下载地址：<a href="https://ftp.gnu.org/gnu/gcc/">https://ftp.gnu.org/gnu/gcc/</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">cd</span> gcc-5.4.0
-</span></span><span class="line"><span class="cl">./contrib/download_prerequisites
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">mkdir gcc-build-5.4.0
-</span></span><span class="line"><span class="cl"><span class="nb">cd</span> gcc-build-5.4.0
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">/usr/local/src/gcc-5.4.0/configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--enable-checking<span class="o">=</span>release <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--enable-languages<span class="o">=</span>c,c++ <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--disable-multilib
-</span></span><span class="line"><span class="cl">	
-</span></span><span class="line"><span class="cl">make <span class="o">&amp;&amp;</span> make install
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>引用处理 <sup>refer 1</sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">cd</span> /usr/bin/
-</span></span><span class="line"><span class="cl">mv gcc gcc_back
-</span></span><span class="line"><span class="cl">mv g++ g++_back
-</span></span><span class="line"><span class="cl">ln -s /usr/local/bin/gcc gcc
-</span></span><span class="line"><span class="cl">ln -s /usr/local/bin/g++ g++
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>编译时遇到几个问题</p>
+<p>gcc下载地址：<a href="https://ftp.gnu.org/gnu/gcc/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://ftp.gnu.org/gnu/gcc/</a></p>
+<pre><code class="language-bash">cd gcc-5.4.0
+./contrib/download_prerequisites
+
+mkdir gcc-build-5.4.0
+cd gcc-build-5.4.0
+
+/usr/local/src/gcc-5.4.0/configure \
+	--enable-checking=release \
+	--enable-languages=c,c++ \
+	--disable-multilib
+	
+make &amp;&amp; make install
+</code></pre>
+<p>引用处理 <sup>refer 1</sup></p>
+<pre><code class="language-bash">cd /usr/bin/
+mv gcc gcc_back
+mv g++ g++_back
+ln -s /usr/local/bin/gcc gcc
+ln -s /usr/local/bin/g++ g++
+</code></pre>
+<p>编译时遇到几个问题</p>
 <p><code>/lib64/libstdc++.so.6: version GLIBCXX_3.4.20' not found</code></p>
 <p>gcc 编译，<code>libgcc</code>动态库有改动，恢复原状即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">configure: error: C++ compiler missing or inoperational
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">make[2]: \*** [configure-stage1-libcpp] Error 1    
-</span></span><span class="line"><span class="cl">make[2]: Leaving directory `/home/clay/programming/C++/gcc-4.8.1&#39;    
-</span></span><span class="line"><span class="cl">make[1]: \*** [stage1-bubble] Error 2    
-</span></span><span class="line"><span class="cl">make[1]: Leaving directory `/home/clay/programming/C++/gcc-4.8.1&#39;    
-</span></span><span class="line"><span class="cl">make: \*** [all] Error 2
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="编译cmake">编译cmake</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure --prefix<span class="o">=</span>/path/to/app
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">make
-</span></span><span class="line"><span class="cl">make install
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里遇到一个小问题 编译过程中遇到 <code>[libstdc++.so.6: version GLIBCXX_3.4.20 not found</code></p>
+<pre><code>configure: error: C++ compiler missing or inoperational
+
+make[2]: \*** [configure-stage1-libcpp] Error 1    
+make[2]: Leaving directory `/home/clay/programming/C++/gcc-4.8.1'    
+make[1]: \*** [stage1-bubble] Error 2    
+make[1]: Leaving directory `/home/clay/programming/C++/gcc-4.8.1'    
+make: \*** [all] Error 2
+</code></pre>
+<h4 id="编译cmake">编译cmake</h4>
+<pre><code class="language-bash">./configure --prefix=/path/to/app
+
+make
+make install
+</code></pre>
+<p>这里遇到一个小问题 编译过程中遇到 <code>[libstdc++.so.6: version GLIBCXX_3.4.20 not found</code></p>
 <p>因为这里使用了自己编译的gcc版本，需要指定下动态库的路径 <sup>refer 2</sup></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span>/usr/local/lib64 ./configure --prefix<span class="o">=</span>/usr/local/cmake
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="编译jaeger-client-cpp">编译jaeger-client-cpp</h4>
+<pre><code class="language-bash">LD_LIBRARY_PATH=/usr/local/lib64 ./configure --prefix=/usr/local/cmake
+</code></pre>
+<h4 id="编译jaeger-client-cpp">编译jaeger-client-cpp</h4>
 <p>这里根据官方提供的步骤操作即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">cd</span> jaeger-client-cpp-0.9.0/
-</span></span><span class="line"><span class="cl">mkdir build
-</span></span><span class="line"><span class="cl"><span class="nb">cd</span> build
-</span></span><span class="line"><span class="cl"><span class="c1"># 这里建议使用下科学上网，编译过程中会使用Hunter自动下载所需的依赖项</span>
-</span></span><span class="line"><span class="cl"><span class="nv">ALL_PROXY</span><span class="o">=</span>http://x.0.0.x:10811 /usr/local/cmake/bin/cmake .. 
-</span></span><span class="line"><span class="cl">make
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">cd jaeger-client-cpp-0.9.0/
+mkdir build
+cd build
+# 这里建议使用下科学上网，编译过程中会使用Hunter自动下载所需的依赖项
+ALL_PROXY=http://x.0.0.x:10811 /usr/local/cmake/bin/cmake .. 
+make
+</code></pre>
+<blockquote>
 <p>注：依赖项挺大的，下载时间可能很长，会hang主，只需等待结束即可</p>
 <p>​		编译完成后 <code>libjaegertracing.so.0.9.0</code> 则是我们需要的</p>
 </blockquote>
 <h4 id="编译nginx">编译nginx</h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">./configure <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--user<span class="o">=</span>web_www <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--group<span class="o">=</span>web_www <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--with-pcre <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--with-compat <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--with-http_ssl_module  <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--with-http_gzip_static_module <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--prefix<span class="o">=</span>/root/nginx  <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--with-http_stub_status_module
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>--with-compat</code> 必须加上，表面允许使用动态库，否则编译完在启动时会报下面的错误</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">nginx: <span class="o">[</span>emerg<span class="o">]</span> module <span class="s2">&#34;/root/nginx/conf/ngx_http_opentracing_module.so&#34;</span> is not binary compatible in /root/nginx/conf/nginx.conf:1
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>遇到的问题，<code>cc nou found</code>，这里只需将 <code>gcc</code> 软连接一份为 <code>cc</code> 即可</p>
+<pre><code class="language-bash">./configure \
+	--user=web_www \
+	--group=web_www \
+	--with-pcre \
+	--with-compat \
+	--with-http_ssl_module  \
+	--with-http_gzip_static_module \
+	--prefix=/root/nginx  \
+	--with-http_stub_status_module
+</code></pre>
+<p><code>--with-compat</code> 必须加上，表面允许使用动态库，否则编译完在启动时会报下面的错误</p>
+<pre><code class="language-bash">nginx: [emerg] module &quot;/root/nginx/conf/ngx_http_opentracing_module.so&quot; is not binary compatible in /root/nginx/conf/nginx.conf:1
+</code></pre>
+<p>遇到的问题，<code>cc nou found</code>，这里只需将 <code>gcc</code> 软连接一份为 <code>cc</code> 即可</p>
 <h2 id="配置nginx">配置nginx</h2>
 <h3 id="准备jaeger-client的配置">准备jaeger-client的配置</h3>
-<p>jaeger.json，参数的说明可以参考<a href="https://github.com/jaegertracing/jaeger-client-cpp#configuration-via-environment">configuration</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-json" data-lang="json"><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;service_name&#34;</span><span class="p">:</span> <span class="s2">&#34;nginx&#34;</span><span class="p">,</span> <span class="c1">// 服务名
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="nt">&#34;sampler&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;type&#34;</span><span class="p">:</span> <span class="s2">&#34;const&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;param&#34;</span><span class="p">:</span> <span class="mi">1</span>
-</span></span><span class="line"><span class="cl">  <span class="p">},</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;reporter&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;localAgentHostPort&#34;</span><span class="p">:</span> <span class="s2">&#34;jaeger:6831&#34;</span> <span class="c1">// jaeger agent的地址
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">},</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;headers&#34;</span><span class="p">:</span> <span class="p">{</span> <span class="c1">// jaeger的默认的jaeger Baggage头设置
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nt">&#34;jaegerDebugHeader&#34;</span><span class="p">:</span> <span class="s2">&#34;jaeger-debug-id&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;jaegerBaggageHeader&#34;</span><span class="p">:</span> <span class="s2">&#34;jaeger-baggage&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;traceBaggageHeaderPrefix&#34;</span><span class="p">:</span> <span class="s2">&#34;uberctx-&#34;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">},</span>
-</span></span><span class="line"><span class="cl">  <span class="nt">&#34;baggage_restrictions&#34;</span><span class="p">:</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;denyBaggageOnInitializationFailure&#34;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nt">&#34;hostPort&#34;</span><span class="p">:</span> <span class="s2">&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">  <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="在nginx中开启opentracing">在nginx中开启opentracing</h3>
-<p>对于 <code>nginx-opentracing</code> 更多的参数可以参考 <a href="https://github.com/opentracing-contrib/nginx-opentracing/blob/master/doc/Reference.md">Reference.md</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span><span class="lnt">41
-</span><span class="lnt">42
-</span><span class="lnt">43
-</span><span class="lnt">44
-</span><span class="lnt">45
-</span><span class="lnt">46
-</span><span class="lnt">47
-</span><span class="lnt">48
-</span><span class="lnt">49
-</span><span class="lnt">50
-</span><span class="lnt">51
-</span><span class="lnt">52
-</span><span class="lnt">53
-</span><span class="lnt">54
-</span><span class="lnt">55
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-v" data-lang="v"><span class="line"><span class="cl"><span class="o">#</span> <span class="nv">加载</span> <span class="nc">OpenTracing</span> <span class="nv">动态模块</span><span class="err">。</span>
-</span></span><span class="line"><span class="cl"><span class="nv">load_module</span> <span class="nv">conf</span><span class="o">/</span><span class="nv">ngx_http_opentracing_module</span><span class="p">.</span><span class="nv">so</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="nv">worker_processes</span>  <span class="mi">1</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="nv">user</span> <span class="nv">root</span> <span class="nv">root</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nv">events</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">worker_connections</span>  <span class="mi">1024</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="nv">http</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">log_format</span> <span class="nv">opentracing</span> <span class="s1">&#39;{&#34;timestamp&#34;:&#34;</span><span class="o">$</span><span class="nv">time_iso8601</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;source&#34;:&#34;</span><span class="o">$</span><span class="nv">server_addr</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;hostname&#34;:&#34;</span><span class="o">$</span><span class="nv">hostname</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;ip&#34;:&#34;</span><span class="o">$</span><span class="nv">http_x_forwarded_for</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;traceID&#34;:&#34;</span><span class="o">$</span><span class="nv">opentracing_context_uber_trace_id</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;client&#34;:&#34;</span><span class="o">$</span><span class="nv">remote_addr</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;request_method&#34;:&#34;</span><span class="o">$</span><span class="nv">request_method</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;scheme&#34;:&#34;</span><span class="o">$</span><span class="nv">scheme</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;domain&#34;:&#34;</span><span class="o">$</span><span class="nv">server_name</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;referer&#34;:&#34;</span><span class="o">$</span><span class="nv">http_referer</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;request&#34;:&#34;</span><span class="o">$</span><span class="nv">request_uri</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;args&#34;:&#34;</span><span class="o">$</span><span class="nv">args</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;size&#34;:</span><span class="o">$</span><span class="nv">body_bytes_sent</span><span class="s1">,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;status&#34;: </span><span class="o">$</span><span class="nv">status</span><span class="s1">,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;responsetime&#34;:</span><span class="o">$</span><span class="nv">request_time</span><span class="s1">,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;upstreamtime&#34;:&#34;</span><span class="o">$</span><span class="nv">upstream_response_time</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;upstreamaddr&#34;:&#34;</span><span class="o">$</span><span class="nv">upstream_addr</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;http_user_agent&#34;:&#34;</span><span class="o">$</span><span class="nv">http_user_agent</span><span class="s1">&#34;,&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;&#34;https&#34;:&#34;</span><span class="o">$</span><span class="nv">https</span><span class="s1">&#34;&#39;</span>
-</span></span><span class="line"><span class="cl">                       <span class="s1">&#39;}&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">	<span class="o">#</span> <span class="nv">加载</span> <span class="nv">tracer</span><span class="err">，</span><span class="nv">这里使用的jaeger</span><span class="err">，</span><span class="nv">需要传递配置文件</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">opentracing_load_tracer</span> <span class="nv">conf</span><span class="o">/</span><span class="nv">libjaegertracing</span><span class="p">.</span><span class="nv">so</span> <span class="nv">conf</span><span class="o">/</span><span class="nv">jaeger</span><span class="p">.</span><span class="nv">json</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="o">#</span> <span class="nv">启用</span> <span class="nv">tracing</span> 
-</span></span><span class="line"><span class="cl">    <span class="nv">opentracing</span> <span class="nv">on</span><span class="p">;</span> 
-</span></span><span class="line"><span class="cl">    <span class="o">#</span> <span class="nv">设置tag</span><span class="err">，</span><span class="nv">可选参数</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">opentracing_tag</span> <span class="nv">http_user_agent</span> <span class="o">$</span><span class="nv">http_user_agent</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">include</span>       <span class="nv">mime</span><span class="p">.</span><span class="nv">types</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">default_type</span>  <span class="nv">application</span><span class="o">/</span><span class="nv">octet</span><span class="o">-</span><span class="nv">stream</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">sendfile</span>        <span class="nv">on</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">keepalive_timeout</span>  <span class="mi">65</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">    <span class="nv">server</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">listen</span>       <span class="mi">80</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">server_name</span>  <span class="nv">localhost</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">location</span> <span class="o">/</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="nv">opentracing_operation_name</span> <span class="o">$</span><span class="nv">uri</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">	    <span class="nv">opentracing_propagate_context</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">            <span class="nv">root</span>   <span class="nv">html</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">            <span class="nv">index</span>  <span class="nv">index</span><span class="p">.</span><span class="nv">html</span> <span class="nv">index</span><span class="p">.</span><span class="nv">htm</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nv">access_log</span> <span class="nv">logs</span><span class="o">/</span><span class="nv">access</span><span class="p">.</span><span class="nv">log</span> <span class="nv">opentracing</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">error_page</span>   <span class="mi">500</span> <span class="mi">502</span> <span class="mi">503</span> <span class="mi">504</span>  <span class="o">/</span><span class="mi">50</span><span class="nv">x</span><span class="p">.</span><span class="nv">html</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="nv">location</span> <span class="o">=</span> <span class="o">/</span><span class="mi">50</span><span class="nv">x</span><span class="p">.</span><span class="nv">html</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="nv">root</span>   <span class="nv">html</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<p>jaeger.json，参数的说明可以参考<a href="https://github.com/jaegertracing/jaeger-client-cpp#configuration-via-environment" target="_blank"
+   rel="noopener nofollow noreferrer" >configuration</a></p>
+<pre><code class="language-json">{
+  &quot;service_name&quot;: &quot;nginx&quot;, // 服务名
+  &quot;sampler&quot;: {
+    &quot;type&quot;: &quot;const&quot;,
+    &quot;param&quot;: 1
+  },
+  &quot;reporter&quot;: {
+    &quot;localAgentHostPort&quot;: &quot;jaeger:6831&quot; // jaeger agent的地址
+  },
+  &quot;headers&quot;: { // jaeger的默认的jaeger Baggage头设置
+    &quot;jaegerDebugHeader&quot;: &quot;jaeger-debug-id&quot;,
+    &quot;jaegerBaggageHeader&quot;: &quot;jaeger-baggage&quot;,
+    &quot;traceBaggageHeaderPrefix&quot;: &quot;uberctx-&quot;
+  },
+  &quot;baggage_restrictions&quot;: {
+    &quot;denyBaggageOnInitializationFailure&quot;: false,
+    &quot;hostPort&quot;: &quot;&quot;
+  }
+}
+</code></pre>
+<h3 id="在nginx中开启opentracing">在nginx中开启opentracing</h3>
+<p>对于 <code>nginx-opentracing</code> 更多的参数可以参考 <a href="https://github.com/opentracing-contrib/nginx-opentracing/blob/master/doc/Reference.md" target="_blank"
+   rel="noopener nofollow noreferrer" >Reference.md</a></p>
+<pre><code class="language-conf"># 加载 OpenTracing 动态模块。
+load_module conf/ngx_http_opentracing_module.so;
+worker_processes  1;
+user root root;
+
+events {
+    worker_connections  1024;
+}
+http {
+    log_format opentracing '{&quot;timestamp&quot;:&quot;$time_iso8601&quot;,'
+                       '&quot;source&quot;:&quot;$server_addr&quot;,'
+                       '&quot;hostname&quot;:&quot;$hostname&quot;,'
+                       '&quot;ip&quot;:&quot;$http_x_forwarded_for&quot;,'
+                       '&quot;traceID&quot;:&quot;$opentracing_context_uber_trace_id&quot;,'
+                       '&quot;client&quot;:&quot;$remote_addr&quot;,'
+                       '&quot;request_method&quot;:&quot;$request_method&quot;,'
+                       '&quot;scheme&quot;:&quot;$scheme&quot;,'
+                       '&quot;domain&quot;:&quot;$server_name&quot;,'
+                       '&quot;referer&quot;:&quot;$http_referer&quot;,'
+                       '&quot;request&quot;:&quot;$request_uri&quot;,'
+                       '&quot;args&quot;:&quot;$args&quot;,'
+                       '&quot;size&quot;:$body_bytes_sent,'
+                       '&quot;status&quot;: $status,'
+                       '&quot;responsetime&quot;:$request_time,'
+                       '&quot;upstreamtime&quot;:&quot;$upstream_response_time&quot;,'
+                       '&quot;upstreamaddr&quot;:&quot;$upstream_addr&quot;,'
+                       '&quot;http_user_agent&quot;:&quot;$http_user_agent&quot;,'
+                       '&quot;https&quot;:&quot;$https&quot;'
+                       '}';
+	# 加载 tracer，这里使用的jaeger，需要传递配置文件
+    opentracing_load_tracer conf/libjaegertracing.so conf/jaeger.json;
+    # 启用 tracing 
+    opentracing on; 
+    # 设置tag，可选参数
+    opentracing_tag http_user_agent $http_user_agent;
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    server {
+        listen       80;
+        server_name  localhost;
+        location / {
+            opentracing_operation_name $uri;
+	    opentracing_propagate_context;
+            root   html;
+            index  index.html index.htm;
+        }
+	access_log logs/access.log opentracing;
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+}
+</code></pre>
+<blockquote>
 <p>注：这里使用的 <code>opentracing-nginx</code> 的动态库为 ot16 ，<code>linux-amd64-nginx-1.22.0-ot16-ngx_http_module.so.tgz</code> ，另外一个版本不兼容，<code>-t</code> 检查语法时会提示</p>
 </blockquote>
 <p><strong>配置说明</strong></p>
 <p>对于每一个location都可以对其设置别名，这个就是 <code>opentracing_operation_name</code> 与 <code>opentracing_location_operation_name</code> 的区别</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">http {
-</span></span><span class="line"><span class="cl">...
-</span></span><span class="line"><span class="cl">    location = /upload/animal {
-</span></span><span class="line"><span class="cl">      opentracing_location_operation_name upload;
-</span></span><span class="line"><span class="cl">    ...
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>更多的配置说明可以参考 <a href="https://github.com/opentracing-contrib/nginx-opentracing/blob/master/doc/Tutorial.md">Tutorial.md</a></p>
+<pre><code class="language-conf">http {
+...
+    location = /upload/animal {
+      opentracing_location_operation_name upload;
+    ...
+</code></pre>
+<p>更多的配置说明可以参考 <a href="https://github.com/opentracing-contrib/nginx-opentracing/blob/master/doc/Tutorial.md" target="_blank"
+   rel="noopener nofollow noreferrer" >Tutorial.md</a></p>
 <p>此时我们可以在jaeger上查看，可以看到 NGINX 的 span（因为这里只配置了NGINX，没有配置更多的后端）。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220704002209142.png" alt="image-20220704002209142"  /></p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220704002227865.png" alt="image-20220704002227865"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220704002209142.png" alt="image-20220704002209142" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20220704002227865.png" alt="image-20220704002227865" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <blockquote>
 <p>Reference</p>
-<p>1 <a href="https://www.jianshu.com/p/8ce98a06492f">CentOS7 升级 GCC 到 5.4.0 版本</a></p>
-<p>2 <a href="https://stackoverflow.com/questions/53592796/libstdc-so-6-version-glibcxx-3-4-20-not-found">libstdc++.so.6: version GLIBCXX_3.4.20 not found</a></p>
-<p>3 <a href="https://nginx.org/en/docs/ngx_core_module.html#load_module">nginx load_module</a></p>
+<p>1 <a href="https://www.jianshu.com/p/8ce98a06492f" target="_blank"
+   rel="noopener nofollow noreferrer" >CentOS7 升级 GCC 到 5.4.0 版本</a></p>
+<p>2 <a href="https://stackoverflow.com/questions/53592796/libstdc-so-6-version-glibcxx-3-4-20-not-found" target="_blank"
+   rel="noopener nofollow noreferrer" >libstdc++.so.6: version GLIBCXX_3.4.20 not found</a></p>
+<p>3 <a href="https://nginx.org/en/docs/ngx_core_module.html#load_module" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx load_module</a></p>
 </blockquote>
 ]]></content:encoded>
     </item>
@@ -421,63 +241,40 @@
       
       <guid>https://www.oomkill.com/2019/07/prome-nginx-module-vts/</guid>
       <description></description>
-      <content:encoded><![CDATA[<p>prometheus 监控nginx的模块 <a href="https://github.com/vozlt/nginx-module-vts">nginx-module-vts</a></p>
+      <content:encoded><![CDATA[<p>prometheus 监控nginx的模块 <a href="https://github.com/vozlt/nginx-module-vts" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx-module-vts</a></p>
 <p>下载后配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">http{
-</span></span><span class="line"><span class="cl">    vhost_traffic_status_zone; 
-</span></span><span class="line"><span class="cl">    vhost_traffic_status_zone shared:vhost_traffic_status:32m; #  设置共享内存大小
-</span></span><span class="line"><span class="cl">    server {
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">        vhost_traffic_status_filter_by_set_key  $status $server_name; # 计算详细的http状态代码的流量
-</span></span><span class="line"><span class="cl">    
-</span></span><span class="line"><span class="cl">        location /status {
-</span></span><span class="line"><span class="cl">            vhost_traffic_status_display; # 设置了该指令，则可以访问如下：
-</span></span><span class="line"><span class="cl">            vhost_traffic_status_display_format html;
-</span></span><span class="line"><span class="cl">            vhost_traffic_status off; ## 启用或禁用模块工作
-</span></span><span class="line"><span class="cl">        }
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">    }
-</span></span><span class="line"><span class="cl">}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>不想统计流量的server区域禁用<code>vhost_traffic_statu off</code></p>
+<pre><code class="language-conf">http{
+    vhost_traffic_status_zone; 
+    vhost_traffic_status_zone shared:vhost_traffic_status:32m; #  设置共享内存大小
+    server {
+    
+        vhost_traffic_status_filter_by_set_key  $status $server_name; # 计算详细的http状态代码的流量
+    
+        location /status {
+            vhost_traffic_status_display; # 设置了该指令，则可以访问如下：
+            vhost_traffic_status_display_format html;
+            vhost_traffic_status off; ## 启用或禁用模块工作
+        }
+        
+        
+    }
+}
+</code></pre>
+<p>不想统计流量的server区域禁用<code>vhost_traffic_statu off</code></p>
 <p>例： 计算upstream后端响应时间 <code>nginx_upstream_responseMsec{upstream=“group1”}</code></p>
 <ul>
-<li>一个完整的配置文件：<a href="https://github.com/arquivei/nginx-vts/blob/master/nginx.conf">nginx.conf</a></li>
-<li>关于GEO相关：<a href="https://github.com/vozlt/nginx-module-vts/issues/162">GeoIP.dat file format #162</a></li>
-<li>ngx如何配置GEO：<a href="https://medium.com/@karljohnson/geoip-discontinuation-upgrade-to-geoip2-with-nginxon-centos-c2a3dbcf8fd">GeoIP discontinuation; Upgrade to GeoIP2 with nginx on CentOS</a></li>
+<li>一个完整的配置文件：<a href="https://github.com/arquivei/nginx-vts/blob/master/nginx.conf" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx.conf</a></li>
+<li>关于GEO相关：<a href="https://github.com/vozlt/nginx-module-vts/issues/162" target="_blank"
+   rel="noopener nofollow noreferrer" >GeoIP.dat file format #162</a></li>
+<li>ngx如何配置GEO：<a href="https://medium.com/@karljohnson/geoip-discontinuation-upgrade-to-geoip2-with-nginxon-centos-c2a3dbcf8fd" target="_blank"
+   rel="noopener nofollow noreferrer" >GeoIP discontinuation; Upgrade to GeoIP2 with nginx on CentOS</a></li>
 </ul>
 <p>删除所zone内存中的数据</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl localhost/status/control?cmd<span class="o">=</span>delete<span class="p">&amp;</span><span class="nv">group</span><span class="o">=</span>*
-</span></span></code></pre></td></tr></table>
-</div>
-</div>]]></content:encoded>
+<pre><code class="language-bash">curl localhost/status/control?cmd=delete&amp;group=*
+</code></pre>
+]]></content:encoded>
     </item>
     
     <item>
@@ -488,40 +285,20 @@
       <guid>https://www.oomkill.com/2019/04/prometheus-install/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>全局配置选项</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">scrape_interval: 采集生命周期
-</span></span><span class="line"><span class="cl">scrape_timeout: 采集超时时间
-</span></span><span class="line"><span class="cl">evaluation_interval: 告警评估周期
-</span></span><span class="line"><span class="cl">rule_files 监控告警规则
-</span></span><span class="line"><span class="cl">scrape_config: 被监控端
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">altering 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>检查配置文件语法</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ promtool check config \etc\prometheus.yml 
-</span></span><span class="line"><span class="cl">Checking \etc\prometheus.yml
-</span></span><span class="line"><span class="cl">  SUCCESS: 0 rule files found
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>100 - (node_memory_MemFree_bytes+node_memory_Cached_bytes+node_memory_Buffers_bytes) \ node_memory_MemTotal_bytes * 100</p>
+<pre><code>scrape_interval: 采集生命周期
+scrape_timeout: 采集超时时间
+evaluation_interval: 告警评估周期
+rule_files 监控告警规则
+scrape_config: 被监控端
+
+altering 
+</code></pre>
+<p>检查配置文件语法</p>
+<pre><code>$ promtool check config \etc\prometheus.yml 
+Checking \etc\prometheus.yml
+  SUCCESS: 0 rule files found
+</code></pre>
+<p>100 - (node_memory_MemFree_bytes+node_memory_Cached_bytes+node_memory_Buffers_bytes) \ node_memory_MemTotal_bytes * 100</p>
 <p>计算剩余空间</p>
 <p>node_filesystem_free_bytes{mountpoint=&quot;&quot;,fstype=~&ldquo;ext4|xfs&rdquo;} \ node_filesystem_size_bytes{mountpoint=&quot;&quot;,fstype=~&ldquo;ext4|xfs&rdquo;} * 100</p>
 <p>查看使用的百分比</p>
@@ -529,86 +306,43 @@
 <p>prometheus使用influxdb [Prometheus endpoints support in InfluxDB | InfluxData Documentation](https:\docs.influxdata.com\influxdb\v1.7\supported_protocols\prometheus)</p>
 <p>[Configuration | Prometheus](https:\prometheus.io\docs\prometheus\latest\configuration\configuration)</p>
 <p>配置文件参考</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">global</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">alerting</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">alertmanagers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">static_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">targets</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">rule_files</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">scrape_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;prometheus1&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">file_sd_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;\data\sd_config\test.yml&#39;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">refresh_interval</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">relabel_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">replace</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">source_labels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;prometheous1&#39;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="l">(.*)</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">replacement</span><span class="p">:</span><span class="w"> </span><span class="l">$1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">target_label</span><span class="p">:</span><span class="w"> </span><span class="l">ids</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">keep</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">source_labels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;job&#34;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;k8s_master&#39;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">file_sd_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">files</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;\data\sd_config\master.yml&#39;</span><span class="p">]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">refresh_interval</span><span class="p">:</span><span class="w"> </span><span class="l">5s</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">remote_write</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;http:\\localhost:8086\api\v1\prom\write?db=prometheus&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">remote_read</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;http:\\localhost:8086\api\v1\prom\read?db=prometheus&#34;</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>influxdb使用</p>
-<p><a href="https:%5Cwww.linuxdaxue.com%5Cinfluxdb-basic-operation.html">InfluxDB学习之InfluxDB的基本操作 | Linux大学</a></p>
+<pre><code class="language-yaml">global:
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+rule_files:
+scrape_configs:
+  - job_name: 'prometheus1'
+    file_sd_configs:
+    - files: ['\data\sd_config\test.yml']
+      refresh_interval: 5s
+    relabel_configs:
+    - action: replace
+      source_labels: ['prometheous1']
+      regex: (.*)
+      replacement: $1
+      target_label: ids
+    - action: keep
+      source_labels: [&quot;job&quot;]
+  - job_name: 'k8s_master'
+    file_sd_configs:
+    - files: ['\data\sd_config\master.yml']
+      refresh_interval: 5s
+remote_write:
+- url: &quot;http:\\localhost:8086\api\v1\prom\write?db=prometheus&quot;
+remote_read:
+- url: &quot;http:\\localhost:8086\api\v1\prom\read?db=prometheus&quot;
+</code></pre>
+<p>influxdb使用</p>
+<p><a href="https:%5c%5cwww.linuxdaxue.com%5cinfluxdb-basic-operation.html" target="_blank"
+   rel="noopener nofollow noreferrer" >InfluxDB学习之InfluxDB的基本操作 | Linux大学</a></p>
 <p>查看所有表</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">SHOW</span><span class="w"> </span><span class="n">MEASUREMENTS</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">up</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>https:\github.com\kubernetes\kubernetes\tree\master\cluster\addons\prometheus</p>
+<pre><code class="language-sql">SHOW MEASUREMENTS
+</code></pre>
+<pre><code class="language-sql">select * from up
+</code></pre>
+<p>https:\github.com\kubernetes\kubernetes\tree\master\cluster\addons\prometheus</p>
 <p>文件主要包括一下几个部分</p>
 <ul>
 <li>Prometheus的安装 包括 rbac service configmap</li>
@@ -626,92 +360,45 @@ prometheus&quot;is invalid: spec: Forbidden: updates to statefulset spec for fie
 <p>日志中报错<code>pod has unbound immediate persistentvolumeclaims back-off restarting failed container</code></p>
 <p>错误原因：动态绑定至其他sc上，查看<code>kubectl describe pvc prometheus-data-prometheus-0 -n kube-system</code>pvc中报错<code>storageclass.storage.k8s.io &quot;nfs&quot; not found</code></p>
 <p>prometheus时间不一致问题</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">containers</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">myweb</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">harbor/tomcat:8.5-jre8</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumeMounts</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">host-time</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l">/etc/localtime</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="m">80</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">host-time</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">hostPath</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">/etc/localtime</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>部署应用时，单独读取主机的“/etc/localtime”文件，即创建pod时同步时区，无需修改镜像，但是每个应用都要单独设置。</p>
+<pre><code class="language-yaml">spec:
+  containers:
+  - name: myweb
+    image: harbor/tomcat:8.5-jre8
+    volumeMounts:
+    - name: host-time
+      mountPath: /etc/localtime
+    ports:
+    - containerPort: 80
+  volumes:
+  - name: host-time
+    hostPath:
+      path: /etc/localtime
+</code></pre>
+<p>部署应用时，单独读取主机的“/etc/localtime”文件，即创建pod时同步时区，无需修改镜像，但是每个应用都要单独设置。</p>
 <p>prometheus server down</p>
 <p>编辑prometheus-statusfullset.yaml 修改其配置localhost 改为 127.0.0.1</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">time=&#34;2020-11-20T18:44:48+08:00&#34; level=error msg=&#34;subset not found for kube-system/prometheus-server&#34; providerName=kubernetescrd ingress=promserver namespace=kube-system
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>查找原因kubernetes svc 匹配错误 service endpoint没有匹配到内容</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">$ kubectl describe svc  prometheus-server  -n kube-system 
-</span></span><span class="line"><span class="cl">Name:              prometheus-server
-</span></span><span class="line"><span class="cl">Namespace:         kube-system
-</span></span><span class="line"><span class="cl">Labels:            &lt;none&gt;
-</span></span><span class="line"><span class="cl">Annotations:       Selector:  monitor=prometheus
-</span></span><span class="line"><span class="cl">Type:              ClusterIP
-</span></span><span class="line"><span class="cl">IP:                10.110.116.203
-</span></span><span class="line"><span class="cl">Port:              &lt;unset&gt;  9090/TCP
-</span></span><span class="line"><span class="cl">TargetPort:        9090/TCP
-</span></span><span class="line"><span class="cl">Endpoints:         &lt;none&gt;
-</span></span><span class="line"><span class="cl">Session Affinity:  None
-</span></span><span class="line"><span class="cl">Events:            &lt;none&gt;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改后正常</p>
+<pre><code>time=&quot;2020-11-20T18:44:48+08:00&quot; level=error msg=&quot;subset not found for kube-system/prometheus-server&quot; providerName=kubernetescrd ingress=promserver namespace=kube-system
+</code></pre>
+<p>查找原因kubernetes svc 匹配错误 service endpoint没有匹配到内容</p>
+<pre><code>$ kubectl describe svc  prometheus-server  -n kube-system 
+Name:              prometheus-server
+Namespace:         kube-system
+Labels:            &lt;none&gt;
+Annotations:       Selector:  monitor=prometheus
+Type:              ClusterIP
+IP:                10.110.116.203
+Port:              &lt;unset&gt;  9090/TCP
+TargetPort:        9090/TCP
+Endpoints:         &lt;none&gt;
+Session Affinity:  None
+Events:            &lt;none&gt;
+</code></pre>
+<p>修改后正常</p>
 <p>数学理论基础实现的</p>
 <p>配置文件</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl">- <span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;prometheus&#39;</span><span class="w"> </span><span class="l">首先定义任务名称</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>prometheus的客户端主要有两种方式采集</p>
+<pre><code class="language-yaml">- job_name: 'prometheus' 首先定义任务名称
+</code></pre>
+<p>prometheus的客户端主要有两种方式采集</p>
 <ul>
 <li>pull 主动输影的形式</li>
 <li>push 被动推送的形式</li>

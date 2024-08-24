@@ -10,7 +10,7 @@
 <meta name="description" content="Ceph重新平衡 - Rebalance - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/09/6-1-ceph-rebalance/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "cephfs", "fscache"
   ],
-  "wordCount" : "2121",
+  "wordCount" : "2085",
   "inLanguage": "zh",
   "datePublished": "2023-09-03T00:00:00Z",
   "dateModified": "2023-09-03T23:10:36+08:00",
@@ -335,22 +335,16 @@ function toggleThemeListener() {
 <p>当 Ceph 集群在扩容/缩容后，Ceph会更新 Cluster map, 在更新时会更新 Cluster map 也会更新 “对象的放置” CRUSH 会平均但随机的将对象放置在现有的 OSD 之上，在 Rebalancing 时，只有少量数据进行移动而不是全部数据进行移动，直到达到 OSD 与 对象 之间的平衡，这个过程就叫做 Ceph 的 Rebalance。</p>
 <p>需要注意的是，当集群中的 OSD 数量越多，那么在做 Rebalance 时所移动的就越少。例如，在具有 50 个 OSD 的集群中，在添加 OSD 时可能会移动 1/50th 或 2% 的数据。</p>
 <p>如下图所示，当前集群有两个 OSD，当在集群中添加一个 OSD，使其数量达到3时，这个时候会触发 Rebalance，所移动的数量为 OSD1 上的 PG3 与 OSD2 上的 PG 6和9</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230830233602421.png" alt="image-20230830233602421"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20230830233602421.png" alt="image-20230830233602421" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Ceph Rebalancing 示意图 </center>
 <center><em>Source：</em>https://access.redhat.com/documentation/zh-cn/red_hat_ceph_storage/4/html/architecture_guide/ceph-rebalancing-and-recovery_arch</center><br>
 <h3 id="balancer">Balancer<a hidden class="anchor" aria-hidden="true" href="#balancer">¶</a></h3>
 <p>执行 Rebalance 的模块时 Balancer，其可以优化 OSD 上的放置组 (PG) ，以实现平衡分配。</p>
 <p>可以通过命令查看 balancer 的状态</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph balancer status
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><a href="https://docs.ceph.com/en/latest/rados/operations/balancer/">https://docs.ceph.com/en/latest/rados/operations/balancer/</a></p>
+<pre><code class="language-bash">ceph balancer status
+</code></pre>
+<p><a href="https://docs.ceph.com/en/latest/rados/operations/balancer/" target="_blank"
+   rel="noopener nofollow noreferrer" >https://docs.ceph.com/en/latest/rados/operations/balancer/</a></p>
 <h2 id="backfill">Backfill<a hidden class="anchor" aria-hidden="true" href="#backfill">¶</a></h2>
 <p>Ceph 回填 (Backfill) 指的是每当删除 OSD 时，Ceph 都会使用 “Backfill” 和 “recovery” 来重新 rebalance 存储集群。这样做是为了根据PG 策略保留数据的多个副本。这两个操作都会占用系统资源，因此当 Ceph 存储集群处于负载状态时，Ceph 的性能将会下降，因为 Ceph 将资源转移到 “回填” 和 “恢复” 过程。</p>
 <p>有时为了在删除 OSD 时保持 Ceph 存储可接受的性能，需要先降低 “Backfill” 和 “recovery” 操作的优先级。降低优先级的代价是，较长时间内的数据副本较少，这将会导致数据面临风险。</p>
@@ -395,97 +389,47 @@ function toggleThemeListener() {
 </table>
 <p><strong>查看当前参数</strong></p>
 <p>查看配置之前需要确定 OSD 所在的节点，例如 OSD.1 可以通过 <code>ceph osd tree</code> 获取所有 OSD 列表</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph osd tree
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">ID  CLASS  WEIGHT    TYPE NAME       STATUS  REWEIGHT  PRI-AFF
-</span></span><span class="line"><span class="cl">-1         13.09845  root default                             
-</span></span><span class="line"><span class="cl">-3          4.36615      host PMX1                            
-</span></span><span class="line"><span class="cl"> <span class="m">0</span>   nvme   0.72769          osd.0       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">1</span>   nvme   0.72769          osd.1       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">2</span>   nvme   0.72769          osd.2       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">3</span>   nvme   0.72769          osd.3       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">4</span>   nvme   0.72769          osd.4       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">5</span>   nvme   0.72769          osd.5       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl">-5          4.36615      host PMX2                            
-</span></span><span class="line"><span class="cl"> <span class="m">6</span>   nvme   0.72769          osd.6       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">7</span>   nvme   0.72769          osd.7       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">8</span>   nvme   0.72769          osd.8       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"> <span class="m">9</span>   nvme   0.72769          osd.9       up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">10</span>   nvme   0.72769          osd.10      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">11</span>   nvme   0.72769          osd.11      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl">-7          4.36615      host PMX3                            
-</span></span><span class="line"><span class="cl"><span class="m">12</span>   nvme   0.72769          osd.12      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">13</span>   nvme   0.72769          osd.13      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">14</span>   nvme   0.72769          osd.14      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">15</span>   nvme   0.72769          osd.15      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">16</span>   nvme   0.72769          osd.16      up   1.00000  1.00000
-</span></span><span class="line"><span class="cl"><span class="m">17</span>   nvme   0.72769          osd.17      up   1.00000  1.00000
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>在拿到 OSD 坐在节点可以通过下面命令查看对应的 OSD 配置</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ ceph daemon osd.1 config get osd_max_backfills
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;osd_max_backfills&#34;</span>: <span class="s2">&#34;1&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span><span class="line"><span class="cl">$  ceph daemon osd.1 config get osd_recovery_max_active
-</span></span><span class="line"><span class="cl"><span class="o">{</span>
-</span></span><span class="line"><span class="cl">    <span class="s2">&#34;osd_recovery_max_active&#34;</span>: <span class="s2">&#34;0&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="o">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>接下来可以根据 OSD 类型(SSD, HDD, nvme) 的不同，来相应的调整，例如 NVMes 比 HDD 更好的性能，那么可以设置大的回填</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ceph config show osd.0 osd_recovery_max_active
-</span></span><span class="line"><span class="cl">ceph config <span class="nb">set</span> osd osd_max_backfills <span class="m">16</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="recovery">Recovery<a hidden class="anchor" aria-hidden="true" href="#recovery">¶</a></h2>
+<pre><code class="language-bash">$ ceph osd tree
+
+ID  CLASS  WEIGHT    TYPE NAME       STATUS  REWEIGHT  PRI-AFF
+-1         13.09845  root default                             
+-3          4.36615      host PMX1                            
+ 0   nvme   0.72769          osd.0       up   1.00000  1.00000
+ 1   nvme   0.72769          osd.1       up   1.00000  1.00000
+ 2   nvme   0.72769          osd.2       up   1.00000  1.00000
+ 3   nvme   0.72769          osd.3       up   1.00000  1.00000
+ 4   nvme   0.72769          osd.4       up   1.00000  1.00000
+ 5   nvme   0.72769          osd.5       up   1.00000  1.00000
+-5          4.36615      host PMX2                            
+ 6   nvme   0.72769          osd.6       up   1.00000  1.00000
+ 7   nvme   0.72769          osd.7       up   1.00000  1.00000
+ 8   nvme   0.72769          osd.8       up   1.00000  1.00000
+ 9   nvme   0.72769          osd.9       up   1.00000  1.00000
+10   nvme   0.72769          osd.10      up   1.00000  1.00000
+11   nvme   0.72769          osd.11      up   1.00000  1.00000
+-7          4.36615      host PMX3                            
+12   nvme   0.72769          osd.12      up   1.00000  1.00000
+13   nvme   0.72769          osd.13      up   1.00000  1.00000
+14   nvme   0.72769          osd.14      up   1.00000  1.00000
+15   nvme   0.72769          osd.15      up   1.00000  1.00000
+16   nvme   0.72769          osd.16      up   1.00000  1.00000
+17   nvme   0.72769          osd.17      up   1.00000  1.00000
+</code></pre>
+<p>在拿到 OSD 坐在节点可以通过下面命令查看对应的 OSD 配置</p>
+<pre><code class="language-bash">$ ceph daemon osd.1 config get osd_max_backfills
+{
+    &quot;osd_max_backfills&quot;: &quot;1&quot;
+}
+$  ceph daemon osd.1 config get osd_recovery_max_active
+{
+    &quot;osd_recovery_max_active&quot;: &quot;0&quot;
+}
+</code></pre>
+<p>接下来可以根据 OSD 类型(SSD, HDD, nvme) 的不同，来相应的调整，例如 NVMes 比 HDD 更好的性能，那么可以设置大的回填</p>
+<pre><code class="language-bash">ceph config show osd.0 osd_recovery_max_active
+ceph config set osd osd_max_backfills 16
+</code></pre>
+<h2 id="recovery">Recovery<a hidden class="anchor" aria-hidden="true" href="#recovery">¶</a></h2>
 <p>如果 Ceph OSD 守护进程崩溃并重新上线，通常这个OSD会与 PG 中包含更新版本对象的其他 Ceph OSD 守护进程不同步。发生这种情况时，Ceph OSD 守护进程会进入恢复模式 (Recovery)，并寻求获取最新的数据副本并使其映射恢复到最新状态。根据 Ceph OSD daemon 关闭的时间长短，OSD 的对象和 PG 可能会明显过时。此外，如果一个故障域（机架）发生故障，多个 Ceph OSD 守护进程可能会同时恢复在线状态。这会使恢复过程耗时且占用资源。</p>
 <p>为了维持操作性能，Ceph 在执行恢复时限制恢复请求数量、线程和对象块大小，这使得 Ceph 在降级状态下也能良好运行。</p>
 <p>恢复的参数通常位于 OSD 参数下，在 Ceph OSD 中关于 recovery <sup><a href="#2">[2]</a></sup> 的参数如下：</p>
@@ -576,10 +520,14 @@ function toggleThemeListener() {
 <p>而为了避免 “同步恢复” 的问题 Ceph 提供了一种可以异步恢复的配置，当异步恢复发生时，对活动集成员可继续写入，有关于更多的异步说明，可以参考 Ceph 文档 asynchronous recovery 部分</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://docs.ceph.com/en/reef/rados/configuration/osd-config-ref/#backfilling"><em><strong>backfilling</strong></em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/latest/rados/configuration/osd-config-ref/#recovery"><em><strong>recovery</strong></em></a></p>
-<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/reef/dev/osd_internals/async_recovery/#asynchronous-recovery"><em><strong>ASYNCHRONOUS RECOVERY</strong></em></a></p>
-<p><sup id="4">[4]</sup> <a href="https://www.ecstuff4u.com/2021/04/advantages-and-disadvantages-of-san.html"><em><strong>Advantages and Disadvantages of SAN</strong></em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://docs.ceph.com/en/reef/rados/configuration/osd-config-ref/#backfilling" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>backfilling</strong></em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://docs.ceph.com/en/latest/rados/configuration/osd-config-ref/#recovery" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>recovery</strong></em></a></p>
+<p><sup id="3">[3]</sup> <a href="https://docs.ceph.com/en/reef/dev/osd_internals/async_recovery/#asynchronous-recovery" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>ASYNCHRONOUS RECOVERY</strong></em></a></p>
+<p><sup id="4">[4]</sup> <a href="https://www.ecstuff4u.com/2021/04/advantages-and-disadvantages-of-san.html" target="_blank"
+   rel="noopener nofollow noreferrer" ><em><strong>Advantages and Disadvantages of SAN</strong></em></a></p>
 </blockquote>
 
 

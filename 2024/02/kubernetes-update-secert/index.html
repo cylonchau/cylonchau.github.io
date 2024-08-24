@@ -10,7 +10,7 @@
 <meta name="description" content="Kubernetes维护 - secret批量更新 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2024/02/kubernetes-update-secert/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "secret", "secret批量更新"
   ],
-  "wordCount" : "1241",
+  "wordCount" : "1149",
   "inLanguage": "zh",
   "datePublished": "2024-02-20T00:00:00Z",
   "dateModified": "2024-02-20T23:00:36+08:00",
@@ -318,30 +318,15 @@ function toggleThemeListener() {
 <br><p>tls 证书在 k8s 集群上大量使用的话，当到期时会存在批量替换的难度，比如说每个名称空间，多个业务的使用，在这篇博文中，将尝试批量替换整个集群的证书（前提，在没有使用 vault, cert-manager这类组件的集群之上）。</p>
 <h2 id="基本操作">基本操作<a hidden class="anchor" aria-hidden="true" href="#基本操作">¶</a></h2>
 <p>步骤1：首先不知道有多少个名称空间使用了这个证书，所以需要遍历所有的名称空间，这里使用 kubectl 的 json path 实现</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">$ kubectl get ns -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.metadata.name}{&#34;\n&#34;}{end}&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>步骤2：拿到名称空间的名字后，就需要循环这个名称空间下所有的 secret</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="k">for</span> ns in <span class="sb">`</span>kubectl get ns -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.metadata.name}{&#34;\n&#34;}{end}&#39;</span><span class="sb">`</span>
-</span></span><span class="line"><span class="cl"><span class="k">do</span>
-</span></span><span class="line"><span class="cl">	kubectl get secret -n <span class="nv">$ns</span> -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.metadata.name}{&#34;\n&#34;}{end}&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="k">done</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>步骤3：找到与这个匹配的证书进行替换</p>
+<pre><code class="language-bash">$ kubectl get ns -o jsonpath='{range $.items[*]}{.metadata.name}{&quot;\n&quot;}{end}'
+</code></pre>
+<p>步骤2：拿到名称空间的名字后，就需要循环这个名称空间下所有的 secret</p>
+<pre><code class="language-bash">for ns in `kubectl get ns -o jsonpath='{range $.items[*]}{.metadata.name}{&quot;\n&quot;}{end}'`
+do
+	kubectl get secret -n $ns -o jsonpath='{range $.items[*]}{.metadata.name}{&quot;\n&quot;}{end}'
+done
+</code></pre>
+<p>步骤3：找到与这个匹配的证书进行替换</p>
 <p>把步骤3拆解为下面几个步骤：</p>
 <ul>
 <li>拿去到符合要求的secret的名字</li>
@@ -349,54 +334,24 @@ function toggleThemeListener() {
 <li>做替换操作</li>
 </ul>
 <p>由于步骤2使用的是 jsonpath 拿到的 secret name，由于 kubectl 并不支持高级jsonpath语法，官方推荐使用jq，那么使用jq获取名字</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl get secret -n <span class="nv">$ns</span> -o json<span class="p">|</span>jq -r .items<span class="o">[]</span>.metadata.name
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>使用 awk 做字符串匹配，匹配是否包含对应的字符串关键词</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">awk <span class="s1">&#39;$1 ~ /xxxx/ { print }&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>最后使用 kubectl replace 替换现有的 secret</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kubectl create secret tls <span class="nv">$secertName</span> -n <span class="nv">$ns</span> --cert<span class="o">=</span>xxx.crt --key<span class="o">=</span>xxx.key --dry-run -o yaml<span class="p">|</span> kubectl replace -f -
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>三个步骤整个为一个命令，如下所示：</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="k">for</span> ns in <span class="sb">`</span>kubectl get ns -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.metadata.name}{&#34;\n&#34;}{end}&#39;</span><span class="sb">`</span>
-</span></span><span class="line"><span class="cl"><span class="k">do</span>
-</span></span><span class="line"><span class="cl">	<span class="k">for</span> secertName in <span class="sb">`</span>kubectl get secret -n <span class="nv">$ns</span> -o json<span class="p">|</span>jq -r .items<span class="o">[]</span>.metadata.name<span class="p">|</span>awk <span class="s1">&#39;$1 ~ /xxxx/ { print }&#39;</span><span class="p">;</span>
-</span></span><span class="line"><span class="cl">	<span class="k">do</span>
-</span></span><span class="line"><span class="cl">		kubectl create secret tls <span class="nv">$secertName</span> -n <span class="nv">$ns</span> --cert<span class="o">=</span>xxx.crt --key<span class="o">=</span>xxx.key --dry-run -o yaml<span class="p">|</span> kubectl replace -f -
-</span></span><span class="line"><span class="cl">	<span class="k">done</span>
-</span></span><span class="line"><span class="cl"><span class="k">done</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">kubectl get secret -n $ns -o json|jq -r .items[].metadata.name
+</code></pre>
+<p>使用 awk 做字符串匹配，匹配是否包含对应的字符串关键词</p>
+<pre><code class="language-bash">awk '$1 ~ /xxxx/ { print }'
+</code></pre>
+<p>最后使用 kubectl replace 替换现有的 secret</p>
+<pre><code class="language-bash">kubectl create secret tls $secertName -n $ns --cert=xxx.crt --key=xxx.key --dry-run -o yaml| kubectl replace -f -
+</code></pre>
+<p>三个步骤整个为一个命令，如下所示：</p>
+<pre><code class="language-bash">for ns in `kubectl get ns -o jsonpath='{range $.items[*]}{.metadata.name}{&quot;\n&quot;}{end}'`
+do
+	for secertName in `kubectl get secret -n $ns -o json|jq -r .items[].metadata.name|awk '$1 ~ /xxxx/ { print }';
+	do
+		kubectl create secret tls $secertName -n $ns --cert=xxx.crt --key=xxx.key --dry-run -o yaml| kubectl replace -f -
+	done
+done
+</code></pre>
+<blockquote>
 <p>注意：</p>
 <ul>
 <li>ingress 使用的证书会立即更新</li>
@@ -406,188 +361,91 @@ function toggleThemeListener() {
 <h2 id="高级用法">高级用法<a hidden class="anchor" aria-hidden="true" href="#高级用法">¶</a></h2>
 <p>查询证书内容，并根据域名进行替换</p>
 <p>查看证书域名的命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">ns</span><span class="o">=</span>xxx
-</span></span><span class="line"><span class="cl"><span class="nv">secret_name</span><span class="o">=</span>xxx
-</span></span><span class="line"><span class="cl"><span class="nv">keywords</span><span class="o">=</span>xxx
-</span></span><span class="line"><span class="cl"><span class="nv">_command</span><span class="o">=</span>xxxx
-</span></span><span class="line"><span class="cl">openssl x509 -in &lt;<span class="o">(</span>
-</span></span><span class="line"><span class="cl">    <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="nv">$ns</span> <span class="nv">$secret_name</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    jq --arg secret_key <span class="k">$(</span>
-</span></span><span class="line"><span class="cl">        <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        jq -r <span class="s1">&#39;.data | keys[]&#39;</span> <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        awk -v <span class="nv">keywords</span><span class="o">=</span><span class="si">${</span><span class="nv">keywords</span><span class="si">}</span> <span class="s1">&#39;$0 ~ keywords { print }&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">)</span> -r <span class="s1">&#39;.data | .[$secret_key]&#39;</span> <span class="p">|</span> base64 -d
-</span></span><span class="line"><span class="cl"><span class="o">)</span> -text -noout <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>grep -i <span class="s2">&#34;subject: &#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>步骤拆解</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># 替换的名称空间</span>
-</span></span><span class="line"><span class="cl"><span class="nv">ns</span><span class="o">=</span>kube-system
-</span></span><span class="line"><span class="cl"><span class="c1"># 替换的secret_name</span>
-</span></span><span class="line"><span class="cl"><span class="nv">secret_name</span><span class="o">=</span><span class="nb">test</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># 替换key的关键词，通常secret作为tls存在时，为xxx.crt</span>
-</span></span><span class="line"><span class="cl"><span class="nv">keywords</span><span class="o">=</span>crt
-</span></span><span class="line"><span class="cl"><span class="c1"># kubectl命令</span>
-</span></span><span class="line"><span class="cl"><span class="nv">_command</span><span class="o">=</span>kubectl --kubeconfig<span class="o">=</span>kubeconfig
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># shell语法，将一个命令的输出作为openssl的输入</span>
-</span></span><span class="line"><span class="cl">openssl x509 -in &lt;<span class="o">(</span>
-</span></span><span class="line"><span class="cl">    <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="nv">$ns</span> <span class="nv">$secret_name</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>    <span class="c1"># jq --arg secret_key 是 jq语法，将 $() 命名为secret_key作为变量传入到下个命令使用</span>
-</span></span><span class="line"><span class="cl">    jq --arg secret_key <span class="k">$(</span>
-</span></span><span class="line"><span class="cl">        <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        jq -r <span class="s1">&#39;.data | keys[]&#39;</span> <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        <span class="c1"># awk -v keywords=${keywords} 是awk语法，将keyworkd作为变量传递到awk内部</span>
-</span></span><span class="line"><span class="cl">        <span class="c1"># &#39;$0 ~ keywords { print }&#39; 打印出符合条件的行</span>
-</span></span><span class="line"><span class="cl">        awk -v <span class="nv">keywords</span><span class="o">=</span><span class="si">${</span><span class="nv">keywords</span><span class="si">}</span> <span class="s1">&#39;$0 ~ keywords { print }&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">)</span> -r <span class="s1">&#39;.data | .[$secret_key]&#39;</span> <span class="p">|</span> base64 -d
-</span></span><span class="line"><span class="cl"><span class="o">)</span> -text -noout <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>grep -i <span class="s2">&#34;subject: &#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>更新前没出意外需要备份下对应资源，批量备份集群内指定域名的 secret 命令</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="sb">```</span>bash
-</span></span><span class="line"><span class="cl"><span class="c1"># 指定域名的secret</span>
-</span></span><span class="line"><span class="cl"><span class="nv">keywords</span><span class="o">=</span>xxx
-</span></span><span class="line"><span class="cl"><span class="nv">_command</span><span class="o">=</span>xxxx
-</span></span><span class="line"><span class="cl"><span class="k">for</span> ns in <span class="sb">`</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get ns -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{range $.items[*]}{.metadata.name}{&#34;\n&#34;}{&#34;end&#34;}&#39;</span><span class="sb">`</span>
-</span></span><span class="line"><span class="cl"><span class="k">do</span>
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> secret_name in <span class="sb">`</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="nv">$ns</span> -o json<span class="p">|</span>jq -r <span class="s1">&#39;.items[] | select( .type == &#34;kubernetes.io/tls&#34;) | .metadata.name&#39;</span><span class="sb">`</span>
-</span></span><span class="line"><span class="cl">    <span class="k">do</span>  
-</span></span><span class="line"><span class="cl">        openssl x509 -in &lt;<span class="o">(</span>
-</span></span><span class="line"><span class="cl">            <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            jq --arg secret_key <span class="k">$(</span>
-</span></span><span class="line"><span class="cl">                    <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> 
-</span></span><span class="line"><span class="cl">                    jq -r <span class="s1">&#39;.data | keys[]&#39;</span> <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>                    awk <span class="s1">&#39;$0 ~ /crt/ { print }&#39;</span>
-</span></span><span class="line"><span class="cl">                <span class="k">)</span> -r <span class="s1">&#39;.data|.[$secret_key]&#39;</span><span class="p">|</span>base64 -d
-</span></span><span class="line"><span class="cl">        <span class="o">)</span> -text -noout <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        grep -i <span class="s2">&#34;subject: &#34;</span><span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        awk -v <span class="nv">ns</span><span class="o">=</span><span class="si">${</span><span class="nv">ns</span><span class="si">}</span> -v <span class="nv">secret_name</span><span class="o">=</span><span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -v <span class="nv">cmd</span><span class="o">=</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> -v <span class="nv">kw</span><span class="o">=</span><span class="si">${</span><span class="nv">keywords</span><span class="si">}</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            <span class="s1">&#39;$0 ~ kw { system(
-</span></span></span><span class="line"><span class="cl"><span class="s1">                cmd&#34; get secret -n &#34;ns&#34; &#34;secret_name&#34; -oyaml &gt; primetive/&#34;ns&#34;.&#34;secret_name&#34;.yaml&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">            )}&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">done</span>
-</span></span><span class="line"><span class="cl"><span class="k">done</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>批量替换命令，查询 tls 签发域名，并进行替换</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nv">keywords</span><span class="o">=</span>xxx
-</span></span><span class="line"><span class="cl"><span class="nv">_command</span><span class="o">=</span>xxxx
-</span></span><span class="line"><span class="cl"><span class="k">for</span> ns in <span class="sb">`</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get ns -o <span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;range $.items[*]}{.metadata.name}{&#34;\n&#34;}{&#34;end&#34;}&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="k">do</span>
-</span></span><span class="line"><span class="cl">    <span class="k">for</span> secret_name in <span class="sb">`</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="nv">$ns</span> -o json<span class="p">|</span>jq -r <span class="s1">&#39;.items[] | select( .type == &#34;kubernetes.io/tls&#34;) | .metadta.name&#39;</span><span class="sb">`</span>
-</span></span><span class="line"><span class="cl">    <span class="k">do</span>  
-</span></span><span class="line"><span class="cl">        openssl x509 -n &lt;<span class="o">(</span>
-</span></span><span class="line"><span class="cl">            <span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            jq --arg secret_key <span class="k">$(</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span> get secret -n <span class="si">${</span><span class="nv">ns</span><span class="si">}</span> <span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -ojson <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            jq -r <span class="s1">&#39;.data | .keys[]&#39;</span> <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            awk <span class="s1">&#39;$0 ~ /crt/ { print }&#39;</span> -r <span class="s1">&#39;.data|.[$secret_key]&#39;</span><span class="p">|</span>base64 -d
-</span></span><span class="line"><span class="cl">        <span class="k">)</span> -text -noout <span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        grep -i <span class="s2">&#34;subject: &#34;</span><span class="p">|</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>        awk -v <span class="nv">ns</span><span class="o">=</span><span class="si">${</span><span class="nv">ns</span><span class="si">}</span> -v <span class="nv">secret_name</span><span class="o">=</span><span class="si">${</span><span class="nv">secret_name</span><span class="si">}</span> -v <span class="nv">commond</span><span class="o">=</span><span class="si">${</span><span class="nv">_command</span><span class="si">}</span><span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>            <span class="s1">&#39;$0 ~ ${keywords} { system(
-</span></span></span><span class="line"><span class="cl"><span class="s1">                command&#34; create secret tls -n &#34;ns&#34; &#34;secret_name&#34; --cert=ca.crt --key=key.key --dry-run -oyaml|command&#34; replace -f -&#34;
-</span></span></span><span class="line"><span class="cl"><span class="s1">            )}&#39;</span>
-</span></span><span class="line"><span class="cl">    <span class="k">done</span>
-</span></span><span class="line"><span class="cl"><span class="k">done</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
+<pre><code class="language-bash">ns=xxx
+secret_name=xxx
+keywords=xxx
+_command=xxxx
+openssl x509 -in &lt;(
+    ${_command} get secret -n $ns $secret_name -ojson | \
+    jq --arg secret_key $(
+        ${_command} get secret -n ${ns} ${secret_name} -ojson | \
+        jq -r '.data | keys[]' | \
+        awk -v keywords=${keywords} '$0 ~ keywords { print }'
+    ) -r '.data | .[$secret_key]' | base64 -d
+) -text -noout | \
+grep -i &quot;subject: &quot;
+</code></pre>
+<p>步骤拆解</p>
+<pre><code class="language-bash"># 替换的名称空间
+ns=kube-system
+# 替换的secret_name
+secret_name=test
+# 替换key的关键词，通常secret作为tls存在时，为xxx.crt
+keywords=crt
+# kubectl命令
+_command=kubectl --kubeconfig=kubeconfig
+
+# shell语法，将一个命令的输出作为openssl的输入
+openssl x509 -in &lt;(
+    ${_command} get secret -n $ns $secret_name -ojson | \
+    # jq --arg secret_key 是 jq语法，将 $() 命名为secret_key作为变量传入到下个命令使用
+    jq --arg secret_key $(
+        ${_command} get secret -n ${ns} ${secret_name} -ojson | \
+        jq -r '.data | keys[]' | \
+        # awk -v keywords=${keywords} 是awk语法，将keyworkd作为变量传递到awk内部
+        # '$0 ~ keywords { print }' 打印出符合条件的行
+        awk -v keywords=${keywords} '$0 ~ keywords { print }'
+    ) -r '.data | .[$secret_key]' | base64 -d
+) -text -noout | \
+grep -i &quot;subject: &quot;
+</code></pre>
+<p>更新前没出意外需要备份下对应资源，批量备份集群内指定域名的 secret 命令</p>
+<pre><code class="language-bash">```bash
+# 指定域名的secret
+keywords=xxx
+_command=xxxx
+for ns in `${_command} get ns -o jsonpath='{range $.items[*]}{.metadata.name}{&quot;\n&quot;}{&quot;end&quot;}'`
+do
+    for secret_name in `${_command} get secret -n $ns -o json|jq -r '.items[] | select( .type == &quot;kubernetes.io/tls&quot;) | .metadata.name'`
+    do  
+        openssl x509 -in &lt;(
+            ${_command} get secret -n ${ns} ${secret_name} -ojson | \
+            jq --arg secret_key $(
+                    ${_command} get secret -n ${ns} ${secret_name} -ojson | 
+                    jq -r '.data | keys[]' | \
+                    awk '$0 ~ /crt/ { print }'
+                ) -r '.data|.[$secret_key]'|base64 -d
+        ) -text -noout | \
+        grep -i &quot;subject: &quot;| \
+        awk -v ns=${ns} -v secret_name=${secret_name} -v cmd=${_command} -v kw=${keywords} \
+            '$0 ~ kw { system(
+                cmd&quot; get secret -n &quot;ns&quot; &quot;secret_name&quot; -oyaml &gt; primetive/&quot;ns&quot;.&quot;secret_name&quot;.yaml&quot;
+            )}'
+    done
+done
+</code></pre>
+<p>批量替换命令，查询 tls 签发域名，并进行替换</p>
+<pre><code class="language-bash">keywords=xxx
+_command=xxxx
+for ns in `${_command} get ns -o jsonpath='range $.items[*]}{.metadata.name}{&quot;\n&quot;}{&quot;end&quot;}'
+do
+    for secret_name in `${_command} get secret -n $ns -o json|jq -r '.items[] | select( .type == &quot;kubernetes.io/tls&quot;) | .metadta.name'`
+    do  
+        openssl x509 -n &lt;(
+            ${_command} get secret -n ${ns} ${secret_name} -ojson | \
+            jq --arg secret_key $(${_command} get secret -n ${ns} ${secret_name} -ojson | \
+            jq -r '.data | .keys[]' | \
+            awk '$0 ~ /crt/ { print }' -r '.data|.[$secret_key]'|base64 -d
+        ) -text -noout | \
+        grep -i &quot;subject: &quot;| \
+        awk -v ns=${ns} -v secret_name=${secret_name} -v commond=${_command}\
+            '$0 ~ ${keywords} { system(
+                command&quot; create secret tls -n &quot;ns&quot; &quot;secret_name&quot; --cert=ca.crt --key=key.key --dry-run -oyaml|command&quot; replace -f -&quot;
+            )}'
+    done
+done
+</code></pre>
+
 
     
     

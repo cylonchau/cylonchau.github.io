@@ -10,7 +10,7 @@
 <meta name="description" content="深入理解Kubernetes - 基于OOMKill的QoS的设计 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2024/01/ch30-oomkill/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "develop", "kubelet", "oomkill", "k8s QoS设计原理"
   ],
-  "wordCount" : "1957",
+  "wordCount" : "1906",
   "inLanguage": "zh",
   "datePublished": "2024-01-30T00:00:00Z",
   "dateModified": "2024-01-30T23:00:36+08:00",
@@ -353,27 +353,14 @@ function toggleThemeListener() {
 <h3 id="谁是糟糕的进程">谁是糟糕的进程？<a hidden class="anchor" aria-hidden="true" href="#谁是糟糕的进程">¶</a></h3>
 <p>在内存不足的情况下选择要被终止的进程是基于其  <em>oom_score</em> 。糟糕进程 Score 被记录在 <code>/proc/&lt;pid&gt;/oom_score</code> 文件中。该值是基于系统损失的最小工作量、回收的大量内存、不终止任何消耗大量内存的无辜进程以及终止的进程数量最小化（如果可能限制在一个）等因素来确定的。糟糕程度得分是使用进程的原始内存大小、其 CPU 时间（utime + stime）、运行时间（uptime - 启动时间）以及其 <code>oom_adj</code> 值计算的。进程使用的内存越多，得分越高。进程在系统中存在的时间越长，得分越小。</p>
 <h3 id="列出所有正在运行的进程的oom-score">列出所有正在运行的进程的OOM Score<a hidden class="anchor" aria-hidden="true" href="#列出所有正在运行的进程的oom-score">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="nb">printf</span> <span class="s1">&#39;PID\tOOM Score\tOOM Adj\tCommand\n&#39;</span>
-</span></span><span class="line"><span class="cl"><span class="k">while</span> <span class="nb">read</span> -r pid comm<span class="p">;</span> <span class="k">do</span> <span class="o">[</span> -f /proc/<span class="nv">$pid</span>/oom_score <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="o">[</span> <span class="k">$(</span>cat /proc/<span class="nv">$pid</span>/oom_score<span class="k">)</span> !<span class="o">=</span> <span class="m">0</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="nb">printf</span> <span class="s1">&#39;%d\t%d\t\t%d\t%s\n&#39;</span> <span class="s2">&#34;</span><span class="nv">$pid</span><span class="s2">&#34;</span> <span class="s2">&#34;</span><span class="k">$(</span>cat /proc/<span class="nv">$pid</span>/oom_score<span class="k">)</span><span class="s2">&#34;</span> <span class="s2">&#34;</span><span class="k">$(</span>cat /proc/<span class="nv">$pid</span>/oom_score_adj<span class="k">)</span><span class="s2">&#34;</span> <span class="s2">&#34;</span><span class="nv">$comm</span><span class="s2">&#34;</span><span class="p">;</span> <span class="k">done</span> &lt; &lt;<span class="o">(</span>ps -e -o <span class="nv">pid</span><span class="o">=</span> -o <span class="nv">comm</span><span class="o">=)</span> <span class="p">|</span> sort -k 2nr
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="如何检查进程是否已被-oom-终止">如何检查进程是否已被 OOM 终止<a hidden class="anchor" aria-hidden="true" href="#如何检查进程是否已被-oom-终止">¶</a></h3>
+<pre><code class="language-bash">printf 'PID\tOOM Score\tOOM Adj\tCommand\n'
+while read -r pid comm; do [ -f /proc/$pid/oom_score ] &amp;&amp; [ $(cat /proc/$pid/oom_score) != 0 ] &amp;&amp; printf '%d\t%d\t\t%d\t%s\n' &quot;$pid&quot; &quot;$(cat /proc/$pid/oom_score)&quot; &quot;$(cat /proc/$pid/oom_score_adj)&quot; &quot;$comm&quot;; done &lt; &lt;(ps -e -o pid= -o comm=) | sort -k 2nr
+</code></pre>
+<h3 id="如何检查进程是否已被-oom-终止">如何检查进程是否已被 OOM 终止<a hidden class="anchor" aria-hidden="true" href="#如何检查进程是否已被-oom-终止">¶</a></h3>
 <p>最简单的方法是查看<code>grep</code>系统日志。在 Ubuntu 中：<code>grep -i kill /var/log/syslog</code>。如果进程已被终止，您可能会得到类似的结果</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">my_process invoked oom-killer: <span class="nv">gfp_mask</span><span class="o">=</span>0x201da, <span class="nv">order</span><span class="o">=</span>0, <span class="nv">oom_score_adj</span><span class="o">=</span><span class="m">0</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="kubernetes的qos是如何设计的">Kubernetes的QoS是如何设计的<a hidden class="anchor" aria-hidden="true" href="#kubernetes的qos是如何设计的">¶</a></h2>
+<pre><code class="language-bash">my_process invoked oom-killer: gfp_mask=0x201da, order=0, oom_score_adj=0
+</code></pre>
+<h2 id="kubernetes的qos是如何设计的">Kubernetes的QoS是如何设计的<a hidden class="anchor" aria-hidden="true" href="#kubernetes的qos是如何设计的">¶</a></h2>
 <p>Kubernetes 中 Pod 存在一个 “服务质量等级” (<em>QoS</em>)，它保证了Kubernetes 在 Node 资源不足时使用 QoS 类来就驱逐 Pod 作出决定。这个 QoS 就是基于 OOM Kill Score 和 Adj 来设计的。</p>
 <p>对于用户来讲，Kubernetes Pod 的 QoS 有三类，这些设置是被自动设置的，除此之外还有两种单独的等级：“Worker 组件”，总共 Pod QoS 的级别有5种</p>
 <ul>
@@ -384,118 +371,60 @@ function toggleThemeListener() {
 <li>Burstable</li>
 </ul>
 <p>这些在 <a href="pkg/kubelet/qos/policy.go">pkg/kubelet/qos/policy.go</a> 中可以看到，其中 Burstable 属于一个动态的级别。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">const</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// KubeletOOMScoreAdj is the OOM score adjustment for Kubelet
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">KubeletOOMScoreAdj</span> <span class="kt">int</span> <span class="p">=</span> <span class="o">-</span><span class="mi">999</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// KubeProxyOOMScoreAdj is the OOM score adjustment for kube-proxy
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">KubeProxyOOMScoreAdj</span>  <span class="kt">int</span> <span class="p">=</span> <span class="o">-</span><span class="mi">999</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">guaranteedOOMScoreAdj</span> <span class="kt">int</span> <span class="p">=</span> <span class="o">-</span><span class="mi">998</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">besteffortOOMScoreAdj</span> <span class="kt">int</span> <span class="p">=</span> <span class="mi">1000</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>其中最重要的分数就是 Burstable，这保证了驱逐的优先级，他的算法为：$1000 - \frac{1000 \times Request}{memoryCapacity}$ ，Request 为 Deployment 这类清单中配置的 <em>Memory Request</em> 的部分，<em>memoryCapacity</em> 则为 Node 的内存数量。</p>
+<pre><code class="language-go">const (
+	// KubeletOOMScoreAdj is the OOM score adjustment for Kubelet
+	KubeletOOMScoreAdj int = -999
+	// KubeProxyOOMScoreAdj is the OOM score adjustment for kube-proxy
+	KubeProxyOOMScoreAdj  int = -999
+	guaranteedOOMScoreAdj int = -998
+	besteffortOOMScoreAdj int = 1000
+)
+</code></pre>
+<p>其中最重要的分数就是 Burstable，这保证了驱逐的优先级，他的算法为：$1000 - \frac{1000 \times Request}{memoryCapacity}$ ，Request 为 Deployment 这类清单中配置的 <em>Memory Request</em> 的部分，<em>memoryCapacity</em> 则为 Node 的内存数量。</p>
 <p>例如 Node 为 64G，Pod Request 值配置了 2G，那么最终 <code>oom_score_adj</code> 的值为 $1000 - \frac{1000 \times Request}{memoryCapacity} = 1000 - \frac{1000\times2}{64} = 968$</p>
 <p>这部分可以在下面代码中看到，其中算出的值将被写入 /proc/{pid}/oom_score_adj 文件内</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span><span class="lnt">37
-</span><span class="lnt">38
-</span><span class="lnt">39
-</span><span class="lnt">40
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">GetContainerOOMScoreAdjust</span><span class="p">(</span><span class="nx">pod</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Pod</span><span class="p">,</span> <span class="nx">container</span> <span class="o">*</span><span class="nx">v1</span><span class="p">.</span><span class="nx">Container</span><span class="p">,</span> <span class="nx">memoryCapacity</span> <span class="kt">int64</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">types</span><span class="p">.</span><span class="nf">IsNodeCriticalPod</span><span class="p">(</span><span class="nx">pod</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Only node critical pod should be the last to get killed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">return</span> <span class="nx">guaranteedOOMScoreAdj</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="k">switch</span> <span class="nx">v1qos</span><span class="p">.</span><span class="nf">GetPodQOS</span><span class="p">(</span><span class="nx">pod</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">case</span> <span class="nx">v1</span><span class="p">.</span><span class="nx">PodQOSGuaranteed</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="c1">// Guaranteed containers should be the last to get killed.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>		<span class="k">return</span> <span class="nx">guaranteedOOMScoreAdj</span>
-</span></span><span class="line"><span class="cl">	<span class="k">case</span> <span class="nx">v1</span><span class="p">.</span><span class="nx">PodQOSBestEffort</span><span class="p">:</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nx">besteffortOOMScoreAdj</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Burstable containers are a middle tier, between Guaranteed and Best-Effort. Ideally,
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// we want to protect Burstable containers that consume less memory than requested.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// The formula below is a heuristic. A container requesting for 10% of a system&#39;s
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// memory will have an OOM score adjust of 900. If a process in container Y
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// uses over 10% of memory, its OOM score will be 1000. The idea is that containers
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// which use more than their request will have an OOM score of 1000 and will be prime
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// targets for OOM kills.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// Note that this is a heuristic, it won&#39;t work if a container has many small processes.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">memoryRequest</span> <span class="o">:=</span> <span class="nx">container</span><span class="p">.</span><span class="nx">Resources</span><span class="p">.</span><span class="nx">Requests</span><span class="p">.</span><span class="nf">Memory</span><span class="p">().</span><span class="nf">Value</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">utilfeature</span><span class="p">.</span><span class="nx">DefaultFeatureGate</span><span class="p">.</span><span class="nf">Enabled</span><span class="p">(</span><span class="nx">features</span><span class="p">.</span><span class="nx">InPlacePodVerticalScaling</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">cs</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">podutil</span><span class="p">.</span><span class="nf">GetContainerStatus</span><span class="p">(</span><span class="nx">pod</span><span class="p">.</span><span class="nx">Status</span><span class="p">.</span><span class="nx">ContainerStatuses</span><span class="p">,</span> <span class="nx">container</span><span class="p">.</span><span class="nx">Name</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">			<span class="nx">memoryRequest</span> <span class="p">=</span> <span class="nx">cs</span><span class="p">.</span><span class="nx">AllocatedResources</span><span class="p">.</span><span class="nf">Memory</span><span class="p">().</span><span class="nf">Value</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">		<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">oomScoreAdjust</span> <span class="o">:=</span> <span class="mi">1000</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1000</span><span class="o">*</span><span class="nx">memoryRequest</span><span class="p">)</span><span class="o">/</span><span class="nx">memoryCapacity</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// A guaranteed pod using 100% of memory can have an OOM score of 10. Ensure
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// that burstable pods have a higher OOM score adjustment.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="nx">oomScoreAdjust</span><span class="p">)</span> <span class="p">&lt;</span> <span class="p">(</span><span class="mi">1000</span> <span class="o">+</span> <span class="nx">guaranteedOOMScoreAdj</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="p">(</span><span class="mi">1000</span> <span class="o">+</span> <span class="nx">guaranteedOOMScoreAdj</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Give burstable pods a higher chance of survival over besteffort pods.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="nx">oomScoreAdjust</span><span class="p">)</span> <span class="o">==</span> <span class="nx">besteffortOOMScoreAdj</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nx">oomScoreAdjust</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nx">oomScoreAdjust</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>到此可以了解到 Pod QoS 级别为</p>
+<pre><code class="language-go">func GetContainerOOMScoreAdjust(pod *v1.Pod, container *v1.Container, memoryCapacity int64) int {
+	if types.IsNodeCriticalPod(pod) {
+		// Only node critical pod should be the last to get killed.
+		return guaranteedOOMScoreAdj
+	}
+
+	switch v1qos.GetPodQOS(pod) {
+	case v1.PodQOSGuaranteed:
+		// Guaranteed containers should be the last to get killed.
+		return guaranteedOOMScoreAdj
+	case v1.PodQOSBestEffort:
+		return besteffortOOMScoreAdj
+	}
+
+	// Burstable containers are a middle tier, between Guaranteed and Best-Effort. Ideally,
+	// we want to protect Burstable containers that consume less memory than requested.
+	// The formula below is a heuristic. A container requesting for 10% of a system's
+	// memory will have an OOM score adjust of 900. If a process in container Y
+	// uses over 10% of memory, its OOM score will be 1000. The idea is that containers
+	// which use more than their request will have an OOM score of 1000 and will be prime
+	// targets for OOM kills.
+	// Note that this is a heuristic, it won't work if a container has many small processes.
+	memoryRequest := container.Resources.Requests.Memory().Value()
+	if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+		if cs, ok := podutil.GetContainerStatus(pod.Status.ContainerStatuses, container.Name); ok {
+			memoryRequest = cs.AllocatedResources.Memory().Value()
+		}
+	}
+	oomScoreAdjust := 1000 - (1000*memoryRequest)/memoryCapacity
+	// A guaranteed pod using 100% of memory can have an OOM score of 10. Ensure
+	// that burstable pods have a higher OOM score adjustment.
+	if int(oomScoreAdjust) &lt; (1000 + guaranteedOOMScoreAdj) {
+		return (1000 + guaranteedOOMScoreAdj)
+	}
+	// Give burstable pods a higher chance of survival over besteffort pods.
+	if int(oomScoreAdjust) == besteffortOOMScoreAdj {
+		return int(oomScoreAdjust - 1)
+	}
+	return int(oomScoreAdjust)
+}
+</code></pre>
+<p>到此可以了解到 Pod QoS 级别为</p>
 <ul>
 <li>
 <p>Kubelet = KubeProxy = -999</p>
@@ -512,8 +441,10 @@ function toggleThemeListener() {
 </ul>
 <p>那么在当 Node 节点内存不足时，发生驱逐的条件就会根据  <code>oom_score_adj</code> 完成，但当 Pod 中程序使用内存达到了 Limits 限制，此时的OOM Killed和上面阐述的无关。</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
-<p><sup id="1">[1]</sup> <a href="https://lwn.net/Articles/317814/"><em>Taming the OOM killer</em></a></p>
-<p><sup id="2">[2]</sup> <a href="https://unix.stackexchange.com/questions/153585/how-does-the-oom-killer-decide-which-process-to-kill-first"><em>How does the OOM killer decide which process to kill first?</em></a></p>
+<p><sup id="1">[1]</sup> <a href="https://lwn.net/Articles/317814/" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>Taming the OOM killer</em></a></p>
+<p><sup id="2">[2]</sup> <a href="https://unix.stackexchange.com/questions/153585/how-does-the-oom-killer-decide-which-process-to-kill-first" target="_blank"
+   rel="noopener nofollow noreferrer" ><em>How does the OOM killer decide which process to kill first?</em></a></p>
 
 
     

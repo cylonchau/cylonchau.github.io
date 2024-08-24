@@ -10,7 +10,7 @@
 <meta name="description" content="kubernetes代码生成器 - code-generator - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2022/06/ch14-code-generator/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "develop"
   ],
-  "wordCount" : "1362",
+  "wordCount" : "1243",
   "inLanguage": "zh",
   "datePublished": "2022-06-20T00:00:00Z",
   "dateModified": "2022-06-20T00:00:00Z",
@@ -343,99 +343,59 @@ function toggleThemeListener() {
 <br><h2 id="overview">Overview<a hidden class="anchor" aria-hidden="true" href="#overview">¶</a></h2>
 <p>Kubernetes中提供了多种自定义控制器的方式：</p>
 <ul>
-<li><a href="https://github.com/kubernetes/code-generator">code-generator</a></li>
-<li><a href="https://github.com/kubernetes-sigs/kubebuilder">kubebuilder</a></li>
-<li><a href="https://github.com/operator-framework/operator-sdk">Operator</a></li>
+<li><a href="https://github.com/kubernetes/code-generator" target="_blank"
+   rel="noopener nofollow noreferrer" >code-generator</a></li>
+<li><a href="https://github.com/kubernetes-sigs/kubebuilder" target="_blank"
+   rel="noopener nofollow noreferrer" >kubebuilder</a></li>
+<li><a href="https://github.com/operator-framework/operator-sdk" target="_blank"
+   rel="noopener nofollow noreferrer" >Operator</a></li>
 </ul>
 <p>Controller 作为CRD的核心，这里将解释如何使用 <code>code-generator</code> 来创建自定义的控制器，作为文章的案例，将完成一个 Firewalld Port 规则的控制器作为描述，通过 Kubernetes 规则来生成对应节点上的 iptables规则。</p>
 <h3 id="prerequisites">Prerequisites<a hidden class="anchor" aria-hidden="true" href="#prerequisites">¶</a></h3>
 <h3 id="crd">CRD<a hidden class="anchor" aria-hidden="true" href="#crd">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l">apiextensions.k8s.io/v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">CustomResourceDefinition</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">metadata</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">ports.firewalld.fedoraproject.org</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l">firewalld.fedoraproject.org</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">scope</span><span class="p">:</span><span class="w"> </span><span class="l">Namespaced</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">names</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">plural</span><span class="p">:</span><span class="w"> </span><span class="l">ports</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">singular</span><span class="p">:</span><span class="w"> </span><span class="l">port</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l">PortRule</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">shortNames</span><span class="p">:</span><span class="w"> 
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">fp</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">versions</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">v1</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">served</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">storage</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">schema</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">openAPIV3Schema</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">object</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">properties</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">spec</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">object</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nt">properties</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">name</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">string</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">port</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">integer</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">host</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">string</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">isPermanent</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l">boolean</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="code-generator">code-generator<a hidden class="anchor" aria-hidden="true" href="#code-generator">¶</a></h3>
+<pre><code class="language-yaml">apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ports.firewalld.fedoraproject.org
+spec:
+  group: firewalld.fedoraproject.org
+  scope: Namespaced
+  names:
+    plural: ports
+    singular: port
+    kind: PortRule
+    shortNames: 
+    - fp
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                type: string
+              port:
+                type: integer
+              host:
+                type: string
+              isPermanent:
+                type: boolean
+
+</code></pre>
+<h3 id="code-generator">code-generator<a hidden class="anchor" aria-hidden="true" href="#code-generator">¶</a></h3>
 <p>需要预先下载 <code>code-generator</code> 。因为这个工具不是必需要求的。</p>
 <blockquote>
 <p>注意，下载完成后需要将代码库的的分支更改为你目前使用的版本，版本的选择与client-go类似，如果使用master分支，会与当前的 Kubernetes 集群不兼容。</p>
 </blockquote>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">git clone https://github.com/kubernetes/code-generator
-</span></span><span class="line"><span class="cl"><span class="nb">cd</span> code-generator<span class="p">;</span> git checkout <span class="o">{</span>version<span class="o">}</span>  <span class="c1"># eg. v0.18.0</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="编写代码模板">编写代码模板<a hidden class="anchor" aria-hidden="true" href="#编写代码模板">¶</a></h3>
+<pre><code class="language-bash">git clone https://github.com/kubernetes/code-generator
+cd code-generator; git checkout {version}  # eg. v0.18.0
+</code></pre>
+<h3 id="编写代码模板">编写代码模板<a hidden class="anchor" aria-hidden="true" href="#编写代码模板">¶</a></h3>
 <p>要想使用 <code>code-generator</code> 生成控制器，必须准备三个文件 <code>doc.go</code> , <code>register.go</code> , <code>types.go</code> 。</p>
 <ul>
 <li><code>doc.go</code> 中声明了这个包全局内，要使用生成器的tag</li>
@@ -445,8 +405,10 @@ function toggleThemeListener() {
 <h3 id="code-generator-tag说明">code-generator Tag说明<a hidden class="anchor" aria-hidden="true" href="#code-generator-tag说明">¶</a></h3>
 <p>在使用 <code>code-generator</code> 时，就需要对 <code>code-generator</code> 的tag进行了解。<code>code-generator</code> 的tag是根据几个固定格式进行定义的，tag是 <code>+k8s:</code> + <code>conversion</code> 的组合，在仓库中 <code>cmd</code> 中的 <code>*-gen*</code> 文件夹就代表了 <em>conversion</em> 的替换位置。</p>
 <ul>
-<li>对于 <code>client-gen</code>的tag 参数可以在 <a href="https://github.com/kubernetes/code-generator/blob/master/cmd/client-gen/generators/util/tags.go">code-generator\cmd\client-gen\generators\util\tags.go</a></li>
-<li>对于其他类型的使用方法，例如 <a href="https://github.com/kubernetes/code-generator/blob/master/cmd/deepcopy-gen/main.go">deepcopy-gen</a> ,可以在包 main.go中看注释说明
+<li>对于 <code>client-gen</code>的tag 参数可以在 <a href="https://github.com/kubernetes/code-generator/blob/master/cmd/client-gen/generators/util/tags.go" target="_blank"
+   rel="noopener nofollow noreferrer" >code-generator\cmd\client-gen\generators\util\tags.go</a></li>
+<li>对于其他类型的使用方法，例如 <a href="https://github.com/kubernetes/code-generator/blob/master/cmd/deepcopy-gen/main.go" target="_blank"
+   rel="noopener nofollow noreferrer" >deepcopy-gen</a> ,可以在包 main.go中看注释说明
 <ul>
 <li>+k8s:openapi-gen=true：启用一个生成器</li>
 </ul>
@@ -458,187 +420,97 @@ function toggleThemeListener() {
 </blockquote>
 <h2 id="开始填写文件内容">开始填写文件内容<a hidden class="anchor" aria-hidden="true" href="#开始填写文件内容">¶</a></h2>
 <h4 id="typego">type.go<a hidden class="anchor" aria-hidden="true" href="#typego">¶</a></h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">v1</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span> <span class="s">&#34;k8s.io/apimachinery/pkg/apis/meta/v1&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// +genclient
-</span></span></span><span class="line"><span class="cl"><span class="c1">// +genclient:noStatus
-</span></span></span><span class="line"><span class="cl"><span class="c1">// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">Port</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Standard object metadata.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ObjectMeta</span> <span class="s">`json:&#34;metadata,omitempty&#34; protobuf:&#34;bytes,1,opt,name=metadata&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Specification of the desired behavior of the Deployment.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">Spec</span> <span class="nx">PortSpec</span> <span class="s">`json:&#34;spec,omitempty&#34; protobuf:&#34;bytes,2,opt,name=spec&#34;`</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// +k8s:deepcopy-gen=false
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">PortSpec</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Name</span>        <span class="kt">string</span> <span class="s">`json:&#34;name&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Host</span>        <span class="kt">string</span> <span class="s">`json:&#34;host&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">Port</span>        <span class="kt">int</span>    <span class="s">`json:&#34;port&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">IsPermanent</span> <span class="kt">bool</span>   <span class="s">`json:&#34;isPermanent&#34;`</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">PortList</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nx">TypeMeta</span> <span class="s">`json:&#34;,inline&#34;`</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// +optional
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">metav1</span><span class="p">.</span><span class="nx">ListMeta</span> <span class="s">`json:&#34;metadata,omitempty&#34;`</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="nx">Items</span> <span class="p">[]</span><span class="nx">Port</span> <span class="s">`json:&#34;items&#34;`</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="docgo">doc.go<a hidden class="anchor" aria-hidden="true" href="#docgo">¶</a></h4>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// +k8s:deepcopy-gen=package
-</span></span></span><span class="line"><span class="cl"><span class="c1">// +k8s:protobuf-gen=package
-</span></span></span><span class="line"><span class="cl"><span class="c1">// +k8s:openapi-gen=true
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
-</span></span><span class="line"><span class="cl"><span class="c1">// +groupName=firewalld.fedoraproject.org
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
-</span></span><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">v1</span> <span class="c1">// import &#34;k8s.io/api/firewalld/v1&#34;
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="registergo">register.go<a hidden class="anchor" aria-hidden="true" href="#registergo">¶</a></h4>
-<p>这里是从 <a href="https://github.com/kubernetes/kubernetes/tree/master/staging/src/k8s.io/api">k8s.io/api</a> 里任意一个复制的，例如 <a href="https://github.com/kubernetes/kubernetes/blob/609db7ed0b1f2839e414c17d29fe4d76edc994bd/staging/src/k8s.io/api/core/v1/register.go#L1">k8s.io/api/core/v1/register.go</a></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span><span class="lnt">22
-</span><span class="lnt">23
-</span><span class="lnt">24
-</span><span class="lnt">25
-</span><span class="lnt">26
-</span><span class="lnt">27
-</span><span class="lnt">28
-</span><span class="lnt">29
-</span><span class="lnt">30
-</span><span class="lnt">31
-</span><span class="lnt">32
-</span><span class="lnt">33
-</span><span class="lnt">34
-</span><span class="lnt">35
-</span><span class="lnt">36
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">v1</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span> <span class="s">&#34;k8s.io/apimachinery/pkg/apis/meta/v1&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/apimachinery/pkg/runtime&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;k8s.io/apimachinery/pkg/runtime/schema&#34;</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// GroupName is the group name use in this package
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">const</span> <span class="nx">GroupName</span> <span class="p">=</span> <span class="s">&#34;firewalld.fedoraproject.org&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// SchemeGroupVersion is group version used to register these objects
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">SchemeGroupVersion</span> <span class="p">=</span> <span class="nx">schema</span><span class="p">.</span><span class="nx">GroupVersion</span><span class="p">{</span><span class="nx">Group</span><span class="p">:</span> <span class="nx">GroupName</span><span class="p">,</span> <span class="nx">Version</span><span class="p">:</span> <span class="s">&#34;v1&#34;</span><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// Resource takes an unqualified resource and returns a Group qualified GroupResource
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">Resource</span><span class="p">(</span><span class="nx">resource</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">schema</span><span class="p">.</span><span class="nx">GroupResource</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">SchemeGroupVersion</span><span class="p">.</span><span class="nf">WithResource</span><span class="p">(</span><span class="nx">resource</span><span class="p">).</span><span class="nf">GroupResource</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// TODO: move SchemeBuilder with zz_generated.deepcopy.go to k8s.io/api.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="c1">// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span>	<span class="nx">SchemeBuilder</span>      <span class="p">=</span> <span class="nx">runtime</span><span class="p">.</span><span class="nf">NewSchemeBuilder</span><span class="p">(</span><span class="nx">addKnownTypes</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">localSchemeBuilder</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">SchemeBuilder</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">AddToScheme</span>        <span class="p">=</span> <span class="nx">localSchemeBuilder</span><span class="p">.</span><span class="nx">AddToScheme</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// Adds the list of known types to the given scheme.
-</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">addKnownTypes</span><span class="p">(</span><span class="nx">scheme</span> <span class="o">*</span><span class="nx">runtime</span><span class="p">.</span><span class="nx">Scheme</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">scheme</span><span class="p">.</span><span class="nf">AddKnownTypes</span><span class="p">(</span><span class="nx">SchemeGroupVersion</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">Port</span><span class="p">{},</span>
-</span></span><span class="line"><span class="cl">		<span class="o">&amp;</span><span class="nx">PortList</span><span class="p">{},</span>
-</span></span><span class="line"><span class="cl">	<span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">metav1</span><span class="p">.</span><span class="nf">AddToGroupVersion</span><span class="p">(</span><span class="nx">scheme</span><span class="p">,</span> <span class="nx">SchemeGroupVersion</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h4 id="生成所需文件">生成所需文件<a hidden class="anchor" aria-hidden="true" href="#生成所需文件">¶</a></h4>
-<p>使用 <code>code-generator</code> 时，实际上就是使用这个库中的脚本 <a href="https://github.com/kubernetes/code-generator/blob/master/generate-groups.sh">generate-groups.sh</a> ，该脚本又四个参数</p>
+<pre><code class="language-go">package v1
+
+import (
+	metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+)
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type Port struct {
+	metav1.TypeMeta `json:&quot;,inline&quot;`
+	// Standard object metadata.
+	// +optional
+	metav1.ObjectMeta `json:&quot;metadata,omitempty&quot; protobuf:&quot;bytes,1,opt,name=metadata&quot;`
+
+	// Specification of the desired behavior of the Deployment.
+	// +optional
+	Spec PortSpec `json:&quot;spec,omitempty&quot; protobuf:&quot;bytes,2,opt,name=spec&quot;`
+}
+
+// +k8s:deepcopy-gen=false
+type PortSpec struct {
+	Name        string `json:&quot;name&quot;`
+	Host        string `json:&quot;host&quot;`
+	Port        int    `json:&quot;port&quot;`
+	IsPermanent bool   `json:&quot;isPermanent&quot;`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type PortList struct {
+	metav1.TypeMeta `json:&quot;,inline&quot;`
+	// +optional
+	metav1.ListMeta `json:&quot;metadata,omitempty&quot;`
+
+	Items []Port `json:&quot;items&quot;`
+}
+
+</code></pre>
+<h4 id="docgo">doc.go<a hidden class="anchor" aria-hidden="true" href="#docgo">¶</a></h4>
+<pre><code class="language-go">// +k8s:deepcopy-gen=package
+// +k8s:protobuf-gen=package
+// +k8s:openapi-gen=true
+
+// +groupName=firewalld.fedoraproject.org
+
+package v1 // import &quot;k8s.io/api/firewalld/v1&quot;
+</code></pre>
+<h4 id="registergo">register.go<a hidden class="anchor" aria-hidden="true" href="#registergo">¶</a></h4>
+<p>这里是从 <a href="https://github.com/kubernetes/kubernetes/tree/master/staging/src/k8s.io/api" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/api</a> 里任意一个复制的，例如 <a href="https://github.com/kubernetes/kubernetes/blob/609db7ed0b1f2839e414c17d29fe4d76edc994bd/staging/src/k8s.io/api/core/v1/register.go#L1" target="_blank"
+   rel="noopener nofollow noreferrer" >k8s.io/api/core/v1/register.go</a></p>
+<pre><code class="language-go">package v1
+
+import (
+	metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+	&quot;k8s.io/apimachinery/pkg/runtime&quot;
+	&quot;k8s.io/apimachinery/pkg/runtime/schema&quot;
+)
+
+// GroupName is the group name use in this package
+const GroupName = &quot;firewalld.fedoraproject.org&quot;
+
+// SchemeGroupVersion is group version used to register these objects
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: &quot;v1&quot;}
+
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+var (
+	// TODO: move SchemeBuilder with zz_generated.deepcopy.go to k8s.io/api.
+	// localSchemeBuilder and AddToScheme will stay in k8s.io/kubernetes.
+	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
+	localSchemeBuilder = &amp;SchemeBuilder
+	AddToScheme        = localSchemeBuilder.AddToScheme
+)
+
+// Adds the list of known types to the given scheme.
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&amp;Port{},
+		&amp;PortList{},
+	)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
+}
+</code></pre>
+<h4 id="生成所需文件">生成所需文件<a hidden class="anchor" aria-hidden="true" href="#生成所需文件">¶</a></h4>
+<p>使用 <code>code-generator</code> 时，实际上就是使用这个库中的脚本 <a href="https://github.com/kubernetes/code-generator/blob/master/generate-groups.sh" target="_blank"
+   rel="noopener nofollow noreferrer" >generate-groups.sh</a> ，该脚本又四个参数</p>
 <ul>
 <li>第一个参数：使用那些生成器，就是 <em>*.gen</em>，用逗号分割，all表示使用全部</li>
 <li>第二个参数：client（client-go中informer, lister等）生成的文件存放到哪里</li>
@@ -651,27 +523,17 @@ function toggleThemeListener() {
 <p>注：对于参数二，三，与-output-base，指定的路径，这里可以使用相对路径也可以使用go.mod中的定义的包名，对于使用相对路径而言，生成的文件中的import也将会为 &ldquo;../../&rdquo; 的格式</p>
 </blockquote>
 <p>一个完整的示例</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">../code-generator/generate-groups.sh all <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	../code-controller/client <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	../code-controller/apis  <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	firewalld:v1 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--output-base ../code-controller/ <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	--go-header-file ../code-generator/hack/boilerplate.go.txt
-</span></span></code></pre></td></tr></table>
-</div>
-</div><blockquote>
+<pre><code class="language-bash">../code-generator/generate-groups.sh all \
+	../code-controller/client \
+	../code-controller/apis  \
+	firewalld:v1 \
+	--output-base ../code-controller/ \
+	--go-header-file ../code-generator/hack/boilerplate.go.txt
+</code></pre>
+<blockquote>
 <p>Reference</p>
-<p><a href="https://insujang.github.io/2020-02-13/programming-kubernetes-crd/">CRD Programming</a></p>
+<p><a href="https://insujang.github.io/2020-02-13/programming-kubernetes-crd/" target="_blank"
+   rel="noopener nofollow noreferrer" >CRD Programming</a></p>
 </blockquote>
 
 

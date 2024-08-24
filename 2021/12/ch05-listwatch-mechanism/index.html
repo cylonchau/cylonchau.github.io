@@ -10,7 +10,7 @@
 <meta name="description" content="理解kubernetes listwatch机制原理 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2021/12/ch05-listwatch-mechanism/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "kubernetes", "develop", "理解kubernetes listwatch机制原理"
   ],
-  "wordCount" : "2560",
+  "wordCount" : "2536",
   "inLanguage": "zh",
   "datePublished": "2021-12-12T00:00:00Z",
   "dateModified": "2023-03-22T23:00:36+08:00",
@@ -355,116 +355,65 @@ function toggleThemeListener() {
 </ul>
 <p>通过查询了一些资料，实际上也不明白这些究竟属于哪门科学中的理论，但是具体解释起来看的很明白。</p>
 <p><strong>LEVEL TRIGGERING</strong>：当电流有两个级别，<code>VH</code> 和 <code>VL</code>。代表了两个触发事件的级别。如果将<code>VH</code> 设置为LED在正时钟。当电压为VH时，LED可以在该时间线任何时刻点亮。这称为<strong>LEVEL TRIGGERING</strong>，每当遇到<code>VH</code> 时间线就会触发事件。事件是在时间内的任何时刻开始，直到满足条件。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png" alt="image-20211212232954599"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232954599.png" alt="image-20211212232954599" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p><strong>Edge TRIGGERING</strong>:</p>
 <p>如图所示，会看到上升线与下降线，当事件在上升/下降边缘触发时（两个状态的交点），称为边缘触发（<strong>Edge TRIGGERING</strong>:）。</p>
 <p>如果需要打开LED灯，则当时钟从<code>VL</code>转换到<code>VH</code>时才会亮起，而不是一家处在对应的时钟线上，仅仅是在过渡时亮起。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png" alt="image-20211212233004721"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233004721.png" alt="image-20211212233004721" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h2 id="为什么kubernetes使用level-trigger而不使用edge-trigger">为什么kubernetes使用Level Trigger而不使用Edge trigger<a hidden class="anchor" aria-hidden="true" href="#为什么kubernetes使用level-trigger而不使用edge-trigger">¶</a></h2>
 <p>如图所述，两种不同的设计模式，随着时间形状进行相应，当系统在由高转低，或由低转高时，系统处在关闭或者不可控的异常状态下，应如何触发对应的事件呢。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png" alt="image-20211212233012534"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233012534.png" alt="image-20211212233012534" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>换一种方式来来解释，比如说通过 加法运算，如下，i=3，当给I+4作为一个操作触发事件。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># let i=3
-</span></span><span class="line"><span class="cl"># let i+=4
-</span></span><span class="line"><span class="cl"># let i
-</span></span><span class="line"><span class="cl"># echo $i
-</span></span><span class="line"><span class="cl">7
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>当为<code>Edge trigger</code>时操作的情况下，将看到 <code>i+4</code> ,而在 <code>level trigger</code> 时看到的是 <code>i=7</code>。这里将会从``i+4` 一直到下一个信号的触发。</p>
+<pre><code># let i=3
+# let i+=4
+# let i
+# echo $i
+7
+</code></pre>
+<p>当为<code>Edge trigger</code>时操作的情况下，将看到 <code>i+4</code> ,而在 <code>level trigger</code> 时看到的是 <code>i=7</code>。这里将会从``i+4` 一直到下一个信号的触发。</p>
 <h3 id="信号的干扰">信号的干扰<a hidden class="anchor" aria-hidden="true" href="#信号的干扰">¶</a></h3>
 <p>通常情况下，两者是没有区别的，但在大规模分布式网络环境中，有很多因素的影响下，任何都是不可靠的，在这种情况下会改变了我们对事件信号的感知。</p>
 <p>如图所示，图为<code>Level Trigger</code>与<code>Edge trigger</code> 的信号发生模拟，在理想情况下，两者间并没有什么不同。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png" alt="image-20211212233021583"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212233021583.png" alt="image-20211212233021583" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h4 id="一次中断场景">一次中断场景<a hidden class="anchor" aria-hidden="true" href="#一次中断场景">¶</a></h4>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png" alt="image-20211212232713291"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232713291.png" alt="image-20211212232713291" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>由图可知，<code>Edge trigger</code>当在恰当的时间点发生信号中断，会对整个流产生很大的影响，甚至改变了整个状态，对于较少的干扰并不会对有更好的结果，而单次的中断，使<code>Edge trigger</code>错过了从高到低的变化，而 <code>level trigger</code> 基本上保证了整个信号量的所有改变状态。</p>
 <h4 id="两次中断的场景下">两次中断的场景下<a hidden class="anchor" aria-hidden="true" href="#两次中断的场景下">¶</a></h4>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png" alt="image-20211212232747769"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232747769.png" alt="image-20211212232747769" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>由图可看到，信号的上升和下降中如果存在了中断，<code>Edge trigger</code> 丢失了上升的信号，但最终状态是正确的。</p>
 <p>在信号状态的两次变化时发生了两次中断，<code>Level Trigger</code>与<code>Edge trigger</code> 之间的区别很明显，<code>Edge trigger</code> 的信号错过了第一次上升，而<code>Level Trigger</code> 保持了最后观察到的状态，知道拿到了其他状态，这种模式保证了得到的信号基本的正确性，但是发生延迟到中断恢复后。</p>
 <h4 id="通过运算来表示两种模式的变化情况">通过运算来表示两种模式的变化情况<a hidden class="anchor" aria-hidden="true" href="#通过运算来表示两种模式的变化情况">¶</a></h4>
 <p>完整的信号</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># let i=2</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># let i+1</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># let i-=1</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># let i+1</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># echo $i</span>
-</span></span><span class="line"><span class="cl"><span class="m">3</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p><strong>Edge trigger</strong></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># let i=2</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># let i+1  </span>
-</span></span><span class="line"><span class="cl"><span class="o">(</span><span class="c1"># let i-=1) miss this</span>
-</span></span><span class="line"><span class="cl"><span class="c1"># let i+1</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1"># echo $i</span>
-</span></span><span class="line"><span class="cl"><span class="m">4</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="如何使理想状态和实际状态一样呢">如何使理想状态和实际状态一样呢？<a hidden class="anchor" aria-hidden="true" href="#如何使理想状态和实际状态一样呢">¶</a></h2>
+<pre><code class="language-bash"># let i=2
+
+# let i+1
+# let i-=1
+# let i+1
+
+# echo $i
+3
+</code></pre>
+<p><strong>Edge trigger</strong></p>
+<pre><code class="language-bash"># let i=2
+
+# let i+1  
+(# let i-=1) miss this
+# let i+1
+
+# echo $i
+4
+</code></pre>
+<h2 id="如何使理想状态和实际状态一样呢">如何使理想状态和实际状态一样呢？<a hidden class="anchor" aria-hidden="true" href="#如何使理想状态和实际状态一样呢">¶</a></h2>
 <p>在Kubernetes中，不仅仅是观察对象的一个信号，还观察了其他两个信号，集群的期待状态与实际状态，期望的状态是用户期望集群所处的状态，如我运行了2个实例（pod）。在最理想的场景下，集群的实际状态与期待状态是相同的，但这个过程会受到任意的外界因素干扰被影响下，实际状态与理想状态发生偏差。</p>
 <p>Kubernetes必须接受实际状态，并将其与所需状态调和。不断地这样做，采取两种状态，确定其之间的差异，并纠正其不断的更改，以使实际状态达到理想状态。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png" alt="image-20211212232804746"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20211212232804746.png" alt="image-20211212232804746" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <p>如图所示，在一个<code>Edge trigger</code> 中，最终的结果很可能会与理想中的结果发生偏差。</p>
 <p>当初始实例为1时，并希望扩展为5个副本，然后再向下缩容到2个副本，则<code>Edge trigger</code>环境下将看到以下状态：系统的实际状态不能立即对这些命令作出反应。正如图所述，当只有3个副本在运行时，它可能会终止3个副本。这就给我们留下了0个副本，而不是所需的2个副本。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># let replicas=1
-</span></span><span class="line"><span class="cl"># let replicas += 4 # 此时副本数为5，但是这个过程需要时间而不是立即完成至理想状态
-</span></span><span class="line"><span class="cl"># let replicas -= 3 # 当未完成时又接到信号的变化，此时副本数为3，减去3，很可能实际状态为0，与理想状态2发生了偏差
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>而使用<code>Level Trigger</code>时，会总是比较完整的期望状态和实际状态，直到实际状态与期望状态相同。这大大减少了状态同步间（错误）的产生。</p>
+<pre><code># let replicas=1
+# let replicas += 4 # 此时副本数为5，但是这个过程需要时间而不是立即完成至理想状态
+# let replicas -= 3 # 当未完成时又接到信号的变化，此时副本数为3，减去3，很可能实际状态为0，与理想状态2发生了偏差
+</code></pre>
+<p>而使用<code>Level Trigger</code>时，会总是比较完整的期望状态和实际状态，直到实际状态与期望状态相同。这大大减少了状态同步间（错误）的产生。</p>
 <h2 id="summary">summary<a hidden class="anchor" aria-hidden="true" href="#summary">¶</a></h2>
 <p>每一种触发器的产生一定有其道理，<code>Edge trigger</code>本身并不是很差，只是应用场景的不同，而使用的模式也不同，比如nginx的高性能就是使用了<code>Edge trigger</code>模型，如nginx使用了 <code>Level trigger</code>在大并发下，当发生了变更信号等待返回时，发生大量客户端连接在侦听队列，而<code>Edge trigger</code>模型则不会出现这种情况。</p>
 <p>综上所述，kubernetes在设计时，各个组件需要感知数据的最终理想状态，无需担心错过数据变化的过程。而设计kubernentes系统消息通知机制（或数据实时通知机制），也应满足以下要求：</p>
@@ -482,8 +431,10 @@ function toggleThemeListener() {
 <p>正是因为Kubernetes使用了 <code>Level trigger</code>才让集群更加可靠。</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><a href="https://levelup.gitconnected.com/nginx-event-driven-architecture-demonstrated-in-code-51bf0061cad9">nginx-event-driven-architecture</a></p>
-<p><a href="https://www.quora.com/What-is-meant-by-edge-triggering-and-level-triggering">What-is-meant-by-edge-triggering-and-level-triggering</a></p>
+<p><a href="https://levelup.gitconnected.com/nginx-event-driven-architecture-demonstrated-in-code-51bf0061cad9" target="_blank"
+   rel="noopener nofollow noreferrer" >nginx-event-driven-architecture</a></p>
+<p><a href="https://www.quora.com/What-is-meant-by-edge-triggering-and-level-triggering" target="_blank"
+   rel="noopener nofollow noreferrer" >What-is-meant-by-edge-triggering-and-level-triggering</a></p>
 </blockquote>
 
 
@@ -540,7 +491,7 @@ function toggleThemeListener() {
 	
 	<li><a href="/2021/02/calico-deploy-on-hybrid-cloud/"><span>基于混合云模式的calico部署</span></a></li>
 	
-	<li><a href="/2021/01/pass-base-dashboard-k8s/"><span>转：基于Kubernetes的PaaS平台提供dashboard支持的一种方案</span></a></li>
+	<li><a href="/2021/01/pass-base-dashboard-k8s/"><span>基于Kubernetes的PaaS平台提供dashboard支持的一种方案</span></a></li>
 	
 </ul>
 

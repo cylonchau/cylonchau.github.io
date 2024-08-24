@@ -10,7 +10,7 @@
 <meta name="description" content="我在Prometheus监控中高基数问题中的优化之路 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2023/06/impove-prometheus-performance/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "prometheus", "cardinality"
   ],
-  "wordCount" : "3663",
+  "wordCount" : "3595",
   "inLanguage": "zh",
   "datePublished": "2023-06-14T00:00:00Z",
   "dateModified": "2023-06-14T23:00:36+08:00",
@@ -361,8 +361,7 @@ function toggleThemeListener() {
 </ul>
 <p>那么这么看来高基数就是，label, series, 时间这三个集合的笛卡尔积，那么高基数的情况就很正常了。</p>
 <p>而高基数带来的则是 Prometheus 资源使用，以及监控的性能。下图是 Grafana Lab 提到的一张图，很好的阐述了高基数这个问题</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cardinality-spikes-diagram.jpg" alt="image-20220704002227865"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cardinality-spikes-diagram.jpg" alt="image-20220704002227865" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Prometheus中的基数</center>
 <center><em>Source：</em>https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter</center><br>
 <p>如图所示：一个指标 <em>server_responses</em> 他的 label 存在两个 <code>status_code</code> 与 <code>environment</code> ，这代表了一个集合，那他的 label value 是 1~5xx，这个指标的笛卡尔积就是10。</p>
@@ -401,27 +400,16 @@ function toggleThemeListener() {
 <li>Prometheus API 分析</li>
 </ul>
 <p>通常情况下，WEB UI 就可以满足需求了，通过路径 Prometheus UI -&gt; Status -&gt; TSDB Status -&gt; Head Cardinality Stats。</p>
-<p>
-  <img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230617175638751.png" alt="image-20230617175638751"  /></p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230617175638751.png" alt="image-20230617175638751" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Prometheus WEB UI TOP 10 series</center>
 <p>由上图可见，在这里体现的高基数问题的指标，通常都是以 <em>bucket</em> 结尾的指标，而这些指标通常包含2个维度，会无线拉长成为高基数指标。如下面指标所示，通常由 le （标识每个 bucket 的上限，这可以确保可以定位到在一个时间范围内相应的请求指标有哪些）</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">apiserver_request_duration_seconds_bucket{component=&#34;apiserver&#34;, endpoint=&#34;https&#34;, group=&#34;admissionregistration.k8s.io&#34;, instance=&#34;10.0.0.4:6443&#34;, job=&#34;apiserver&#34;, le=&#34;+Inf&#34;, namespace=&#34;default&#34;, resource=&#34;mutatingwebhookconfigurations&#34;, scope=&#34;cluster&#34;, service=&#34;kubernetes&#34;, verb=&#34;DELETE&#34;, version=&#34;v1&#34;}	19
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">apiserver_request_duration_seconds_bucket{component=&#34;apiserver&#34;, endpoint=&#34;https&#34;, group=&#34;admissionregistration.k8s.io&#34;, instance=&#34;10.0.0.4:6443&#34;, job=&#34;apiserver&#34;, le=&#34;0.05&#34;, namespace=&#34;default&#34;, resource=&#34;mutatingwebhookconfigurations&#34;, scope=&#34;cluster&#34;, service=&#34;kubernetes&#34;, verb=&#34;POST&#34;, version=&#34;v1&#34;}
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">apiserver_request_duration_seconds_bucket{component=&#34;apiserver&#34;, endpoint=&#34;https&#34;, group=&#34;admissionregistration.k8s.io&#34;, instance=&#34;10.0.0.4:6443&#34;, job=&#34;apiserver&#34;, le=&#34;0.25&#34;, namespace=&#34;default&#34;, resource=&#34;mutatingwebhookconfigurations&#34;, scope=&#34;cluster&#34;, service=&#34;kubernetes&#34;, verb=&#34;PATCH&#34;, version=&#34;v1&#34;}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>例如下面是生产环境中的一个高基数TOP10</p>
+<pre><code>apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;+Inf&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;DELETE&quot;, version=&quot;v1&quot;}	19
+
+apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;0.05&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;POST&quot;, version=&quot;v1&quot;}
+
+apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;0.25&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;PATCH&quot;, version=&quot;v1&quot;}
+</code></pre>
+<p>例如下面是生产环境中的一个高基数TOP10</p>
 <table>
 <thead>
 <tr>
@@ -487,198 +475,105 @@ function toggleThemeListener() {
 <p>优化监控指标来解决高基数问题主要从以下维度进行</p>
 <h3 id="增加采集间隔"><strong>增加采集间隔</strong><a hidden class="anchor" aria-hidden="true" href="#增加采集间隔">¶</a></h3>
 <p>Prometheus 的默认值为 <code>scrape_interval: 15s</code>，或 DPM (<em>Data points  Per minute</em>) 4个，但是如果查询语句为 <code>scrape_samples_scraped[1m]</code> 那么可以考虑将这个 job 的 <code>scrape_interval</code> 增加为1m，这样15~60 可以减少近75%的存储成本。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">kube-state-metrics:
-</span></span><span class="line"><span class="cl">  namespaceOverride: <span class="s2">&#34;&#34;</span>
-</span></span><span class="line"><span class="cl">  rbac:
-</span></span><span class="line"><span class="cl">    create: <span class="nb">true</span>
-</span></span><span class="line"><span class="cl">  releaseLabel: <span class="nb">true</span>
-</span></span><span class="line"><span class="cl">  prometheus:
-</span></span><span class="line"><span class="cl">    monitor:
-</span></span><span class="line"><span class="cl">      enabled: <span class="nb">true</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">      <span class="c1">## Scrape interval. If not set, the Prometheus default scrape interval is used.</span>
-</span></span><span class="line"><span class="cl">      <span class="c1">##</span>
-</span></span><span class="line"><span class="cl">      interval: <span class="s2">&#34;&#34;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="优化-histogram">优化 histogram<a hidden class="anchor" aria-hidden="true" href="#优化-histogram">¶</a></h2>
+<pre><code class="language-bash">kube-state-metrics:
+  namespaceOverride: &quot;&quot;
+  rbac:
+    create: true
+  releaseLabel: true
+  prometheus:
+    monitor:
+      enabled: true
+
+      ## Scrape interval. If not set, the Prometheus default scrape interval is used.
+      ##
+      interval: &quot;&quot;
+</code></pre>
+<h2 id="优化-histogram">优化 histogram<a hidden class="anchor" aria-hidden="true" href="#优化-histogram">¶</a></h2>
 <p>histrogram 是 Prometheus中一种更具有更复杂类型的监控指标，通常用于决定数据的精度，典型的例子就是上面提到的 <code>http_server_requests_seconds_bucket</code> 中的 <code>le</code> ，此时假设 le 代表请求毫秒，那么我们只需要决定你所需要的精度是哪些？例如，如果仅仅需要 1ms, 5ms, 10ms，那么指标 le 标签就控制为3，这样结合 URI 指标，那么这个 histogram 是有限的</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="c"># drop all metric series ending with _bucket and where le=&#34;0.1xxx&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">source_labels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__name__, le]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">separator</span><span class="p">:</span><span class="w"> </span><span class="l">_</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;.+_bucket_(0.1+)&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;drop&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Object labels:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">__name__</span><span class="p">:</span><span class="w"> </span><span class="l">http_server_requests_seconds_bucket</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">le</span><span class="p">:</span><span class="w"> </span><span class="m">0.114421</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>这里可以通过 <a href="https://relabeler.promlabs.com/">promlabs</a> 来测试你的规则是否是成功的 <sup><a href="#2">[2]</a></sup></p>
+<pre><code class="language-yaml"># drop all metric series ending with _bucket and where le=&quot;0.1xxx&quot;
+- source_labels: [__name__, le]
+  separator: _
+  regex: &quot;.+_bucket_(0.1+)&quot;
+  action: &quot;drop&quot;
+  
+# Object labels:
+__name__: http_server_requests_seconds_bucket
+le: 0.114421
+</code></pre>
+<p>这里可以通过 <a href="https://relabeler.promlabs.com/" target="_blank"
+   rel="noopener nofollow noreferrer" >promlabs</a> 来测试你的规则是否是成功的 <sup><a href="#2">[2]</a></sup></p>
 <h3 id="删除不需要的标签">删除不需要的标签<a hidden class="anchor" aria-hidden="true" href="#删除不需要的标签">¶</a></h3>
 <p>对于一些指标，删除了未使用的标签后，反而会使这个指标变得没有意义，并且使这个指标变得序列重复，这个时候可以完整删除这个指标</p>
 <p>例如在下面的示例中，第一个示例可以安全地删除 ip 标签，因为其余系列都是唯一的。但在第二个示例中，如果删除 ip 标签将产生重复的时间序列，Prometheus 将删除这些时间序列。<code>my_metric_total</code>在此示例中，Prometheus 将接收具有相同时间戳的值 1、3 和 7，并将丢弃其中的 2 个数据点。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># You can drop ip label, remaining series are still unique
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”, ip=“1.1.1.1&#34;} 12
-</span></span><span class="line"><span class="cl">my_metric_total{env=“tst”, ip=“1.1.1.1&#34;} 14
-</span></span><span class="line"><span class="cl">my_metric_total{env=“prd”, ip=“1.1.1.1&#34;} 18
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">#Remaining values after dropping ip label
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”} 12
-</span></span><span class="line"><span class="cl">my_metric_total{env=“tst”} 14
-</span></span><span class="line"><span class="cl">my_metric_total{env=“prd”} 18
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"># You can not drop ip label, remaining series are not unique
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”, ip=“1.1.1.1&#34;} 1
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”, ip=“3.3.3.3&#34;} 3
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”, ip=“5.5.5.5&#34;} 7
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">#Remaining values after dropping ip label are not unique
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”} 1
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”} 3
-</span></span><span class="line"><span class="cl">my_metric_total{env=“dev”} 7
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>如果无法控制删除标签将导致重复序列，通过 Prometheus  sum、avg、min、max等函数可以保留聚合数据，同时删除单个系列。在下面的示例中，我们使用 sum 函数来存储聚合指标，从而允许我们删除单个时间序列。</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span><span class="lnt">5
-</span><span class="lnt">6
-</span><span class="lnt">7
-</span><span class="lnt">8
-</span><span class="lnt">9
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># sum by env
-</span></span><span class="line"><span class="cl">my_metric_total{env=&#34;dev&#34;, ip=&#34;1.1.1.1&#34;} 1
-</span></span><span class="line"><span class="cl">my_metric_total{env=&#34;dev&#34;, ip=&#34;3.3.3.3&#34;} 3
-</span></span><span class="line"><span class="cl">my_metric_total{env=&#34;dev&#34;, ip=&#34;5.5.5.5&#34;} 7
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"># Recording rule
-</span></span><span class="line"><span class="cl">sum by(env) (my_metric_total{})
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">my_metric_total{env=&#34;dev&#34;} 11
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="使用聚合组">使用聚合组<a hidden class="anchor" aria-hidden="true" href="#使用聚合组">¶</a></h3>
+<pre><code># You can drop ip label, remaining series are still unique
+my_metric_total{env=“dev”, ip=“1.1.1.1&quot;} 12
+my_metric_total{env=“tst”, ip=“1.1.1.1&quot;} 14
+my_metric_total{env=“prd”, ip=“1.1.1.1&quot;} 18
+
+#Remaining values after dropping ip label
+my_metric_total{env=“dev”} 12
+my_metric_total{env=“tst”} 14
+my_metric_total{env=“prd”} 18
+
+# You can not drop ip label, remaining series are not unique
+my_metric_total{env=“dev”, ip=“1.1.1.1&quot;} 1
+my_metric_total{env=“dev”, ip=“3.3.3.3&quot;} 3
+my_metric_total{env=“dev”, ip=“5.5.5.5&quot;} 7
+
+#Remaining values after dropping ip label are not unique
+my_metric_total{env=“dev”} 1
+my_metric_total{env=“dev”} 3
+my_metric_total{env=“dev”} 7
+</code></pre>
+<p>如果无法控制删除标签将导致重复序列，通过 Prometheus  sum、avg、min、max等函数可以保留聚合数据，同时删除单个系列。在下面的示例中，我们使用 sum 函数来存储聚合指标，从而允许我们删除单个时间序列。</p>
+<pre><code># sum by env
+my_metric_total{env=&quot;dev&quot;, ip=&quot;1.1.1.1&quot;} 1
+my_metric_total{env=&quot;dev&quot;, ip=&quot;3.3.3.3&quot;} 3
+my_metric_total{env=&quot;dev&quot;, ip=&quot;5.5.5.5&quot;} 7
+
+# Recording rule
+sum by(env) (my_metric_total{})
+
+my_metric_total{env=&quot;dev&quot;} 11
+</code></pre>
+<h3 id="使用聚合组">使用聚合组<a hidden class="anchor" aria-hidden="true" href="#使用聚合组">¶</a></h3>
 <p>例如对于 <code>*_seconds_bucket</code> 类的指标, 通常需要的是一些高纬度的指标，那么这些指标可以通过 <code>recording rules</code> 进行记录和存储</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">groups</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l">3m</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">kube-apiserver-availability.rules</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">rules</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p">&gt;-</span><span class="sd">
-</span></span></span><span class="line"><span class="cl"><span class="sd">          avg_over_time(code_verb:apiserver_request_total:increase1h[30d]) *
-</span></span></span><span class="line"><span class="cl"><span class="sd">          24 * 30</span><span class="w">          
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">record</span><span class="p">:</span><span class="w"> </span><span class="l">code_verb:apiserver_request_total:increase30d</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p">&gt;-</span><span class="sd">
-</span></span></span><span class="line"><span class="cl"><span class="sd">          sum by (cluster, code, verb)
-</span></span></span><span class="line"><span class="cl"><span class="sd">          (increase(apiserver_request_total{job=&#34;apiserver&#34;,verb=~&#34;LIST|GET|POST|PUT|PATCH|DELETE&#34;,code=~&#34;2..&#34;}[1h]))</span><span class="w">          
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">record</span><span class="p">:</span><span class="w"> </span><span class="l">code_verb:apiserver_request_total:increase1h</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="p">&gt;-</span><span class="sd">
-</span></span></span><span class="line"><span class="cl"><span class="sd">          sum by (cluster, code, verb)
-</span></span></span><span class="line"><span class="cl"><span class="sd">          (increase(apiserver_request_total{job=&#34;apiserver&#34;,verb=~&#34;LIST|GET|POST|PUT|PATCH|DELETE&#34;,code=~&#34;5..&#34;}[1h]))</span><span class="w">          
-</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">record</span><span class="p">:</span><span class="w"> </span><span class="l">code_verb:apiserver_request_total:increase1h</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p>最后 drop 掉指标</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span><span class="lnt">2
-</span><span class="lnt">3
-</span><span class="lnt">4
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">write_relabel_configs</span><span class="p">:</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">source_labels</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">__name__]</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">regex</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;apiserver_request_duration_seconds_bucket&#34;</span><span class="w">
-</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l">drop</span><span class="w">
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div><p><code>recording rules</code> 是允许预先将经常计算的表达式的结果保存为一组新的时间序列的，这种情况下查询的成本会比每次直接查询原始的表达式要快许多，并且在聚合后，可以将原来的指标删掉</p>
+<pre><code class="language-yaml">groups:
+  - interval: 3m
+    name: kube-apiserver-availability.rules
+    rules:
+      - expr: &gt;-
+          avg_over_time(code_verb:apiserver_request_total:increase1h[30d]) *
+          24 * 30
+        record: code_verb:apiserver_request_total:increase30d
+      - expr: &gt;-
+          sum by (cluster, code, verb)
+          (increase(apiserver_request_total{job=&quot;apiserver&quot;,verb=~&quot;LIST|GET|POST|PUT|PATCH|DELETE&quot;,code=~&quot;2..&quot;}[1h]))
+        record: code_verb:apiserver_request_total:increase1h
+      - expr: &gt;-
+          sum by (cluster, code, verb)
+          (increase(apiserver_request_total{job=&quot;apiserver&quot;,verb=~&quot;LIST|GET|POST|PUT|PATCH|DELETE&quot;,code=~&quot;5..&quot;}[1h]))
+        record: code_verb:apiserver_request_total:increase1h
+</code></pre>
+<p>最后 drop 掉指标</p>
+<pre><code class="language-yaml">write_relabel_configs:
+  - source_labels: [__name__]
+    regex: &quot;apiserver_request_duration_seconds_bucket&quot;
+    action: drop
+</code></pre>
+<p><code>recording rules</code> 是允许预先将经常计算的表达式的结果保存为一组新的时间序列的，这种情况下查询的成本会比每次直接查询原始的表达式要快许多，并且在聚合后，可以将原来的指标删掉</p>
 <h2 id="reference">Reference<a hidden class="anchor" aria-hidden="true" href="#reference">¶</a></h2>
 <blockquote>
-<p><sup id="1">[1]</sup> <a href="https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter/">What are cardinality spikes and why do they matter?</a></p>
-<p><sup id="2">[2]</sup> <a href="https://grafana.com/blog/2022/10/20/how-to-manage-high-cardinality-metrics-in-prometheus-and-kubernetes/">How to manage high cardinality metrics in Prometheus and Kubernetes</a></p>
-<p><sup id="3">[3]</sup> <a href="https://www.xiaowu95.wang/posts/bfccfc4">精简Prometheus指标减少资源占用</a></p>
-<p><sup id="4">[4]</sup> <a href="https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter/">What are cardinality spikes and why do they matter?</a></p>
-<p><sup id="5">[5]</sup> <a href="https://promcon.io/2019-munich/slides/containing-your-cardinality.pdf">Containing your Cardinality</a></p>
+<p><sup id="1">[1]</sup> <a href="https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter/" target="_blank"
+   rel="noopener nofollow noreferrer" >What are cardinality spikes and why do they matter?</a></p>
+<p><sup id="2">[2]</sup> <a href="https://grafana.com/blog/2022/10/20/how-to-manage-high-cardinality-metrics-in-prometheus-and-kubernetes/" target="_blank"
+   rel="noopener nofollow noreferrer" >How to manage high cardinality metrics in Prometheus and Kubernetes</a></p>
+<p><sup id="3">[3]</sup> <a href="https://www.xiaowu95.wang/posts/bfccfc4" target="_blank"
+   rel="noopener nofollow noreferrer" >精简Prometheus指标减少资源占用</a></p>
+<p><sup id="4">[4]</sup> <a href="https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter/" target="_blank"
+   rel="noopener nofollow noreferrer" >What are cardinality spikes and why do they matter?</a></p>
+<p><sup id="5">[5]</sup> <a href="https://promcon.io/2019-munich/slides/containing-your-cardinality.pdf" target="_blank"
+   rel="noopener nofollow noreferrer" >Containing your Cardinality</a></p>
 </blockquote>
 
 

@@ -10,7 +10,7 @@
 <meta name="description" content="理解ldap配置 - OpenLDAP使用SSL/TLS通信安全 - Cylon&#39;s Collection">
 <meta name="author" content="cylon">
 <link rel="canonical" href="https://www.oomkill.com/2019/09/ch05-openldap-ssl/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.3bb4f84aec67825d7a3152940245f562f5450320b3f7b17556fca4031290d160.css" integrity="sha256-O7T4Suxngl16MVKUAkX1YvVFAyCz97F1VvykAxKQ0WA=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
 <link rel="icon" href="https://www.oomkill.com/favicon.ico">
 <link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
 
@@ -55,7 +55,7 @@
   "keywords": [
     "ldap", "linux", "ldap配置SSL通讯"
   ],
-  "wordCount" : "680",
+  "wordCount" : "614",
   "inLanguage": "zh",
   "datePublished": "2019-09-19T00:00:00Z",
   "dateModified": "2022-11-28T23:00:36+08:00",
@@ -338,189 +338,95 @@ function toggleThemeListener() {
 </ul>
 <h2 id="生成自签名证书">生成自签名证书<a hidden class="anchor" aria-hidden="true" href="#生成自签名证书">¶</a></h2>
 <p>创建CA证书</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">openssl genrsa -out cakey.key <span class="m">2048</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">openssl req -new -x509 <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-key cakey.key <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-out cacert.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-days <span class="m">3650</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-subj <span class="s2">&#34;/C=HK/ST=HK/O=TVB/OU=bigbigchannl/CN=tvb-ca&#34;</span>
-</span></span><span class="line"><span class="cl">	
-</span></span><span class="line"><span class="cl">touch index.txt
-</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s2">&#34;01&#34;</span> &gt; serial
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>生成证书请求</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">openssl genrsa -out openldap.key <span class="m">2048</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">openssl req -new <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-key openldap.key <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-out openldap.csr <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-days <span class="m">3650</span> <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-subj <span class="s2">&#34;/C=HK/ST=HK/O=TVB/OU=bigbigchannl/CN=10.0.0.4&#34;</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">openssl ca <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-in openldap.csr <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-cert cacert.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-keyfile cakey.key  <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-out openldap.crt <span class="se">\
-</span></span></span><span class="line"><span class="cl"><span class="se"></span>	-days <span class="m">3650</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="启用openldap-tls认证">启用openldap TLS认证<a hidden class="anchor" aria-hidden="true" href="#启用openldap-tls认证">¶</a></h2>
+<pre><code class="language-bash">openssl genrsa -out cakey.key 2048
+
+openssl req -new -x509 \
+	-key cakey.key \
+	-out cacert.crt \
+	-days 3650 \
+	-subj &quot;/C=HK/ST=HK/O=TVB/OU=bigbigchannl/CN=tvb-ca&quot;
+	
+touch index.txt
+echo &quot;01&quot; &gt; serial
+</code></pre>
+<p>生成证书请求</p>
+<pre><code class="language-bash">openssl genrsa -out openldap.key 2048
+
+openssl req -new \
+	-key openldap.key \
+	-out openldap.csr \
+	-days 3650 \
+	-subj &quot;/C=HK/ST=HK/O=TVB/OU=bigbigchannl/CN=10.0.0.4&quot;
+
+openssl ca \
+	-in openldap.csr \
+	-cert cacert.crt \
+	-keyfile cakey.key  \
+	-out openldap.crt \
+	-days 3650
+</code></pre>
+<h2 id="启用openldap-tls认证">启用openldap TLS认证<a hidden class="anchor" aria-hidden="true" href="#启用openldap-tls认证">¶</a></h2>
 <p>slapd TLS 部分配置是在全局部分</p>
 <h3 id="修改服务端参数">修改服务端参数<a hidden class="anchor" aria-hidden="true" href="#修改服务端参数">¶</a></h3>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span><span class="lnt">11
-</span><span class="lnt">12
-</span><span class="lnt">13
-</span><span class="lnt">14
-</span><span class="lnt">15
-</span><span class="lnt">16
-</span><span class="lnt">17
-</span><span class="lnt">18
-</span><span class="lnt">19
-</span><span class="lnt">20
-</span><span class="lnt">21
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl"># cn=config base（全局部分）
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">dn: cn=config
-</span></span><span class="line"><span class="cl">changetype: modify
-</span></span><span class="line"><span class="cl"># Security - TLS section
-</span></span><span class="line"><span class="cl">add: olcTLSCertificateFile
-</span></span><span class="line"><span class="cl"># cafile
-</span></span><span class="line"><span class="cl">olcTLSCertificateFile: /certs/ldapscert.pem
-</span></span><span class="line"><span class="cl">-
-</span></span><span class="line"><span class="cl">add: olcTLSCertificateKeyFile
-</span></span><span class="line"><span class="cl"># ca key
-</span></span><span class="line"><span class="cl">olcTLSCertificateKeyFile: /certs/keys/ldapskey.pem
-</span></span><span class="line"><span class="cl">-
-</span></span><span class="line"><span class="cl"># 证书
-</span></span><span class="line"><span class="cl">olcTLSCertificateFile: &#34;/etc/openldap/certs/openldap.crt&#34;
-</span></span><span class="line"><span class="cl">olcTLSCertificateKeyFile: &#34;/etc/openldap/certs/openldap.key&#34;
-</span></span><span class="line"><span class="cl">-
-</span></span><span class="line"><span class="cl"># the following directive is the default but 
-</span></span><span class="line"><span class="cl"># is explicitly included for visibility reasons
-</span></span><span class="line"><span class="cl">add: olcTLSVerifyClient
-</span></span><span class="line"><span class="cl">olcTLSVerifyClient: never
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="修改客户端参数">修改客户端参数<a hidden class="anchor" aria-hidden="true" href="#修改客户端参数">¶</a></h3>
+<pre><code># cn=config base（全局部分）
+
+dn: cn=config
+changetype: modify
+# Security - TLS section
+add: olcTLSCertificateFile
+# cafile
+olcTLSCertificateFile: /certs/ldapscert.pem
+-
+add: olcTLSCertificateKeyFile
+# ca key
+olcTLSCertificateKeyFile: /certs/keys/ldapskey.pem
+-
+# 证书
+olcTLSCertificateFile: &quot;/etc/openldap/certs/openldap.crt&quot;
+olcTLSCertificateKeyFile: &quot;/etc/openldap/certs/openldap.key&quot;
+-
+# the following directive is the default but 
+# is explicitly included for visibility reasons
+add: olcTLSVerifyClient
+olcTLSVerifyClient: never
+</code></pre>
+<h3 id="修改客户端参数">修改客户端参数<a hidden class="anchor" aria-hidden="true" href="#修改客户端参数">¶</a></h3>
 <h3 id="命令行指令相关配置">命令行指令相关配置<a hidden class="anchor" aria-hidden="true" href="#命令行指令相关配置">¶</a></h3>
 <p>客户端时指 <code>ladpadd</code>，<code>ladpsearch</code> 相关配置文件，默认为  <code>/etc/openldap/ldap.conf</code></p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">URI	ldap://ldap.example.com ldaps://10.0.0.4:636
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">#SIZELIMIT	12
-</span></span><span class="line"><span class="cl">#TIMELIMIT	15
-</span></span><span class="line"><span class="cl">#DEREF		never
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">TLS_CACERTDIR	/etc/openldap/certs
-</span></span><span class="line"><span class="cl">TLS_CACERT /etc/openldap/certs/cacert.crt
-</span></span><span class="line"><span class="cl">TLS_CERT /etc/openldap/certs/openldap.csr
-</span></span><span class="line"><span class="cl">TLS_KEY  /etc/openldap/certs/openldap.key
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>修改服务要监听的地址</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt">1
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">SLAPD_URLS=&#34;ldapi:/// ldaps:///&#34;
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h3 id="同步时相关配置">同步时相关配置<a hidden class="anchor" aria-hidden="true" href="#同步时相关配置">¶</a></h3>
+<pre><code>URI	ldap://ldap.example.com ldaps://10.0.0.4:636
+
+#SIZELIMIT	12
+#TIMELIMIT	15
+#DEREF		never
+
+TLS_CACERTDIR	/etc/openldap/certs
+TLS_CACERT /etc/openldap/certs/cacert.crt
+TLS_CERT /etc/openldap/certs/openldap.csr
+TLS_KEY  /etc/openldap/certs/openldap.key
+</code></pre>
+<p>修改服务要监听的地址</p>
+<pre><code>SLAPD_URLS=&quot;ldapi:/// ldaps:///&quot;
+</code></pre>
+<h3 id="同步时相关配置">同步时相关配置<a hidden class="anchor" aria-hidden="true" href="#同步时相关配置">¶</a></h3>
 <p>在同步时仅仅需要修改slave部分配置即可</p>
-<div class="highlight"><div class="chroma">
-<table class="lntable"><tr><td class="lntd">
-<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
-</span><span class="lnt"> 2
-</span><span class="lnt"> 3
-</span><span class="lnt"> 4
-</span><span class="lnt"> 5
-</span><span class="lnt"> 6
-</span><span class="lnt"> 7
-</span><span class="lnt"> 8
-</span><span class="lnt"> 9
-</span><span class="lnt">10
-</span></code></pre></td>
-<td class="lntd">
-<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">syncrepl
-</span></span><span class="line"><span class="cl"> rid=000
-</span></span><span class="line"><span class="cl"> type=RefreshandPersist
-</span></span><span class="line"><span class="cl"> provider=ldaps://ldap-master.example.com
-</span></span><span class="line"><span class="cl"> bindmethod=simple
-</span></span><span class="line"><span class="cl"> searchbase=&#34;dc=example,dc=com&#34;
-</span></span><span class="line"><span class="cl"> retry=&#34;5 3 300 +&#34;
-</span></span><span class="line"><span class="cl"> attrs=&#34;*,+&#34;
-</span></span><span class="line"><span class="cl"> binddn=&#34;....&#34;
-</span></span><span class="line"><span class="cl"> credentials=....
-</span></span></code></pre></td></tr></table>
-</div>
-</div><h2 id="troubleshooing">Troubleshooing<a hidden class="anchor" aria-hidden="true" href="#troubleshooing">¶</a></h2>
+<pre><code class="language-ldif">syncrepl
+ rid=000
+ type=RefreshandPersist
+ provider=ldaps://ldap-master.example.com
+ bindmethod=simple
+ searchbase=&quot;dc=example,dc=com&quot;
+ retry=&quot;5 3 300 +&quot;
+ attrs=&quot;*,+&quot;
+ binddn=&quot;....&quot;
+ credentials=....
+</code></pre>
+<h2 id="troubleshooing">Troubleshooing<a hidden class="anchor" aria-hidden="true" href="#troubleshooing">¶</a></h2>
 <p>错误 <code>Re: OpenLDAP/TLS main: TLS init def ctx failed: -207</code></p>
 <ul>
-<li><a href="https://www.openldap.org/lists/openldap-software/200901/msg00134.html">OpenLDAP/TLS main: TLS init def ctx failed: -207</a></li>
-<li><a href="https://www.openldap.org/lists/openldap-software/200812/msg00100.html">how to configure tls and ldap</a></li>
+<li><a href="https://www.openldap.org/lists/openldap-software/200901/msg00134.html" target="_blank"
+   rel="noopener nofollow noreferrer" >OpenLDAP/TLS main: TLS init def ctx failed: -207</a></li>
+<li><a href="https://www.openldap.org/lists/openldap-software/200812/msg00100.html" target="_blank"
+   rel="noopener nofollow noreferrer" >how to configure tls and ldap</a></li>
 </ul>
 <p>错误 <code>Re: slapadd: could not parse entry (line=13)</code></p>
 <ul>
@@ -529,11 +435,13 @@ function toggleThemeListener() {
 <p>错误:  <code>openssl slapd tls init def ctx failed: -1</code> ；证书的路径，文件名，权限是否正确</p>
 <p>验证证书 <code>openssl verify -CAfile {ca.crt} {.crt}</code></p>
 <ul>
-<li><a href="https://www.openldap.org/lists/openldap-technical/201502/msg00168.html">RE: main: TLS init def ctx failed: -1</a></li>
+<li><a href="https://www.openldap.org/lists/openldap-technical/201502/msg00168.html" target="_blank"
+   rel="noopener nofollow noreferrer" >RE: main: TLS init def ctx failed: -1</a></li>
 </ul>
 <blockquote>
 <p>Reference：</p>
-<p><a href="https://www.zytrax.com/books/ldap/ch15/#tls">Chapter 15. LDAP Security</a></p>
+<p><a href="https://www.zytrax.com/books/ldap/ch15/#tls" target="_blank"
+   rel="noopener nofollow noreferrer" >Chapter 15. LDAP Security</a></p>
 </blockquote>
 
 
