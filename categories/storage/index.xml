@@ -6,7 +6,651 @@
     <description>Recent content in storage on Cylon&#39;s Collection</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 13 Feb 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/storage/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 13 Sep 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/storage/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Ceph OSD内存优化与建议</title>
+      <link>https://www.oomkill.com/2024/09/03-3-ceph-osd-performance-recommendation/</link>
+      <pubDate>Fri, 13 Sep 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/09/03-3-ceph-osd-performance-recommendation/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>本文记录了在使用 ceph 集群时遭遇到的内存问题，以及引用和参考一些资料用于对在 ceph 集群使用时的内存预估。</p>
+<h2 id="osd的内存需求">OSD的内存需求</h2>
+<p>如何评估 Ceph OSD 所需的硬件也是对于集群选型，集群优化的一个必要条件，这里主要找到两个可靠的参考资料用于评估 OSD 内存配置大小</p>
+<h3 id="ibm-storage-ceph">IBM Storage Ceph</h3>
+<p>IBM  Storage  Ceph 提供了一个运行 Ceph 用于预估系统配置的一个最小推荐列表 <sup><a href="#1">[1]</a></sup>，个人感觉可以参考这些信息用于自己集群的优化。主要用于容器化的 Ceph 集群</p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Criteria</th>
+<th>Minimum Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em><strong>ceph-osd-container</strong></em></td>
+<td>Processor</td>
+<td>1x AMD64 or Intel 64 CPU CORE per OSD container</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>Minimum of 5 GB of RAM per OSD container</td>
+</tr>
+<tr>
+<td></td>
+<td>OS Disk</td>
+<td>1x OS disk per host</td>
+</tr>
+<tr>
+<td></td>
+<td>OSD Storage</td>
+<td>1x storage drive per OSD container. Cannot be shared with OS Disk.</td>
+</tr>
+<tr>
+<td></td>
+<td>block.db</td>
+<td>Optional, but IBM recommended, 1x SSD or NVMe or Optane partition or lvm per daemon. Sizing is 4% of <code>block.data</code> for BlueStore for object, file, and mixed workloads and 1% of <code>block.data</code> for the BlueStore for Block Device, Openstack cinder, and Openstack cinder workloads.</td>
+</tr>
+<tr>
+<td></td>
+<td><code>block.wal</code></td>
+<td>Optionally, 1x SSD or NVMe or Optane partition or logical volume per daemon. Use a small size, for example 10 GB, and only if it’s faster than the <code>block.db</code> device.</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 10 GB Ethernet NICs</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mon-container</strong></em></td>
+<td>Processor</td>
+<td>1x AMD64 or Intel 64 CPU CORE per mon-container</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>3 GB per <code>mon-container</code></td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>10 GB per <code>mon-container</code>, 50 GB Recommended</td>
+</tr>
+<tr>
+<td></td>
+<td>Monitor Disk</td>
+<td>Optionally, 1x SSD disk for <code>Monitor rocksdb</code> data</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1 GB Ethernet NICs, 10 GB Recommended</td>
+</tr>
+<tr>
+<td></td>
+<td>Prometheus</td>
+<td>20 GB to 50 GB under <code>/var/lib/ceph/</code> directory created as a separate file system to protect the contents under <code>/var/</code> directory.</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mgr-container</strong></em></td>
+<td>Processor</td>
+<td>1x AMD64 or Intel 64 CPU CORE per <code>mgr-container</code></td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>3 GB per <code>mgr-container</code></td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1 GB Ethernet NICs, 10 GB Recommended</td>
+</tr>
+<tr>
+<td><em><strong>ceph-radosgw-container</strong></em></td>
+<td>Processor</td>
+<td>1x AMD64 or Intel 64 CPU CORE per radosgw-container</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>1 GB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>5 GB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>1x 1 GB Ethernet NICs</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mds-container</strong></em></td>
+<td>Processor</td>
+<td>1x AMD64 or Intel 64 CPU CORE per mds-container</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>3 GB per <code>mds-container</code>  This number is highly dependent on the configurable MDS cache size. The RAM requirement is typically twice as much as the amount set in the <code>mds_cache_memory_limit</code> configuration setting. Note also that this is the memory for your daemon, not the overall system memory.</td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>2 GB per <code>mds-container</code>, plus considering any additional space required for possible debug logging, 20 GB is a good start.</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1 GB Ethernet NICs, 10 GB Recommended Note that this is the same network as the OSD containers. If you have a 10 GB network on your OSDs you should use the same on your MDS so that the MDS is not disadvantaged when it comes to latency.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hardware-recommendations">Hardware Recommendations</h3>
+<p>Ceph 官方也提供了相应的硬件配置推荐，关键参数写的比较清晰，但实际的规模比较模棱两可，也是可以提供一些参考的，并且每个版本的 Ceph 所推荐的硬件也是不相同的。</p>
+<p>下表是 Ceph nautilus 的推荐最小硬件 <sup><a href="#2">[2]</a></sup></p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Criteria</th>
+<th>Minimum Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em><strong>ceph-osd</strong></em></td>
+<td>Processor</td>
+<td>1x 64-bit AMD-64 1x 32-bit ARM dual-core or better</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>~1GB for 1TB of storage per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Volume Storage</td>
+<td>1x storage drive per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Journal</td>
+<td>1x SSD partition per daemon (optional)</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1GB Ethernet NICs</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mon</strong></em></td>
+<td>Processor</td>
+<td>1x 64-bit AMD-64 1x 32-bit ARM dual-core or better</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>1 GB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>10 GB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1GB Ethernet NICs</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mds</strong></em></td>
+<td>Processor</td>
+<td>1x 64-bit AMD-64 quad-core 1x 32-bit ARM quad-core</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>1 GB minimum per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>1 MB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>2x 1GB Ethernet NICs</td>
+</tr>
+</tbody>
+</table>
+<p>下表是 reef 版本的官方推荐最小配置 <sup><a href="#3">[3]</a></sup></p>
+<table>
+<thead>
+<tr>
+<th>Process</th>
+<th>Criteria</th>
+<th>Bare Minimum and Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em><strong>ceph-osd</strong></em></td>
+<td>Processor</td>
+<td>1 core minimum, 2 recommended 1 core per 200-500 MB/s throughput 1 core per 1000-3000 IOPS  Results are before replication. Results may vary across CPU and drive models and Ceph configuration: (erasure coding, compression, etc) ARM processors specifically may require more cores for performance. SSD OSDs, especially NVMe, will benefit from additional cores per OSD. Actual performance depends on many factors including drives, net, and client throughput and latency. Benchmarking is highly recommended.</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>4GB+ per daemon (more is better) 2-4GB may function but may be slow Less than 2GB is not recommended</td>
+</tr>
+<tr>
+<td></td>
+<td>Storage Drives</td>
+<td>1x storage drive per OSD</td>
+</tr>
+<tr>
+<td></td>
+<td>DB/WAL (optional)</td>
+<td>1x SSD partion per HDD OSD 4-5x HDD OSDs per DB/WAL SATA SSD &lt;= 10 HDD OSDss per DB/WAL NVMe SSD</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>1x 1Gb/s (bonded 10+ Gb/s recommended)</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mon</strong></em></td>
+<td>Processor</td>
+<td>2 cores minimum</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>5GB+ per daemon (large / production clusters need more)</td>
+</tr>
+<tr>
+<td></td>
+<td>Storage</td>
+<td>100 GB per daemon, SSD is recommended</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>1x 1Gb/s (10+ Gb/s recommended)</td>
+</tr>
+<tr>
+<td><em><strong>ceph-mds</strong></em></td>
+<td>Processor</td>
+<td>2 cores minimum</td>
+</tr>
+<tr>
+<td></td>
+<td>RAM</td>
+<td>2GB+ per daemon (more for production)</td>
+</tr>
+<tr>
+<td></td>
+<td>Disk Space</td>
+<td>1 GB per daemon</td>
+</tr>
+<tr>
+<td></td>
+<td>Network</td>
+<td>1x 1Gb/s (10+ Gb/s recommended)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="我们使用ceph环境的示例">我们使用Ceph环境的示例</h2>
+<p>用于 Openstack 环境的 Ceph OSD 使用内存记录，主要使用于RDB，机器配置为 1.8T, 900G 的混合硬盘，内存配置 512G， 可以看到 OSD 内存使用率在 0.3% 大概每个 OSD 使用内存量为 2GB。</p>
+<pre><code class="language-bash">PID USER      PR  NI    VIRT    RES    SHR S  %CPU    %MEM     TIME+     COMMAND
+225398 ceph   20   0 3849464   1.7g  22200 S   11.9    0.3    14501:14   ceph-osd    
+224860 ceph   20   0 3612380   1.7g  22424 S   9.2     0.3    12697:04   ceph-osd
+223902 ceph   20   0 3340844   1.7g  22172 S   8.6     0.3    21003:18   ceph-osd   
+223440 ceph   20   0 3213884   1.7g  22288 S   5.9     0.3     8548:00   ceph-osd
+224368 ceph   20   0 3292848   1.6g  22204 S   4.0     0.3     8655:56   ceph-osd     
+222889 ceph   20   0 3231012   1.7g  22180 S   3.3     0.3     8190:03   ceph-osd
+</code></pre>
+<p>用于业务使用的 Ceph OSD，主要用于对象存储，机器配置为 8c/16G，硬盘是 700G 每块，可以看到每个 OSD 使用的内存大概为 1.8-2G，大概 OSD 的分布是每个节点最多三个 OSD。</p>
+<p>Ceph node 01</p>
+<pre><code class="language-bash"># ceph node 01
+$ ps aux --sort=-%mem | head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph        1702  0.4 27.9 10128296 4550760 ?    Ssl  May03 919:18 /usr/bin/radosgw -f --cluster ceph --name client.rgw.node01 --setuser ceph --setgroup ceph
+ceph        1721  0.6 12.8 3318456 2088704 ?     Ssl  May03 1216:59 /usr/bin/ceph-osd -f --cluster ceph --id 6 --setuser ceph --setgroup ceph
+ceph        1983  0.6 12.3 3358788 2012844 ?     Ssl  May03 1273:25 /usr/bin/ceph-osd -f --cluster ceph --id 3 --setuser ceph --setgroup ceph
+ceph        1991  0.9 11.7 3451788 1912008 ?     Ssl  May03 1719:04 /usr/bin/ceph-osd -f --cluster ceph --id 2 --setuser ceph --setgroup ceph
+ceph        1709  0.5  7.4 1646276 1212576 ?     Ssl  May03 1047:48 /usr/bin/ceph-mds -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph       18979  1.0  4.5 1330064 742680 ?      Ssl  May03 1932:51 /usr/bin/ceph-mon -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph      529617  3.7  4.4 1909588 721492 ?      Ssl  Jul15 3140:39 /usr/bin/ceph-mgr -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+root         801  0.0  0.6 182536 98516 ?        Ss   May03 105:28 /usr/lib/systemd/systemd-journald
+root        1704  0.0  0.3 701284 50132 ?        Ssl  May03  53:48 /usr/sbin/rsyslogd -n
+</code></pre>
+<p>Ceph node02</p>
+<pre><code class="language-bash">$ ps aux --sort=-%mem | head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph       28650  1.4 12.8 3958988 2104296 ?     Ssl   2023 6214:07 /usr/bin/ceph-osd -f --cluster ceph --id 9 --setuser ceph --setgroup ceph
+ceph      163854  1.4 12.7 3782156 2096396 ?     Ssl   2023 6092:28 /usr/bin/ceph-osd -f --cluster ceph --id 10 --setuser ceph --setgroup ceph
+ceph     3801660  1.5 11.9 3389284 1959812 ?     Ssl  Jul10 1384:08 /usr/bin/ceph-osd -f --cluster ceph --id 11 --setuser ceph --setgroup ceph
+root     3348820  0.1  0.1 510848 27732 ?        Sl   Jun27 171:24 /var/ossec/bin/wazuh-modulesd
+root        1045  0.0  0.1 574296 21468 ?        Ssl   2023  85:44 /usr/bin/python2 -Es /usr/sbin/tuned -l -P
+polkitd      670  0.0  0.0 612348 14992 ?        Ssl   2023  10:40 /usr/lib/polkit-1/polkitd --no-debug
+</code></pre>
+<p>Ceph node03</p>
+<pre><code class="language-bash">$ ps aux --sort=-%mem | head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph     1942206  0.9 12.8 4214720 2092280 ?     Ssl   2023 7866:23 /usr/bin/ceph-osd -f --cluster ceph --id 7 --setuser ceph --setgroup ceph
+ceph        2824  0.8 12.6 4274848 2051800 ?     Ssl   2022 7205:58 /usr/bin/ceph-osd -f --cluster ceph --id 4 --setuser ceph --setgroup ceph
+ceph     2802022  0.7 12.5 3831320 2047440 ?     Ssl   2023 4078:51 /usr/bin/ceph-osd -f --cluster ceph --id 1 --setuser ceph --setgroup ceph
+ceph        1693  0.7  4.7 1439428 771228 ?      Ssl   2022 6767:46 /usr/bin/ceph-mon -f --cluster ceph --id node03 --setuser ceph --setgroup ceph
+ceph     1058494  0.3  2.2 7492512 367288 ?      Ssl   2023 3388:44 /usr/bin/radosgw -f --cluster ceph --name client.rgw.node03 --setuser ceph --setgroup ceph
+ceph     1812870  2.6  0.8 970928 133116 ?       Ssl   Mar21 6749:43 /usr/bin/ceph-mgr -f --cluster ceph --id node03 --setuser ceph --setgroup ceph
+root         778  0.0  0.1  76412 28084 ?        Ss    2022 113:06 /usr/lib/systemd/systemd-journald
+ceph        1739  0.4  0.1 384760 28064 ?        Ssl   2022 4086:33 /usr/bin/ceph-mds -f --cluster ceph --id node03 --setuser ceph --setgroup ceph
+</code></pre>
+<p>Ceph node04，该节点上只有一个 OSD</p>
+<pre><code class="language-bash">$ ps aux --sort=-%mem | head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph       83779  1.0 12.7 3911168 2087332 ?     Ssl  Jan23 3473:50 /usr/bin/ceph-osd -f --cluster ceph --id 12 --setuser ceph --setgroup ceph
+root        6568  0.0  0.0 113020  7808 ?        Ss   Jan22   0:00 /usr/sbin/sshd -D
+</code></pre>
+<h2 id="配置的一个需求">配置的一个需求</h2>
+<p>osd 在运行在没有限制的情况下运行会消耗所有的可用内存，所以当数据节点配置不当，也会引起 oomkiller</p>
+<blockquote>
+<p>The OSDs are designed to consume all the available memory if they are  run without limits. So it is recommended to apply the resource limits,  and the OSDs will stay within the bounds you set. Typically 4GB is  sufficient per OSD. <sup><a href="#4">[4]</a></sup></p>
+</blockquote>
+<p>当 OSD 经历恢复时，它们的内存利用率会达到峰值。如果可用的 RAM 不足，OSD 性能会显着降低，守护进程甚至可能崩溃或被 Linux OOM Killer杀死。<sup><a href="#5">[5]</a></sup></p>
+<p>使用 cephadm 部署的机器群可以通过下面命令查看内存使用情况</p>
+<pre><code class="language-bash">ceph orch ps
+</code></pre>
+<p>通常只有两种类型的守护进程有内存限制：mon 和 osd，这些内存限制参数由如下配置进行控制的</p>
+<pre><code class="language-bash">sudo ceph config get mon mon_memory_target  # in bytes
+sudo ceph config get mon mon_memory_autotune
+sudo ceph config get osd osd_memory_target  # in bytes
+sudo ceph config get osd osd_memory_target_autotune
+</code></pre>
+<p>通过 orch ps 查看的内存限制是不同于 ceph osd 的目标值的，BlueStore 将 OSD 堆内存使用量保留在指定目标大小下，并使用 <code>osd_memory_target</code> 配置选项。</p>
+<blockquote>
+<p>选项 <code>osd_memory_target</code> 根据系统中可用的 RAM 来设置 OSD 内存。当 TCMalloc 配置为内存分配器，BlueStore 中的 <code>bluestore_cache_autotune</code> 选项设为 <code>true</code> 时，则使用此选项。</p>
+</blockquote>
+<p>查看现有集群 osd 的配置</p>
+<pre><code class="language-bash"># 显示存储集群中的所有 OSD osd_memory_target
+sudo ceph config get osd osd_memory_target
+# 显示指定 OSD osd_memory_target
+sudo ceph config get osd.0 osd_memory_target
+</code></pre>
+<p>配置集群 OSD <code>osd_memory_target</code></p>
+<pre><code class="language-bash"># 为存储集群中的所有 OSD 设置 osd_memory_target
+ceph config set osd osd_memory_target VALUE
+# 为存储集群中的指定 OSD 设置 osd_memory_target，.id 是 OSD 的 ID 
+ceph config set osd.id osd_memory_target VALUE
+</code></pre>
+<h3 id="网上案例">网上案例</h3>
+<p>下面有两个网上搜到的案例，osd具有无限制的内存增长的案例</p>
+<ul>
+<li>osd(s) with unlimited ram growth <sup><a href="#6">[6]</a></sup></li>
+<li>How to solve “the Out of Memory Killer issue that kills your OSDs due to bad entries in PG logs” <sup><a href="#7">[7]</a></sup></li>
+</ul>
+<h2 id="内存查看">内存查看</h2>
+<p>使用统计命令，该命令的统计信息不需要运行探查器，也不会将堆分配信息转储到文件中。</p>
+<pre><code class="language-bash">ceph tell osd.0 heap stats
+</code></pre>
+<p>使用内存池命令</p>
+<pre><code class="language-bash">ceph daemon osd.NNN dump_mempools
+</code></pre>
+<p>使用 google-perftools，该命令会运行探针，来检测运行的命令</p>
+<pre><code class="language-bash">google-pprof --text {path-to-daemon}  {log-path/filename}
+# 例如
+pprof --text /usr/bin/ceph-mon /var/log/ceph/mon.node1.profile.0001.heap
+</code></pre>
+<h2 id="reference">Reference</h2>
+<p><sup id="1">[1]</sup> <a href="https://www.ibm.com/docs/en/storage-ceph/7?topic=recommendations-minimum-hardware-considerations" target="_blank"
+   rel="noopener nofollow noreferrer" >Minimum hardware considerations</a></p>
+<p><sup id="2">[2]</sup> <a href="https://web.archive.org/web/20240914160430/https://docs.ceph.com/en/nautilus/start/hardware-recommendations/#minimum-hardware-recommendations" target="_blank"
+   rel="noopener nofollow noreferrer" >minimum-hardware-recommendations nautilus</a></p>
+<p><sup id="3">[3]</sup> <a href="https://web.archive.org/web/20240914160933/https://docs.ceph.com/en/reef/start/hardware-recommendations/#minimum-hardware-recommendations" target="_blank"
+   rel="noopener nofollow noreferrer" >minimum-hardware-recommendations reef</a></p>
+<p><sup id="4">[4]</sup> <a href="https://github.com/rook/rook/issues/12078" target="_blank"
+   rel="noopener nofollow noreferrer" >Excessive OSD memory usage   #12078</a></p>
+<p><sup id="5">[5]</sup> <a href="https://web.archive.org/web/20240915061444/https://www.cnblogs.com/varden/p/15949938.html" target="_blank"
+   rel="noopener nofollow noreferrer" >Ceph OSD 故障排除之内存不足</a></p>
+<p><sup id="6">[6]</sup> <a href="https://docs.clyso.com/blog/osds-with-unlimited-ram-growth/" target="_blank"
+   rel="noopener nofollow noreferrer" >osd(s) with unlimited ram growth</a></p>
+<p><sup id="7">[7]</sup> <a href="https://croit.io/blog/oom-killer-osds" target="_blank"
+   rel="noopener nofollow noreferrer" >How to solve “the Out of Memory Killer issue that kills your OSDs due to bad entries in PG logs”</a></p>
+<p><sup id="8">[8]</sup> <a href="https://docs.ceph.com/en/reef/rados/troubleshooting/memory-profiling/" target="_blank"
+   rel="noopener nofollow noreferrer" >Memory Profiling</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>记录一次失败的radosgw问题排查记录</title>
+      <link>https://www.oomkill.com/2024/09/05-5-failed-troubleshooting-for-rgw/</link>
+      <pubDate>Thu, 12 Sep 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/09/05-5-failed-troubleshooting-for-rgw/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>记录一次因着急没有检查原因而直接下线 ceph 对象存储的的失败记录</p>
+<h2 id="操作流程">操作流程</h2>
+<p>ceph 节点内存持续超过90%，因为本身有三个 OSD，检查内存使用情况发现 radosgw</p>
+<pre><code class="language-bash">$ ps aux --sort=-%mem | head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph        1702  0.4 32.9 10128296 4550760 ?    Ssl  May03 919:18 /usr/bin/radosgw -f --cluster ceph --name client.rgw.node01 --setuser ceph --setgroup ceph
+ceph        1721  0.6 12.8 3318456 2088704 ?     Ssl  May03 1216:59 /usr/bin/ceph-osd -f --cluster ceph --id 6 --setuser ceph --setgroup ceph
+ceph        1983  0.6 12.3 3358788 2012844 ?     Ssl  May03 1273:25 /usr/bin/ceph-osd -f --cluster ceph --id 3 --setuser ceph --setgroup ceph
+ceph        1991  0.9 11.7 3451788 1912008 ?     Ssl  May03 1719:04 /usr/bin/ceph-osd -f --cluster ceph --id 2 --setuser ceph --setgroup ceph
+ceph        1709  0.5  7.4 1646276 1212576 ?     Ssl  May03 1047:48 /usr/bin/ceph-mds -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph       18979  1.0  4.5 1330064 742680 ?      Ssl  May03 1932:51 /usr/bin/ceph-mon -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph      529617  3.7  4.4 1909588 721492 ?      Ssl  Jul15 3140:39 /usr/bin/ceph-mgr -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+root         801  0.0  0.6 182536 98516 ?        Ss   May03 105:28 /usr/lib/systemd/systemd-journald
+root        1704  0.0  0.3 701284 50132 ?        Ssl  May03  53:48 /usr/sbin/rsyslogd -n
+</code></pre>
+<p>因为这台节点包含3个 OSD, ceph-mon, ceph-mds 等全功能使用，所以最初的想法是 radosgw 转移到其他节点上，而不是分析为什么 radosgw 进程使用内存较高</p>
+<p>申请一个新节点部署 radosgw，部署时出现错误没有提示日志</p>
+<pre><code class="language-bash">$ ceph-deploy rgw create node06
+[ceph_deploy.conf][DEBUG ] found configuration file at: /home/ceph/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /bin/ceph-deploy rgw create node06
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  rgw                           : [('node06', 'rgw.node06')]
+  eph_deploy.cli][INFO  ]  overwrite_conf                : False
+[ceph_deploy.cli][INFO  ]  subcommand                    : create
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x7fe8a9b583f8&gt;
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  func                          : &lt;function rgw at 0x7fe8aa412050&gt;
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[ceph_deploy.rgw][DEBUG ] Deploying rgw, cluster ceph hosts node06:rgw.node06
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+[node06][DEBUG ] connection detected need for sudo
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+
+We trust you have received the usual lecture from the local System
+Administrator. It usually boils down to these three things:
+
+    #1) Respect the privacy of others.
+    #2) Think before you type.
+    #3) With great power comes great responsibility.
+
+sudo: no tty present and no askpass program specified
+[ceph_deploy.rgw][ERROR ] connecting to host: node06 resulted in errors: IOError cannot send (already closed?)
+[ceph_deploy][ERROR ] GenericError: Failed to create 1 RGWs
+</code></pre>
+<p>通过 journalctl -u 查看到如下错误 (新节点)</p>
+<pre><code class="language-bash">Sep 12 14:51:42 node06 sshd[30495]: error: Could not load host key: /etc/ssh/ssh_host_dsa_key
+Sep 12 14:51:42 node06 sshd[30495]: Accepted publickey for ceph from 192.168.20.88 port 37872 ssh2: RSA SHA256:XBYUcCiYBhdw+V32qwx6x0wex1EhaMiSHuz0gQVayTQ
+Sep 12 14:51:42 node06 systemd[1]: Created slice User Slice of ceph.
+Sep 12 14:51:42 node06 systemd-logind[743]: New session 97 of user ceph.
+Sep 12 14:51:42 node06 systemd[1]: Started Session 97 of user ceph.
+Sep 12 14:51:42 node06 sshd[30495]: pam_unix(sshd:session): session opened for user ceph by (uid=0)
+Sep 12 14:51:42 node06 sshd[30497]: Received disconnect from 192.168.20.88 port 37872:11: disconnected by user
+Sep 12 14:51:42 node06 sshd[30497]: Disconnected from 192.168.20.88 port 37872
+Sep 12 14:51:42 node06 sshd[30495]: pam_unix(sshd:session): session closed for user ceph
+Sep 12 14:51:42 node06 systemd-logind[743]: Removed session 97.
+Sep 12 14:51:42 node06 systemd[1]: Removed slice User Slice of ceph.
+Sep 12 14:51:42 node06 sshd[30521]: error: Could not load host key: /etc/ssh/ssh_host_dsa_key
+Sep 12 14:51:42 node06 sshd[30521]: Accepted publickey for ceph from 192.168.20.88 port 37874 ssh2: RSA SHA256:XBYUcCiYBhdw+V32qwx6x0wex1EhaMiSHuz0gQVayTQ
+Sep 12 14:51:42 node06 systemd[1]: Created slice User Slice of ceph.
+Sep 12 14:51:42 node06 systemd-logind[743]: New session 98 of user ceph.
+Sep 12 14:51:42 node06 systemd[1]: Started Session 98 of user ceph.
+Sep 12 14:51:42 node06 sshd[30521]: pam_unix(sshd:session): session opened for user ceph by (uid=0)
+Sep 12 14:51:42 node06 sudo[30526]: pam_unix(sudo:auth): conversation failed
+Sep 12 14:51:42 node06 sudo[30526]: pam_unix(sudo:auth): auth could not identify password for [ceph]
+Sep 12 14:51:45 node06 sudo[30526]:     ceph : user NOT in sudoers ; TTY=unknown ; PWD=/home/ceph ; USER=root ; COMMAND=/bin/python2 -c import sys;exec(eval(sys.stdin.readline()))
+Sep 12 14:51:45 node06 sshd[30525]: Received disconnect from 192.168.20.88 port 37874:11: disconnected by user
+Sep 12 14:51:45 node06 sshd[30525]: Disconnected from 192.168.20.88 port 37874
+Sep 12 14:51:45 node06 sshd[30521]: pam_unix(sshd:session): session closed for user ceph
+Sep 12 14:51:45 node06 postfix/sendmail[30549]: fatal: parameter inet_interfaces: no local interface found for ::1
+</code></pre>
+<p>配置 sudo</p>
+<pre><code class="language-bash">#cat /etc/sudoers.d/ceph   
+ceph ALL = (root) NOPASSWD:ALL
+</code></pre>
+<p>配置完成后部署 radosgw</p>
+<pre><code class="language-bash"># 拷贝配置文件
+ceph-deploy --overwrite-conf config push node06
+# 安装软件包
+ceph-deploy install  --no-adjust-repos --nogpgcheck node06
+# new一个新 rgw 实例，ceph-deploy 只支持new
+ceph-deploy rgw create node06
+</code></pre>
+<p>完整的输出</p>
+<pre><code class="language-bash">$ ceph-deploy --overwrite-conf config push node06
+[ceph_deploy.conf][DEBUG ] found configuration file at: /home/ceph/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /bin/ceph-deploy --overwrite-conf config push node06
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  overwrite_conf                : True
+[ceph_deploy.cli][INFO  ]  subcommand                    : push
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x7f3e96c9e8c0&gt;
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  client                        : ['node06']
+[ceph_deploy.cli][INFO  ]  func                          : &lt;function config at 0x7f3e96ec9c08&gt;
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[ceph_deploy.config][DEBUG ] Pushing config to node06
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+[node06][DEBUG ] connection detected need for sudo
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+[node06][DEBUG ] connected to host: node06 
+[node06][DEBUG ] detect platform information from remote host
+[node06][DEBUG ] detect machine type
+[node06][DEBUG ] write cluster configuration to /etc/ceph/{cluster}.conf
+
+
+$ ceph-deploy install  --no-adjust-repos --nogpgcheck node06
+[ceph_deploy.conf][DEBUG ] found configuration file at: /home/ceph/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /bin/ceph-deploy install --no-adjust-repos --nogpgcheck node06
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  testing                       : None
+[ceph_deploy.cli][INFO  ]  cd_conf                       : &lt;ceph_deploy.conf.cephdeploy.Conf instance at 0x7fc503ac4758&gt;
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  dev_commit                    : None
+[ceph_deploy.cli][INFO  ]  install_mds                   : False
+[ceph_deploy.cli][INFO  ]  stable                        : None
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  adjust_repos                  : False
+[ceph_deploy.cli][INFO  ]  func                          : &lt;function install at 0x7fc5041125f0&gt;
+[ceph_deploy.cli][INFO  ]  install_mgr                   : False
+[ceph_deploy.cli][INFO  ]  install_all                   : False
+[ceph_deploy.cli][INFO  ]  repo                          : False
+[ceph_deploy.cli][INFO  ]  host                          : ['node06']
+[ceph_deploy.cli][INFO  ]  install_rgw                   : False
+[ceph_deploy.cli][INFO  ]  install_tests                 : False
+[ceph_deploy.cli][INFO  ]  repo_url                      : None
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  install_osd                   : False
+[ceph_deploy.cli][INFO  ]  version_kind                  : stable
+[ceph_deploy.cli][INFO  ]  install_common                : False
+[ceph_deploy.cli][INFO  ]  overwrite_conf                : False
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  dev                           : master
+[ceph_deploy.cli][INFO  ]  nogpgcheck                    : True
+[ceph_deploy.cli][INFO  ]  local_mirror                  : None
+[ceph_deploy.cli][INFO  ]  release                       : None
+[ceph_deploy.cli][INFO  ]  install_mon                   : False
+[ceph_deploy.cli][INFO  ]  gpg_url                       : None
+[ceph_deploy.install][DEBUG ] Installing stable version mimic on cluster ceph hosts node06
+[ceph_deploy.install][DEBUG ] Detecting platform for host node06 ...
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+[node06][DEBUG ] connection detected need for sudo
+Warning: Permanently added '[node06]:55556,[192.168.20.88]:55556' (ECDSA) to the list of known hosts.
+[node06][DEBUG ] connected to host: node06 
+[node06][DEBUG ] detect platform information from remote host
+[node06][DEBUG ] detect machine type
+[ceph_deploy.install][INFO  ] Distro info: CentOS Linux 7.9.2009 Core
+[node06][INFO  ] installing Ceph on node06
+[node06][INFO  ] Running command: sudo yum clean all
+[node06][DEBUG ] Loaded plugins: fastestmirror
+[node06][DEBUG ] Cleaning repos: base centos-sclo-rh centos-sclo-sclo devops-Extra epel extras
+[node06][DEBUG ]               : openresty remi-php72 remi-php73 remi-php74 remi-safe salt-latest
+[node06][DEBUG ]               : tools-repo updates zabbix
+[node06][DEBUG ] Cleaning up list of fastest mirrors
+[node06][DEBUG ] Other repos take up 23 M of disk space (use --verbose for details)
+[node06][INFO  ] Running command: sudo yum -y install ceph ceph-radosgw
+[node06][DEBUG ] Loaded plugins: fastestmirror
+[node06][DEBUG ] Determining fastest mirrors
+[node06][DEBUG ] No package ceph available.
+[node06][DEBUG ] Nothing to do
+[node06][INFO  ] Running command: sudo ceph --version
+[node06][DEBUG ] ceph version 14.2.22 (ca74598065096e6fcbd8433c8779a2be0c889351) nautilus (stable)
+</code></pre>
+<p>查看节点是否上线</p>
+<pre><code class="language-bash">$ ceph -s
+  cluster:
+    id:     baf87797-3ec1-4f2c-8126-bf0a44051b13
+    health: HEALTH_WARN
+            1 pools have many more objects per pg than average
+ 
+  services:
+    mon: 3 daemons, quorum node01,node02,node03 (age 2w)
+    mgr: node01(active, since 8w), standbys: node02, node03
+    mds: kubefs:2 {0=node01=up:active,1=node02=up:active} 1 up:standby
+    osd: 13 osds: 13 up (since 6d), 13 in (since 7M)
+    rgw: 4 daemons active (node01, node02, node03, node06)
+</code></pre>
+<p>流量的请求时访问 radosgw 服务，这个时候新实例是没有引入流量的，需要修改负载均衡器增加新的节点进来，流量引入后需要确认旧服务已经不在处理业务请求后可以下线
+确认请求，查看活跃连接</p>
+<pre><code class="language-bash">$ netstat -an|grep 7480
+tcp        0      0 0.0.0.0:7480            0.0.0.0:*               LISTEN     
+tcp        0      0 192.168.20.84:7480      192.168.20.84:33152      ESTABLISHED
+</code></pre>
+<p>确认请求，查看服务日志</p>
+<pre><code class="language-bash">$ tail -f /var/log/ceph/ceph-client.rgw.node01.log
+</code></pre>
+<p>确认无误可以下线，ceph-deploy 部署的服务没有 cephadm ceph orch rgw delete xx 这类工具进行下线，直接通过 systemd 停止服务即可</p>
+<pre><code class="language-bash">$ systemctl -l|grep rados
+  ceph-radosgw@rgw.node01.service                                                     loaded active     running      Ceph rados gateway
+  system-ceph\x2dradosgw.slice                                                                loaded active     active       system-ceph\x2dradosgw.slice
+  ceph-radosgw.target                                                                         loaded active     active       ceph target allowing to start/stop all ceph-radosgw@.service instances at once
+</code></pre>
+<p>停止服务并检查内存状态</p>
+<pre><code class="language-bash">$ systemctl stop ceph-radosgw@rgw.node01.service  
+#ps axu --sort=-%mem|head -10
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ceph        1983  0.6 12.8 3358788 2084324 ?     Ssl  May03 1275:36 /usr/bin/ceph-osd -f --cluster ceph --id 3 --setuser ceph --setgroup ceph
+ceph        1991  0.9 12.5 3451788 2033560 ?     Ssl  May03 1722:12 /usr/bin/ceph-osd -f --cluster ceph --id 2 --setuser ceph --setgroup ceph
+ceph        1721  0.6 11.8 3318456 1920876 ?     Ssl  May03 1219:27 /usr/bin/ceph-osd -f --cluster ceph --id 6 --setuser ceph --setgroup ceph
+ceph        1709  0.5  7.4 1646276 1212516 ?     Ssl  May03 1050:21 /usr/bin/ceph-mds -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph       18979  1.0  4.5 1330064 744972 ?      Ssl  May03 1937:16 /usr/bin/ceph-mon -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+ceph      529617  3.7  4.4 1914452 726436 ?      Ssl  Jul15 3153:14 /usr/bin/ceph-mgr -f --cluster ceph --id node01 --setuser ceph --setgroup ceph
+</code></pre>
+<h2 id="总结">总结</h2>
+<p>本次操作没有分析为什么使用内存高，只是着急做了迁移，这样导致在事后无法确定问题的根本原因，后期遇到问题要先分析并保留证据，其次在做迁移之类动作。</p>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>记录一次ceph集群故障处理记录</title>
       <link>https://www.oomkill.com/2024/02/10-2-troubeshooting-crash/</link>
@@ -166,6 +810,223 @@ HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs r
       <guid>https://www.oomkill.com/2023/11/10-1-ceph-fscache/</guid>
       <description></description>
       <content:encoded><![CDATA[<p>本文记录了在 kubernetes 环境中，使用 cephfs 时当启用了 fscache 时，由于网络问题，或者 ceph 集群问题导致的整个 k8s 集群规模的挂载故障问题。</p>
+<h2 id="结合fscache的kubernetes中使用cephfs造成的集群规模故障">结合fscache的kubernetes中使用cephfs造成的集群规模故障</h2>
+<p>在了解了上面的基础知识后，就可以引入故障了，下面是故障产生环境的配置</p>
+<h3 id="故障发生环境">故障发生环境</h3>
+<table>
+<thead>
+<tr>
+<th>软件</th>
+<th>版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Centos</td>
+<td>7.9</td>
+</tr>
+<tr>
+<td>Ceph</td>
+<td>nautilus (14.20)</td>
+</tr>
+<tr>
+<td>Kernel</td>
+<td>4.18.16</td>
+</tr>
+</tbody>
+</table>
+<h3 id="故障现象">故障现象</h3>
+<p>在 k8s 集群中挂在 cephfs 的场景下，新启动的 Pod 报错无法启动，报错信息如下</p>
+<pre><code class="language-bash">ContainerCannotRun: error while creating mount source path /var/lib/kubelet/pods/5446c441-9162-45e8-0e93-b59be74d13b/volumes/kubernetesio-cephfs/{dir name} mkcir /var/lib/kubelet/pods/5446c441-9162-45e8-de93-b59bte74d13b/volumes/kubernetes.io~cephfs/ip-ib file existe
+</code></pre>
+<p>主要表现的现象大概为如下三个特征</p>
+<p>对于该节点故障之前运行的 Pod 是正常运行，但是无法写入和读取数据</p>
+<p>无法写入数据 permission denied</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914165711395.png" alt="image-202410914165711395" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p>无法读取数据</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914162323295.png" alt="image-202410914162323295" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p>kublet 的日志报错截图如下</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914112451395.png" alt="image-202410914112451395" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<h3 id="彻底解决方法">彻底解决方法</h3>
+<p>需要驱逐该节点上所有挂在 cephfs 的 Pod，之后新调度来的 Pod 就可以正常启动了</p>
+<h3 id="故障的分析">故障的分析</h3>
+<p>当网络出现问题时，如果使用了 cephfs 的 Pod 就会出现大量故障，具体故障表现方式有下面几种</p>
+<ul>
+<li>
+<p>新部署的 Pod 处于 Waiting 状态</p>
+</li>
+<li>
+<p>新部署的 Pod 可以启动成功，但是无法读取 cephfs 的挂载目录，主要故障表现为下面几种形式：</p>
+<ul>
+<li>ceph mount error 5 = input/output error <sup><a href="#3">[3]</a></sup></li>
+<li>cephfs mount failure.permission denied</li>
+</ul>
+</li>
+<li>
+<p>旧 Pod 无法被删除</p>
+</li>
+<li>
+<p>新部署的 Pod 无法启动</p>
+</li>
+</ul>
+<blockquote>
+<p>注：上面故障引用都是在网络上找到相同报错的一些提示，并不完全切合本文中故障描述</p>
+</blockquote>
+<p>去对应节点查看节点内核日志会发现有下面几个特征</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20241091412343242.png" alt="image-20241091412343242" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图1：故障发生的节点报错</center>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914112309809.png" alt="image-202410914112309809" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图2：故障发生的节点报错</center>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914312554309.png" alt="image-202410914312554309" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图3：故障发生的节点报错</center>
+<pre><code class="language-log">[ 1815.029831] ceph: mds0 closed our session
+[ 1815.029833] ceph: mds0 reconnect start
+[ 1815.052219] ceph: mds0 reconnect denied
+[ 1815.052229] ceph:  dropping dirty Fw state for ffff9d9085da1340 1099512175611
+[ 1815.052231] ceph:  dropping dirty+flushing Fw state for ffff9d9085da1340 1099512175611
+[ 1815.273008] libceph: mds0 10.99.10.4:6801 socket closed (con state NEGOTIATING)
+[ 1816.033241] ceph: mds0 rejected session
+[ 1829.018643] ceph: mds0 hung
+[ 1880.088504] ceph: mds0 came back
+[ 1880.088662] ceph: mds0 caps renewed
+[ 1880.094018] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+[ 1881.100367] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+[ 2046.768969] conntrack: generic helper won't handle protocol 47. Please consider loading the specific helper module.
+[ 2061.731126] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
+</code></pre>
+<h3 id="故障分析">故障分析</h3>
+<p>由上面的三张图我们可以得到几个关键点</p>
+<ol>
+<li>connection reset</li>
+<li>session lost, hunting for new mon</li>
+<li>ceph: get_quota_realm()</li>
+<li>reconnection denied</li>
+<li>mds1 hung</li>
+<li>mds1 caps stale</li>
+</ol>
+<p>这三张图上的日志是一个故障恢复的顺序，而问题节点（通常为整个集群 Node）内核日志都会在刷 <code>ceph: get_quota_realm()</code> 这种日志，首先我们需要确认第一个问题，<code>ceph: get_quota_realm()</code> 是什么原因导致，在互联网上找了一个 linux kernel 关于修复这个问题的提交记录，通过 commit，我们可以看到这个函数产生的原因</p>
+<blockquote>
+<p>get_quota_realm() enters infinite loop if quota inode has no caps.
+This can happen after client gets evicted.  <sup><a href="#4">[4]</a></sup></p>
+</blockquote>
+<p>这里可以看到，修复的内容是当客户端被驱逐时，这个函数会进入无限 loop ，当 inode 配额没有被授权的用户，常常发生在客户端被驱逐。</p>
+<p>通过这个 commit，我们可以确定了后面 4 - 6 问题的疑问，即客户端被 ceph mds 驱逐（加入了黑名单），在尝试重连时就会发生 <code>reconnection denied</code> 接着发生陈腐的被授权认证的用户 (caps stale)。<font color="#f8070d" size=3>接着由于本身没有真实的卸载，而是使用了一个共享的 cookie 这个时候就会发生节点新挂载的目录是没有权限写，或者是  input/output error 的错误</font>，这些错误表象是根据不同情况下而定，比如说被拉黑和丢失的会话。</p>
+<h3 id="kubelet的错误日志">kubelet的错误日志</h3>
+<p>此时当新的使用了 volumes 去挂载 cephfs时，由于旧的 Pod 产生的工作目录 (/var/lib/kubelet) 下的 Pod 挂载会因为 cephfs caps stale  而导致无法卸载，这是就会存在 “孤儿Pod”，“不能同步 Pod 的状态”，“不能创建新的Pod挂载，因为目录已存在”。</p>
+<p>kubelet 日志如下所示：</p>
+<pre><code class="language-bash">kubelet_volumes.go:66] pod &quot;5446c441-9162-45e8-e11f46893932&quot; found, but error stat /var/lib/kubelet/pods/5446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxx: permission denied occurred during checking mounted volumes from disk
+
+pod_workers.go:119] Error syncing pod &quot;5446c441-9162-45e8-e11f46893932&quot; (&quot;xxxxx-xxx-xxx-xxxx-xxx_xxxxx(5446c441-9162-45e8-e11f46893932)&quot;, skipping: failed to &quot;StartContainer&quot; for &quot;xxxxx-xxx-xxx&quot; with RunContainerError: &quot;failed to start container \&quot;719346531es654113s3216e1456313d51as132156\&quot;: Error response from daemon: error while createing mount source path '/var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx': mkdir /var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx: file exists&quot;
+</code></pre>
+<h2 id="问题复现">问题复现</h2>
+<p>操作步骤，手动删除掉这个节点的会话复现问题：</p>
+<p>操作前日志</p>
+<pre><code class="language-bash">Nov 09 15:16:01 node88.itnet.com kernel: libceph: mon0 192.168.20.299:6789 session established
+Nov 09 15:16:01 node88.itnet.com kernel: libceph: mon0 192.168.20.299:6789 socket closed (con state OPEN)
+Nov 09 15:16:01 node88.itnet.com kernel: libceph: mon0 192.168.20.299:6789 session lost, hunting for new mon
+Nov 09 15:16:01 node88.itnet.com kernel: libceph: mon1 10.240.20.134:6789 session established
+Nov 09 15:16:01 node88.itnet.com kernel: libceph: client176873 fsid bf9495f9-726d-42d3-ac43-53938496bb29
+</code></pre>
+<p>步骤一：查找客户端id</p>
+<pre><code class="language-bash">$ ceph tell mds.0 client ls|grep 22.70
+2023-11-09 18:07:37.063 7f204dffb700  0 client.177035 ms_handle_reset on v2:192.168.20.299:6800/1124232159
+2023-11-09 18:07:37.089 7f204effd700  0 client.177041 ms_handle_reset on v2:192.168.20.299:6800/1124232159
+                &quot;addr&quot;: &quot;10.240.22.70:0&quot;,
+        &quot;inst&quot;: &quot;client.176873 v1:10.240.22.70:0/144083785&quot;,
+</code></pre>
+<p>步骤二：驱逐该客户端</p>
+<pre><code class="language-bash">[ root@node209 18:08:21 Thu Nov 09 ~ ] 
+#ceph tell mds.0 client evict id=176873
+2023-11-09 18:09:13.726 7fc3cffff700  0 client.177074 ms_handle_reset on v2:192.168.20.299:6800/1124232159
+2023-11-09 18:09:14.790 7fc3d97fa700  0 client.177080 ms_handle_reset on v2:192.168.20.299:6800/1124232159
+</code></pre>
+<p>步骤三：检查客户端</p>
+<p>查看日志，与 Openstack 全机房故障出现时日志内容一致</p>
+<pre><code class="language-bash">Nov 09 18:09:14 node88.itnet.com kernel: libceph: mds0 192.168.20.299:6801 socket closed (con state OPEN)
+Nov 09 18:09:16 node88.itnet.com kernel: libceph: mds0 192.168.20.299:6801 connection reset
+Nov 09 18:09:16 node88.itnet.com kernel: libceph: reset on mds0
+Nov 09 18:09:16 node88.itnet.com kernel: ceph: mds0 closed our session
+Nov 09 18:09:16 node88.itnet.com kernel: ceph: mds0 reconnect start
+Nov 09 18:09:16 node88.itnet.com kernel: ceph: mds0 reconnect denied
+
+Nov 09 18:09:20 node88.itnet.com kernel: libceph: mds0 192.168.20.299:6801 socket closed (con state NEGOTIATING)
+Nov 09 18:09:21 node88.itnet.com kernel: ceph: mds0 rejected session
+Nov 09 18:09:21 node88.itnet.com kernel: ceph: mds1 rejected session
+Nov 09 18:09:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:09:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+
+Nov 09 18:15:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:15:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:21:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:21:21 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:27:22 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:27:22 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:33:22 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:33:22 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:39:23 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:39:23 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:45:23 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:45:23 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:51:24 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:51:24 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:57:24 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+Nov 09 18:57:24 node88.itnet.com kernel: ceph: get_quota_realm: ino (10000000006.fffffffffffffffe) null i_snap_realm
+</code></pre>
+<h2 id="问题如何解决">问题如何解决</h2>
+<p>首先上面我们阐述了问题出现背景以及原因，要想解决这些错误，要分为两个步骤：</p>
+<ol>
+<li>首先驱逐 Kubernetes  Node 节点上所有挂载 cephfs 的 Pod，这步骤是为了优雅的结束 fscache 的 cookie cache 机制，使节点可以正常的提供服务</li>
+<li>解决使用 fscache 因网络问题导致的会话丢失问题的重连现象</li>
+</ol>
+<p>这里主要以步骤2来阐述，解决这个问题就是通过两个方式，一个是不使用 fscache，另一个则是不让 mds 拉黑客户端，关闭 fscache 的成本很难，至今没有尝试成功，这里通过配置 ceph 服务使得 ceph mds 不会拉黑因出现网络问题丢失连接的客户端。</p>
+<p>ceph 中阐述了驱逐的概念 “当某个文件系统客户端不响应或者有其它异常行为时，有必要强制切断它到文件系统的访问，这个过程就叫做<em>驱逐</em>。”  <sup><a href="#5">[5]</a></sup></p>
+<p>问题的根本原因为：ceph mds 把客户端拉入了黑名单，缓存导致客户端无法卸载连接，但接入了 fscache 的概念导致旧 session 无法释放，新连接会被 reject。</p>
+<p>要想解决这个问题，ceph 提供了一个参数来解决这个问题，<em><strong>mds_session_blacklist_on_timeout</strong></em></p>
+<blockquote>
+<p>It is possible to respond to slow clients by simply dropping their MDS sessions, but permit them to re-open sessions and permit them to continue talking to OSDs.  To enable this mode, set <code>mds_session_blacklist_on_timeout</code> to false on your MDS nodes. <sup><a href="#6">[6]</a></sup></p>
+</blockquote>
+<p>最终在配置后，上述问题解决</p>
+<h3 id="解决问题后测试故障是否存在">解决问题后测试故障是否存在</h3>
+<p>测试过程</p>
+<p>ceph 参数的配置</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20241091412343123.png" alt="image-20241091412343123" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图4：故障发生的节点报错</center>
+<p>操作驱逐 xx.70 的客户端连接，用以模拟 ceph 运行的底层出现故障而非正常断开 session 的场景</p>
+<p><img loading="lazy" src="D:%5chome%5cDesktop%5cimage-20241091412343123.png" alt="image-20241091412343123" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图5：驱逐客户端的操作</center>
+<p>重新运行 Pod 检查 session 是缓存还是会重连</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-2024109141123756109.png" alt="image-2024109141123756109" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图6：检查节点日志</center>
+<h3 id="附ceph-mds-管理客户端">附：ceph mds 管理客户端</h3>
+<p>查看一个客户端的连接</p>
+<pre><code class="language-bash">ceph daemon mds.xxxxxxxx session ls |grep -E 'inst|hostname|kernel_version'|grep xxxx
+        &quot;inst&quot;: &quot;client.105123 v1:192.168.0.0:0/11243531&quot;,
+            &quot;hostname&quot;: &quot;xxxxxxxxxxxxxxxxxx&quot;
+</code></pre>
+<p>手动驱逐一个客户端</p>
+<pre><code class="language-bash">ceph tell mds.0 client evict id=105123
+2023-11-12 13:25:23:381 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
+2023-11-12 13:25:23:421 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
+</code></pre>
+<p>查看 ceph 的配置参数</p>
+<pre><code class="language-bash">ceph config dump
+WHO     MASK  LEVEL     OPTION                                VALUE RO
+  mon         advanced  auth_allow_insecure_global_id_reclaim false
+  mon         advanced  mon_allow_pool_delete                 false
+  mds         advanced  mds_session_blacklist_on_evict        false
+  mds         advanced  mds_session_blacklist_on_timeout      false
+</code></pre>
+<p>当出现问题无法卸载时应如何解决？</p>
+<p>当我们遇到问题时，卸载目录会出现被占用情况，通过 mount 和 fuser 都无法卸载</p>
+<pre><code class="language-bash">umount -f /tmp/998
+umount： /tmp/998: target is buy.
+        (In some cases useful info about processes that use th device is found by losf(8) or fuser(1))
+        the device is found by losf(8) or fuser(1)
+        
+fuser -v1 /root/test
+Cannot stat /root/test: Input/output error
+</code></pre>
+<p>这个时候由于 cephfs 挂载问题会导致整个文件系统不可用，例如 df -h, ls dir 等，此时可以使用 umount 的懒卸载模式 <code>umount -l</code>，这会告诉内核当不占用时被卸载，由于这个问题是出现问题，而不是长期占用，这里用懒卸载后会立即卸载，从而解决了 stuck 的问题。</p>
 <h2 id="什么是fscache">什么是fscache</h2>
 <p>fscache 是网络文件系统的通用缓存，例如 NFS, CephFS都可以使用其进行缓存从而提高 IO</p>
 <p>FS-Cache是在访问之前，将整个打开的每个 netfs 文件完全加载到 Cache 中，之后的挂载是从该缓存而不是 netfs 的 inode 中提供</p>
@@ -183,7 +1044,7 @@ HEALTH_WARN 1 host fail cephadm check; 1 MDSs report slow metadata IOs; 1 MDSs r
 </ul>
 <p>下图是一个 NFS 使用 fscache 的示意图，CephFS 原理与其类似</p>
 <p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/Cache-NFS-Share-Data-with-FS-Cache-1.webp" alt="Cache-NFS-Share-Data-with-FS-Cache-1" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<center>图1：FS-Cache 架构 </center>
+<center>图7：FS-Cache 架构 </center>
 <center><em>Source：</em>https://computingforgeeks.com/how-to-cache-nfs-share-data-with-fs-cache-on-linux/</center><br>
 <p>CephFS 也是可以被缓存的一种网络文件系统，可以通过其内核模块看到对应的依赖</p>
 <pre><code class="language-bash">root@client:~# lsmod | grep ceph
@@ -224,143 +1085,6 @@ sig_hashalgo:   md4
 <h2 id="cephfs-中的-fscache">cephfs 中的 fscache</h2>
 <p>ceph 官方在 2023年11月5日的一篇博客 <sup><a href="#1">[1]</a></sup> 中介绍了，cephfs 与 fscache 结合的介绍。这个功能的加入最显著的成功就是 ceph node 流向 OSD 网络被大大减少，尤其是在读取多的情况下。</p>
 <p>这个机制可以在代码 commit 中看到其原理：“在第一次通过文件引用inode时创建缓存cookie。之后，直到我们处理掉inode，我们都不会摆脱cookie” <sup><a href="#2">[2]</a></sup></p>
-<h2 id="结合fscache的kubernetes中使用cephfs造成的集群规模故障">结合fscache的kubernetes中使用cephfs造成的集群规模故障</h2>
-<p>在了解了上面的基础知识后，就可以引入故障了，下面是故障产生环境的配置</p>
-<h3 id="故障发生环境">故障发生环境</h3>
-<table>
-<thead>
-<tr>
-<th>软件</th>
-<th>版本</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Centos</td>
-<td>7.9</td>
-</tr>
-<tr>
-<td>Ceph</td>
-<td>nautilus (14.20)</td>
-</tr>
-<tr>
-<td>Kernel</td>
-<td>4.18.16</td>
-</tr>
-</tbody>
-</table>
-<h3 id="故障的描述">故障的描述</h3>
-<p>当网络出现问题时，如果使用了 cephfs 的 Pod 就会出现大量故障，具体故障表现方式有下面几种</p>
-<ul>
-<li>
-<p>新部署的 Pod 处于 Waiting 状态</p>
-</li>
-<li>
-<p>新部署的 Pod 可以启动成功，但是无法读取 cephfs 的挂载目录，主要故障表现为下面几种形式：</p>
-<ul>
-<li>ceph mount error 5 = input/output error <sup><a href="#3">[3]</a></sup></li>
-<li>cephfs mount failure.permission denied</li>
-</ul>
-</li>
-<li>
-<p>旧 Pod 无法被删除</p>
-</li>
-<li>
-<p>新部署的 Pod 无法启动</p>
-</li>
-</ul>
-<blockquote>
-<p>注：上面故障引用都是在网络上找到相同报错的一些提示，并不完全切合本文中故障描述</p>
-</blockquote>
-<p>去对应节点查看日志会发现有下面几个特征</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231108_150726-ink.jpeg" alt="IMG_20231108_150726-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<center>图2-1：故障发生的节点报错</center>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_193023-ink.jpeg" alt="IMG_20231109_193023-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<center>图2-2：故障发生的节点报错</center>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/IMG_20231109_192930-ink.jpeg" alt="IMG_20231109_192930-ink" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<center>图2-3：故障发生的节点报错</center>
-<pre><code class="language-log">    [ 1815.029831] ceph: mds0 closed our session
-    [ 1815.029833] ceph: mds0 reconnect start
-    [ 1815.052219] ceph: mds0 reconnect denied
-    [ 1815.052229] ceph:  dropping dirty Fw state for ffff9d9085da1340 1099512175611
-    [ 1815.052231] ceph:  dropping dirty+flushing Fw state for ffff9d9085da1340 1099512175611
-    [ 1815.273008] libceph: mds0 10.99.10.4:6801 socket closed (con state NEGOTIATING)
-    [ 1816.033241] ceph: mds0 rejected session
-    [ 1829.018643] ceph: mds0 hung
-    [ 1880.088504] ceph: mds0 came back
-    [ 1880.088662] ceph: mds0 caps renewed
-    [ 1880.094018] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-    [ 1881.100367] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-    [ 2046.768969] conntrack: generic helper won't handle protocol 47. Please consider loading the specific helper module.
-    [ 2061.731126] ceph: get_quota_realm: ino (10000000afe.fffffffffffffffe) null i_snap_realm
-</code></pre>
-<h3 id="故障分析">故障分析</h3>
-<p>由上面的三张图我们可以得到几个关键点</p>
-<ol>
-<li>connection reset</li>
-<li>session lost, hunting for new mon</li>
-<li>ceph: get_quota_realm()</li>
-<li>reconnection denied</li>
-<li>mds1 hung</li>
-<li>mds1 caps stale</li>
-</ol>
-<p>这三张图上的日志是一个故障恢复的顺序，而问题节点（通常为整个集群 Node）内核日志都会在刷 <code>ceph: get_quota_realm()</code> 这种日志，首先我们需要确认第一个问题，<code>ceph: get_quota_realm()</code> 是什么原因导致，在互联网上找了一个 linux kernel 关于修复这个问题的提交记录，通过 commit，我们可以看到这个函数产生的原因</p>
-<blockquote>
-<p>get_quota_realm() enters infinite loop if quota inode has no caps.
-This can happen after client gets evicted.  <sup><a href="#4">[4]</a></sup></p>
-</blockquote>
-<p>这里可以看到，修复的内容是当客户端被驱逐时，这个函数会进入无限 loop ，当 inode 配额没有被授权的用户，常常发生在客户端被驱逐。</p>
-<p>通过这个 commit，我们可以确定了后面 4 - 6 问题的疑问，即客户端被 ceph mds 驱逐（加入了黑名单），在尝试重连时就会发生 <code>reconnection denied</code> 接着发生陈腐的被授权认证的用户 (caps stale)。<font color="#f8070d" size=3>接着由于本身没有真实的卸载，而是使用了一个共享的 cookie 这个时候就会发生节点新挂载的目录是没有权限写，或者是  input/output error 的错误</font>，这些错误表象是根据不同情况下而定，比如说被拉黑和丢失的会话。</p>
-<h3 id="kubelet的错误日志">kubelet的错误日志</h3>
-<p>此时当新的使用了 volumes 去挂载 cephfs时，由于旧的 Pod 产生的工作目录 (/var/lib/kubelet) 下的 Pod 挂载会因为 cephfs caps stale  而导致无法卸载，这是就会存在 “孤儿Pod”，“不能同步 Pod 的状态”，“不能创建新的Pod挂载，因为目录已存在”。</p>
-<p>kubelet 日志如下所示：</p>
-<pre><code class="language-bash">kubelet_volumes.go:66] pod &quot;5446c441-9162-45e8-e11f46893932&quot; found, but error stat /var/lib/kubelet/pods/5446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxx: permission denied occurred during checking mounted volumes from disk
-
-pod_workers.go:119] Error syncing pod &quot;5446c441-9162-45e8-e11f46893932&quot; (&quot;xxxxx-xxx-xxx-xxxx-xxx_xxxxx(5446c441-9162-45e8-e11f46893932)&quot;, skipping: failed to &quot;StartContainer&quot; for &quot;xxxxx-xxx-xxx&quot; with RunContainerError: &quot;failed to start container \&quot;719346531es654113s3216e1456313d51as132156\&quot;: Error response from daemon: error while createing mount source path '/var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx': mkdir /var/lib/kubelet/pods/5446c441-9162-45446c441-9162-45e8-e11f46893932/volumes/kubernetes.io~cephfs/xxxxxx-xx: file exists&quot;
-</code></pre>
-<h2 id="问题如何解决">问题如何解决</h2>
-<p>首先上面我们阐述了问题出现背景以及原因，要想解决这些错误，要分为两个步骤：</p>
-<ol>
-<li>首先驱逐 Kubernetes  Node 节点上所有挂载 cephfs 的 Pod，这步骤是为了优雅的结束 fscache 的 cookie cache 机制，使节点可以正常的提供服务</li>
-<li>解决使用 fscache 因网络问题导致的会话丢失问题的重连现象</li>
-</ol>
-<p>这里主要以步骤2来阐述，解决这个问题就是通过两个方式，一个是不使用 fscache，另一个则是不让 mds 拉黑客户端，关闭 fscache 的成本很难，至今没有尝试成功，这里通过配置 ceph 服务使得 ceph mds 不会拉黑因出现网络问题丢失连接的客户端。</p>
-<p>ceph 中阐述了驱逐的概念 “当某个文件系统客户端不响应或者有其它异常行为时，有必要强制切断它到文件系统的访问，这个过程就叫做<em>驱逐</em>。”  <sup><a href="#5">[5]</a></sup></p>
-<p>要想解决这个问题，ceph 提供了一个参数来解决这个问题，<code>mds_session_blacklist_on_timeout</code></p>
-<blockquote>
-<p>It is possible to respond to slow clients by simply dropping their MDS sessions, but permit them to re-open sessions and permit them to continue talking to OSDs.  To enable this mode, set <code>mds_session_blacklist_on_timeout</code> to false on your MDS nodes. <sup><a href="#6">[6]</a></sup></p>
-</blockquote>
-<p>最终在配置后，上述问题解决</p>
-<h3 id="附ceph-mds-管理客户端">附：ceph mds 管理客户端</h3>
-<p>查看一个客户端的连接</p>
-<pre><code class="language-bash">ceph daemon mds.xxxxxxxx session ls |grep -E 'inst|hostname|kernel_version'|grep xxxx
-        &quot;inst&quot;: &quot;client.105123 v1:192.168.0.0:0/11243531&quot;,
-            &quot;hostname&quot;: &quot;xxxxxxxxxxxxxxxxxx&quot;
-</code></pre>
-<p>手动驱逐一个客户端</p>
-<pre><code class="language-bash">ceph tell mds.0 client evict id=105123
-2023-11-12 13:25:23:381 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
-2023-11-12 13:25:23:421 7fa3a67fc700 0 client.105123 ms_handle_reset on v2:192.168.0.0:6800/112351231
-</code></pre>
-<p>查看 ceph 的配置参数</p>
-<pre><code class="language-bash">ceph config dump
-WHO     MASK  LEVEL     OPTION                                VALUE RO
-  mon         advanced  auth_allow_insecure_global_id_reclaim false
-  mon         advanced  mon_allow_pool_delete                 false
-  mds         advanced  mds_session_blacklist_on_evict        false
-  mds         advanced  mds_session_blacklist_on_timeout      false
-</code></pre>
-<p>当出现问题无法卸载时应如何解决？</p>
-<p>当我们遇到问题时，卸载目录会出现被占用情况，通过 mount 和 fuser 都无法卸载</p>
-<pre><code class="language-bash">umount -f /tmp/998
-umount： /tmp/998: target is buy.
-        (In some cases useful info about processes that use th device is found by losf(8) or fuser(1))
-        the device is found by losf(8) or fuser(1)
-        
-fuser -v1 /root/test
-Cannot stat /root/test: Input/output error
-</code></pre>
-<p>这个时候由于 cephfs 挂载问题会导致整个文件系统不可用，例如 df -h, ls dir 等，此时可以使用 umount 的懒卸载模式 <code>umount -l</code>，这会告诉内核当不占用时被卸载，由于这个问题是出现问题，而不是长期占用，这里用懒卸载后会立即卸载，从而解决了 stuck 的问题。</p>
 <h2 id="reference">Reference</h2>
 <p><sup id="1">[1]</sup> <a href="https://ceph.io/en/news/blog/2013/first-impressions-through-fscache-and-ceph/" target="_blank"
    rel="noopener nofollow noreferrer" >First Impressions Through Fscache and Ceph</a></p>

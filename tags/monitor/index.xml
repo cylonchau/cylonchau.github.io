@@ -714,6 +714,63 @@ helm pull grafana/grafana --version 6.57.4
     </item>
     
     <item>
+      <title>记录kubernetes node label的面板实施</title>
+      <link>https://www.oomkill.com/2023/08/kubernetes-node-label-dashboard/</link>
+      <pubDate>Sat, 19 Aug 2023 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2023/08/kubernetes-node-label-dashboard/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<h2 id="背景">背景</h2>
+<p>目前的 Kubernetes 集群资源面板是基于集群的使用资源，因为是多集群，业务同时运行字啊不同集群上，如果通过 label 来划分业务使用的资源情况，这个才是真的和每个集群的每个业务使用的资源有关。</p>
+<p>对于这种场景的划分，Kubernetes 中有一个专门的名词是 Pod 的拓扑域；基于这些需要做的事情就如下步骤</p>
+<ul>
+<li>首先确定node label可以搜集到，如果不存在需要收集</li>
+<li>当收集到node label 时，需要根据对应的 label 将一个域中的</li>
+<li>根据域（label）做变量注入到 对应的查询语句中以生成图表</li>
+</ul>
+<h2 id="收集-node-label">收集 node label</h2>
+<p>在使用 <strong>kube-prometheus-stack</strong> 中收集 kubernetes 的 node label 需要手动启动参数  <code>- --metric-labels-allowlist=nodes=[*]</code> 才可以收集到 node label，手动给Node 打上标签，test 拓扑域 为 aaaa bbbb两个</p>
+<pre><code class="language-bash">$ kubectl get node --show-labels
+NAME             STATUS   ROLES    AGE   VERSION    LABELS
+node01   Ready    &lt;none&gt;   13d   v1.16.10   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node01,kubernetes.io/os=linux,test=bbbb
+node01   Ready    &lt;none&gt;   13d   v1.16.10   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=node01,kubernetes.io/os=linux,test=aaaa
+</code></pre>
+<p>开启后，会在 kube_node_labels 收取到 node 的 label，其他 node label 没什么用，使用 relabeing 删除掉</p>
+<pre><code class="language-yaml">regex: label_(beta_kubernetes_io_arch|beta_kubernetes_io_os|kubernetes_io_arch|kubernetes_io_os|kubernetes_io_hostname)
+action: labeldrop
+</code></pre>
+<h2 id="使用标签分组">使用标签分组</h2>
+<p>因为标签 只存在于 kube_node_label 指标中，需要利用这个指标对每种类型 Pod 分组，首先找到指标的相同标签，可以看到每个 Pod 都会存在一个 node=&ldquo;xxxxxxx&rdquo; 这与 kube_node_labels 上的相符合。</p>
+<pre><code class="language-bash">kube_pod_container_resource_requests{container=&quot;alertmanager&quot;, endpoint=&quot;http&quot;, instance=&quot;10.0.130.150:8080&quot;, job=&quot;kube-state-metrics&quot;, namespace=&quot;default&quot;, node=&quot;node003&quot;, pod=&quot;alertmanager-kube-prometheus-stack-alertmanager-0&quot;, resource=&quot;memory&quot;, service=&quot;kube-prometheus-stack-kube-state-metrics&quot;, uid=&quot;12787588-b05e-466a-9f1a-661a05e8b634&quot;, unit=&quot;byte&quot;}
+
+kube_node_labels{container=&quot;kube-state-metrics&quot;, endpoint=&quot;http&quot;, instance=&quot;10.0.130.150:8080&quot;, job=&quot;kube-state-metrics&quot;, label_test=&quot;aaaa&quot;, namespace=&quot;default&quot;, node=&quot;node195&quot;, pod=&quot;kube-prometheus-stack-kube-state-metrics-7fb89968cb-jrrdp&quot;, service=&quot;kube-prometheus-stack-kube-state-metrics&quot;}
+</code></pre>
+<p>然后使用 promQL 的 join 表达式，对应决定拓扑域的 label 注入到每个 Pod 的标签中</p>
+<pre><code class="language-bash">kube_pod_info{node=xxx} 
+  * on(node) group_left(test) kube_node_labels{test=&quot;aaa&quot;}
+</code></pre>
+<p>上面的表达式中，选择了 kube_pod_info 指标，并且使用 node=xxx 进行过滤。然后使用 on(node) 语句指定在 node 标签上进行 join 操作，同时使用 <code>group_left(test)</code> 告诉 Prometheus 把 kube_node_labels 中的 test 标签添加到左侧的指标（即 kube_pod_info）中。</p>
+<p>通过这种方式，我们就可以把 kube_node_labels 中的 test=aaa 标签附加到所有 kube_pod_info 上，且它们都是在相同的节点中。具体效果如下图</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-2024109141236234.png" alt="image-2024109141236234" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图1：node label指标</center>
+<h2 id="grafana-使用-label-做变量">grafana 使用 label 做变量</h2>
+<p>有了决定拓扑域的标签，还需要吧这个 label 作为 grafana 的变量</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914631411.png" alt="image-202410914631411" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图2：grafana变量配置</center>
+<p>这个里可以用  promql 的 by 进行分组</p>
+<pre><code class="language-bash">count(kube_pod_info{}
+  * on(node) group_left(label_test) kube_node_labels{}) by (label_test)
+</code></pre>
+<p>如图1所示，这时就知道每个拓扑域中的 Pod 使用了多少资源，以及可以是用 聚合函数 算出每个拓扑域总资源等信息</p>
+<p>基于 kube_node_labels 作为变量进行输出面板</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-2024109141263453.png" alt="image-2024109141263453" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图3：grafana定义变量</center>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-202410914645123.png" alt="image-202410914645123" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<center>图4：promql</center>
+]]></content:encoded>
+    </item>
+    
+    <item>
       <title>在 Kubernetes 集群中使用 blackbox exporter监控外部IP</title>
       <link>https://www.oomkill.com/2023/07/blackbox_exporter-in-k8s/</link>
       <pubDate>Wed, 12 Jul 2023 00:00:00 +0000</pubDate>
@@ -1290,14 +1347,22 @@ my_metric_total{env=&quot;dev&quot;} 11
 <p>通常情况下，WEB UI 就可以满足需求了，通过路径 Prometheus UI -&gt; Status -&gt; TSDB Status -&gt; Head Cardinality Stats。</p>
 <p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/image-20230617175638751.png" alt="image-20230617175638751" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <center>图：Prometheus WEB UI TOP 10 series</center>
-<p>由上图可见，在这里体现的高基数问题的指标，通常都是以 <em>bucket</em> 结尾的指标，而这些指标通常包含2个维度，会无线拉长成为高基数指标。如下面指标所示，通常由 le （标识每个 bucket 的上限，这可以确保可以定位到在一个时间范围内相应的请求指标有哪些）</p>
-<pre><code>apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;+Inf&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;DELETE&quot;, version=&quot;v1&quot;}	19
-
-apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;0.05&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;POST&quot;, version=&quot;v1&quot;}
-
-apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpoint=&quot;https&quot;, group=&quot;admissionregistration.k8s.io&quot;, instance=&quot;10.0.0.4:6443&quot;, job=&quot;apiserver&quot;, le=&quot;0.25&quot;, namespace=&quot;default&quot;, resource=&quot;mutatingwebhookconfigurations&quot;, scope=&quot;cluster&quot;, service=&quot;kubernetes&quot;, verb=&quot;PATCH&quot;, version=&quot;v1&quot;}
+<p>查看上图可见，http_server_requests_seconds_bucket 的信息，就这个 bucket 指标占总指标的 25% 左右，在加上其他的  几个 bucket，10个基本上占用了60%；在这里体现的高基数问题的指标，通常都是以 <em>bucket</em> 结尾的指标，而这些指标通常包含2个维度，会无线拉长成为高基数指标。如下面指标所示，通常由 le （标识每个 bucket 的上限，这可以确保可以定位到在一个时间范围内相应的请求指标有哪些）</p>
+<pre><code>http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/map&quot;,le=&quot;+Inf&quot;,} 71.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.001&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.001048576&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.001398101&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.001747626&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.002097151&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.002446676&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.002796201&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.003145726&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.003495251&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.003844776&quot;,} 0.0
+http_server_requests_seconds_bucket{application=&quot;map-common-api&quot;,exception=&quot;None&quot;,method=&quot;POST&quot;,outcome=&quot;SUCCESS&quot;,status=&quot;200&quot;,uri=&quot;/api/v1/maplist&quot;,le=&quot;0.004194304&quot;,} 0.0
 </code></pre>
 <p>例如下面是生产环境中的一个高基数TOP10</p>
+<p>DC01 Top 10 series count by metric names</p>
 <table>
 <thead>
 <tr>
@@ -1308,43 +1373,110 @@ apiserver_request_duration_seconds_bucket{component=&quot;apiserver&quot;, endpo
 <tbody>
 <tr>
 <td>http_server_requests_seconds_bucket</td>
-<td>2017537</td>
-</tr>
-<tr>
-<td>lettuce_command_firstreponse_seconds_bucket</td>
-<td>755056</td>
+<td>1282158</td>
 </tr>
 <tr>
 <td>lettuce_command_completion_seconds_bucket</td>
-<td>755056</td>
+<td>782680</td>
 </tr>
 <tr>
-<td>http_server_requests_seconds</td>
-<td>555575</td>
+<td>lettuce_command_firstresponse_seconds_bucket</td>
+<td>782680</td>
+</tr>
+<tr>
+<td>nginx_ingress_controller_response_size_bucket</td>
+<td>99840</td>
 </tr>
 <tr>
 <td>nginx_ingress_controller_request_duration_seconds_bucket</td>
-<td>475440</td>
+<td>99840</td>
 </tr>
 <tr>
-<td>node_ipvs_backend_connections_inactive</td>
-<td>148796</td>
+<td>http_server_requests_seconds</td>
+<td>92695</td>
 </tr>
 <tr>
-<td>node_ipvs_backend_connections_active</td>
-<td>148796</td>
+<td>nginx_ingress_controller_request_size_bucket</td>
+<td>91520</td>
 </tr>
 <tr>
-<td>apiserver_request_duration_seconds_bucket</td>
-<td>27896</td>
+<td>nginx_ingress_controller_response_duration_seconds_bucket</td>
+<td>74580</td>
 </tr>
 <tr>
-<td>etcd_request_duration_seconds_bucket1</td>
-<td>22763</td>
+<td>nginx_ingress_controller_bytes_sent_bucket</td>
+<td>66560</td>
+</tr>
+<tr>
+<td>node_ipvs_backend_weight</td>
+<td>51173</td>
 </tr>
 </tbody>
 </table>
-<p>至此可以看到实际上 <code>http_server_requests_seconds_bucket</code> 这一个指标占据了 prometheus 总指标的50%+</p>
+<p>DC02 Top 10 series count by metric names</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>http_server_requests_seconds_bucket</td>
+<td>1073571</td>
+</tr>
+<tr>
+<td>lettuce_command_firstresponse_seconds_bucket</td>
+<td>755650</td>
+</tr>
+<tr>
+<td>lettuce_command_completion_seconds_bucket</td>
+<td>755650</td>
+</tr>
+<tr>
+<td>http_server_requests_seconds</td>
+<td>77775</td>
+</tr>
+<tr>
+<td>nginx_ingress_controller_request_duration_seconds_bucket</td>
+<td>67440</td>
+</tr>
+<tr>
+<td>nginx_ingress_controller_response_size_bucket</td>
+<td>67440</td>
+</tr>
+<tr>
+<td>nginx_ingress_controller_request_size_bucket</td>
+<td>61820</td>
+</tr>
+<tr>
+<td>nginx_ingress_controller_response_duration_seconds_bucket</td>
+<td>53052</td>
+</tr>
+<tr>
+<td>node_ipvs_backend_connections_inactive</td>
+<td>48796</td>
+</tr>
+<tr>
+<td>node_ipvs_backend_connections_active</td>
+<td>48796</td>
+</tr>
+</tbody>
+</table>
+<p>至此可以看到实际上 <code>http_server_requests_seconds_bucket</code> 这一个指标占据了 prometheus 总指标的50%+；这种指标就会存在多个维度的扩张，URI, outcome, status,uri,le；假设我们有 100个 接口，</p>
+<ul>
+<li>在什么都不做的情况下，就多出了100个 series</li>
+<li>如果状态码是存在变数的，假设为5，此时series 为500</li>
+<li>在基于 outcome 的数量，此时一个指标的基数已经为1000</li>
+<li>那么 le 将无限放大这个 metric 到 无穷</li>
+</ul>
+<p>这样就可以定位，影响到 prometheus 存储于性能最大点在哪里，那么此时就需要考虑 le=&ldquo;0.001048576&rdquo; 和 le=&ldquo;0.001&rdquo;  有什么区别，以及此类的指标是否有必要存在？</p>
+<ul>
+<li>基于我们现有的监控报表来看</li>
+<li>结合业务日志将访问信息的监控从 Prometheus 提到 ELK 这种日志层面监控</li>
+<li>再通过 将 kube-apiserver 的 bucket 以及负载均衡在线/不在线Pod 这两个 指标清空，基本上可以满足70%左右的监控项删减 通常会删掉 le 这个标签，而不是 http_server_requests_seconds_bucket 的数据，但是也需要考虑，<code>http_server_requests_seconds_bucket</code> 指标是否有用到，如果没有用到， 又是高基数，那么可以删除</li>
+</ul>
 <p>而其他的一些分析，可以很有效的定位到你需要优化的标签</p>
 <ul>
 <li>Top 10 label names with high memory usage</li>
@@ -1450,8 +1582,11 @@ my_metric_total{env=&quot;dev&quot;} 11
     action: drop
 </code></pre>
 <p><code>recording rules</code> 是允许预先将经常计算的表达式的结果保存为一组新的时间序列的，这种情况下查询的成本会比每次直接查询原始的表达式要快许多，并且在聚合后，可以将原来的指标删掉</p>
+<p>优化后每个块的大小</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240915210841954.png" alt="image-20240915210841954" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
+<p>优化后的每个块的大小</p>
+<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/cylonchau/imgbed/img/image-20240915210918296.png" alt="image-20240915210918296" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
 <h2 id="reference">Reference</h2>
-<blockquote>
 <p><sup id="1">[1]</sup> <a href="https://grafana.com/blog/2022/02/15/what-are-cardinality-spikes-and-why-do-they-matter/" target="_blank"
    rel="noopener nofollow noreferrer" >What are cardinality spikes and why do they matter?</a></p>
 <p><sup id="2">[2]</sup> <a href="https://grafana.com/blog/2022/10/20/how-to-manage-high-cardinality-metrics-in-prometheus-and-kubernetes/" target="_blank"
@@ -1462,7 +1597,6 @@ my_metric_total{env=&quot;dev&quot;} 11
    rel="noopener nofollow noreferrer" >What are cardinality spikes and why do they matter?</a></p>
 <p><sup id="5">[5]</sup> <a href="https://promcon.io/2019-munich/slides/containing-your-cardinality.pdf" target="_blank"
    rel="noopener nofollow noreferrer" >Containing your Cardinality</a></p>
-</blockquote>
 ]]></content:encoded>
     </item>
     
