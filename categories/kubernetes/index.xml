@@ -6,7 +6,88 @@
     <description>Recent content in kubernetes on Cylon&#39;s Collection</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Sun, 30 Jun 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/kubernetes/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 24 Nov 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/categories/kubernetes/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>debian12 - 高版本系统安装旧版本k8s异常处理</title>
+      <link>https://www.oomkill.com/2024/11/debian12-install-k8s-1.16/</link>
+      <pubDate>Sun, 24 Nov 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/11/debian12-install-k8s-1.16/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>今日在部署旧版本 k8s 集群 (1.16.10) 时出现错误，主要是在新版本操作系统上部署老版本 k8s，kubelet会出现如下错误</p>
+<pre><code class="language-bash">W1123 22:31:47.383423    3686 server.go:605] failed to get the kubelet's cgroup: mountpoint for cpu not found.  Kubelet system container metrics may be missing.
+W1123 22:31:47.383572    3686 server.go:612] failed to get the container runtime's cgroup: failed to get container name for docker process: mountpoint for cpu not found. Runtime system container metrics may be missing.
+</code></pre>
+<h2 id="错误原因">错误原因</h2>
+<p>上面的报错是 Kubelet 无法正确访问 Docker 容器运行时的 cgroup 信息，特别是关于 CPU 使用的 cgroup 信息</p>
+<blockquote>
+<p>从 Linux 内核 4.5 起，cgroup v2 被引入并逐渐取代了 cgroup v1。如果系统启用了 cgroup v2，而 Docker 或 Kubelet 并没有正确配置，可能会导致 Kubelet 无法访问 cgroup 信息。</p>
+</blockquote>
+<p>查看系统 cgroup 版本</p>
+<pre><code class="language-bash">$ mount | grep cgroup
+cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot)
+</code></pre>
+<h2 id="更改docker和kubelet的cgroup版本">更改Docker和Kubelet的cgroup版本</h2>
+<p>更改 Docker 的 cgroup 版本</p>
+<pre><code class="language-bash">$ docker info |grep Cgroup
+ Cgroup Driver: systemd
+ Cgroup Version: 2
+</code></pre>
+<p>强制 Docker 使用 cgroup v1</p>
+<pre><code class="language-bash">{
+  &quot;exec-opts&quot;: [&quot;native.cgroupdriver=cgroupfs&quot;],
+  &quot;log-driver&quot;: &quot;json-file&quot;
+}
+</code></pre>
+<p>查看结果</p>
+<pre><code class="language-bash">root@debian-template:~# docker info|grep cgroup
+ Cgroup Driver: cgroupfs
+</code></pre>
+<p>配置 kubelet 使用 cgroup v1</p>
+<p>修改 kubelet 参数</p>
+<pre><code class="language-bash">--cgroup-driver=cgroupfs
+</code></pre>
+<h2 id="让操作系统挂载-cgroup-v1">让操作系统挂载 cgroup v1</h2>
+<p>查看系统 cgroup 版本</p>
+<pre><code class="language-bash">$ mount | grep cgroup
+cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot)
+</code></pre>
+<p>手动挂载</p>
+<p>通常手动挂载是不成功的</p>
+<pre><code class="language-bash">mount: /sys/fs/cgroup: cgroup already mounted or mount point busy.
+       dmesg(1) may have more information after failed mount system call.
+</code></pre>
+<p>需要修改启动参数让操作系统挂载上 cgroup v1</p>
+<pre><code class="language-bash">vi /etc/default/grub
+</code></pre>
+<p>在 <code>GRUB_CMDLINE_LINUX_DEFAULT</code> 行中，添加 <code>cgroup_no_v2=1</code> 和 <code>systemd.unified_cgroup_hierarchy=0</code> 选项，确保系统使用 <strong>cgroup v1</strong></p>
+<pre><code class="language-bash">GRUB_CMDLINE_LINUX_DEFAULT=&quot;quiet cgroup_no_v2=1 systemd.unified_cgroup_hierarchy=0&quot;
+</code></pre>
+<p>更新 GRUB 配置</p>
+<pre><code class="language-bash">update-grub
+</code></pre>
+<p>重启后查看挂载信息</p>
+<pre><code class="language-bash">$ mount | grep group
+tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,size=4096k,nr_inodes=1024,mode=755,inode64)
+cgroup2 on /sys/fs/cgroup/unified type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate)
+cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,name=systemd)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
+cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
+cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
+cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_cls,net_prio)
+cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpu,cpuacct)
+cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
+cgroup on /sys/fs/cgroup/misc type cgroup (rw,nosuid,nodev,noexec,relatime,misc)
+</code></pre>
+<p>此时 kubelet 可以正常启动了</p>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>构建集群kubernetes v1.28并使用kine和mysql替换etcd</title>
       <link>https://www.oomkill.com/2024/06/kubernetes-without-etcd-step-by-step/</link>
@@ -21147,8 +21228,39 @@ May 12 23:45:11 master-machine kubelet: E0512 23:45:11.460097   19810 certificat
 <blockquote>
 <p>问题：<code>&quot;master01&quot; is forbidden: User &quot;system:anonymous&quot; </code></p>
 <p>原因：用户未授权</p>
-<p>解决  ：<code>kubectl create clusterrolebinding kube-apiserver:kubelet-apis --clusterrole=system:kubelet-api-admin --user kubernetes-master</code> &amp;&amp; <code>kubectl certificate approve</code></p>
 </blockquote>
+<p>需要注意的是，这里使用的是 bootstrap 证书进行授权，所以绑定的用户必须为 bootstrap 证书授权的用户或组。</p>
+<pre><code class="language-bash">$ kubectl create clusterrolebinding kubelet-bootstrap --clusterrole=system:node-bootstrapper --group=system:bootstrappers
+</code></pre>
+<blockquote>
+<p>The kube-apiserver has several requirements to enable TLS bootstrapping: Authenticating the bootstrapping kubelet to the <code>system:bootstrappers</code> group <sup><a href="#2">[2]</a></sup></p>
+</blockquote>
+<pre><code class="language-yaml">root@debian-template:~# kubectl get clusterrole system:node-bootstrapper -oyaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: &quot;true&quot;
+  creationTimestamp: &quot;2024-11-23T04:26:57Z&quot;
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:node-bootstrapper
+  resourceVersion: &quot;54&quot;
+  selfLink: /apis/rbac.authorization.k8s.io/v1/clusterroles/system%3Anode-bootstrapper
+  uid: 6f39c3aa-e46d-413f-8834-35c8832c328a
+rules:
+- apiGroups:
+  - certificates.k8s.io
+  resources:
+  - certificatesigningrequests
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+
+</code></pre>
+<p>报错如下</p>
 <pre><code>master01 kubelet: E1114 17:16:33.581116    8559 kubelet.go:2270] node &quot;master01&quot; not found
 
 failed to ensure node lease exists, will retry in 6.4s, error: leases.coordination.k8s.io &quot;master01&quot; is forbidden: User &quot;system:anonymous&quot; cannot get resource &quot;leases&quot; in API group &quot;coordination.k8s.io&quot; in the namespace &quot;kube-node-lease&quot;
@@ -21197,6 +21309,10 @@ W0729 06:56:09.253809       1 reflector.go:436] github.com/flannel-io/flannel/su
 </code></pre>
 <p>参考：<a href="https://stackoverflow.com/questions/50833616/kube-flannel-cant-get-cidr-although-podcidr-available-on-node" target="_blank"
    rel="noopener nofollow noreferrer" >kube flannel cant get cidr although podcidr available on node</a> 原因为 CIDR无法分配</p>
+<h3 id="network-plugin-is-not-ready-cni-config-uninitialized">network plugin is not ready: cni config uninitialized</h3>
+<pre><code class="language-bash">Container runtime network not ready: NetworkReady=false reason:NetworkPluginNotReady message:docker: network plugin is not ready: cni config uninitialized 
+</code></pre>
+<p>没有安装网络插件，安装任意网络插件后恢复。</p>
 <h3 id="mvcc-required-revision-has-been-compacted">mvcc: required revision has been compacted</h3>
 <pre><code class="language-log">kube-apiserver: W1120 17:18:20.199950   70454 watcher.go:207] watch chan error: etcdserver: mvcc: required revision has been compacted
 </code></pre>
@@ -21220,8 +21336,11 @@ for wres := range wch {
     }
     ...
 </code></pre>
-<p><a href="https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction" target="_blank"
-   rel="noopener nofollow noreferrer" >https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction</a></p>
+<h2 id="reference">Reference</h2>
+<p><sup id="1">[1]</sup> <a href="https://etcd.io/docs/v3.5/op-guide/maintenance/#auto-compaction" target="_blank"
+   rel="noopener nofollow noreferrer" >Maintenance</a></p>
+<p><sup id="2">[2]</sup> <a href="https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/#kube-apiserver-configuration" target="_blank"
+   rel="noopener nofollow noreferrer" >kubelet-tls-bootstrapping</a></p>
 ]]></content:encoded>
     </item>
     

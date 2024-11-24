@@ -6,7 +6,190 @@
     <description>Recent content in troubleshooting on Cylon&#39;s Collection</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>zh-cn</language>
-    <lastBuildDate>Tue, 13 Feb 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/troubleshooting/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 21 Sep 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/troubleshooting/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Goswagger - Skipping &#39;&#39;, recursion detected</title>
+      <link>https://www.oomkill.com/2024/09/goswagger-skipping-recursion-detected/</link>
+      <pubDate>Sat, 21 Sep 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/09/goswagger-skipping-recursion-detected/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>问题：当使用的结构体为嵌套格式，会提示 <code>recursion detected</code> 或 <code>cannot find type definition</code></p>
+<pre><code class="language-go">type Instance struct {
+	metav1.TypeMeta
+	Instances       []InstanceItem    `json:&quot;instances&quot; yaml:&quot;instances&quot; form:&quot;instances&quot; binding:&quot;required&quot;`
+	ServiceSelector map[string]string `json:&quot;serivce_selector&quot; yaml:&quot;serivce_selector&quot; form:&quot;serivce_selector&quot;`
+}
+
+type InstanceItem struct {
+	Name         string            `json:&quot;name&quot; yaml:&quot;name&quot; form:&quot;name&quot; binding:&quot;required&quot;`
+	PromEndpoint string            `json:&quot;prom_endpoint&quot; yaml:&quot;prom_endpoint&quot; form:&quot;prom_endpoint&quot; binding:&quot;required&quot;`
+	Labels       map[string]string `json:&quot;labels&quot; yaml:&quot;labels&quot; form:&quot;labels&quot;`
+}
+</code></pre>
+<p>go swagger 注释为</p>
+<pre><code>// deleteInstance godoc
+// @Summary Remove prometheus instance.
+// @Description Remove prometheus instance.
+// @Tags Instances
+// @Accept json
+// @Produce json
+// @Param query body instance.Instance false &quot;body&quot;
+// @securityDefinitions.apikey BearerAuth
+// @Success 200 {object} interface{}
+// @Router /ph/v1/instance [DELETE]
+</code></pre>
+<p>执行命令时报错如下：</p>
+<pre><code class="language-bash">$ swag init -g cmd/ph-server/main.go --output ./docs/  --packageName docs
+2024/09/22 19:56:19 Generate swagger docs....
+2024/09/22 19:56:19 Generate general API Info, search dir:./
+2024/09/22 19:56:19 warning: failed to get package name in dir: ./, error: execute go list command, exit status 1, stdout:, stderr:no Go files in /mnt/d/src/go/work/prometheus-hub
+2024/09/22 19:56:19 Generating instance.Instance
+2024/09/22 19:56:19 Error parsing type definition 'instance.Instance': : cannot find type definition: metav1.TypeMeta
+2024/09/22 19:56:19 Skipping 'instance.Instance', recursion detected.
+2024/09/22 19:56:19 Skipping 'instance.Instance', recursion detected.
+2024/09/22 19:56:19 Skipping 'instance.Instance', recursion detected.
+2024/09/22 19:56:19 Generating target.TargetItem
+</code></pre>
+<p>解决： <code>--parseDependency </code></p>
+<pre><code class="language-bash">$ swag init -g cmd/ph-server/main.go --output ./docs/  \
+	--packageName docs  \
+	--parseDependency --parseInternal
+	
+2024/09/22 20:20:40 Generate swagger docs....
+2024/09/22 20:20:40 Generate general API Info, search dir:./
+2024/09/22 20:20:40 warning: failed to get package name in dir: ./, error: execute go list command, exit status 1, stdout:, stderr:no Go files in /mnt/d/src/go/work/prometheus-hub
+2024/09/22 20:20:41 warning: failed to evaluate const mProfCycleWrap at /usr/local/go/src/runtime/mprof.go:165:7, reflect: call of reflect.Value.Len on zero Value
+2024/09/22 20:20:41 Generating github_com_cylonchau_prometheus-hub_pkg_apis_instance.Instance
+2024/09/22 20:20:41 Generating github_com_cylonchau_prometheus-hub_pkg_apis_meta_v1.TypeMeta
+2024/09/22 20:20:41 Generating github_com_cylonchau_prometheus-hub_pkg_apis_instance.InstanceItem
+</code></pre>
+<h2 id="reference">Reference</h2>
+<p><a href="https://stackoverflow.com/questions/65947311/how-to-use-a-type-definition-in-another-file-with-swaggo" target="_blank"
+   rel="noopener nofollow noreferrer" >How to use a type definition in another file with swaggo?</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Gin - 参数默认值问题</title>
+      <link>https://www.oomkill.com/2024/09/gin-param-default-value/</link>
+      <pubDate>Fri, 20 Sep 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/09/gin-param-default-value/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>遇到问题：gin 使用 Bind 时无法填充，改成下面代码可以获取到</p>
+<pre><code class="language-go">type User struct {
+	Name string `form:&quot;name,default=user1&quot; json:&quot;name,default=user2&quot;`
+	Age  int    `form:&quot;age,default=10&quot; json:&quot;age,default=20&quot;`
+}
+
+r := gin.Default()
+
+// way1 curl 127.0.0.1:8900/bind?name=aa
+// way2 curl -X POST 127.0.0.1:8900/bind -d &quot;name=aa&amp;age=30&quot;
+// way3 curl -X POST 127.0.0.1:8900/bind -H &quot;Content-Type: application/json&quot; -d &quot;{\&quot;name\&quot;: \&quot;aa\&quot;}&quot;
+r.Any(&quot;/bind&quot;, func(c *gin.Context) {
+    var user User
+    //user = User{Name: &quot;bb&quot;, Age: 11} //way4:A variable of type User can be generated with the default value before bind
+
+    if c.ContentType() == binding.MIMEJSON {
+        //way5:A variable of type User can be generated with the default value before bind.
+        _ = binding.MapFormWithTag(&amp;user, nil, &quot;json&quot;)
+    }
+
+    _ = c.Bind(&amp;user) //Note that because bind is used here to request json, you specify the Content-Type header
+    c.String(200, &quot;Hello %v age %v&quot;, user.Name, user.Age)
+})
+
+// The above 4 way.
+// way1/2 structTag is work.because gin at queryBinding/formBinding execute mapFormByTag logic, will check formTag
+// way3 structTag not work. gin at jsonBinding non-execution  mapFormByTag logic
+// way4/way5 no matter query/form/json All valid
+// way5 is work.  Because the mapFormByTag logic is triggered in addition
+
+r.Run(&quot;:8900&quot;)
+</code></pre>
+<h2 id="reference">Reference</h2>
+<p><a href="https://github.com/gin-gonic/gin/issues/1052#issuecomment-2167091249" target="_blank"
+   rel="noopener nofollow noreferrer" >Bind should support default values</a></p>
+]]></content:encoded>
+    </item>
+    
+    <item>
+      <title>Gorm - BeforeDelete无法获取正确条目</title>
+      <link>https://www.oomkill.com/2024/09/gorm-before-delete/</link>
+      <pubDate>Fri, 20 Sep 2024 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.oomkill.com/2024/09/gorm-before-delete/</guid>
+      <description></description>
+      <content:encoded><![CDATA[<p>遇到问题：BeforeDelete 在删除时获取 SQL 不正确</p>
+<p>BeforeDelete 代码如下</p>
+<pre><code class="language-go">func (t *Target) BeforeDelete(tx *gorm.DB) (err error) {
+	// 找到与此 Target 相关的所有 Labels
+	var labels []Label
+	if err := tx.Model(t).Association(&quot;Labels&quot;).Find(&amp;labels); err != nil {
+		klog.V(4).Infof(&quot;Error fetching labels: %v&quot;, err)
+		return err
+	}
+
+	for _, label := range labels {
+		if err := tx.Delete(&amp;label).Error; err != nil {
+			klog.V(4).Infof(&quot;Error deleting label:&quot;, err)
+			return err
+		}
+	}
+
+	// 注意：由于设置了 OnDelete:SET NULL，因此在删除 Labels 后，会清理 target_labels 表中的关联
+	return nil
+}
+</code></pre>
+<p>删除写法</p>
+<pre><code class="language-go">func DeleteTargets(target *target.TargetItem) (enconterError error) {
+	// 创建 Target
+	existingTarget := &amp;Target{}
+	if enconterError = DB.Model(&amp;Target{}).Where(&quot;address = ? AND metric_path = ? AND scrape_time = ? AND scrape_timeout = ?&quot;,
+		target.Address, target.MetricPath, target.ScrapeTime, target.ScrapeTimeout).Delete(existingTarget).Error; enconterError != nil {
+		return enconterError // 如果找不到记录，则返回错误
+	}
+	return enconterError
+}
+</code></pre>
+<p>删除时遇到的问题：SQL 生成不正确 <code>target_id IN (NULL)</code></p>
+<pre><code class="language-bash">BeforeDelete hook triggered
+
+2024/09/22 00:33:36 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:37
+[0.184ms] [rows:0] SELECT `labels`.`id`,`labels`.`key`,`labels`.`value` FROM `labels` JOIN `target_labels` ON `target_labels`.`label_id` = `labels`.`id` AND `target_labels`.`target_id` IN (NULL) 
+</code></pre>
+<p>问题原因，在删除这条记录时，默认 <code>(t *Target)</code> 必须 id 存在，如果不存在就是 NULL，所以先用 find 查询保证这个操作的 <code>t</code> 中存在主键才可以。</p>
+<pre><code class="language-go">func DeleteTargets(target *target.TargetItem) (enconterError error) {
+	// 创建 Target
+	existingTarget := &amp;Target{}
+	if enconterError = DB.Model(&amp;Target{}).Where(&quot;address = ? AND metric_path = ? AND scrape_time = ? AND scrape_timeout = ?&quot;,
+		target.Address, target.MetricPath, target.ScrapeTime, target.ScrapeTimeout).Find(existingTarget).Delete(existingTarget).Error; enconterError != nil {
+		return enconterError // 如果找不到记录，则返回错误
+	}
+	return enconterError
+}
+</code></pre>
+<p>修改后的输出 SQL</p>
+<pre><code class="language-go">2024/09/22 00:41:21 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:33
+[0.126ms] [rows:3] SELECT `labels`.`id`,`labels`.`key`,`labels`.`value` FROM `labels` JOIN `target_labels` ON `target_labels`.`label_id` = `labels`.`id` AND `target_labels`.`target_id` = 17        
+
+2024/09/22 00:41:21 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:39
+[5.229ms] [rows:1] DELETE FROM `labels` WHERE `labels`.`id` = 7
+
+2024/09/22 00:41:21 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:39
+[0.078ms] [rows:1] DELETE FROM `labels` WHERE `labels`.`id` = 8
+
+2024/09/22 00:41:21 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:39
+[0.062ms] [rows:1] DELETE FROM `labels` WHERE `labels`.`id` = 9
+
+2024/09/22 00:41:21 /mnt/d/src/go/work/prometheus-hub/pkg/model/target.go:70
+[15.661ms] [rows:1] DELETE FROM `targets` WHERE (address = &quot;10.0.0.14:9090&quot; AND metric_path = &quot;/metrics&quot; AND scrape_time = 30 AND scrape_timeout = 10) AND `targets`.`id` = 17
+</code></pre>
+]]></content:encoded>
+    </item>
+    
     <item>
       <title>记录一次ceph集群故障处理记录</title>
       <link>https://www.oomkill.com/2024/02/10-2-troubeshooting-crash/</link>
