@@ -1,1002 +1,403 @@
-<!DOCTYPE html>
-<html lang="zh" dir="auto">
-
-<head><meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="index, follow">
-<title>ch02 - MySQL安全相关配置 | Cylon&#39;s Collection</title>
-<meta name="keywords" content="mysql, mysql安全相关配置">
-<meta name="description" content="ch02 - MySQL安全相关配置 - Cylon&#39;s Collection">
-<meta name="author" content="cylon">
-<link rel="canonical" href="https://www.oomkill.com/2017/05/ch2-mysql-security/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
-<link rel="icon" href="https://www.oomkill.com/favicon.ico">
-<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
-
-<meta name="twitter:title" content="ch02 - MySQL安全相关配置 | Cylon&#39;s Collection" />
-<meta name="twitter:description" content="" />
-<meta property="og:title" content="ch02 - MySQL安全相关配置 | Cylon&#39;s Collection" />
-<meta property="og:description" content="" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://www.oomkill.com/2017/05/ch2-mysql-security/" />
-<meta property="article:section" content="posts" />
-  <meta property="article:published_time" content="2017-05-16T00:00:00&#43;00:00" />
-  <meta property="article:modified_time" content="2022-12-12T23:00:36&#43;08:00" />
-
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [, 
-    {
-      "@type": "ListItem",
-      "position":  2 ,
-      "name": "Posts",
-      "item": "https://www.oomkill.com/posts/"
-    }, 
-    {
-      "@type": "ListItem",
-      "position":  3 ,
-      "name": "ch02 - MySQL安全相关配置",
-      "item": "https://www.oomkill.com/2017/05/ch2-mysql-security/"
-    }
-  ]
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": "ch02 - MySQL安全相关配置 | Cylon's Collection",
-  "name": "ch02 - MySQL安全相关配置",
-  "description": "",
-  "keywords": [
-    "mysql", "mysql安全相关配置"
-  ],
-  "wordCount" : "3084",
-  "inLanguage": "zh",
-  "datePublished": "2017-05-16T00:00:00Z",
-  "dateModified": "2022-12-12T23:00:36+08:00",
-  "author":{
-    "@type": "Person",
-    "name": "cylon"
-  },
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://www.oomkill.com/2017/05/ch2-mysql-security/"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Cylon's Collection",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://www.oomkill.com/favicon.ico"
-    }
-  }
-}
-</script><script type="text/javascript"
-        async
-        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-MathJax.Hub.Config({
-  tex2jax: {
-    inlineMath: [['$','$'], ['\\(','\\)']],
-    displayMath: [['$$','$$'], ['\[\[','\]\]']],
-    processEscapes: true,
-    processEnvironments: true,
-    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-    TeX: { equationNumbers: { autoNumber: "AMS" },
-         extensions: ["AMSmath.js", "AMSsymbols.js"] }
-  }
-});
-
-MathJax.Hub.Queue(function() {
-    
-    
-    
-    var all = MathJax.Hub.getAllJax(), i;
-    for(i = 0; i < all.length; i += 1) {
-        all[i].SourceElement().parentNode.className += ' has-jax';
-    }
-});
-</script>
-
-<style>
-code.has-jax {
-    font: inherit;
-    font-size: 100%;
-    background: inherit;
-    border: inherit;
-    color: #515151;
-}
-</style>
-<noscript>
-    <style>
-        #theme-toggle,
-        .top-link {
-            display: none;
-        }
-
-    </style>
-    <style>
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --theme: rgb(29, 30, 32);
-                --entry: rgb(46, 46, 51);
-                --primary: rgb(218, 218, 219);
-                --secondary: rgb(155, 156, 157);
-                --tertiary-bg: rgb(65, 66, 68);
-                --content: rgb(196, 196, 197);
-                --code-bg: rgb(55, 56, 62);
-                --border: rgb(51, 51, 51);
-            }
-
-            .list-page {
-                background: var(--theme);
-            }
-
-            .list-page:not(.dark)::-webkit-scrollbar-track {
-                background: 0 0;
-            }
-
-            .list-page:not(.dark)::-webkit-scrollbar-thumb {
-                border-color: var(--theme);
-            }
-        }
-
-    </style>
-</noscript>
-
-</head>
-
-<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
-function switchTheme(theme) {
-  switch (theme) {
-    case 'light':
-      document.body.classList.remove('dark');
-      break;
-    case 'dark':
-      document.body.classList.add('dark');
-      break;
-    
-    default:
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark');
-      }
-  }
-}
-
-function isDarkTheme() {
-  return document.body.className.includes("dark");
-}
-
-function getPrefTheme() {
-  return localStorage.getItem("pref-theme");
-}
-
-function setPrefTheme(theme) {
-  switchTheme(theme)
-  localStorage.setItem("pref-theme", theme);
-}
-
-const toggleThemeCallbacks = {}
-toggleThemeCallbacks['main'] = (isDark) => {
-  
-  if (isDark) {
-    setPrefTheme('light');
-  } else {
-    setPrefTheme('dark');
-  }
-}
-
-
-
-
-window.addEventListener('toggle-theme', function() {
-  
-  const isDark = isDarkTheme()
-  for (const key in toggleThemeCallbacks) {
-    toggleThemeCallbacks[key](isDark)
-  }
-});
-
-
-function toggleThemeListener() {
-  
-  window.dispatchEvent(new CustomEvent('toggle-theme'));
-}
-
-</script>
-<script>
-  
-  (function() {
-    const defaultTheme = 'auto';
-    const prefTheme = getPrefTheme();
-    const theme = prefTheme ? prefTheme : defaultTheme;
-
-    switchTheme(theme);
-  })();
-</script>
-
-<header class="header">
-    <nav class="nav">
-        <div class="logo">
-            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
-            <span class="logo-switches">
-                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
-                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                </button>
-            </span>
-        </div>
-        <ul id="menu">
-            <li>
-                <a href="https://www.oomkill.com/archives/" title="归档"
-                >归档
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/tags/" title="标签"
-                >标签
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
-                >搜索
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/about/" title="关于"
-                >关于
-                </a>
-            </li>
-        </ul>
-    </nav>
-</header>
-<main class="main post">
-
-<article class="post-single">
-  <header class="post-header"><h1 class="post-title">ch02 - MySQL安全相关配置</h1>
-    <div class="post-meta"><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
-  <span>2017-05-16</span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
-  <span>Edited on 2022-12-12</span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
-  <span class="post-tags"><a href="https://www.oomkill.com/tags/databases/">databases</a></span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>7 分钟</span></span>
-
-      
-      
-    </div>
-  </header> <div class="toc side right">
-    <details >
-        <summary accesskey="c" title="(Alt + C)">
-            <span class="details">目录</span>
-        </summary>
-
-        <div class="inner"><ul>
-                <li>
-                    <a href="#%e8%ae%be%e7%bd%aemysql%e7%ae%a1%e7%90%86%e5%91%98%e8%b4%a6%e5%8f%b7%e5%af%86%e7%a0%81" aria-label="设置MySQL管理员账号密码">设置MySQL管理员账号密码</a></li>
-                <li>
-                    <a href="#%e6%b8%85%e7%90%86%e6%97%a0%e7%94%a8%e7%9a%84mysql%e7%94%a8%e6%88%b7%e4%b8%8e%e5%ba%93" aria-label="清理无用的MySQL用户与库">清理无用的MySQL用户与库</a></li>
-                <li>
-                    <a href="#%e5%88%9b%e5%bb%bamysql%e7%94%a8%e6%88%b7%e5%8f%8a%e8%b5%8b%e4%ba%88%e7%94%a8%e6%88%b7%e6%9d%83%e9%99%90" aria-label="创建MySQL用户及赋予用户权限">创建MySQL用户及赋予用户权限</a></li>
-                <li>
-                    <a href="#%e6%93%8d%e4%bd%9c%e7%a4%ba%e4%be%8b" aria-label="操作示例">操作示例</a></li>
-                <li>
-                    <a href="#%e6%8e%88%e6%9d%83%e5%b1%80%e5%9f%9f%e7%bd%91%e5%86%85%e4%b8%bb%e6%9c%ba%e8%bf%9c%e7%a8%8b%e9%93%be%e6%8e%a5%e6%95%b0%e6%8d%ae%e5%ba%93" aria-label="授权局域网内主机远程链接数据库">授权局域网内主机远程链接数据库</a></li>
-                <li>
-                    <a href="#%e9%80%9a%e8%bf%87mysql%e5%ae%a2%e6%88%b7%e7%ab%af%e9%93%be%e6%8e%a5%e5%bc%82%e5%9c%b0%e6%95%b0%e6%8d%ae%e5%ba%93%e6%9c%8d%e5%8a%a1" aria-label="通过MySQL客户端链接异地数据库服务">通过MySQL客户端链接异地数据库服务</a></li>
-                <li>
-                    <a href="#%e7%94%a8%e6%88%b7%e5%8f%af%e4%bb%a5%e6%8e%88%e6%9d%83%e7%9a%84%e6%9d%83%e9%99%90%e9%83%bd%e6%9c%89%e9%82%a3%e4%ba%9b" aria-label="用户可以授权的权限都有那些?">用户可以授权的权限都有那些?</a></li>
-                <li>
-                    <a href="#%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e5%a6%82%e4%bd%95%e6%8e%88%e6%9d%83%e7%94%a8%e6%88%b7%e6%9d%83%e9%99%90" aria-label="生产环境如何授权用户权限">生产环境如何授权用户权限</a></li>
-                <li>
-                    <a href="#%e7%94%9f%e4%ba%a7%e5%9c%ba%e6%99%af%e6%8e%88%e6%9d%83%e5%85%b7%e4%bd%93%e5%91%bd%e4%bb%a4%e4%b8%ba" aria-label="生产场景授权具体命令为">生产场景授权具体命令为</a>
-                </li>
-            </ul>
-        </div>
-    </details>
-</div>
-
-  <div class="post-content">
-    
-
-
-
-
-
-<div class="copyrightTopBlock">
-    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
-    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
-</div>
-<br><h2 id="设置mysql管理员账号密码">设置MySQL管理员账号密码<a hidden class="anchor" aria-hidden="true" href="#设置mysql管理员账号密码">¶</a></h2>
-<p>在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全</p>
-<p><strong>启动修改丢失的MySQL单实例root密码方法</strong></p>
-<p>停止MySQL</p>
-<pre><code class="language-bash">/etc/init.d/mysqld stop
-</code></pre>
-<p><strong>使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证</strong></p>
-<pre><code class="language-bash"># 单实例
-/app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql
-# 多实例
-/app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables &amp;
-# 登录时空密码
-
-$ mysql -S /data/3306/mysql.sock
-...
-...
-Welcome to the MySQL monitor.  Commands end with ; or \g.
-# 在启动时加 --skip-grant-tables参数，表示忽略授权
-</code></pre>
-<p><strong>修改root密码为新密码</strong></p>
-<pre><code class="language-bash">mysql&gt; set password=password('123');
-ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement
-mysql&gt; update mysql.user set password=password('123') where user='root';      
-Query OK, 4 rows affected (0.00 sec)
-Rows matched: 4  Changed: 4  Warnings: 0
-mysql&gt; flush privileges;
-</code></pre>
-<p><strong>重启服务再登陆</strong></p>
-<pre><code class="language-bash"># 此时发现用原密码不能登陆mysql了
-$ mysql -uroot -S /data/3306/mysql.sock
-ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO)
-
-$ mysql -uroot -S /data/3306/mysql.sock -p111
-ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES)
-
-$ mysql -uroot -S /data/3306/mysql.sock -p123
-Welcome to the MySQL monitor.  Commands end with ; or \g.
-</code></pre>
-<p><strong>提示</strong>：<font color="#659bfd;" size=3>启动时加 <code>--skip-grant-tables</code> 参数启动登陆修改完密码后一定要重启再对外提供服务，skip一定要放到后面</font></p>
-<h2 id="清理无用的mysql用户与库">清理无用的MySQL用户与库<a hidden class="anchor" aria-hidden="true" href="#清理无用的mysql用户与库">¶</a></h2>
-<p>清理无用的库</p>
-<pre><code class="language-bash">mysql&gt; show databases;
-+---------------------+
-| Database            |
-+---------------------+
-| information_schema  |
-| mysql               |  # 这个是mysql系统信息
-| performance_schema  |
-| test                |  # 这个相当于linux的/tmp，不用保留，直接删掉
-+---------------------+
-</code></pre>
-<p>语法：dorp user &lsquo;<strong>user</strong>&rsquo;@&rsquo;<strong>host/ip</strong>&rsquo;  &lt;= 注意引号，可以使单或双引号</p>
-<pre><code class="language-bash">mysql&gt; DROP USER 'root'@'::1';
-mysql&gt; FLUSH PRIVILEGES;
-</code></pre>
-<p>注意：如果drop删除不了（一般为特殊字符或大写），可以用下面方式删除（以root用户，oldboy主机为例）：</p>
-<pre><code class="language-bash">DELETE FROM mysql.user WHERE user= 'root' AND host='oldboy';
-flush privileges;
-</code></pre>
-<p>处理完用户必须执行 <code>flush privileges</code></p>
-<h2 id="创建mysql用户及赋予用户权限">创建MySQL用户及赋予用户权限<a hidden class="anchor" aria-hidden="true" href="#创建mysql用户及赋予用户权限">¶</a></h2>
-<p>通过help查看grant命令帮助</p>
-<pre><code class="language-bash">mysql&gt; help grant
-Name: 'GRANT'
-Description:
-Syntax:
-GRANT
-    priv_type [(column_list)]
-      [, priv_type [(column_list)]] ...
-    ON [object_type] priv_level
-    TO user [auth_option] [, user [auth_option]] ...
-    [REQUIRE {NONE | tls_option [[AND] tls_option] ...}]
-    [WITH {GRANT OPTION | resource_option} ...]
-
-GRANT PROXY ON user
-    TO user [, user] ...
-    [WITH GRANT OPTION]
-....
-....
-
-CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';
-GRANT ALL ON db1.* TO 'jeffrey'@'localhost';
-GRANT SELECT ON db2.invoice TO 'jeffrey'@'localhost';
-GRANT USAGE ON *.* TO 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 90;
-</code></pre>
-<p>通过查看grant的命令帮助，可以很容易的找到创建用户并授权的例子。</p>
-<p><strong><font color="#f8070d" size=3>比较常见的创建用户的方法是，使用grant命令在创建用户的通同时进行授权。具体例子：</font></strong></p>
-<pre><code class="language-bash">GRANT ALL ON db1.* TO 'lc'@'localhost' IDENTIFIED BY '111';
-</code></pre>
-<p><strong><font color="#f8070d" size=3>上述grant命令帮助里还提供了一个先用create命令创建用户，然后再用grant授权的方法，即创建用户和授权分开进行</font></strong></p>
-<pre><code class="language-bash">CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';	 # 创建用户
-
-useradd Jeffrey|passwd --stdin jeffrey
-
-GRANT ALL ON db1.* TO 'jeffrey'@'localhost'; 	# 对用户授权
-</code></pre>
-<p><strong><font color="#f8070d" size=3>通过grant命令创建用户并授权</font></strong></p>
-<pre><code class="language-bash">grant all privileges on dbname.* to username@'localhost' identified by 'passwd'
-</code></pre>
-<p>列表说明如下</p>
-<table>
-<thead>
-<tr>
-<th>grant</th>
-<th>all privileges</th>
-<th>on dbname.*</th>
-<th>to username@localhost</th>
-<th>identified by &lsquo;passwd&rsquo;</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>授权命令</td>
-<td>对应权限</td>
-<td>目标：表和库</td>
-<td>用户名和客户端主机</td>
-<td>用户密码</td>
-</tr>
-</tbody>
-</table>
-<p>说明：上述命令是授权localhost主机上通过用户username管理dbname数据库的所有权限，密码为passwd。其中username，dbname，passwd可根据业务的情况修改。</p>
-<p><strong><font color="#f8070d" size=3>create和grant配合法</font></strong></p>
-<p>创建用户名username及密码passwd，授权主机localhost。</p>
-<pre><code class="language-bash">create user 'username'@'localhost' identified by 'passwd';
-</code></pre>
-<p>然后授权localhost主机上通过用户名username管理dbname数据库的所有权限，无需密码。</p>
-<pre><code class="language-bash">grant all on dbname.* to 'username'@'localhost';
-</code></pre>
-<h2 id="操作示例">操作示例<a hidden class="anchor" aria-hidden="true" href="#操作示例">¶</a></h2>
-<p>案例1：创建oldboy用户，对zhangsan库具备所有权限，允许localhost主机登陆管理数据库，密码是oldboy123</p>
-<p>实现具体命令：</p>
-<pre><code class="language-bash">GRANT ALL PRIVILEGES ON oldboy.* TO zhangsan@'localhost' IDENTIFIED BY '123';
-</code></pre>
-<p><strong>演示</strong>：</p>
-<pre><code class="language-bash"># 查看当前数据库情况，然后执行对应命令授权如下：
-select user,host from mysql.user;
-
-# 查看zhangsan具体权限
-show grants for zhangsan@'localhost';
-</code></pre>
-<p><strong>案例2：创建oldgirl用户，对test库具备所有权限，允许localhost主机登陆管理数据库的所有权限，无需密码</strong></p>
-<p><font color="#0215cd" size=3> 查看当前数据库用户情况，然后执行命令创建用户</font></p>
-<pre><code class="language-bash">mysql&gt; select user,host from mysql.user;
-+----------+--------------+
-| user     	| host        |
-+----------+--------------+
-| root   	| 127.0.0.1   |
-| zhangsan	| 172.168.1.% |
-| root     	| localhost   |
-| zhangsan	| localhost   |
-+----------+--------------+
-</code></pre>
-<p><font color="#0215cd" size=3>创建用户，指定密码，提示：仅仅是创建用户并未授权</font></p>
-<pre><code class="language-bash">create user 'oldgirl'@'localhost';
-grant all on test.* to 'oldgirl'@'localhost';
-</code></pre>
-<p><font color="#0215cd" size=3> 查看授权后的MySQL用户列表情况</font></p>
-<pre><code class="language-bash">mysql&gt; show grants for 'oldgirl'@'localhost';
-+-----------------------------------------------------------+
-| Grants for oldgirl@localhost                              |
-+-----------------------------------------------------------+
-| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'			    |
-| GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' |
-+-----------------------------------------------------------+
-# 默认权限是usage，即连接的权限，因为此时还没有权限。
-# 第二个表示对test库有所有权限
-</code></pre>
-<h2 id="授权局域网内主机远程链接数据库">授权局域网内主机远程链接数据库<a hidden class="anchor" aria-hidden="true" href="#授权局域网内主机远程链接数据库">¶</a></h2>
-<p>根据grant命令语法，知道test@&rsquo;localhsot&rsquo;位置为授权方位数据库的主机，localhost可以用域名，IP或IP段来代替，因此，要授权局域网内主机可以通过如下方法实现</p>
-<p><strong>一条命令，“百分号” 匹配法</strong></p>
-<pre><code class="language-bash">grant all on *.* to test@'10.0.0.%' identified by '111';
-</code></pre>
-<p><strong>一条命令，“子网掩码” 配置法</strong></p>
-<pre><code class="language-bash">grant all on *.* to test@'10.0.0.0/255.255.255.0' identified by '111'
-# 子网掩码部分不要用24
-</code></pre>
-<p><strong>两条命令实现</strong></p>
-<pre><code class="language-bash">create user test@'10.0.0.%' identified by '111'
-grant all on *.* to test@'10.0.0.%'
-</code></pre>
-<p><strong><font color="#f8070d" size=3>最后记得上述每条grant命令都要刷新权限</font></strong></p>
-<pre><code class="language-bash">flush privileges
-</code></pre>
-<hr>
-<p><font color="#0215cd" size=3> 提示：如果是web链接数据库的用户，尽量不要授权all，而是select,insert,update,delete&hellip;.</font></p>
-<hr>
-<h2 id="通过mysql客户端链接异地数据库服务">通过MySQL客户端链接异地数据库服务<a hidden class="anchor" aria-hidden="true" href="#通过mysql客户端链接异地数据库服务">¶</a></h2>
-<p>本地 <code>mysql -uroot -p111</code> 连接相当于 <code>mysql -uroot -p111 -hlocalhost</code></p>
-<p>要远程链接10.0.0.7的数据库，命令为 <code>mysql -utest -p111 -h10.0.0.7</code>，如果要能链接成功，还需要在10.0.0.7 的数据库服务器上通过如下命令授权：</p>
-<pre><code class="language-bash">grant all on *.*  to test@'10.0.0.%'identified by '111'
-</code></pre>
-<h2 id="用户可以授权的权限都有那些">用户可以授权的权限都有那些?<a hidden class="anchor" aria-hidden="true" href="#用户可以授权的权限都有那些">¶</a></h2>
-<p>通过实验获得all privileges包括那些权限，</p>
-<p><strong>先看看前面授权过的oldgirl的权限</strong></p>
-<pre><code class="language-bash">mysql&gt; show grants for oldgirl@'localhost';
-+-----------------------------------------------------------+
-| Grants for oldgirl@localhost                              |
-+-----------------------------------------------------------+
-| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'			 	|
-| GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' |
-+-----------------------------------------------------------+
-# 此时查看，还是all privileges权限，但并未细分
-</code></pre>
-<p>取消 oldgirl 的只读权限（SELECT）看看结果</p>
-<pre><code class="language-bash">mysql&gt; help revoke
-Name: 'REVOKE'
-Description:
-Syntax:
-REVOKE
-    priv_type [(column_list)]
-      [, priv_type [(column_list)]] ...
-    ON [object_type] priv_level
-    FROM user [, user] ...
-
-REVOKE ALL PRIVILEGES, GRANT OPTION
-    FROM user [, user] ...
-
-REVOKE PROXY ON user
-    FROM user [, user] ...
-....
-....
-REVOKE INSERT ON *.* FROM 'jeffrey'@'localhost';
-....
-....
-# 通过help revoke可以看出删除一个权限的方法
-</code></pre>
-<p>使用revoke移除授权</p>
-<pre><code class="language-bash">mysql&gt; revoke SELECT on test.* from oldgirl@'localhost';
-Query OK, 0 rows affected (0.00 sec)
-
-mysql&gt; show grants for oldgirl@'localhost';
-| Grants for oldgirl@localhost                                                         ---------------| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'--------------------------                         
-| GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON `test`.* TO 'oldgirl'@'localhost' |
---------------------------------2 rows in set (0.01 sec)------------------------------
-</code></pre>
-<p>此时我们再查看oldgirl用户权限，ALL PRIVILEGES权限已经被细分了，但是没有SELECT权限了。</p>
-<p>因此我们就可以得出结论：ALL PRIVILEGES包括</p>
-<pre><code class="language-bash"> SELECT
- INSERT
- UPDATE
- DELETE
- CREATE
- DROP
- REFERENCES
- INDEX
- ALTER
- CREATE TEMPORARY TABLES
- LOCK TABLES
- EXECUTE
- CREATE VIEW
- SHOW VIEW
- CREATE ROUTINE
- ALTER ROUTINE
- EVENT
- TRIGGER
-</code></pre>
-<p>在授权时，可以授权用户最小的满足业务需求的权限，而不是一味的授权“ALL PRIVILEGES”</p>
-<h2 id="生产环境如何授权用户权限">生产环境如何授权用户权限<a hidden class="anchor" aria-hidden="true" href="#生产环境如何授权用户权限">¶</a></h2>
-<p><font color="#f8070d" size=3><strong>博客 CMS等产品的数据库授权</strong>：</font></p>
-<p>对于web链接用户授权尽量采用最小化原则，很多开源软件都是web界面安装，因此，在安装期间处理select, insert, update, delete4个权限外，还需要 create drop 等比较危险的权限。</p>
-<p>常规情况下授权 select, insert, update, delete4个权限即可，有的开源软件，如 discuz cms还需要create drop等比较危险的权限。</p>
-<p><strong>生成数据库表后，要收回create、drop权限</strong></p>
-<p><strong>生产环境针对主库（写为主读为辅）用户授权</strong></p>
-<p><strong><font color="#f8070d" size=3>普通的环境：</font></strong></p>
-<p><strong>本机：lnmp，lamp环境数据库授权</strong></p>
-<pre><code class="language-bash">grant all privileges on `blog`.* to blog@'localhost' identified by '111';
-</code></pre>
-<p><strong>应用服务器和数据库服务器不在一个主机上的授权</strong>：</p>
-<pre><code class="language-bash">grant all privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
-</code></pre>
-<p><strong>严格的授权：重视安全，忽略了方便</strong></p>
-<pre><code class="language-bash">grant SELECT,INSERT,UPDATE,DELETE privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
-</code></pre>
-<p><strong>生产环境从库（只读）用户的授权</strong>：</p>
-<pre><code class="language-bash">grant SELECT privileges on `blog`.* to blog@'10.0.0.1' identified by '111';
-</code></pre>
-<p><font color="#0215cd" size=3> 说明：这里表示给10.0.0.0/24的用户blog管理blog数据库的所有表（ * 表示所有表）只读权限（select），密码为111。</font></p>
-<h2 id="生产场景授权具体命令为">生产场景授权具体命令为<a hidden class="anchor" aria-hidden="true" href="#生产场景授权具体命令为">¶</a></h2>
-<p><strong>主库授权的命令</strong></p>
-<pre><code class="language-bash">grant select,insert,update,delete on `blog`.* to blog@'10.0.0.%' identified by '111';
-</code></pre>
-<p><strong>从库授权用户命令</strong></p>
-<pre><code class="language-bash">grant SELECT on `blog`.* to blog@'localhost' identified by '111'
-</code></pre>
-<p>当然从库除了做SELECT授权外，还可以加read-only等只读参数，严格控制web用户写从库。</p>
-<p>重要问题：就是主从库的MySQL库和表是同步的，无法针对同一个用户授权不同的权限。应为，主库授权后会自动同步到从库上，导致从库的授权只读失败。</p>
-<p>解决方法：</p>
-<ol>
-<li>
-<p>取消mysql库的同步。</p>
-</li>
-<li>
-<p>授权主库权限后，从库执行收回增删改权限。</p>
-</li>
-<li>
-<p>不在授权上控制增删改，而是用read-only参数，控制普通用户更新从库，注意，read-only参数对超级用户无效。</p>
-</li>
-</ol>
-<p><strong>查看MySQL数据库中的用户和主机信息</strong></p>
-<p>查询授权用户oldboy的具体的授权权限</p>
-<pre><code class="language-bash\">mysql&gt; show grants for root@'localhost';    
-+--------------------------------------------------------------------------+
-| Grants for root@localhost                                                |           
-+--------------------------------------------------------------------------+
-| GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY PASSWORD '*23AE809DDACAF96AF0FD78ED04B6A265E05AA257' WITH GRANT OPTION 			  |
-| GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION   		   |           
-+--------------------------------------------------------------------------+
-</code></pre>
-
-
-    
-    
-
-
-<div class="copyrightBlock" >
-    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
-    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
-    <p>链接：<a href="https://www.oomkill.com/2017/05/ch2-mysql-security/" target="_blank">https://www.oomkill.com/2017/05/ch2-mysql-security/</a></p>
-    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
-    </div>
-</div>
-  </div>
-
-  <footer class="post-footer">
-    
-<nav class="paginav">
-  <a class="prev" href="https://www.oomkill.com/2017/05/ch6-mysql-replication/">
-    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
-      </polyline></svg>&nbsp; </span>
-    
-    <span>ch06 - MySQL主从复制</span>
-  </a>
-  <a class="next" href="https://www.oomkill.com/2017/05/ch5-mysql-charset/" >
-    <span class="title"> </span>
-    
-    <span>ch05 - MySQL字符集相关配置&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
-  </a>
-</nav>
-
-  </footer>
-
-  
-  <div class="pagination__title">
-    <span class="pagination__title-h"></span>
-  </div>
-  
-  
-  
-  
-    <div class="comments-separator"></div>
-    
-
-<h3 class="relatedContentTitle" >相关阅读</h3>
-<ul class="relatedContent">
-	
-	<li><a href="/2017/05/ch5-mysql-charset/"><span>ch05 - MySQL字符集相关配置</span></a></li>
-	
-	<li><a href="/2017/05/ch3-mysql-backup-and-restore/"><span>ch03 - MySQL的备份与恢复</span></a></li>
-	
-	<li><a href="/2017/05/ch1-mysql-deployment/"><span>ch01 - Linux下安装Mysql</span></a></li>
-	
-	<li><a href="/2016/11/redis-install/"><span>Redis安装</span></a></li>
-	
-	<li><a href="/2016/11/redis-replication/"><span>redis主从复制工作原理</span></a></li>
-	
-</ul>
-
-  
-
-  
-    
-      <div class="comments-separator"></div>
-<div class="comments">
-    <script>
-    function loadComment() {
-        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
-        let s = document.createElement('script');
-        s.src = 'https://giscus.app/client.js';
-        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
-        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
-        s.setAttribute('data-category', 'Announcements');
-        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
-        s.setAttribute('data-mapping', 'title');
-        s.setAttribute('data-reactions-enabled', '1');
-        s.setAttribute('data-emit-metadata', '1');
-        s.setAttribute('data-input-position', 'top');
-        s.setAttribute('data-lang', 'zh-TW');
-        s.setAttribute('data-theme', theme);
-        s.setAttribute('crossorigin', 'anonymous');
-        s.setAttribute('async', '');
-        document.querySelector('div.comments').innerHTML = '';
-        document.querySelector('div.comments').appendChild(s);
-    }
-    loadComment();
-    </script>
-</div>
-</article>
-    </main>
-    
-<footer class="footer">
-  <p>
-  Copyright
-  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
-  <span style="display: inline-block; margin-left: 1em;">
-    Powered by
-    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
-    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
-  </span>
-</footer>
-<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
-    <span class="topInner">
-        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
-            <path d="M12 6H0l6-6z"/>
-        </svg>
-        <span id="read_progress"></span>
-    </span>
-</a>
-
-<script>
-  (function() {
-     
-    const disableThemeToggle = '' == '1';
-    if (disableThemeToggle) {
-      return;
-    }
-
-    let button = document.getElementById("theme-toggle")
-    
-    button.removeEventListener('click', toggleThemeListener)
-    
-    button.addEventListener('click', toggleThemeListener)
-  })();
-</script>
-
-<script>
-  (function () {
-    let menu = document.getElementById('menu')
-    if (menu) {
-      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
-      menu.onscroll = function () {
-        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
-      }
-    }
-
-    const disableSmoothScroll = '' == '1';
-    const enableInstantClick = '1' == '1';
-    
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
-      return;
-    }
-    
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener("click", function (e) {
-        e.preventDefault();
-        var id = this.getAttribute("href").substr(1);
-        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
-          behavior: "smooth"
-        });
-        if (id === "top") {
-          history.replaceState(null, null, " ");
-        } else {
-          history.pushState(null, null, `#${id}`);
-        }
-      });
-    });
-  })();
-</script>
-
-<script>
-  document.addEventListener('scroll', function (e) {
-      const readProgress = document.getElementById("read_progress");
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight;
-      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
-  })
-</script>
-
-<script>
-  var menu = document.getElementById('menu')
-  if (menu) {
-      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
-      menu.onscroll = function () {
-          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
-      }
-  }
-
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener("click", function (e) {
-          e.preventDefault();
-          var id = this.getAttribute("href").substr(1);
-          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
-                  behavior: "smooth"
-              });
-          } else {
-              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
-          }
-          if (id === "top") {
-              history.replaceState(null, null, " ");
-          } else {
-              history.pushState(null, null, `#${id}`);
-          }
-      });
-  });
-</script>
-<script>
-  var mybutton = document.getElementById("top-link");
-  window.onscroll = function () {
-      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-          mybutton.style.visibility = "visible";
-          mybutton.style.opacity = "1";
-      } else {
-          mybutton.style.visibility = "hidden";
-          mybutton.style.opacity = "0";
-      }
-  };
-</script>
-<script>
-  if (window.scrollListeners) {
-    
-    for (const listener of scrollListeners) {
-      window.removeEventListener('scroll', listener)
-    }
-  }
-  window.scrollListeners = []
-</script>
-
-
-
-<script src="/js/medium-zoom.min.js" data-no-instant
-></script>
-<script>
-  document.querySelectorAll('pre > code').forEach((codeblock) => {
-    const container = codeblock.parentNode.parentNode;
-
-    const copybutton = document.createElement('button');
-    copybutton.classList.add('copy-code');
-    copybutton.innerText = 'copy';
-
-    function copyingDone() {
-      copybutton.innerText = 'copied';
-      setTimeout(() => {
-        copybutton.innerText = 'copy';
-      }, 2000);
-    }
-
-    copybutton.addEventListener('click', (cb) => {
-      if ('clipboard' in navigator) {
-        navigator.clipboard.writeText(codeblock.textContent);
-        copyingDone();
-        return;
-      }
-
-      const range = document.createRange();
-      range.selectNodeContents(codeblock);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      try {
-        document.execCommand('copy');
-        copyingDone();
-      } catch (e) { };
-      selection.removeRange(range);
-    });
-
-    if (container.classList.contains("highlight")) {
-      container.appendChild(copybutton);
-    } else if (container.parentNode.firstChild == container) {
-      
-    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
-      
-      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
-    } else {
-      
-      codeblock.parentNode.appendChild(copybutton);
-    }
-  });
-</script>
-
-
-
-
-<script>
-  
-  
-  (function() {
-    const enableTocScroll = '1' == '1'
-    if (!enableTocScroll) {
-      return
-    }
-    if (!document.querySelector('.toc')) {
-      console.log('no toc found, ignore toc scroll')
-      return
-    }
-    
-
-    
-    const scrollListeners = window.scrollListeners
-    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
-    const activeClass = 'active';
-
-    
-    let activeHeading = headings[0];
-    getLinkByHeading(activeHeading).classList.add(activeClass);
-
-    const onScroll = () => {
-      const passedHeadings = [];
-      for (const h of headings) {
-        
-        if (getOffsetTop(h) < 5) {
-          passedHeadings.push(h)
-        } else {
-          break;
-        }
-      }
-      if (passedHeadings.length > 0) {
-        newActiveHeading = passedHeadings[passedHeadings.length - 1];
-      } else {
-        newActiveHeading = headings[0];
-      }
-      if (activeHeading != newActiveHeading) {
-        getLinkByHeading(activeHeading).classList.remove(activeClass);
-        activeHeading = newActiveHeading;
-        getLinkByHeading(activeHeading).classList.add(activeClass);
-      }
-    }
-
-    let timer = null;
-    const scrollListener = () => {
-      if (timer !== null) {
-        clearTimeout(timer)
-      }
-      timer = setTimeout(onScroll, 50)
-    }
-    window.addEventListener('scroll', scrollListener, false);
-    scrollListeners.push(scrollListener)
-
-    function getLinkByHeading(heading) {
-      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
-      return document.querySelector(`.toc ul li a[href="#${id}"]`);
-    }
-
-    function getOffsetTop(heading) {
-      if (!heading.getClientRects().length) {
-        return 0;
-      }
-      let rect = heading.getBoundingClientRect();
-      return rect.top
-    }
-  })();
-  </script>
-
-<script src="/js/instantclick.min.js" data-no-instant
-></script>
-<script data-no-instant>
-  
-  
-  
-  
-  
-  
-  InstantClick.init();
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
-<script>
-    mermaid.init(undefined, '.language-mermaid');
-</script>
-</body>
-
-</html>
+<!doctype html><html lang=zh dir=auto><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>ch02 - MySQL安全相关配置 | Cylon's Collection</title>
+<meta name=keywords content="mysql,mysql安全相关配置"><meta name=description content="设置MySQL管理员账号密码 在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全
+启动修改丢失的MySQL单实例root密码方法
+停止MySQL
+bash 1 /etc/init.d/mysqld stop 使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证
+bash 1 2 3 4 5 6 7 8 9 10 11 # 单实例 /app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql # 多实例 /app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables & # 登录时空密码 $ mysql -S /data/3306/mysql.sock ... ... Welcome to the MySQL monitor. Commands end with ; or \g. # 在启动时加 --skip-grant-tables参数，表示忽略授权 修改root密码为新密码
+bash 1 2 3 4 5 6 mysql> set password=password('123'); ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement mysql> update mysql."><meta name=author content="cylon"><link rel=canonical href=https://www.oomkill.com/2017/05/ch2-mysql-security/><meta name=google-site-verification content="XYZabc"><meta name=yandex-verification content="XYZabc"><meta name=msvalidate.01 content="XYZabc"><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://www.oomkill.com/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://www.oomkill.com/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://www.oomkill.com/favicon-32x32.png><link rel=apple-touch-icon href=https://www.oomkill.com/favicon.ico><link rel=mask-icon href=https://www.oomkill.com/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><link rel=alternate hreflang=zh href=https://www.oomkill.com/2017/05/ch2-mysql-security/><noscript><style>#theme-toggle,#top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><link crossorigin=anonymous href=/assets/css/pe.min.css rel="preload stylesheet" as=style><script defer crossorigin=anonymous src=/assets/js/pe.min.js></script><link rel=stylesheet href=https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css><link rel=stylesheet href=https://cdn.staticfile.net/font-awesome/6.5.1/css/v4-shims.min.css><script id=MathJax-script async src=https://cdn.staticfile.net/mathjax/3.2.2/es5/tex-chtml.js></script><script>MathJax={tex:{displayMath:[["$$","$$"]],inlineMath:[["\\$","\\$"]]}}</script><meta property="og:title" content="ch02 - MySQL安全相关配置"><meta property="og:description" content="设置MySQL管理员账号密码 在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全
+启动修改丢失的MySQL单实例root密码方法
+停止MySQL
+bash 1 /etc/init.d/mysqld stop 使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证
+bash 1 2 3 4 5 6 7 8 9 10 11 # 单实例 /app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql # 多实例 /app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables & # 登录时空密码 $ mysql -S /data/3306/mysql.sock ... ... Welcome to the MySQL monitor. Commands end with ; or \g. # 在启动时加 --skip-grant-tables参数，表示忽略授权 修改root密码为新密码
+bash 1 2 3 4 5 6 mysql> set password=password('123'); ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement mysql> update mysql."><meta property="og:type" content="article"><meta property="og:url" content="https://www.oomkill.com/2017/05/ch2-mysql-security/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2017-05-16T00:00:00+00:00"><meta property="article:modified_time" content="2022-12-12T23:00:36+08:00"><meta property="og:site_name" content="Cylon's Collection"><meta name=twitter:card content="summary"><meta name=twitter:title content="ch02 - MySQL安全相关配置"><meta name=twitter:description content="设置MySQL管理员账号密码 在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全
+启动修改丢失的MySQL单实例root密码方法
+停止MySQL
+bash 1 /etc/init.d/mysqld stop 使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证
+bash 1 2 3 4 5 6 7 8 9 10 11 # 单实例 /app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql # 多实例 /app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables & # 登录时空密码 $ mysql -S /data/3306/mysql.sock ... ... Welcome to the MySQL monitor. Commands end with ; or \g. # 在启动时加 --skip-grant-tables参数，表示忽略授权 修改root密码为新密码
+bash 1 2 3 4 5 6 mysql> set password=password('123'); ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement mysql> update mysql."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://www.oomkill.com/posts/"},{"@type":"ListItem","position":2,"name":"ch02 - MySQL安全相关配置","item":"https://www.oomkill.com/2017/05/ch2-mysql-security/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"ch02 - MySQL安全相关配置","name":"ch02 - MySQL安全相关配置","description":"设置MySQL管理员账号密码 在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全\n启动修改丢失的MySQL单实例root密码方法\n停止MySQL\nbash 1 /etc/init.d/mysqld stop 使用 \u0026ndash;skip-grant-tables启动mysql，忽略授权登陆验证\nbash 1 2 3 4 5 6 7 8 9 10 11 # 单实例 /app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql # 多实例 /app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables \u0026amp; # 登录时空密码 $ mysql -S /data/3306/mysql.sock ... ... Welcome to the MySQL monitor. Commands end with ; or \\g. # 在启动时加 --skip-grant-tables参数，表示忽略授权 修改root密码为新密码\nbash 1 2 3 4 5 6 mysql\u0026gt; set password=password(\u0026#39;123\u0026#39;); ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement mysql\u0026gt; update mysql.","keywords":["mysql","mysql安全相关配置"],"articleBody":"设置MySQL管理员账号密码 在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全\n启动修改丢失的MySQL单实例root密码方法\n停止MySQL\nbash 1 /etc/init.d/mysqld stop 使用 –skip-grant-tables启动mysql，忽略授权登陆验证\nbash 1 2 3 4 5 6 7 8 9 10 11 # 单实例 /app/mysql/bin/mysqld_safe --skip-grant-tables --user=mysql # 多实例 /app/mysql/bin/mysqld_safe --defaults-file=/data/3306/my.cnf --user=mysql --skip-grant-tables \u0026 # 登录时空密码 $ mysql -S /data/3306/mysql.sock ... ... Welcome to the MySQL monitor. Commands end with ; or \\g. # 在启动时加 --skip-grant-tables参数，表示忽略授权 修改root密码为新密码\nbash 1 2 3 4 5 6 mysql\u003e set password=password('123'); ERROR 1290 (HY000): The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement mysql\u003e update mysql.user set password=password('123') where user='root'; Query OK, 4 rows affected (0.00 sec) Rows matched: 4 Changed: 4 Warnings: 0 mysql\u003e flush privileges; 重启服务再登陆\nbash 1 2 3 4 5 6 7 8 9 # 此时发现用原密码不能登陆mysql了 $ mysql -uroot -S /data/3306/mysql.sock ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: NO) $ mysql -uroot -S /data/3306/mysql.sock -p111 ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES) $ mysql -uroot -S /data/3306/mysql.sock -p123 Welcome to the MySQL monitor. Commands end with ; or \\g. 提示：启动时加 --skip-grant-tables 参数启动登陆修改完密码后一定要重启再对外提供服务，skip一定要放到后面\n清理无用的MySQL用户与库 清理无用的库\nbash 1 2 3 4 5 6 7 8 9 mysql\u003e show databases; +---------------------+ | Database | +---------------------+ | information_schema | | mysql | # 这个是mysql系统信息 | performance_schema | | test | # 这个相当于linux的/tmp，不用保留，直接删掉 +---------------------+ 语法：dorp user ‘user’@’host/ip’ \u003c= 注意引号，可以使单或双引号\nbash 1 2 mysql\u003e DROP USER 'root'@'::1'; mysql\u003e FLUSH PRIVILEGES; 注意：如果drop删除不了（一般为特殊字符或大写），可以用下面方式删除（以root用户，oldboy主机为例）：\nbash 1 2 DELETE FROM mysql.user WHERE user= 'root' AND host='oldboy'; flush privileges; 处理完用户必须执行 flush privileges\n创建MySQL用户及赋予用户权限 通过help查看grant命令帮助\nbash 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 mysql\u003e help grant Name: 'GRANT' Description: Syntax: GRANT priv_type [(column_list)] [, priv_type [(column_list)]] ... ON [object_type] priv_level TO user [auth_option] [, user [auth_option]] ... [REQUIRE {NONE | tls_option [[AND] tls_option] ...}] [WITH {GRANT OPTION | resource_option} ...] GRANT PROXY ON user TO user [, user] ... [WITH GRANT OPTION] .... .... CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass'; GRANT ALL ON db1.* TO 'jeffrey'@'localhost'; GRANT SELECT ON db2.invoice TO 'jeffrey'@'localhost'; GRANT USAGE ON *.* TO 'jeffrey'@'localhost' WITH MAX_QUERIES_PER_HOUR 90; 通过查看grant的命令帮助，可以很容易的找到创建用户并授权的例子。\n比较常见的创建用户的方法是，使用grant命令在创建用户的通同时进行授权。具体例子：\nbash 1 GRANT ALL ON db1.* TO 'lc'@'localhost' IDENTIFIED BY '111'; 上述grant命令帮助里还提供了一个先用create命令创建用户，然后再用grant授权的方法，即创建用户和授权分开进行\nbash 1 2 3 4 5 CREATE USER 'jeffrey'@'localhost' IDENTIFIED BY 'mypass';\t# 创建用户 useradd Jeffrey|passwd --stdin jeffrey GRANT ALL ON db1.* TO 'jeffrey'@'localhost'; # 对用户授权 通过grant命令创建用户并授权\nbash 1 grant all privileges on dbname.* to username@'localhost' identified by 'passwd' 列表说明如下\ngrant all privileges on dbname.* to username@localhost identified by ‘passwd’ 授权命令 对应权限 目标：表和库 用户名和客户端主机 用户密码 说明：上述命令是授权localhost主机上通过用户username管理dbname数据库的所有权限，密码为passwd。其中username，dbname，passwd可根据业务的情况修改。\ncreate和grant配合法\n创建用户名username及密码passwd，授权主机localhost。\nbash 1 create user 'username'@'localhost' identified by 'passwd'; 然后授权localhost主机上通过用户名username管理dbname数据库的所有权限，无需密码。\nbash 1 grant all on dbname.* to 'username'@'localhost'; 操作示例 案例1：创建oldboy用户，对zhangsan库具备所有权限，允许localhost主机登陆管理数据库，密码是oldboy123\n实现具体命令：\nbash 1 GRANT ALL PRIVILEGES ON oldboy.* TO zhangsan@'localhost' IDENTIFIED BY '123'; 演示：\nbash 1 2 3 4 5 # 查看当前数据库情况，然后执行对应命令授权如下： select user,host from mysql.user; # 查看zhangsan具体权限 show grants for zhangsan@'localhost'; 案例2：创建oldgirl用户，对test库具备所有权限，允许localhost主机登陆管理数据库的所有权限，无需密码\n查看当前数据库用户情况，然后执行命令创建用户\nbash 1 2 3 4 5 6 7 8 9 mysql\u003e select user,host from mysql.user; +----------+--------------+ | user | host | +----------+--------------+ | root | 127.0.0.1 | | zhangsan\t| 172.168.1.% | | root | localhost | | zhangsan\t| localhost | +----------+--------------+ 创建用户，指定密码，提示：仅仅是创建用户并未授权\nbash 1 2 create user 'oldgirl'@'localhost'; grant all on test.* to 'oldgirl'@'localhost'; 查看授权后的MySQL用户列表情况\nbash 1 2 3 4 5 6 7 8 9 mysql\u003e show grants for 'oldgirl'@'localhost'; +-----------------------------------------------------------+ | Grants for oldgirl@localhost | +-----------------------------------------------------------+ | GRANT USAGE ON *.* TO 'oldgirl'@'localhost'\t| | GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' | +-----------------------------------------------------------+ # 默认权限是usage，即连接的权限，因为此时还没有权限。 # 第二个表示对test库有所有权限 授权局域网内主机远程链接数据库 根据grant命令语法，知道test@’localhsot’位置为授权方位数据库的主机，localhost可以用域名，IP或IP段来代替，因此，要授权局域网内主机可以通过如下方法实现\n一条命令，“百分号” 匹配法\nbash 1 grant all on *.* to test@'10.0.0.%' identified by '111'; 一条命令，“子网掩码” 配置法\nbash 1 2 grant all on *.* to test@'10.0.0.0/255.255.255.0' identified by '111' # 子网掩码部分不要用24 两条命令实现\nbash 1 2 create user test@'10.0.0.%' identified by '111' grant all on *.* to test@'10.0.0.%' 最后记得上述每条grant命令都要刷新权限\nbash 1 flush privileges 提示：如果是web链接数据库的用户，尽量不要授权all，而是select,insert,update,delete….\n通过MySQL客户端链接异地数据库服务 本地 mysql -uroot -p111 连接相当于 mysql -uroot -p111 -hlocalhost\n要远程链接10.0.0.7的数据库，命令为 mysql -utest -p111 -h10.0.0.7，如果要能链接成功，还需要在10.0.0.7 的数据库服务器上通过如下命令授权：\nbash 1 grant all on *.* to test@'10.0.0.%'identified by '111' 用户可以授权的权限都有那些? 通过实验获得all privileges包括那些权限，\n先看看前面授权过的oldgirl的权限\nbash 1 2 3 4 5 6 7 8 mysql\u003e show grants for oldgirl@'localhost'; +-----------------------------------------------------------+ | Grants for oldgirl@localhost | +-----------------------------------------------------------+ | GRANT USAGE ON *.* TO 'oldgirl'@'localhost'\t| | GRANT ALL PRIVILEGES ON `test`.* TO 'oldgirl'@'localhost' | +-----------------------------------------------------------+ # 此时查看，还是all privileges权限，但并未细分 取消 oldgirl 的只读权限（SELECT）看看结果\nbash 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 mysql\u003e help revoke Name: 'REVOKE' Description: Syntax: REVOKE priv_type [(column_list)] [, priv_type [(column_list)]] ... ON [object_type] priv_level FROM user [, user] ... REVOKE ALL PRIVILEGES, GRANT OPTION FROM user [, user] ... REVOKE PROXY ON user FROM user [, user] ... .... .... REVOKE INSERT ON *.* FROM 'jeffrey'@'localhost'; .... .... # 通过help revoke可以看出删除一个权限的方法 使用revoke移除授权\nbash 1 2 3 4 5 6 7 mysql\u003e revoke SELECT on test.* from oldgirl@'localhost'; Query OK, 0 rows affected (0.00 sec) mysql\u003e show grants for oldgirl@'localhost'; | Grants for oldgirl@localhost ---------------| GRANT USAGE ON *.* TO 'oldgirl'@'localhost'-------------------------- | GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON `test`.* TO 'oldgirl'@'localhost' | --------------------------------2 rows in set (0.01 sec)------------------------------ 此时我们再查看oldgirl用户权限，ALL PRIVILEGES权限已经被细分了，但是没有SELECT权限了。\n因此我们就可以得出结论：ALL PRIVILEGES包括\nbash 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 SELECT INSERT UPDATE DELETE CREATE DROP REFERENCES INDEX ALTER CREATE TEMPORARY TABLES LOCK TABLES EXECUTE CREATE VIEW SHOW VIEW CREATE ROUTINE ALTER ROUTINE EVENT TRIGGER 在授权时，可以授权用户最小的满足业务需求的权限，而不是一味的授权“ALL PRIVILEGES”\n生产环境如何授权用户权限 博客 CMS等产品的数据库授权：\n对于web链接用户授权尽量采用最小化原则，很多开源软件都是web界面安装，因此，在安装期间处理select, insert, update, delete4个权限外，还需要 create drop 等比较危险的权限。\n常规情况下授权 select, insert, update, delete4个权限即可，有的开源软件，如 discuz cms还需要create drop等比较危险的权限。\n生成数据库表后，要收回create、drop权限\n生产环境针对主库（写为主读为辅）用户授权\n普通的环境：\n本机：lnmp，lamp环境数据库授权\nbash 1 grant all privileges on `blog`.* to blog@'localhost' identified by '111'; 应用服务器和数据库服务器不在一个主机上的授权：\nbash 1 grant all privileges on `blog`.* to blog@'10.0.0.1' identified by '111'; 严格的授权：重视安全，忽略了方便\nbash 1 grant SELECT,INSERT,UPDATE,DELETE privileges on `blog`.* to blog@'10.0.0.1' identified by '111'; 生产环境从库（只读）用户的授权：\nbash 1 grant SELECT privileges on `blog`.* to blog@'10.0.0.1' identified by '111'; 说明：这里表示给10.0.0.0/24的用户blog管理blog数据库的所有表（ * 表示所有表）只读权限（select），密码为111。\n生产场景授权具体命令为 主库授权的命令\nbash 1 grant select,insert,update,delete on `blog`.* to blog@'10.0.0.%' identified by '111'; 从库授权用户命令\nbash 1 grant SELECT on `blog`.* to blog@'localhost' identified by '111' 当然从库除了做SELECT授权外，还可以加read-only等只读参数，严格控制web用户写从库。\n重要问题：就是主从库的MySQL库和表是同步的，无法针对同一个用户授权不同的权限。应为，主库授权后会自动同步到从库上，导致从库的授权只读失败。\n解决方法：\n取消mysql库的同步。\n授权主库权限后，从库执行收回增删改权限。\n不在授权上控制增删改，而是用read-only参数，控制普通用户更新从库，注意，read-only参数对超级用户无效。\n查看MySQL数据库中的用户和主机信息\n查询授权用户oldboy的具体的授权权限\nbash\\ 1 2 3 4 5 6 7 mysql\u003e show grants for root@'localhost'; +--------------------------------------------------------------------------+ | Grants for root@localhost | +--------------------------------------------------------------------------+ | GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' IDENTIFIED BY PASSWORD '*23AE809DDACAF96AF0FD78ED04B6A265E05AA257' WITH GRANT OPTION | | GRANT PROXY ON ''@'' TO 'root'@'localhost' WITH GRANT OPTION | +--------------------------------------------------------------------------+ ","wordCount":"1060","inLanguage":"zh","datePublished":"2017-05-16T00:00:00Z","dateModified":"2022-12-12T23:00:36+08:00","author":{"@type":"Person","name":"cylon"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.oomkill.com/2017/05/ch2-mysql-security/"},"publisher":{"@type":"Organization","name":"Cylon's Collection","logo":{"@type":"ImageObject","url":"https://www.oomkill.com/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://www.oomkill.com/><img src=https://www.oomkill.com/favicon.ico alt aria-label=logo height=20>Cylon's Collection</a><div class=logo-switches><button id=theme-toggle><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://www.oomkill.com/archives><span>归档</span></a></li><li><a href=https://www.oomkill.com/tags><span>标签</span></a></li><li><a href=https://www.oomkill.com/search><span>搜索</span></a></li><li><a href=https://www.oomkill.com/about accesskey=/><span>关于</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><h1 class="post-title entry-hint-parent">ch02 - MySQL安全相关配置</h1><div class=post-meta><span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select:text"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select:text"/><line x1="16" y1="2" x2="16" y2="6" style="user-select:text"/><line x1="8" y1="2" x2="8" y2="6" style="user-select:text"/><line x1="3" y1="10" x2="21" y2="10" style="user-select:text"/></svg><span>2017-05-16</span></span>&nbsp;·&nbsp;<span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text" style="user-select:text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z" style="user-select:text"/><polyline points="14 2 14 8 20 8" style="user-select:text"/><line x1="16" y1="13" x2="8" y2="13" style="user-select:text"/><line x1="16" y1="17" x2="8" y2="17" style="user-select:text"/><polyline points="10 9 9 9 8 9" style="user-select:text"/></svg><span>1060 字</span></span>&nbsp;·&nbsp;<span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg><span>5 分钟</span></span>
+<span class=pe-post-meta-item>&nbsp;·&nbsp;<svg t="1714036239378" fill="currentcolor" class="icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" p-id="6659" width="256" height="256"><path d="M690 78.2c-18.6-18.8-49-19-67.8-.4s-19 49-.4 67.8l255.4 258.6c67.8 68.6 67.8 178.8.0 247.4L653.4 878.2c-18.6 18.8-18.4 49.2.4 67.8s49.2 18.4 67.8-.4l224-226.4c104.8-106 104.8-276.4.0-382.4L690 78.2zM485.4 101.4c-24-24-56.6-37.4-90.6-37.4H96C43 64 0 107 0 160v299c0 34 13.4 66.6 37.4 90.6l336 336c50 50 131 50 181 0l267-267c50-50 50-131 0-181l-336-336zM96 160h299c8.4.0 16.6 3.4 22.6 9.4l336 336c12.4 12.4 12.4 32.8.0 45.2l-267 267c-12.4 12.4-32.8 12.4-45.2.0l-336-336c-6-6-9.4-14.2-9.4-22.6V160zm192 128a64 64 0 10-128 0 64 64 0 10128 0z" p-id="6660"/></svg></span><ul class=pe-post-meta-item><a href=https://www.oomkill.com/tags/databases/>#Databases</a></ul></div></header><aside id=toc-container class="toc-container wide"><div class=toc><details><summary><span class=details>目录</span></summary><div class=inner><ul><li><a href=#%e8%ae%be%e7%bd%aemysql%e7%ae%a1%e7%90%86%e5%91%98%e8%b4%a6%e5%8f%b7%e5%af%86%e7%a0%81 aria-label=设置MySQL管理员账号密码>设置MySQL管理员账号密码</a><li><a href=#%e6%b8%85%e7%90%86%e6%97%a0%e7%94%a8%e7%9a%84mysql%e7%94%a8%e6%88%b7%e4%b8%8e%e5%ba%93 aria-label=清理无用的MySQL用户与库>清理无用的MySQL用户与库</a><li><a href=#%e5%88%9b%e5%bb%bamysql%e7%94%a8%e6%88%b7%e5%8f%8a%e8%b5%8b%e4%ba%88%e7%94%a8%e6%88%b7%e6%9d%83%e9%99%90 aria-label=创建MySQL用户及赋予用户权限>创建MySQL用户及赋予用户权限</a><li><a href=#%e6%93%8d%e4%bd%9c%e7%a4%ba%e4%be%8b aria-label=操作示例>操作示例</a><li><a href=#%e6%8e%88%e6%9d%83%e5%b1%80%e5%9f%9f%e7%bd%91%e5%86%85%e4%b8%bb%e6%9c%ba%e8%bf%9c%e7%a8%8b%e9%93%be%e6%8e%a5%e6%95%b0%e6%8d%ae%e5%ba%93 aria-label=授权局域网内主机远程链接数据库>授权局域网内主机远程链接数据库</a><li><a href=#%e9%80%9a%e8%bf%87mysql%e5%ae%a2%e6%88%b7%e7%ab%af%e9%93%be%e6%8e%a5%e5%bc%82%e5%9c%b0%e6%95%b0%e6%8d%ae%e5%ba%93%e6%9c%8d%e5%8a%a1 aria-label=通过MySQL客户端链接异地数据库服务>通过MySQL客户端链接异地数据库服务</a><li><a href=#%e7%94%a8%e6%88%b7%e5%8f%af%e4%bb%a5%e6%8e%88%e6%9d%83%e7%9a%84%e6%9d%83%e9%99%90%e9%83%bd%e6%9c%89%e9%82%a3%e4%ba%9b aria-label=用户可以授权的权限都有那些?>用户可以授权的权限都有那些?</a><li><a href=#%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e5%a6%82%e4%bd%95%e6%8e%88%e6%9d%83%e7%94%a8%e6%88%b7%e6%9d%83%e9%99%90 aria-label=生产环境如何授权用户权限>生产环境如何授权用户权限</a><li><a href=#%e7%94%9f%e4%ba%a7%e5%9c%ba%e6%99%af%e6%8e%88%e6%9d%83%e5%85%b7%e4%bd%93%e5%91%bd%e4%bb%a4%e4%b8%ba aria-label=生产场景授权具体命令为>生产场景授权具体命令为</a></li></div></details></div></aside><script src=/js/pe-toc.min.445eb1bfc5e85dd13b9519fcc2a806522e9629b6224a2974052789ba00ab78af.js integrity="sha256-RF6xv8XoXdE7lRn8wqgGUi6WKbYiSil0BSeJugCreK8="></script><div class=post-content><h2 id=设置mysql管理员账号密码>设置MySQL管理员账号密码<a hidden class=anchor aria-hidden=true href=#设置mysql管理员账号密码>#</a></h2><p>在安装MySQL数据库后，MySQL管理员的账号root密码默认为空，极不安全</p><p><strong>启动修改丢失的MySQL单实例root密码方法</strong></p><p>停止MySQL</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>/etc/init.d/mysqld stop</span></span></code></pre></td></tr></table></div></div></div></div><p><strong>使用 &ndash;skip-grant-tables启动mysql，忽略授权登陆验证</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 单实例</span>
+</span></span><span class=line><span class=cl>/app/mysql/bin/mysqld_safe --skip-grant-tables --user<span class=o>=</span>mysql
+</span></span><span class=line><span class=cl><span class=c1># 多实例</span>
+</span></span><span class=line><span class=cl>/app/mysql/bin/mysqld_safe --defaults-file<span class=o>=</span>/data/3306/my.cnf --user<span class=o>=</span>mysql --skip-grant-tables <span class=p>&amp;</span>
+</span></span><span class=line><span class=cl><span class=c1># 登录时空密码</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>$ mysql -S /data/3306/mysql.sock
+</span></span><span class=line><span class=cl>...
+</span></span><span class=line><span class=cl>...
+</span></span><span class=line><span class=cl>Welcome to the MySQL monitor.  Commands end with <span class=p>;</span> or <span class=se>\g</span>.
+</span></span><span class=line><span class=cl><span class=c1># 在启动时加 --skip-grant-tables参数，表示忽略授权</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>修改root密码为新密码</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; <span class=nb>set</span> <span class=nv>password</span><span class=o>=</span>password<span class=o>(</span><span class=s1>&#39;123&#39;</span><span class=o>)</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>ERROR <span class=m>1290</span> <span class=o>(</span>HY000<span class=o>)</span>: The MySQL server is running with the --skip-grant-tables option so it cannot execute this statement
+</span></span><span class=line><span class=cl>mysql&gt; update mysql.user <span class=nb>set</span> <span class=nv>password</span><span class=o>=</span>password<span class=o>(</span><span class=s1>&#39;123&#39;</span><span class=o>)</span> where <span class=nv>user</span><span class=o>=</span><span class=s1>&#39;root&#39;</span><span class=p>;</span>      
+</span></span><span class=line><span class=cl>Query OK, <span class=m>4</span> rows affected <span class=o>(</span>0.00 sec<span class=o>)</span>
+</span></span><span class=line><span class=cl>Rows matched: <span class=m>4</span>  Changed: <span class=m>4</span>  Warnings: <span class=m>0</span>
+</span></span><span class=line><span class=cl>mysql&gt; flush privileges<span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>重启服务再登陆</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 此时发现用原密码不能登陆mysql了</span>
+</span></span><span class=line><span class=cl>$ mysql -uroot -S /data/3306/mysql.sock
+</span></span><span class=line><span class=cl>ERROR <span class=m>1045</span> <span class=o>(</span>28000<span class=o>)</span>: Access denied <span class=k>for</span> user <span class=s1>&#39;root&#39;</span>@<span class=s1>&#39;localhost&#39;</span> <span class=o>(</span>using password: NO<span class=o>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>$ mysql -uroot -S /data/3306/mysql.sock -p111
+</span></span><span class=line><span class=cl>ERROR <span class=m>1045</span> <span class=o>(</span>28000<span class=o>)</span>: Access denied <span class=k>for</span> user <span class=s1>&#39;root&#39;</span>@<span class=s1>&#39;localhost&#39;</span> <span class=o>(</span>using password: YES<span class=o>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>$ mysql -uroot -S /data/3306/mysql.sock -p123
+</span></span><span class=line><span class=cl>Welcome to the MySQL monitor.  Commands end with <span class=p>;</span> or <span class=se>\g</span>.</span></span></code></pre></td></tr></table></div></div></div></div><p><strong>提示</strong>：<font color=#659bfd; size=3>启动时加 <code>--skip-grant-tables</code> 参数启动登陆修改完密码后一定要重启再对外提供服务，skip一定要放到后面</font></p><h2 id=清理无用的mysql用户与库>清理无用的MySQL用户与库<a hidden class=anchor aria-hidden=true href=#清理无用的mysql用户与库>#</a></h2><p>清理无用的库</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; show databases<span class=p>;</span>
+</span></span><span class=line><span class=cl>+---------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> Database            <span class=p>|</span>
+</span></span><span class=line><span class=cl>+---------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> information_schema  <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> mysql               <span class=p>|</span>  <span class=c1># 这个是mysql系统信息</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> performance_schema  <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> <span class=nb>test</span>                <span class=p>|</span>  <span class=c1># 这个相当于linux的/tmp，不用保留，直接删掉</span>
+</span></span><span class=line><span class=cl>+---------------------+</span></span></code></pre></td></tr></table></div></div></div></div><p>语法：dorp user &lsquo;<strong>user</strong>&rsquo;@&rsquo;<strong>host/ip</strong>&rsquo; &lt;= 注意引号，可以使单或双引号</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; DROP USER <span class=s1>&#39;root&#39;</span>@<span class=s1>&#39;::1&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>mysql&gt; FLUSH PRIVILEGES<span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>注意：如果drop删除不了（一般为特殊字符或大写），可以用下面方式删除（以root用户，oldboy主机为例）：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>DELETE FROM mysql.user WHERE <span class=nv>user</span><span class=o>=</span> <span class=s1>&#39;root&#39;</span> AND <span class=nv>host</span><span class=o>=</span><span class=s1>&#39;oldboy&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>flush privileges<span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>处理完用户必须执行 <code>flush privileges</code></p><h2 id=创建mysql用户及赋予用户权限>创建MySQL用户及赋予用户权限<a hidden class=anchor aria-hidden=true href=#创建mysql用户及赋予用户权限>#</a></h2><p>通过help查看grant命令帮助</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; <span class=nb>help</span> grant
+</span></span><span class=line><span class=cl>Name: <span class=s1>&#39;GRANT&#39;</span>
+</span></span><span class=line><span class=cl>Description:
+</span></span><span class=line><span class=cl>Syntax:
+</span></span><span class=line><span class=cl>GRANT
+</span></span><span class=line><span class=cl>    priv_type <span class=o>[(</span>column_list<span class=o>)]</span>
+</span></span><span class=line><span class=cl>      <span class=o>[</span>, priv_type <span class=o>[(</span>column_list<span class=o>)]]</span> ...
+</span></span><span class=line><span class=cl>    ON <span class=o>[</span>object_type<span class=o>]</span> priv_level
+</span></span><span class=line><span class=cl>    TO user <span class=o>[</span>auth_option<span class=o>]</span> <span class=o>[</span>, user <span class=o>[</span>auth_option<span class=o>]]</span> ...
+</span></span><span class=line><span class=cl>    <span class=o>[</span>REQUIRE <span class=o>{</span>NONE <span class=p>|</span> tls_option <span class=o>[[</span>AND<span class=o>]</span> tls_option<span class=o>]</span> ...<span class=o>}]</span>
+</span></span><span class=line><span class=cl>    <span class=o>[</span>WITH <span class=o>{</span>GRANT OPTION <span class=p>|</span> resource_option<span class=o>}</span> ...<span class=o>]</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>GRANT PROXY ON user
+</span></span><span class=line><span class=cl>    TO user <span class=o>[</span>, user<span class=o>]</span> ...
+</span></span><span class=line><span class=cl>    <span class=o>[</span>WITH GRANT OPTION<span class=o>]</span>
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>CREATE USER <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span> IDENTIFIED BY <span class=s1>&#39;mypass&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>GRANT ALL ON db1.* TO <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>GRANT SELECT ON db2.invoice TO <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>GRANT USAGE ON *.* TO <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span> WITH MAX_QUERIES_PER_HOUR 90<span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>通过查看grant的命令帮助，可以很容易的找到创建用户并授权的例子。</p><p><strong><font color=#f8070d size=3>比较常见的创建用户的方法是，使用grant命令在创建用户的通同时进行授权。具体例子：</font></strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>GRANT ALL ON db1.* TO <span class=s1>&#39;lc&#39;</span>@<span class=s1>&#39;localhost&#39;</span> IDENTIFIED BY <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong><font color=#f8070d size=3>上述grant命令帮助里还提供了一个先用create命令创建用户，然后再用grant授权的方法，即创建用户和授权分开进行</font></strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>CREATE USER <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span> IDENTIFIED BY <span class=s1>&#39;mypass&#39;</span><span class=p>;</span>	 <span class=c1># 创建用户</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>useradd Jeffrey<span class=p>|</span>passwd --stdin jeffrey
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>GRANT ALL ON db1.* TO <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span> 	<span class=c1># 对用户授权</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong><font color=#f8070d size=3>通过grant命令创建用户并授权</font></strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all privileges on dbname.* to username@<span class=s1>&#39;localhost&#39;</span> identified by <span class=s1>&#39;passwd&#39;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>列表说明如下</p><table><thead><tr><th>grant</th><th>all privileges</th><th>on dbname.*</th><th>to username@localhost</th><th>identified by &lsquo;passwd&rsquo;</th></tr></thead><tbody><tr><td>授权命令</td><td>对应权限</td><td>目标：表和库</td><td>用户名和客户端主机</td><td>用户密码</td></tr></tbody></table><p>说明：上述命令是授权localhost主机上通过用户username管理dbname数据库的所有权限，密码为passwd。其中username，dbname，passwd可根据业务的情况修改。</p><p><strong><font color=#f8070d size=3>create和grant配合法</font></strong></p><p>创建用户名username及密码passwd，授权主机localhost。</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>create user <span class=s1>&#39;username&#39;</span>@<span class=s1>&#39;localhost&#39;</span> identified by <span class=s1>&#39;passwd&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>然后授权localhost主机上通过用户名username管理dbname数据库的所有权限，无需密码。</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all on dbname.* to <span class=s1>&#39;username&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><h2 id=操作示例>操作示例<a hidden class=anchor aria-hidden=true href=#操作示例>#</a></h2><p>案例1：创建oldboy用户，对zhangsan库具备所有权限，允许localhost主机登陆管理数据库，密码是oldboy123</p><p>实现具体命令：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>GRANT ALL PRIVILEGES ON oldboy.* TO zhangsan@<span class=s1>&#39;localhost&#39;</span> IDENTIFIED BY <span class=s1>&#39;123&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>演示</strong>：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 查看当前数据库情况，然后执行对应命令授权如下：</span>
+</span></span><span class=line><span class=cl><span class=k>select</span> user,host from mysql.user<span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 查看zhangsan具体权限</span>
+</span></span><span class=line><span class=cl>show grants <span class=k>for</span> zhangsan@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>案例2：创建oldgirl用户，对test库具备所有权限，允许localhost主机登陆管理数据库的所有权限，无需密码</strong></p><p><font color=#0215cd size=3>查看当前数据库用户情况，然后执行命令创建用户</font></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; <span class=k>select</span> user,host from mysql.user<span class=p>;</span>
+</span></span><span class=line><span class=cl>+----------+--------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> user     	<span class=p>|</span> host        <span class=p>|</span>
+</span></span><span class=line><span class=cl>+----------+--------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> root   	<span class=p>|</span> 127.0.0.1   <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> zhangsan	<span class=p>|</span> 172.168.1.% <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> root     	<span class=p>|</span> localhost   <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> zhangsan	<span class=p>|</span> localhost   <span class=p>|</span>
+</span></span><span class=line><span class=cl>+----------+--------------+</span></span></code></pre></td></tr></table></div></div></div></div><p><font color=#0215cd size=3>创建用户，指定密码，提示：仅仅是创建用户并未授权</font></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>create user <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>grant all on test.* to <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><font color=#0215cd size=3>查看授权后的MySQL用户列表情况</font></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; show grants <span class=k>for</span> <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> Grants <span class=k>for</span> oldgirl@localhost                              <span class=p>|</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT USAGE ON *.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span>			    <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT ALL PRIVILEGES ON <span class=sb>`</span><span class=nb>test</span><span class=sb>`</span>.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span> <span class=p>|</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=c1># 默认权限是usage，即连接的权限，因为此时还没有权限。</span>
+</span></span><span class=line><span class=cl><span class=c1># 第二个表示对test库有所有权限</span></span></span></code></pre></td></tr></table></div></div></div></div><h2 id=授权局域网内主机远程链接数据库>授权局域网内主机远程链接数据库<a hidden class=anchor aria-hidden=true href=#授权局域网内主机远程链接数据库>#</a></h2><p>根据grant命令语法，知道test@&rsquo;localhsot&rsquo;位置为授权方位数据库的主机，localhost可以用域名，IP或IP段来代替，因此，要授权局域网内主机可以通过如下方法实现</p><p><strong>一条命令，“百分号” 匹配法</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all on *.* to test@<span class=s1>&#39;10.0.0.%&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>一条命令，“子网掩码” 配置法</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all on *.* to test@<span class=s1>&#39;10.0.0.0/255.255.255.0&#39;</span> identified by <span class=s1>&#39;111&#39;</span>
+</span></span><span class=line><span class=cl><span class=c1># 子网掩码部分不要用24</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>两条命令实现</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>create user test@<span class=s1>&#39;10.0.0.%&#39;</span> identified by <span class=s1>&#39;111&#39;</span>
+</span></span><span class=line><span class=cl>grant all on *.* to test@<span class=s1>&#39;10.0.0.%&#39;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong><font color=#f8070d size=3>最后记得上述每条grant命令都要刷新权限</font></strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>flush privileges</span></span></code></pre></td></tr></table></div></div></div></div><hr><p><font color=#0215cd size=3>提示：如果是web链接数据库的用户，尽量不要授权all，而是select,insert,update,delete&mldr;.</font></p><hr><h2 id=通过mysql客户端链接异地数据库服务>通过MySQL客户端链接异地数据库服务<a hidden class=anchor aria-hidden=true href=#通过mysql客户端链接异地数据库服务>#</a></h2><p>本地 <code>mysql -uroot -p111</code> 连接相当于 <code>mysql -uroot -p111 -hlocalhost</code></p><p>要远程链接10.0.0.7的数据库，命令为 <code>mysql -utest -p111 -h10.0.0.7</code>，如果要能链接成功，还需要在10.0.0.7 的数据库服务器上通过如下命令授权：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all on *.*  to test@<span class=s1>&#39;10.0.0.%&#39;</span>identified by <span class=s1>&#39;111&#39;</span></span></span></code></pre></td></tr></table></div></div></div></div><h2 id=用户可以授权的权限都有那些>用户可以授权的权限都有那些?<a hidden class=anchor aria-hidden=true href=#用户可以授权的权限都有那些>#</a></h2><p>通过实验获得all privileges包括那些权限，</p><p><strong>先看看前面授权过的oldgirl的权限</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; show grants <span class=k>for</span> oldgirl@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> Grants <span class=k>for</span> oldgirl@localhost                              <span class=p>|</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT USAGE ON *.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span>			 	<span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT ALL PRIVILEGES ON <span class=sb>`</span><span class=nb>test</span><span class=sb>`</span>.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span> <span class=p>|</span>
+</span></span><span class=line><span class=cl>+-----------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=c1># 此时查看，还是all privileges权限，但并未细分</span></span></span></code></pre></td></tr></table></div></div></div></div><p>取消 oldgirl 的只读权限（SELECT）看看结果</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; <span class=nb>help</span> revoke
+</span></span><span class=line><span class=cl>Name: <span class=s1>&#39;REVOKE&#39;</span>
+</span></span><span class=line><span class=cl>Description:
+</span></span><span class=line><span class=cl>Syntax:
+</span></span><span class=line><span class=cl>REVOKE
+</span></span><span class=line><span class=cl>    priv_type <span class=o>[(</span>column_list<span class=o>)]</span>
+</span></span><span class=line><span class=cl>      <span class=o>[</span>, priv_type <span class=o>[(</span>column_list<span class=o>)]]</span> ...
+</span></span><span class=line><span class=cl>    ON <span class=o>[</span>object_type<span class=o>]</span> priv_level
+</span></span><span class=line><span class=cl>    FROM user <span class=o>[</span>, user<span class=o>]</span> ...
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>REVOKE ALL PRIVILEGES, GRANT OPTION
+</span></span><span class=line><span class=cl>    FROM user <span class=o>[</span>, user<span class=o>]</span> ...
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>REVOKE PROXY ON user
+</span></span><span class=line><span class=cl>    FROM user <span class=o>[</span>, user<span class=o>]</span> ...
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl>REVOKE INSERT ON *.* FROM <span class=s1>&#39;jeffrey&#39;</span>@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl>....
+</span></span><span class=line><span class=cl><span class=c1># 通过help revoke可以看出删除一个权限的方法</span></span></span></code></pre></td></tr></table></div></div></div></div><p>使用revoke移除授权</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>mysql&gt; revoke SELECT on test.* from oldgirl@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>Query OK, <span class=m>0</span> rows affected <span class=o>(</span>0.00 sec<span class=o>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>mysql&gt; show grants <span class=k>for</span> oldgirl@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> Grants <span class=k>for</span> oldgirl@localhost                                                         ---------------<span class=p>|</span> GRANT USAGE ON *.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span>--------------------------                         
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON <span class=sb>`</span><span class=nb>test</span><span class=sb>`</span>.* TO <span class=s1>&#39;oldgirl&#39;</span>@<span class=s1>&#39;localhost&#39;</span> <span class=p>|</span>
+</span></span><span class=line><span class=cl>--------------------------------2 rows in <span class=nb>set</span> <span class=o>(</span>0.01 sec<span class=o>)</span>------------------------------</span></span></code></pre></td></tr></table></div></div></div></div><p>此时我们再查看oldgirl用户权限，ALL PRIVILEGES权限已经被细分了，但是没有SELECT权限了。</p><p>因此我们就可以得出结论：ALL PRIVILEGES包括</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl> SELECT
+</span></span><span class=line><span class=cl> INSERT
+</span></span><span class=line><span class=cl> UPDATE
+</span></span><span class=line><span class=cl> DELETE
+</span></span><span class=line><span class=cl> CREATE
+</span></span><span class=line><span class=cl> DROP
+</span></span><span class=line><span class=cl> REFERENCES
+</span></span><span class=line><span class=cl> INDEX
+</span></span><span class=line><span class=cl> ALTER
+</span></span><span class=line><span class=cl> CREATE TEMPORARY TABLES
+</span></span><span class=line><span class=cl> LOCK TABLES
+</span></span><span class=line><span class=cl> EXECUTE
+</span></span><span class=line><span class=cl> CREATE VIEW
+</span></span><span class=line><span class=cl> SHOW VIEW
+</span></span><span class=line><span class=cl> CREATE ROUTINE
+</span></span><span class=line><span class=cl> ALTER ROUTINE
+</span></span><span class=line><span class=cl> EVENT
+</span></span><span class=line><span class=cl> TRIGGER</span></span></code></pre></td></tr></table></div></div></div></div><p>在授权时，可以授权用户最小的满足业务需求的权限，而不是一味的授权“ALL PRIVILEGES”</p><h2 id=生产环境如何授权用户权限>生产环境如何授权用户权限<a hidden class=anchor aria-hidden=true href=#生产环境如何授权用户权限>#</a></h2><p><font color=#f8070d size=3><strong>博客 CMS等产品的数据库授权</strong>：</font></p><p>对于web链接用户授权尽量采用最小化原则，很多开源软件都是web界面安装，因此，在安装期间处理select, insert, update, delete4个权限外，还需要 create drop 等比较危险的权限。</p><p>常规情况下授权 select, insert, update, delete4个权限即可，有的开源软件，如 discuz cms还需要create drop等比较危险的权限。</p><p><strong>生成数据库表后，要收回create、drop权限</strong></p><p><strong>生产环境针对主库（写为主读为辅）用户授权</strong></p><p><strong><font color=#f8070d size=3>普通的环境：</font></strong></p><p><strong>本机：lnmp，lamp环境数据库授权</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all privileges on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;localhost&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>应用服务器和数据库服务器不在一个主机上的授权</strong>：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant all privileges on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;10.0.0.1&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>严格的授权：重视安全，忽略了方便</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant SELECT,INSERT,UPDATE,DELETE privileges on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;10.0.0.1&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>生产环境从库（只读）用户的授权</strong>：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant SELECT privileges on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;10.0.0.1&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><font color=#0215cd size=3>说明：这里表示给10.0.0.0/24的用户blog管理blog数据库的所有表（ * 表示所有表）只读权限（select），密码为111。</font></p><h2 id=生产场景授权具体命令为>生产场景授权具体命令为<a hidden class=anchor aria-hidden=true href=#生产场景授权具体命令为>#</a></h2><p><strong>主库授权的命令</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant <span class=k>select</span>,insert,update,delete on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;10.0.0.%&#39;</span> identified by <span class=s1>&#39;111&#39;</span><span class=p>;</span></span></span></code></pre></td></tr></table></div></div></div></div><p><strong>从库授权用户命令</strong></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>grant SELECT on <span class=sb>`</span>blog<span class=sb>`</span>.* to blog@<span class=s1>&#39;localhost&#39;</span> identified by <span class=s1>&#39;111&#39;</span></span></span></code></pre></td></tr></table></div></div></div></div><p>当然从库除了做SELECT授权外，还可以加read-only等只读参数，严格控制web用户写从库。</p><p>重要问题：就是主从库的MySQL库和表是同步的，无法针对同一个用户授权不同的权限。应为，主库授权后会自动同步到从库上，导致从库的授权只读失败。</p><p>解决方法：</p><ol><li><p>取消mysql库的同步。</p></li><li><p>授权主库权限后，从库执行收回增删改权限。</p></li><li><p>不在授权上控制增删改，而是用read-only参数，控制普通用户更新从库，注意，read-only参数对超级用户无效。</p></li></ol><p><strong>查看MySQL数据库中的用户和主机信息</strong></p><p>查询授权用户oldboy的具体的授权权限</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>bash\</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash\ data-lang=bash\><span class=line><span class=cl>mysql&gt; show grants <span class=k>for</span> root@<span class=s1>&#39;localhost&#39;</span><span class=p>;</span>    
+</span></span><span class=line><span class=cl>+--------------------------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> Grants <span class=k>for</span> root@localhost                                                <span class=p>|</span>           
+</span></span><span class=line><span class=cl>+--------------------------------------------------------------------------+
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT ALL PRIVILEGES ON *.* TO <span class=s1>&#39;root&#39;</span>@<span class=s1>&#39;localhost&#39;</span> IDENTIFIED BY PASSWORD <span class=s1>&#39;*23AE809DDACAF96AF0FD78ED04B6A265E05AA257&#39;</span> WITH GRANT OPTION 			  <span class=p>|</span>
+</span></span><span class=line><span class=cl><span class=p>|</span> GRANT PROXY ON <span class=s1>&#39;&#39;</span>@<span class=s1>&#39;&#39;</span> TO <span class=s1>&#39;root&#39;</span>@<span class=s1>&#39;localhost&#39;</span> WITH GRANT OPTION   		   <span class=p>|</span>           
+</span></span><span class=line><span class=cl>+--------------------------------------------------------------------------+</span></span></code></pre></td></tr></table></div></div></div></div></div><div class=pe-copyright><hr><blockquote><p>本文为原创内容，版权归作者所有。如需转载，请在文章中声明本文标题及链接。</p><p>文章标题：ch02 - MySQL安全相关配置</p><p>文章链接：<a href=https://www.oomkill.com/2017/05/ch2-mysql-security/ target=_blank>https://www.oomkill.com/2017/05/ch2-mysql-security/</a></p><p>许可协议：<a href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></p></blockquote></div><div class=comments-separator></div><h3 class=relatedContentTitle>相关阅读</h3><ul class=relatedContent><li><a href=/2017/05/ch5-mysql-charset/><span>ch05 - MySQL字符集相关配置</span></a></li><li><a href=/2017/05/ch3-mysql-backup-and-restore/><span>ch03 - MySQL的备份与恢复</span></a></li><li><a href=/2017/05/ch1-mysql-deployment/><span>ch01 - Linux下安装Mysql</span></a></li><li><a href=/2016/11/redis-install/><span>Redis安装</span></a></li><li><a href=/2016/11/redis-replication/><span>redis主从复制工作原理</span></a></li></ul><div class=comments-separator></div><footer class=post-footer><ul class=post-tags><li><a href=https://www.oomkill.com/tags/databases/>Databases</a></li></ul><nav class=paginav><a class=prev href=https://www.oomkill.com/2017/05/ch6-mysql-replication/><span class=title><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select:text"><line x1="19" y1="12" x2="5" y2="12" style="user-select:text"/><polyline points="12 19 5 12 12 5" style="user-select:text"/></polyline></svg>&nbsp;</span>
+<span>ch06 - MySQL主从复制</span>
+</a><a class=next href=https://www.oomkill.com/2017/05/ch5-mysql-charset/><span class=title></span>
+<span>ch05 - MySQL字符集相关配置&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select:text"><line x1="5" y1="12" x2="19" y2="12" style="user-select:text"/><polyline points="12 5 19 12 12 19" style="user-select:text"/></svg></span></a></nav></footer><div class=pe-comments-decoration><p class=pe-comments-title></p><p class=pe-comments-subtitle></p></div><div id=pe-comments></div><script src=/js/pe-go-comment.min.86a214102576ba5f9b7bdc29eed8d58dd56e34aef80b3c65c73ea9cc88443696.js integrity="sha256-hqIUECV2ul+be9wp7tjVjdVuNK74Czxlxz6pzIhENpY="></script><script>const getStoredTheme=()=>localStorage.getItem("pref-theme")==="dark"?"dark":"light",setGiscusTheme=()=>{const e=e=>{const t=document.querySelector("iframe.giscus-frame");t&&t.contentWindow.postMessage({giscus:e},"https://giscus.app")};e({setConfig:{theme:getStoredTheme()}})};document.addEventListener("DOMContentLoaded",()=>{const s={src:"https://giscus.app/client.js","data-repo":"cylonchau/cylonchau.github.io","data-repo-id":"R_kgDOIRlNSQ","data-category":"Announcements","data-category-id":"DIC_kwDOIRlNSc4CXy1U","data-mapping":"pathname","data-term":"posts/ch2 mysql security","data-strict":"0","data-reactions-enabled":"1","data-emit-metadata":"0","data-input-position":"top","data-theme":getStoredTheme(),"data-lang":"zh-TW","data-loading":"lazy",crossorigin:"anonymous",async:""},e=document.createElement("script");Object.entries(s).forEach(([t,n])=>e.setAttribute(t,n)),document.querySelector("#pe-comments").appendChild(e);const t=document.querySelector("#theme-toggle");t&&t.addEventListener("click",setGiscusTheme);const n=document.querySelector("#theme-toggle-float");n&&n.addEventListener("click",setGiscusTheme)})</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://www.oomkill.com/>Cylon's Collection</a></span> ·
+<span>Powered by
+<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> on
+<a href=https://pages.github.com/ rel=noopener target=_blank>GitHub Pages</a> & Theme
+        <a href=https://github.com/tofuwine/PaperMod-PE rel=noopener target=_blank>PaperMod-PE</a></span></footer><div class=pe-right-sidebar><a href=javascript:void(0); id=theme-toggle-float class=pe-float-btn><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+<svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</a><a href=#top class=pe-float-btn id=top-link><span id=pe-read-progress></span></a></div><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script></body></html>

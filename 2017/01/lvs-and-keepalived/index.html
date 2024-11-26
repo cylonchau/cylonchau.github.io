@@ -1,1079 +1,526 @@
-<!DOCTYPE html>
-<html lang="zh" dir="auto">
-
-<head><meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="index, follow">
-<title>LVS &amp; keepalived 集群架构 | Cylon&#39;s Collection</title>
-<meta name="keywords" content="Linux, HA">
-<meta name="description" content="LVS &amp; keepalived 集群架构 - Cylon&#39;s Collection">
-<meta name="author" content="cylon">
-<link rel="canonical" href="https://www.oomkill.com/2017/01/lvs-and-keepalived/">
-<link crossorigin="anonymous" href="/assets/css/stylesheet.min.41a8706089174fae1769fc26da4d1d354fa88083db604a95688ff58852dd9006.css" integrity="sha256-QahwYIkXT64Xafwm2k0dNU&#43;ogIPbYEqVaI/1iFLdkAY=" rel="preload stylesheet" as="style">
-<link rel="icon" href="https://www.oomkill.com/favicon.ico">
-<link rel="apple-touch-icon" href="https://www.oomkill.com/apple-touch-icon.png">
-
-<meta name="twitter:title" content="LVS &amp; keepalived 集群架构 | Cylon&#39;s Collection" />
-<meta name="twitter:description" content="" />
-<meta property="og:title" content="LVS &amp; keepalived 集群架构 | Cylon&#39;s Collection" />
-<meta property="og:description" content="" />
-<meta property="og:type" content="article" />
-<meta property="og:url" content="https://www.oomkill.com/2017/01/lvs-and-keepalived/" />
-<meta property="article:section" content="posts" />
-  <meta property="article:published_time" content="2017-01-07T00:00:00&#43;00:00" />
-  <meta property="article:modified_time" content="2023-03-22T23:00:36&#43;08:00" />
-
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [, 
-    {
-      "@type": "ListItem",
-      "position":  2 ,
-      "name": "Posts",
-      "item": "https://www.oomkill.com/posts/"
-    }, 
-    {
-      "@type": "ListItem",
-      "position":  3 ,
-      "name": "LVS \u0026 keepalived 集群架构",
-      "item": "https://www.oomkill.com/2017/01/lvs-and-keepalived/"
-    }
-  ]
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BlogPosting",
-  "headline": "LVS \u0026 keepalived 集群架构 | Cylon's Collection",
-  "name": "LVS \u0026 keepalived 集群架构",
-  "description": "",
-  "keywords": [
-    "Linux", "HA"
-  ],
-  "wordCount" : "13444",
-  "inLanguage": "zh",
-  "datePublished": "2017-01-07T00:00:00Z",
-  "dateModified": "2023-03-22T23:00:36+08:00",
-  "author":{
-    "@type": "Person",
-    "name": "cylon"
-  },
-  "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://www.oomkill.com/2017/01/lvs-and-keepalived/"
-  },
-  "publisher": {
-    "@type": "Organization",
-    "name": "Cylon's Collection",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://www.oomkill.com/favicon.ico"
-    }
-  }
-}
-</script><script type="text/javascript"
-        async
-        src="https://cdn.bootcss.com/mathjax/2.7.3/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-MathJax.Hub.Config({
-  tex2jax: {
-    inlineMath: [['$','$'], ['\\(','\\)']],
-    displayMath: [['$$','$$'], ['\[\[','\]\]']],
-    processEscapes: true,
-    processEnvironments: true,
-    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-    TeX: { equationNumbers: { autoNumber: "AMS" },
-         extensions: ["AMSmath.js", "AMSsymbols.js"] }
-  }
-});
-
-MathJax.Hub.Queue(function() {
-    
-    
-    
-    var all = MathJax.Hub.getAllJax(), i;
-    for(i = 0; i < all.length; i += 1) {
-        all[i].SourceElement().parentNode.className += ' has-jax';
-    }
-});
-</script>
-
-<style>
-code.has-jax {
-    font: inherit;
-    font-size: 100%;
-    background: inherit;
-    border: inherit;
-    color: #515151;
-}
-</style>
-<noscript>
-    <style>
-        #theme-toggle,
-        .top-link {
-            display: none;
-        }
-
-    </style>
-    <style>
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --theme: rgb(29, 30, 32);
-                --entry: rgb(46, 46, 51);
-                --primary: rgb(218, 218, 219);
-                --secondary: rgb(155, 156, 157);
-                --tertiary-bg: rgb(65, 66, 68);
-                --content: rgb(196, 196, 197);
-                --code-bg: rgb(55, 56, 62);
-                --border: rgb(51, 51, 51);
-            }
-
-            .list-page {
-                background: var(--theme);
-            }
-
-            .list-page:not(.dark)::-webkit-scrollbar-track {
-                background: 0 0;
-            }
-
-            .list-page:not(.dark)::-webkit-scrollbar-thumb {
-                border-color: var(--theme);
-            }
-        }
-
-    </style>
-</noscript>
-
-</head>
-
-<body class=" type-posts kind-page layout-" id="top"><script data-no-instant>
-function switchTheme(theme) {
-  switch (theme) {
-    case 'light':
-      document.body.classList.remove('dark');
-      break;
-    case 'dark':
-      document.body.classList.add('dark');
-      break;
-    
-    default:
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.body.classList.add('dark');
-      }
-  }
-}
-
-function isDarkTheme() {
-  return document.body.className.includes("dark");
-}
-
-function getPrefTheme() {
-  return localStorage.getItem("pref-theme");
-}
-
-function setPrefTheme(theme) {
-  switchTheme(theme)
-  localStorage.setItem("pref-theme", theme);
-}
-
-const toggleThemeCallbacks = {}
-toggleThemeCallbacks['main'] = (isDark) => {
-  
-  if (isDark) {
-    setPrefTheme('light');
-  } else {
-    setPrefTheme('dark');
-  }
-}
-
-
-
-
-window.addEventListener('toggle-theme', function() {
-  
-  const isDark = isDarkTheme()
-  for (const key in toggleThemeCallbacks) {
-    toggleThemeCallbacks[key](isDark)
-  }
-});
-
-
-function toggleThemeListener() {
-  
-  window.dispatchEvent(new CustomEvent('toggle-theme'));
-}
-
-</script>
-<script>
-  
-  (function() {
-    const defaultTheme = 'auto';
-    const prefTheme = getPrefTheme();
-    const theme = prefTheme ? prefTheme : defaultTheme;
-
-    switchTheme(theme);
-  })();
-</script>
-
-<header class="header">
-    <nav class="nav">
-        <div class="logo">
-            <a href="https://www.oomkill.com" accesskey="h" title="Cylon&#39;s Collection (Alt + H)">Cylon&#39;s Collection</a>
-            <span class="logo-switches">
-                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
-                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                    </svg>
-                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                </button>
-            </span>
-        </div>
-        <ul id="menu">
-            <li>
-                <a href="https://www.oomkill.com/archives/" title="归档"
-                >归档
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/tags/" title="标签"
-                >标签
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/search/" title="搜索 (Alt &#43; /)"data-no-instant accesskey=/
-                >搜索
-                </a>
-            </li>
-            <li>
-                <a href="https://www.oomkill.com/about/" title="关于"
-                >关于
-                </a>
-            </li>
-        </ul>
-    </nav>
-</header>
-<main class="main post">
-
-<article class="post-single">
-  <header class="post-header"><h1 class="post-title">LVS &amp; keepalived 集群架构</h1>
-    <div class="post-meta"><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
-  <span>2017-01-07</span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select: text;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select: text;"></rect><line x1="16" y1="2" x2="16" y2="6" style="user-select: text;"></line><line x1="8" y1="2" x2="8" y2="6" style="user-select: text;"></line><line x1="3" y1="10" x2="21" y2="10" style="user-select: text;"></line></svg>
-  <span>Edited on 2023-03-22</span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon" style="user-select: text;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" style="user-select: text;"></path><line x1="7" y1="7" x2="7" y2="7" style="user-select: text;"></line></svg>
-  <span class="post-tags"><a href="https://www.oomkill.com/tags/ha/">HA</a></span></span><span class="meta-item">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15 15"></polyline></svg>
-  <span>27 分钟</span></span>
-
-      
-      
-    </div>
-  </header> <div class="toc side right">
-    <details >
-        <summary accesskey="c" title="(Alt + C)">
-            <span class="details">目录</span>
-        </summary>
-
-        <div class="inner"><ul>
-                <li>
-                    <a href="#lvs%e6%a6%82%e8%bf%b0" aria-label="LVS概述">LVS概述</a><ul>
-                        
-                <li>
-                    <a href="#lvs-linux-virtual-server%e4%bb%8b%e7%bb%8d" aria-label="LVS (Linux Virtual Server)介绍">LVS (Linux Virtual Server)介绍</a></li>
-                <li>
-                    <a href="#ipvslvs%e5%8f%91%e5%b1%95%e5%8f%b2" aria-label="IPVS（LVS）发展史">IPVS（LVS）发展史</a></li>
-                <li>
-                    <a href="#ipvs%e8%bd%af%e4%bb%b6%e5%b7%a5%e4%bd%9c%e5%b1%82%e6%ac%a1%e5%9b%be" aria-label="IPVS软件工作层次图">IPVS软件工作层次图</a></li>
-                <li>
-                    <a href="#lvs%e4%bd%93%e7%b3%bb%e7%bb%93%e6%9e%84%e4%b8%8e%e5%b7%a5%e4%bd%9c%e5%8e%9f%e7%90%86%e7%ae%80%e5%8d%95%e6%8f%8f%e8%bf%b0" aria-label="LVS体系结构与工作原理简单描述">LVS体系结构与工作原理简单描述</a></li>
-                <li>
-                    <a href="#lvs%e5%9f%ba%e6%9c%ac%e5%b7%a5%e4%bd%9c%e8%bf%87%e7%a8%8b%e5%9b%be" aria-label="LVS基本工作过程图">LVS基本工作过程图</a></li>
-                <li>
-                    <a href="#lvs%e7%9b%b8%e5%85%b3%e6%9c%af%e8%af%ad%e5%91%bd%e5%90%8d%e7%ba%a6%e5%ae%9a" aria-label="LVS相关术语命名约定">LVS相关术语命名约定</a></li>
-                <li>
-                    <a href="#lvs%e9%9b%86%e7%be%a4%e7%9a%844%e7%a7%8d%e5%b7%a5%e4%bd%9c%e6%a8%a1%e5%bc%8f%e4%bb%8b%e7%bb%8d%e4%b8%8e%e5%8e%9f%e7%90%86%e8%ae%b2%e8%a7%a3" aria-label="LVS集群的4种工作模式介绍与原理讲解">LVS集群的4种工作模式介绍与原理讲解</a><ul>
-                        
-                <li>
-                    <a href="#nat%e6%a8%a1%e5%bc%8f%e7%bd%91%e7%bb%9c%e5%9c%b0%e5%9d%80%e8%bd%ac%e6%8d%a2%e6%94%b6%e8%b4%b9%e7%ab%99%e6%a8%a1%e5%bc%8f" aria-label="NAT模式==&amp;gt;网络地址转换&amp;lt;==收费站模式">NAT模式==&gt;网络地址转换&lt;==收费站模式</a></li>
-                <li>
-                    <a href="#dr%e6%a8%a1%e5%bc%8f-%e7%9b%b4%e8%bf%9e%e8%b7%af%e7%94%b1%e6%a8%a1%e5%bc%8f" aria-label="DR模式-直连路由模式">DR模式-直连路由模式</a></li></ul>
-                </li>
-                <li>
-                    <a href="#virtual-server-via-ip-tunneling-vstun" aria-label="Virtual Server via IP Tunneling (VS/TUN)">Virtual Server via IP Tunneling (VS/TUN)</a><ul>
-                        
-                <li>
-                    <a href="#fullnat%e6%a8%a1%e5%bc%8f-%e6%b7%98%e5%ae%9d%e7%bd%91%e6%9c%80%e6%96%b0%e5%bc%80%e6%ba%90%e7%9a%84" aria-label="FULLNAT模式 淘宝网最新开源的">FULLNAT模式 淘宝网最新开源的</a></li></ul>
-                </li>
-                <li>
-                    <a href="#arp%e5%8d%8f%e8%ae%ae" aria-label="ARP协议">ARP协议</a><ul>
-                        
-                <li>
-                    <a href="#%e4%bb%80%e4%b9%88%e6%98%afarp%e5%8d%8f%e8%ae%ae" aria-label="什么是ARP协议">什么是ARP协议</a></li>
-                <li>
-                    <a href="#arp%e7%bc%93%e5%ad%98%e8%a1%a8" aria-label="ARP缓存表">ARP缓存表</a></li>
-                <li>
-                    <a href="#arp%e7%bc%93%e5%ad%98%e6%98%af%e6%8a%8a%e5%8f%8c%e5%88%83%e5%89%91" aria-label="ARP缓存是把双刃剑">ARP缓存是把双刃剑</a></li>
-                <li>
-                    <a href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e4%bd%bf%e7%94%a8arp%e5%8d%8f%e8%ae%ae" aria-label="为什么要使用ARP协议">为什么要使用ARP协议</a></li>
-                <li>
-                    <a href="#arp%e5%9c%a8%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e4%ba%a7%e7%94%9f%e7%9a%84%e9%97%ae%e9%a2%98%e5%8f%8a%e8%a7%a3%e5%86%b3%e5%8a%9e%e6%b3%95" aria-label="ARP在生产环境产生的问题及解决办法">ARP在生产环境产生的问题及解决办法</a></li></ul>
-                </li></ul>
-                </li>
-                <li>
-                    <a href="#lvs%e7%9a%84%e8%b0%83%e5%ba%a6%e7%ae%97%e6%b3%95" aria-label="LVS的调度算法">LVS的调度算法</a><ul>
-                        
-                <li>
-                    <a href="#lvs%e7%9a%84%e8%b0%83%e5%ba%a6%e7%ae%97%e6%b3%95%e7%9a%84%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e9%80%89%e5%9e%8b" aria-label="LVS的调度算法的生产环境选型">LVS的调度算法的生产环境选型</a></li></ul>
-                </li>
-                <li>
-                    <a href="#%e5%ae%89%e8%a3%85lvs" aria-label="安装LVS">安装LVS</a></li>
-                <li>
-                    <a href="#%e6%89%8b%e5%8a%a8%e9%85%8d%e7%bd%aelvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e6%9c%8d%e5%8a%a1" aria-label="手动配置LVS负载均衡服务">手动配置LVS负载均衡服务</a><ul>
-                        
-                <li>
-                    <a href="#%e6%89%8b%e5%b7%a5%e6%b7%bb%e5%8a%a0lvs%e8%bd%ac%e5%8f%91" aria-label="手工添加LVS转发">手工添加LVS转发</a></li>
-                <li>
-                    <a href="#%e9%85%8d%e7%bd%aelvs%e8%99%9a%e6%8b%9fip-vip" aria-label="配置LVS虚拟IP (VIP)">配置LVS虚拟IP (VIP)</a></li>
-                <li>
-                    <a href="#%e6%89%8b%e5%b7%a5%e6%89%a7%e8%a1%8c%e9%85%8d%e7%bd%ae%e6%b7%bb%e5%8a%a0lvs%e6%9c%8d%e5%8a%a1%e5%b9%b6%e5%a2%9e%e5%8a%a0%e4%b8%a4%e5%8f%b0rs" aria-label="手工执行配置添加LVS服务并增加两台RS">手工执行配置添加LVS服务并增加两台RS</a></li>
-                <li>
-                    <a href="#%e6%89%8b%e5%b7%a5%e5%9c%a8rs%e7%ab%af%e7%bb%91%e5%ae%9a" aria-label="手工在RS端绑定">手工在RS端绑定</a><ul>
-                        
-                <li>
-                    <a href="#arp%e6%8a%91%e5%88%b6%e6%8a%80%e6%9c%af%e5%8f%82%e6%95%b0%e8%af%b4%e6%98%8e" aria-label="arp抑制技术参数说明">arp抑制技术参数说明</a></li>
-                <li>
-                    <a href="#%e6%a3%80%e6%9f%a5%e6%89%8b%e5%b7%a5%e6%b7%bb%e5%8a%a0lvs%e8%bd%ac%e5%8f%91%e6%88%90%e6%9e%9c" aria-label="检查手工添加LVS转发成果">检查手工添加LVS转发成果</a></li>
-                <li>
-                    <a href="#%e5%9c%a8%e8%ae%bf%e9%97%ae%e7%9a%84%e5%90%8c%e6%97%b6%e5%8f%af%e4%bb%a5%e7%94%a8%e5%91%bd%e4%bb%a4%e6%9f%a5%e7%9c%8b%e7%8a%b6%e6%80%81%e4%bf%a1%e6%81%af" aria-label="在访问的同时可以用命令查看状态信息">在访问的同时可以用命令查看状态信息</a></li></ul>
-                </li>
-                <li>
-                    <a href="#%e4%bd%bf%e7%94%a8%e8%84%9a%e6%9c%ac%e9%85%8d%e7%bd%aelvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e6%9c%8d%e5%8a%a1" aria-label="使用脚本配置lvs负载均衡服务">使用脚本配置lvs负载均衡服务</a></li></ul>
-                </li>
-                <li>
-                    <a href="#%e5%b8%b8%e8%a7%81%e7%9a%84lvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e9%ab%98%e5%8f%af%e7%94%a8%e8%a7%a3%e5%86%b3%e6%96%b9%e6%a1%88" aria-label="常见的LVS负载均衡高可用解决方案">常见的LVS负载均衡高可用解决方案</a></li>
-                <li>
-                    <a href="#lvs%e9%9b%86%e7%be%a4%e5%88%86%e5%8f%91%e8%af%b7%e6%b1%82rs%e4%b8%8d%e5%9d%87%e8%a1%a1%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e5%ae%9e%e6%88%98%e8%a7%a3%e5%86%b3" aria-label="LVS集群分发请求RS不均衡生产环境实战解决">LVS集群分发请求RS不均衡生产环境实战解决</a></li>
-                <li>
-                    <a href="#lvs%e6%95%85%e9%9a%9c%e6%8e%92%e9%94%99%e7%90%86%e8%ae%ba%e5%8f%8a%e5%ae%9e%e6%88%98%e8%ae%b2%e8%ae%b2%e8%a7%a3" aria-label="LVS故障排错理论及实战讲讲解">LVS故障排错理论及实战讲讲解</a></li>
-                <li>
-                    <a href="#keepalivedlvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e9%85%8d%e7%bd%ae" aria-label="keepalived&#43;lvs负载均衡配置">keepalived+lvs负载均衡配置</a>
-                </li>
-            </ul>
-        </div>
-    </details>
-</div>
-
-  <div class="post-content">
-    
-
-
-
-
-
-<div class="copyrightTopBlock">
-    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
-    <div class="articleSuffix-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
-</div>
-<br><h2 id="lvs概述">LVS概述<a hidden class="anchor" aria-hidden="true" href="#lvs概述">¶</a></h2>
-<p>负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。</p>
-<blockquote>
-<p><strong>搭建负载均衡服务的需求</strong></p>
-</blockquote>
-<ol>
-<li>把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验.</li>
-<li>单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。</li>
-<li>7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。</li>
-</ol>
-<p>在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。</p>
-<h3 id="lvs-linux-virtual-server介绍">LVS (Linux Virtual Server)介绍<a hidden class="anchor" aria-hidden="true" href="#lvs-linux-virtual-server介绍">¶</a></h3>
-<p>LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一</p>
-<p>LVS项目介绍 <a href="http://www.linuxvirtualserver.org/zh/lvs1.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/zh/lvs1.html</a></p>
-<p>LVS集群的体系结构 <a href="http://www.linuxvirtualserver.org/zh/lvs2.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/zh/lvs2.html</a></p>
-<p>LVS集群中的IP负载均衡技术 <a href="http://www.linuxvirtualserver.org/zh/lvs3.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/zh/lvs3.html</a></p>
-<p>LVS集群的负载调度 <a href="http://www.linuxvirtualserver.org/zh/lvs4.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/zh/lvs4.html</a></p>
-<h3 id="ipvslvs发展史">IPVS（LVS）发展史<a hidden class="anchor" aria-hidden="true" href="#ipvslvs发展史">¶</a></h3>
-<p>早在2.2内核时，IPVS就已经以内核补丁的形式出现。</p>
-<p>从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。</p>
-<p>从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。</p>
-<h3 id="ipvs软件工作层次图">IPVS软件工作层次图<a hidden class="anchor" aria-hidden="true" href="#ipvs软件工作层次图">¶</a></h3>
-<img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/4af27131.png" alt="4af27131" style="zoom:80%;" />
-<p>从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.</p>
-<blockquote>
-<p><strong>LVS技术点小结</strong>：</p>
-</blockquote>
-<ul>
-<li>真正实现调度的工具是IPVS， 工作在Linux内核层面</li>
-<li>LVS自导IPVS管理工具是ipvsadm</li>
-<li>keepalived实现管理IPVS及负载均衡器的高可用。</li>
-<li>RedHat工具Piranha WEB管理实现调度的工具IPVS。</li>
-</ul>
-<h3 id="lvs体系结构与工作原理简单描述">LVS体系结构与工作原理简单描述<a hidden class="anchor" aria-hidden="true" href="#lvs体系结构与工作原理简单描述">¶</a></h3>
-<p>LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director</p>
-<p>LVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。</p>
-<img src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/d8e6dbb7.png" alt="d8e6dbb7" style="zoom:80%;" />
-<h3 id="lvs基本工作过程图">LVS基本工作过程图<a hidden class="anchor" aria-hidden="true" href="#lvs基本工作过程图">¶</a></h3>
-<blockquote>
-<p>**LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求</p>
-</blockquote>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9b7099eb.png" alt="9b7099eb" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<blockquote>
-<p><strong>LVS基本工作过程图2</strong>：</p>
-</blockquote>
-<p>不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/0d677548.png" alt="0d677548" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<blockquote>
-<p><strong>LVS基本工作过程图3</strong>：</p>
-</blockquote>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1a42b889.png" alt="1a42b889" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<blockquote>
-<p><strong>LVS基本工作过程图4</strong>：</p>
-</blockquote>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/001c6c47.png" alt="001c6c47" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<h3 id="lvs相关术语命名约定">LVS相关术语命名约定<a hidden class="anchor" aria-hidden="true" href="#lvs相关术语命名约定">¶</a></h3>
-<table>
-<thead>
-<tr>
-<th>名称</th>
-<th>缩写</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>虚拟IP地址(Virtual IP Address)</td>
-<td>VIP  </td>
-<td>VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务</td>
-</tr>
-<tr>
-<td>真实IP地址(Real Server IP Address)</td>
-<td>RIP</td>
-<td>在集群下面节点上使用的IP地址，物理IP地址</td>
-</tr>
-<tr>
-<td>Director的IP地址(Director IP Address)</td>
-<td>DIP</td>
-<td>Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP</td>
-</tr>
-<tr>
-<td>客户端主机IP地址(Client IP Address)</td>
-<td>CIP</td>
-<td>客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址</td>
-</tr>
-</tbody>
-</table>
-<p>LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。</p>
-<p>与计算机通常在网上交换数据包的方式相同，客户端计算机、Director和真实服务器使用IP地址彼此进行通信。</p>
-<h3 id="lvs集群的4种工作模式介绍与原理讲解">LVS集群的4种工作模式介绍与原理讲解<a hidden class="anchor" aria-hidden="true" href="#lvs集群的4种工作模式介绍与原理讲解">¶</a></h3>
-<p>IP虚拟服务器软件IPVS</p>
-<p>在调度器的实现技术中，IP负载金恒技术是效率最高的。在已有的IP负载均衡技术中有通过网络地址转换(Network Address Translation)将一组服务器构成一个高性能的、高可用的虚拟服务器，我们称之为VS/NAT技术(Virtual Server via Network Address Translation)，大多数商业化的IP负载均衡调度器产品都是使用NAT方法，如Cisco的LocalDirector、F5、Netscaler的Big/IP和Alteon的ACEDirector。</p>
-<p>在分析VS/NAT的缺点和网络服务的非对称性的基础上，我们提出通过IP隧道实现虚拟服务器方法VS/TUN(Virtual Server via IP Tunneling ) 和通过直接路由实现虚拟服务器的方法VS/DR(Virtual Server via Direct Routing )，它们可以极大地提高系统的伸缩性。所以，IPVS软件实现了这三种IP负载均衡技术，淘宝开源的模式FULLNAT。</p>
-<h4 id="nat模式网络地址转换收费站模式">NAT模式==&gt;网络地址转换&lt;==收费站模式<a hidden class="anchor" aria-hidden="true" href="#nat模式网络地址转换收费站模式">¶</a></h4>
-<blockquote>
-<p><strong>Virtual Server via Network Address Translation (VS/NAT)</strong></p>
-</blockquote>
-<p>通过网络地址转换，调度器LB重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文处理之后，返回时必须要通过调度器，经过调度器时报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p>
-<hr>
-<p><strong><font color="#0215cd" size=2> <font color="#f8070d" size=2>⚠</font> 提示：VS/NAT模式，很类似公路上的收费站，来去都要经过LB负载均衡器，通过修改目的地址，端口或源端口。</font></strong></p>
-<hr>
-<p><strong>原理描述</strong></p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/556081af.png" alt="556081af" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>客户端通过Virtual IP Address（虚拟服务的IP地址）访问网络服务时，请求的报文到达调度器LB时，调度器根据连接调度算法从一组真实服务器中选出一台服务器，将报文的目标地址VIP改写成选的服务器的地址RIP1，请求报文的目标端口改写成选定服务器的相应端口（RS）提供服务端口，最后将修改后的报文发送给选出服务器RS1。同时，调度器LB在连接的Hash表中记录这个连接，当这个连接的下一个报文到达时，从连接的Hash表中可以得到原选定服务器的地址和端口，进行同样的改写操作，并将报文传给原选定的服务器RS1。当来自真实服务器RS1的相应报文返回调度器时，调度器将返回报文的源地址和源端口改为VIP和相应端口，然后调度器再把报文发给请求用户。in DNAT out SNAT。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/46a03c4c.png" alt="46a03c4c" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<blockquote>
-<p><strong>NAT模式小结</strong></p>
-</blockquote>
-<ol>
-<li>
-<p>NAT技术将请求的报文（通过DNAT方式改写）和响应的报文（通过SNAT方式改写），通过调度器地址重写然后在转发给内部的服务器，报文返回时在改写成原来的用户请求的地址。</p>
-</li>
-<li>
-<p>只需要在调度器LB上配置WAN公网IP即可，调度器也要有私有LAN IP和内部RS节点通信。</p>
-</li>
-<li>
-<p>每台内部RS节点的网关地址，必须要配成调度器LB的私有LAN内物理网卡地址 (LD1P)，这样才能确保数据报文返回时仍然经过调度器LB。</p>
-</li>
-<li>
-<p>由于清求与响应的数据报文都经过调度器LB.因此，网站访问早大时调度器LB有较大瓶颈，一般要求最多10-20台节点。</p>
-</li>
-<li>
-<p>NAT模式支持对IP及端口的转换，即用户请求10.0.0.1:80,可以通过调度器转换到RS节点的10.0.0.2:8080 (DR和TUN模式不具备的）。-</p>
-</li>
-<li>
-<p>所有NAT内部RS节点只需配置私有LAN IP即可。</p>
-</li>
-<li>
-<p>由于数据包来回都需要经过调度器，因此，要开启内核转发<font color="#f8070d" size=3><code>net.ipv4.ip_forward=1</code></font>,当然也包括iptables防火枪的forward功能（DR和TUX模式不需要）。</p>
-</li>
-</ol>
-<h4 id="dr模式-直连路由模式">DR模式-直连路由模式<a hidden class="anchor" aria-hidden="true" href="#dr模式-直连路由模式">¶</a></h4>
-<p><strong>Virtual Server via Direct Routing (VS/DR)</strong></p>
-<p>VS/DR模式是通过改写请求报文的目标MAC地址，将请求发给真实服务器的，而真实服务器将相应后的处理结果直接返回给客户端用户。同VS/TUN技术一样，VS/DR技术可极大的提高集群系统的伸缩性。而且，这种DR模式没有IP隧道的开销，对集群中的真实服务器也没有必须支持IP隧道协议的要求，但是要求调度器LB与真实服务器RS都有一块物理网卡连在同一物理网段上，即必须在同一个局域网环境。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/4d7565ce.png" alt="4d7565ce" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>在LVS-DR配置中，Director将所有入站请求转发给集群内部节点，但集群内部的节点直接将他们的回复发给客户端计算机（没有通过Director回来）如图所示：</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/c895a20d.png" alt="c895a20d" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p><strong><font color="#0215cd" size=2> <font color="#f8070d" size=2>⚠</font> 特别提示：(VS/DR)模式是互联网使用的最多的一种模式。
-</font></strong></p>
-<hr>
-<p>VS/DR模式的工作流程如下图所示：它的连接调度和管理与VS/NAT和VS/TUN中的一样，它的报文转发方法和前两种又有不同，DR模式将报文直接路由给目标服务器，在VS/DR模式中，调度器根据各个真实服务器的负载情况，连接数多少等，动态地选择一台服务器，不修改目的IP地址和目的端口，也不封装IP报文，而是将请求的数据帧的MAC地址改为选出服务器的MAC地址，然后再将修改后的数据帧在与服务器组的局域网上发送。因为请求的数据帧的MAC地址是选出的真实服务器，所以真实服务器肯定可以收到这个改写了目标MAC地址的数据帧，从中可以获得该请求的IP报文。当真实服务器发现 报文的目标地址VIP是在本地的网络设备上，真实服务器处理这个报文，然后根据路由表 将响应报文直接返回给客户。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/31be91fa.png" alt="31be91fa" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>在VS/DR中，根据缺省的TCP/IP协议栈处理，请求报文的目标地址为VIP，响应报文的源地址肯定也为VIP，所以响应报文不需要作任何修改，可以直接返回给客户，客户认为得到正常的服务，而不会知道是哪一台服务器处理的。</p>
-<p>VS/DR负载调度器跟VS/TUN—样只处于从客户到服务器的半连接中，按照半连接的TCP有限状态机进行状态迁移。</p>
-<blockquote>
-<p><strong>原理图：IN更改目的MAC/OUT null</strong></p>
-</blockquote>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cf02c772.png" alt="cf02c772" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<blockquote>
-<p><strong>DR模式小结</strong>：</p>
-</blockquote>
-<ol>
-<li>通过在调度器LB上修改数据包的目的MAC地址实现转发。注意，源IP地址仍然是 CIP，目的IP地址仍然是VIP。</li>
-<li>请求的报文经过调度器，而RS响应处理后的报文无需经过调度器LB，因此，并发访问量大时使用效率很高（和NAT模式比）。</li>
-<li>因DR模式是通过MAC地址的改写机制实现的转发，因此，所有RS节点和调度器LB 只能在一个局域网LAN中（小缺点）。</li>
-<li>需要注意RS节点的VIP的绑定（lo:vip/32，lo1:vip/32)和ARP抑制问题。</li>
-<li>强调下：RS节点的默认网关不需要是调度器LB的DIP而直接是IDC机房分配的上级路由器的IP (这是RS带有外网IP地址的情况），理论讲：只要RS可以出网即可，不是必须要配置外网IP。</li>
-<li>由于DR模式的调度器仅进行了目的MAC地址的改写，因此，调度器LB无法改变请求的报文的目的端口（和NAT要区别）。</li>
-<li>当前，调度器LB支持几乎所有的UNIX, LINUX系统，但目前不支持WINDOWS系统。真实服务器RS节点可以是WINDOWS系统。</li>
-<li>总的来说DR模式效率很高，但是配置也较麻烦，因此，访问量不是特别大的公司可以用haproxy/nginx取代。这符合运维的原则：简单、易用、高效。日1000-2000W PV或并发请求小于1W以下都可以考虑用haproxy/nginx（LVS NAT）模式</li>
-<li>直接对外的业务访问，例如web服务做RS节点，RS最好用公网IP地址。如果不直接对外的业务，例如：MySQL，存储系统RS节点，最好只用内部IP地址。</li>
-</ol>
-<h3 id="virtual-server-via-ip-tunneling-vstun">Virtual Server via IP Tunneling (VS/TUN)<a hidden class="anchor" aria-hidden="true" href="#virtual-server-via-ip-tunneling-vstun">¶</a></h3>
-<p>采用NAT技术时，由于请求和响应的报文都必须经过调度器地址重写，当客户请求越来越多时，调度器的处理能力将成为瓶颈。为了解决这个问题，调度器把请求的报文通过IP隧道（相当于ipip或ipsec ）转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户，这样调度器就只处理请求的入站报文。由于一般网络服务应答数据比请求报文大很多，采用VS/TUN技术后，集群系统的最大吞吐量可以提高10倍。</p>
-<p>它的连接调度和管理与VS/NAT中的一样，只是它的报文转发方法不同。调度器根据各个服务器的负载情况，连接数多少，动态地选择一台服务器，将原请求的报文封装在另一个IP报文中，再将封装后的IP报文转发给选出的真实服务器；真实服务器收到报文后，先将收到的报文解封获得原来目标地址为VIP地址的报文，服务器发现VIP地址被配置在本地的IP隧道设备上(此处要人为配置)，所以就处理这个请求，然后根据路由表将响应报文直接返回给客户。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1b499670.png" alt="1b499670" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>TUN模式</p>
-<ol>
-<li>负载均衡器通过把请求的报文通过IP隧道(ipip隧道)的方式(请求的报文不经过原目的地址的改写(包括MAC)，而是直接封装成另外的IP报文)，转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户。</li>
-<li>由于真实服务器将响应处理后的报文直接返回给客户端用户，因此。最好RS有一个外网IP地址，这样效率才会更高。理论上：只要能出网即可，无需外网IP地址。</li>
-<li>由于调度器LB只处理入站请求的报文。因此，此集群系统的吞吐量可以提高10倍以上，但隧道模式也会带来一定的系统开销。TUN模式适合LAN/WAN.</li>
-<li>TUN模式的LAN环境转发不如DR模式效率高，而且还要考虑系统对IP隧道的支持问题。</li>
-<li>所有的RS服务器都要绑定VIP，抑制ARP，配置复杂.</li>
-<li>LAN环境一般多采用DR模式，WAN环境可以用TUN模式，但是当前在，WAN环境下，请求转发更多的被haproxy/nginx/DNS调度等代理取代。因此，TUN模式在国内公司实际应用的已经很少。跨机房应用要么拉光纤成局域网，要么DNS调度，底层数据还得同步.</li>
-<li>直接对外的访问业务，例如:web服务做RS节点，最好用公网IP地址。不直接对外的业务，例如:MySQL,存储系统RS节点，最好用内部IP地址。</li>
-</ol>
-<h4 id="fullnat模式-淘宝网最新开源的">FULLNAT模式 淘宝网最新开源的<a hidden class="anchor" aria-hidden="true" href="#fullnat模式-淘宝网最新开源的">¶</a></h4>
-<blockquote>
-<p><strong>背景</strong></p>
-</blockquote>
-<p>LVS当前应用主要采用DR和NAT模式，但这2种模式要求RealServer和LVS在同 一个vlan中，导致部署成本过髙：TUNNEL模式虽然可以跨vlan，但RealServer上需要部署ipip隧道模块等，网络拓扑上需要连通外网，较复杂，不易运维。
-为了解决上述问题，我们在LVS上添加了一种新的转发模式：FULLNAT，该模式和NAT模式的区别是：Packet IN时，除了做DNAT,还做SNAT(用户ip-&gt;内网ip),从而实现LVS-RealServer之间可以跨vlan通讯，RealServer只需要连接到内网;</p>
-<blockquote>
-<p><strong>目标</strong></p>
-</blockquote>
-<p>FULLNAT将作为一种新工作镆式（同DR/NAT/TUNNEL),实现如下功能：</p>
-<ol>
-<li>Packet IN时，目标IP更换为realserver ip，源IP更换为内网local IP；</li>
-<li>Packet OUT时，目标IP更换为client IP 注：Local IP为一组内网ip地址;性能要求，和NAT比，正常转发性能下降&lt;10%。</li>
-</ol>
-<h3 id="arp协议">ARP协议<a hidden class="anchor" aria-hidden="true" href="#arp协议">¶</a></h3>
-<h4 id="什么是arp协议">什么是ARP协议<a hidden class="anchor" aria-hidden="true" href="#什么是arp协议">¶</a></h4>
-<p>ARP协议，全称“Address Resolution Protocol”，中文名称是地址解析协议，使用ARP协议可实现通过IP地址获得对应主机的的物理地址（MAC）。</p>
-<p>在TCP/IP的网络环境下，每个互联网的主机都会被分配一个32位的IP地址，这种互联网地址是在网际范围标识主机的一种逻辑地址。为了让报文在物理网路上传输，还补习要知道对方目的主机的物理地址才行。这样就存在把IP地址变换成物理地址的地址转换问题。</p>
-<p>在以太网环境，为了正确地向目的主机传送报文，必须把目的主机的32为IP地址转换成为目的主机48位以太网地址(MAC),这个就需要在互联层有一个服务或功能将IP地址转换为相应的物理地址(MAC)，这个服务就是ARP协议。</p>
-<p>所谓的地址解析&quot;地址解析&quot;，就是主机在发送帧之前将目标IP地址转换成目标MAC地址的过程。ARP协议的基本功能就是通过目标设备的IP地址，查询目标设备的MAC地址，以保证主机间互相通信的顺利进行.</p>
-<p>ARP协议和DNS有相像之处。不同点是：DNS实在域名和IP之间解析，另外ARP协议不需要配置服务，而DNS要配置服务才行。</p>
-<h4 id="arp缓存表">ARP缓存表<a hidden class="anchor" aria-hidden="true" href="#arp缓存表">¶</a></h4>
-<p>在每台安装有TCP/IP协议的电脑里都会有一个ARP缓存表（windows命令提示符里输入<font color="#f8070d" size=3><code>arp -a</code></font>即可）， 表里的IP地址与MAC地址是一一对应的。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/a4e30825.png" alt="a4e30825" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<pre><code>C:\Users\CM&gt;arp -a
-接口: 192.168.1.103 --- 0x3
-  Internet 地址           物理地址                类型
-  192.168.1.1             3c-46-d8-5d-53-87       动态
-  192.168.1.255           ff-ff-ff-ff-ff-ff       静态
-  224.0.0.22              01-00-5e-00-00-16       静态
-  224.0.0.251             01-00-5e-00-00-fb       静态
-  224.0.0.252             01-00-5e-00-00-fc       静态
-  239.11.20.1             01-00-5e-0b-14-01       静态
-  239.255.255.250         01-00-5e-7f-ff-fa       静态
-</code></pre>
-<p>arp常用命令</p>
-<p>arp -a 查看所有记录</p>
-<p>arp -d 清除</p>
-<p>arp -s ip mac  绑定IP和MAC</p>
-<h4 id="arp缓存是把双刃剑">ARP缓存是把双刃剑<a hidden class="anchor" aria-hidden="true" href="#arp缓存是把双刃剑">¶</a></h4>
-<p>主机有了arp缓存表，可以加快arp的解析速度，减少局域网内广播风暴。
+<!doctype html><html lang=zh dir=auto><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>LVS & keepalived 集群架构 | Cylon's Collection</title>
+<meta name=keywords content="Linux,HA"><meta name=description content="LVS概述 负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。
+搭建负载均衡服务的需求
+把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验. 单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。 7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。 在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。
+LVS (Linux Virtual Server)介绍 LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一
+LVS项目介绍 http://www.linuxvirtualserver.org/zh/lvs1.html
+LVS集群的体系结构 http://www.linuxvirtualserver.org/zh/lvs2.html
+LVS集群中的IP负载均衡技术 http://www.linuxvirtualserver.org/zh/lvs3.html
+LVS集群的负载调度 http://www.linuxvirtualserver.org/zh/lvs4.html
+IPVS（LVS）发展史 早在2.2内核时，IPVS就已经以内核补丁的形式出现。
+从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。
+从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。
+IPVS软件工作层次图 从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.
+LVS技术点小结：
+真正实现调度的工具是IPVS， 工作在Linux内核层面 LVS自导IPVS管理工具是ipvsadm keepalived实现管理IPVS及负载均衡器的高可用。 RedHat工具Piranha WEB管理实现调度的工具IPVS。 LVS体系结构与工作原理简单描述 LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director
+LVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。
+LVS基本工作过程图 **LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求
+LVS基本工作过程图2：
+不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上
+LVS基本工作过程图3：
+LVS基本工作过程图4：
+LVS相关术语命名约定 名称 缩写 说明 虚拟IP地址(Virtual IP Address) VIP VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务 真实IP地址(Real Server IP Address) RIP 在集群下面节点上使用的IP地址，物理IP地址 Director的IP地址(Director IP Address) DIP Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP 客户端主机IP地址(Client IP Address) CIP 客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址 LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。"><meta name=author content="cylon"><link rel=canonical href=https://www.oomkill.com/2017/01/lvs-and-keepalived/><meta name=google-site-verification content="XYZabc"><meta name=yandex-verification content="XYZabc"><meta name=msvalidate.01 content="XYZabc"><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://www.oomkill.com/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://www.oomkill.com/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://www.oomkill.com/favicon-32x32.png><link rel=apple-touch-icon href=https://www.oomkill.com/favicon.ico><link rel=mask-icon href=https://www.oomkill.com/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><link rel=alternate hreflang=zh href=https://www.oomkill.com/2017/01/lvs-and-keepalived/><noscript><style>#theme-toggle,#top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><link crossorigin=anonymous href=/assets/css/pe.min.css rel="preload stylesheet" as=style><script defer crossorigin=anonymous src=/assets/js/pe.min.js></script><link rel=stylesheet href=https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css><link rel=stylesheet href=https://cdn.staticfile.net/font-awesome/6.5.1/css/v4-shims.min.css><script defer src=https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js></script><link rel=stylesheet href=https://cdn.staticfile.net/fancybox/3.5.7/jquery.fancybox.min.css><script defer src=https://cdn.staticfile.net/fancybox/3.5.7/jquery.fancybox.min.js></script><script id=MathJax-script async src=https://cdn.staticfile.net/mathjax/3.2.2/es5/tex-chtml.js></script><script>MathJax={tex:{displayMath:[["$$","$$"]],inlineMath:[["\\$","\\$"]]}}</script><meta property="og:title" content="LVS & keepalived 集群架构"><meta property="og:description" content="LVS概述 负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。
+搭建负载均衡服务的需求
+把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验. 单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。 7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。 在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。
+LVS (Linux Virtual Server)介绍 LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一
+LVS项目介绍 http://www.linuxvirtualserver.org/zh/lvs1.html
+LVS集群的体系结构 http://www.linuxvirtualserver.org/zh/lvs2.html
+LVS集群中的IP负载均衡技术 http://www.linuxvirtualserver.org/zh/lvs3.html
+LVS集群的负载调度 http://www.linuxvirtualserver.org/zh/lvs4.html
+IPVS（LVS）发展史 早在2.2内核时，IPVS就已经以内核补丁的形式出现。
+从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。
+从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。
+IPVS软件工作层次图 从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.
+LVS技术点小结：
+真正实现调度的工具是IPVS， 工作在Linux内核层面 LVS自导IPVS管理工具是ipvsadm keepalived实现管理IPVS及负载均衡器的高可用。 RedHat工具Piranha WEB管理实现调度的工具IPVS。 LVS体系结构与工作原理简单描述 LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director
+LVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。
+LVS基本工作过程图 **LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求
+LVS基本工作过程图2：
+不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上
+LVS基本工作过程图3：
+LVS基本工作过程图4：
+LVS相关术语命名约定 名称 缩写 说明 虚拟IP地址(Virtual IP Address) VIP VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务 真实IP地址(Real Server IP Address) RIP 在集群下面节点上使用的IP地址，物理IP地址 Director的IP地址(Director IP Address) DIP Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP 客户端主机IP地址(Client IP Address) CIP 客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址 LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。"><meta property="og:type" content="article"><meta property="og:url" content="https://www.oomkill.com/2017/01/lvs-and-keepalived/"><meta property="article:section" content="posts"><meta property="article:published_time" content="2017-01-07T00:00:00+00:00"><meta property="article:modified_time" content="2023-03-22T23:00:36+08:00"><meta property="og:site_name" content="Cylon's Collection"><meta name=twitter:card content="summary"><meta name=twitter:title content="LVS & keepalived 集群架构"><meta name=twitter:description content="LVS概述 负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。
+搭建负载均衡服务的需求
+把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验. 单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。 7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。 在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。
+LVS (Linux Virtual Server)介绍 LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一
+LVS项目介绍 http://www.linuxvirtualserver.org/zh/lvs1.html
+LVS集群的体系结构 http://www.linuxvirtualserver.org/zh/lvs2.html
+LVS集群中的IP负载均衡技术 http://www.linuxvirtualserver.org/zh/lvs3.html
+LVS集群的负载调度 http://www.linuxvirtualserver.org/zh/lvs4.html
+IPVS（LVS）发展史 早在2.2内核时，IPVS就已经以内核补丁的形式出现。
+从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。
+从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。
+IPVS软件工作层次图 从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.
+LVS技术点小结：
+真正实现调度的工具是IPVS， 工作在Linux内核层面 LVS自导IPVS管理工具是ipvsadm keepalived实现管理IPVS及负载均衡器的高可用。 RedHat工具Piranha WEB管理实现调度的工具IPVS。 LVS体系结构与工作原理简单描述 LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director
+LVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。
+LVS基本工作过程图 **LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求
+LVS基本工作过程图2：
+不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上
+LVS基本工作过程图3：
+LVS基本工作过程图4：
+LVS相关术语命名约定 名称 缩写 说明 虚拟IP地址(Virtual IP Address) VIP VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务 真实IP地址(Real Server IP Address) RIP 在集群下面节点上使用的IP地址，物理IP地址 Director的IP地址(Director IP Address) DIP Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP 客户端主机IP地址(Client IP Address) CIP 客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址 LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。"><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://www.oomkill.com/posts/"},{"@type":"ListItem","position":2,"name":"LVS \u0026 keepalived 集群架构","item":"https://www.oomkill.com/2017/01/lvs-and-keepalived/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"LVS \u0026 keepalived 集群架构","name":"LVS \u0026 keepalived 集群架构","description":"LVS概述 负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。\n搭建负载均衡服务的需求\n把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验. 单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。 7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。 在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。\nLVS (Linux Virtual Server)介绍 LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一\nLVS项目介绍 http://www.linuxvirtualserver.org/zh/lvs1.html\nLVS集群的体系结构 http://www.linuxvirtualserver.org/zh/lvs2.html\nLVS集群中的IP负载均衡技术 http://www.linuxvirtualserver.org/zh/lvs3.html\nLVS集群的负载调度 http://www.linuxvirtualserver.org/zh/lvs4.html\nIPVS（LVS）发展史 早在2.2内核时，IPVS就已经以内核补丁的形式出现。\n从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。\n从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。\nIPVS软件工作层次图 从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.\nLVS技术点小结：\n真正实现调度的工具是IPVS， 工作在Linux内核层面 LVS自导IPVS管理工具是ipvsadm keepalived实现管理IPVS及负载均衡器的高可用。 RedHat工具Piranha WEB管理实现调度的工具IPVS。 LVS体系结构与工作原理简单描述 LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director\nLVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。\nLVS基本工作过程图 **LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求\nLVS基本工作过程图2：\n不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上\nLVS基本工作过程图3：\nLVS基本工作过程图4：\nLVS相关术语命名约定 名称 缩写 说明 虚拟IP地址(Virtual IP Address) VIP VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务 真实IP地址(Real Server IP Address) RIP 在集群下面节点上使用的IP地址，物理IP地址 Director的IP地址(Director IP Address) DIP Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP 客户端主机IP地址(Client IP Address) CIP 客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址 LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。","keywords":["Linux","HA"],"articleBody":"LVS概述 负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。\n搭建负载均衡服务的需求\n把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验. 单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。 7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。 在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。\nLVS (Linux Virtual Server)介绍 LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一\nLVS项目介绍 http://www.linuxvirtualserver.org/zh/lvs1.html\nLVS集群的体系结构 http://www.linuxvirtualserver.org/zh/lvs2.html\nLVS集群中的IP负载均衡技术 http://www.linuxvirtualserver.org/zh/lvs3.html\nLVS集群的负载调度 http://www.linuxvirtualserver.org/zh/lvs4.html\nIPVS（LVS）发展史 早在2.2内核时，IPVS就已经以内核补丁的形式出现。\n从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。\n从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。\nIPVS软件工作层次图 从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.\nLVS技术点小结：\n真正实现调度的工具是IPVS， 工作在Linux内核层面 LVS自导IPVS管理工具是ipvsadm keepalived实现管理IPVS及负载均衡器的高可用。 RedHat工具Piranha WEB管理实现调度的工具IPVS。 LVS体系结构与工作原理简单描述 LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director\nLVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。\nLVS基本工作过程图 **LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求\nLVS基本工作过程图2：\n不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上\nLVS基本工作过程图3：\nLVS基本工作过程图4：\nLVS相关术语命名约定 名称 缩写 说明 虚拟IP地址(Virtual IP Address) VIP VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务 真实IP地址(Real Server IP Address) RIP 在集群下面节点上使用的IP地址，物理IP地址 Director的IP地址(Director IP Address) DIP Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP 客户端主机IP地址(Client IP Address) CIP 客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址 LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。\n与计算机通常在网上交换数据包的方式相同，客户端计算机、Director和真实服务器使用IP地址彼此进行通信。\nLVS集群的4种工作模式介绍与原理讲解 IP虚拟服务器软件IPVS\n在调度器的实现技术中，IP负载金恒技术是效率最高的。在已有的IP负载均衡技术中有通过网络地址转换(Network Address Translation)将一组服务器构成一个高性能的、高可用的虚拟服务器，我们称之为VS/NAT技术(Virtual Server via Network Address Translation)，大多数商业化的IP负载均衡调度器产品都是使用NAT方法，如Cisco的LocalDirector、F5、Netscaler的Big/IP和Alteon的ACEDirector。\n在分析VS/NAT的缺点和网络服务的非对称性的基础上，我们提出通过IP隧道实现虚拟服务器方法VS/TUN(Virtual Server via IP Tunneling ) 和通过直接路由实现虚拟服务器的方法VS/DR(Virtual Server via Direct Routing )，它们可以极大地提高系统的伸缩性。所以，IPVS软件实现了这三种IP负载均衡技术，淘宝开源的模式FULLNAT。\nNAT模式==\u003e网络地址转换\u003c==收费站模式 Virtual Server via Network Address Translation (VS/NAT)\n通过网络地址转换，调度器LB重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文处理之后，返回时必须要通过调度器，经过调度器时报文的源地址被重写，再返回给客户，完成整个负载调度过程。\n⚠ 提示：VS/NAT模式，很类似公路上的收费站，来去都要经过LB负载均衡器，通过修改目的地址，端口或源端口。\n原理描述\n客户端通过Virtual IP Address（虚拟服务的IP地址）访问网络服务时，请求的报文到达调度器LB时，调度器根据连接调度算法从一组真实服务器中选出一台服务器，将报文的目标地址VIP改写成选的服务器的地址RIP1，请求报文的目标端口改写成选定服务器的相应端口（RS）提供服务端口，最后将修改后的报文发送给选出服务器RS1。同时，调度器LB在连接的Hash表中记录这个连接，当这个连接的下一个报文到达时，从连接的Hash表中可以得到原选定服务器的地址和端口，进行同样的改写操作，并将报文传给原选定的服务器RS1。当来自真实服务器RS1的相应报文返回调度器时，调度器将返回报文的源地址和源端口改为VIP和相应端口，然后调度器再把报文发给请求用户。in DNAT out SNAT。\nNAT模式小结\nNAT技术将请求的报文（通过DNAT方式改写）和响应的报文（通过SNAT方式改写），通过调度器地址重写然后在转发给内部的服务器，报文返回时在改写成原来的用户请求的地址。\n只需要在调度器LB上配置WAN公网IP即可，调度器也要有私有LAN IP和内部RS节点通信。\n每台内部RS节点的网关地址，必须要配成调度器LB的私有LAN内物理网卡地址 (LD1P)，这样才能确保数据报文返回时仍然经过调度器LB。\n由于清求与响应的数据报文都经过调度器LB.因此，网站访问早大时调度器LB有较大瓶颈，一般要求最多10-20台节点。\nNAT模式支持对IP及端口的转换，即用户请求10.0.0.1:80,可以通过调度器转换到RS节点的10.0.0.2:8080 (DR和TUN模式不具备的）。-\n所有NAT内部RS节点只需配置私有LAN IP即可。\n由于数据包来回都需要经过调度器，因此，要开启内核转发net.ipv4.ip_forward=1,当然也包括iptables防火枪的forward功能（DR和TUX模式不需要）。\nDR模式-直连路由模式 Virtual Server via Direct Routing (VS/DR)\nVS/DR模式是通过改写请求报文的目标MAC地址，将请求发给真实服务器的，而真实服务器将相应后的处理结果直接返回给客户端用户。同VS/TUN技术一样，VS/DR技术可极大的提高集群系统的伸缩性。而且，这种DR模式没有IP隧道的开销，对集群中的真实服务器也没有必须支持IP隧道协议的要求，但是要求调度器LB与真实服务器RS都有一块物理网卡连在同一物理网段上，即必须在同一个局域网环境。\n在LVS-DR配置中，Director将所有入站请求转发给集群内部节点，但集群内部的节点直接将他们的回复发给客户端计算机（没有通过Director回来）如图所示：\n⚠ 特别提示：(VS/DR)模式是互联网使用的最多的一种模式。 VS/DR模式的工作流程如下图所示：它的连接调度和管理与VS/NAT和VS/TUN中的一样，它的报文转发方法和前两种又有不同，DR模式将报文直接路由给目标服务器，在VS/DR模式中，调度器根据各个真实服务器的负载情况，连接数多少等，动态地选择一台服务器，不修改目的IP地址和目的端口，也不封装IP报文，而是将请求的数据帧的MAC地址改为选出服务器的MAC地址，然后再将修改后的数据帧在与服务器组的局域网上发送。因为请求的数据帧的MAC地址是选出的真实服务器，所以真实服务器肯定可以收到这个改写了目标MAC地址的数据帧，从中可以获得该请求的IP报文。当真实服务器发现 报文的目标地址VIP是在本地的网络设备上，真实服务器处理这个报文，然后根据路由表 将响应报文直接返回给客户。\n在VS/DR中，根据缺省的TCP/IP协议栈处理，请求报文的目标地址为VIP，响应报文的源地址肯定也为VIP，所以响应报文不需要作任何修改，可以直接返回给客户，客户认为得到正常的服务，而不会知道是哪一台服务器处理的。\nVS/DR负载调度器跟VS/TUN—样只处于从客户到服务器的半连接中，按照半连接的TCP有限状态机进行状态迁移。\n原理图：IN更改目的MAC/OUT null\nDR模式小结：\n通过在调度器LB上修改数据包的目的MAC地址实现转发。注意，源IP地址仍然是 CIP，目的IP地址仍然是VIP。 请求的报文经过调度器，而RS响应处理后的报文无需经过调度器LB，因此，并发访问量大时使用效率很高（和NAT模式比）。 因DR模式是通过MAC地址的改写机制实现的转发，因此，所有RS节点和调度器LB 只能在一个局域网LAN中（小缺点）。 需要注意RS节点的VIP的绑定（lo:vip/32，lo1:vip/32)和ARP抑制问题。 强调下：RS节点的默认网关不需要是调度器LB的DIP而直接是IDC机房分配的上级路由器的IP (这是RS带有外网IP地址的情况），理论讲：只要RS可以出网即可，不是必须要配置外网IP。 由于DR模式的调度器仅进行了目的MAC地址的改写，因此，调度器LB无法改变请求的报文的目的端口（和NAT要区别）。 当前，调度器LB支持几乎所有的UNIX, LINUX系统，但目前不支持WINDOWS系统。真实服务器RS节点可以是WINDOWS系统。 总的来说DR模式效率很高，但是配置也较麻烦，因此，访问量不是特别大的公司可以用haproxy/nginx取代。这符合运维的原则：简单、易用、高效。日1000-2000W PV或并发请求小于1W以下都可以考虑用haproxy/nginx（LVS NAT）模式 直接对外的业务访问，例如web服务做RS节点，RS最好用公网IP地址。如果不直接对外的业务，例如：MySQL，存储系统RS节点，最好只用内部IP地址。 Virtual Server via IP Tunneling (VS/TUN) 采用NAT技术时，由于请求和响应的报文都必须经过调度器地址重写，当客户请求越来越多时，调度器的处理能力将成为瓶颈。为了解决这个问题，调度器把请求的报文通过IP隧道（相当于ipip或ipsec ）转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户，这样调度器就只处理请求的入站报文。由于一般网络服务应答数据比请求报文大很多，采用VS/TUN技术后，集群系统的最大吞吐量可以提高10倍。\n它的连接调度和管理与VS/NAT中的一样，只是它的报文转发方法不同。调度器根据各个服务器的负载情况，连接数多少，动态地选择一台服务器，将原请求的报文封装在另一个IP报文中，再将封装后的IP报文转发给选出的真实服务器；真实服务器收到报文后，先将收到的报文解封获得原来目标地址为VIP地址的报文，服务器发现VIP地址被配置在本地的IP隧道设备上(此处要人为配置)，所以就处理这个请求，然后根据路由表将响应报文直接返回给客户。\nTUN模式\n负载均衡器通过把请求的报文通过IP隧道(ipip隧道)的方式(请求的报文不经过原目的地址的改写(包括MAC)，而是直接封装成另外的IP报文)，转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户。 由于真实服务器将响应处理后的报文直接返回给客户端用户，因此。最好RS有一个外网IP地址，这样效率才会更高。理论上：只要能出网即可，无需外网IP地址。 由于调度器LB只处理入站请求的报文。因此，此集群系统的吞吐量可以提高10倍以上，但隧道模式也会带来一定的系统开销。TUN模式适合LAN/WAN. TUN模式的LAN环境转发不如DR模式效率高，而且还要考虑系统对IP隧道的支持问题。 所有的RS服务器都要绑定VIP，抑制ARP，配置复杂. LAN环境一般多采用DR模式，WAN环境可以用TUN模式，但是当前在，WAN环境下，请求转发更多的被haproxy/nginx/DNS调度等代理取代。因此，TUN模式在国内公司实际应用的已经很少。跨机房应用要么拉光纤成局域网，要么DNS调度，底层数据还得同步. 直接对外的访问业务，例如:web服务做RS节点，最好用公网IP地址。不直接对外的业务，例如:MySQL,存储系统RS节点，最好用内部IP地址。 FULLNAT模式 淘宝网最新开源的 背景\nLVS当前应用主要采用DR和NAT模式，但这2种模式要求RealServer和LVS在同 一个vlan中，导致部署成本过髙：TUNNEL模式虽然可以跨vlan，但RealServer上需要部署ipip隧道模块等，网络拓扑上需要连通外网，较复杂，不易运维。 为了解决上述问题，我们在LVS上添加了一种新的转发模式：FULLNAT，该模式和NAT模式的区别是：Packet IN时，除了做DNAT,还做SNAT(用户ip-\u003e内网ip),从而实现LVS-RealServer之间可以跨vlan通讯，RealServer只需要连接到内网;\n目标\nFULLNAT将作为一种新工作镆式（同DR/NAT/TUNNEL),实现如下功能：\nPacket IN时，目标IP更换为realserver ip，源IP更换为内网local IP； Packet OUT时，目标IP更换为client IP 注：Local IP为一组内网ip地址;性能要求，和NAT比，正常转发性能下降\u003c10%。 ARP协议 什么是ARP协议 ARP协议，全称“Address Resolution Protocol”，中文名称是地址解析协议，使用ARP协议可实现通过IP地址获得对应主机的的物理地址（MAC）。\n在TCP/IP的网络环境下，每个互联网的主机都会被分配一个32位的IP地址，这种互联网地址是在网际范围标识主机的一种逻辑地址。为了让报文在物理网路上传输，还补习要知道对方目的主机的物理地址才行。这样就存在把IP地址变换成物理地址的地址转换问题。\n在以太网环境，为了正确地向目的主机传送报文，必须把目的主机的32为IP地址转换成为目的主机48位以太网地址(MAC),这个就需要在互联层有一个服务或功能将IP地址转换为相应的物理地址(MAC)，这个服务就是ARP协议。\n所谓的地址解析\"地址解析\"，就是主机在发送帧之前将目标IP地址转换成目标MAC地址的过程。ARP协议的基本功能就是通过目标设备的IP地址，查询目标设备的MAC地址，以保证主机间互相通信的顺利进行.\nARP协议和DNS有相像之处。不同点是：DNS实在域名和IP之间解析，另外ARP协议不需要配置服务，而DNS要配置服务才行。\nARP缓存表 在每台安装有TCP/IP协议的电脑里都会有一个ARP缓存表（windows命令提示符里输入arp -a即可）， 表里的IP地址与MAC地址是一一对应的。\ntext 1 2 3 4 5 6 7 8 9 10 C:\\Users\\CM\u003earp -a 接口: 192.168.1.103 --- 0x3 Internet 地址 物理地址 类型 192.168.1.1 3c-46-d8-5d-53-87 动态 192.168.1.255 ff-ff-ff-ff-ff-ff 静态 224.0.0.22 01-00-5e-00-00-16 静态 224.0.0.251 01-00-5e-00-00-fb 静态 224.0.0.252 01-00-5e-00-00-fc 静态 239.11.20.1 01-00-5e-0b-14-01 静态 239.255.255.250 01-00-5e-7f-ff-fa 静态 arp常用命令\narp -a 查看所有记录\narp -d 清除\narp -s ip mac 绑定IP和MAC\nARP缓存是把双刃剑 主机有了arp缓存表，可以加快arp的解析速度，减少局域网内广播风暴。 正是有了arp缓存表，给恶意黑客带来了攻击服务器主机的风险，这个就是arp欺骗攻击 切换路由器，负载均衡器等设备时，可能会导致短时网络中断.\n为什么要使用ARP协议 OSI模型把网络工作分为7层，彼此不直接打交道，只通过接口(layer interface)。IP地址工作在第三层，MAC地址工作在第二层。当协议在发送数据包时，需要先封装第三层IP地址，第二层MAC地址的报头，但协议只知道目的的节点的IP地址，不知道目的节点的MAC地址，又不能跨第二、三层，所以得用ARP协议服务，来帮助获取到目的节点的MAC地址.\nosi7层模型协议 包封装解封装详解 http://www.tudou.com/programs/view/sP9JY_KranA\ntcp三次握手四次断开原理过程详解 http://www.tudou.com/programs/view/XjHCDedZQa8\nARP在生产环境产生的问题及解决办法 ARP病毒，ARP欺骗 高可用服务器对之间切换时要考虑ARP缓存问题 路由器等设备无缝迁移时要考虑ARP缓存的问题，例如：更换办公室的路由器.\nARP欺骗原理\nARP攻击就是通过伪造IP地址和MAC地址对实现ARP欺骗的，如果一台主机中了ARP病毒，那么它就能够在网络中产生大量的ARP通信量（它会以很快的频率进行广播），以至于使网络阻塞，攻击者只要持续不断的发出伪造ARP响应包就能更改局域网中目标主机ARP缓存中的IP-MAC条目，造成网络中断或中间人攻击。\nARP攻击主要是存在于局域网网络中，局域网中若有一个人感染ARP木马，则感染该ARP木马的系统将会试图通过“ARP欺骗”手段截获所在网络内其他计算机的通信故障。\n服务器切换ARP问题\n当网络中一台提供服务的机器宕机后，当在其他运行正常的机器添加宕机的机器的IP时，会因为客户端的ARP table cache的地址解析还是宕机的机器的MAC地址。从而导致，即使在其他运行正常的机器添加宕机的机器的IP，也会发生客户依然无法访问的情况。\n解决方法是：当宕机时，IP地址迁移到其他机器上时，需要通过arping命令来通知所有网络内机器清除其本地的ARP table cache，从而使得客户机访问时重新广播获取MAC地址。几乎所有的高可用软件都会考虑这个问题。\nARP广播而进行新的地址解析。\nlinux下具体命令：\nsh 1 2 arping -I eth0 -c 3 -s 10.0.0.162 10.0.0.253 arping -U -I eth0 10.0.0.162 LVS的调度算法 LVS的调度算法决定了如何在集群节点之间分布工作负荷。\n当Director调度器收到来自客户端计算机访问它的VIP上的集群服务的入站请求时，Director调度器必须决定哪个集群节点应该处理请求。Director调度器可用于做出该决定的调度方法分成两个基本类别:\n固定调度方法：rr wrr dh sh\n动态调度算法：wlc lc lblc lblcr SED NQ(后两种官方站点没提到，编译LVS, make过程可以看到召10种调度算法见如下表格：\n算法 说明 rr 轮循调度(Round-Robin)，它将请求依次分配不同的RS节点，也就是在RS节点中均摊请求。这种算法简单，但是只适合于RS节点处理性能相差不大的情况。 wrr 加权轮循调度(Weighted Round-Robin)，它将依据不同RS节点的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值较低的RS节点更多。相同权值的RS得到相同数目的连接数。 dh 目的地址哈希调度(Destination Hashing)以目的地址为关键字查找一个静态hash表来获得需要的RS。 sh 源地址哈希调度(Source Hashing)以源地址为关键字查找一个静态hash表来获得需要的RS。 wlc 加权最小连接数调度(Weighted Least-Connection) 假设各台RS的权值依次为Wi(I=1..n)，当前的TCP连接数依次为Ti ( I= 1..n )，依次选取Ti/Wi为最小的RS作为 下一个分配的RS。 lc 最小连接数调度压(Least-Connection)，IPVS表存储了所有的活动的连接。把新的连接请求发送到当前连接数最小的RS。 lblc 基于地址的最小连接数调度(Locality-Based Least-Connection)，将来自同一目的地址的请求分配给同一台RS节点，如果这台服务器尚未满负荷，分配给连接数最小的RS，并以它为下一次分配的首先考虑。 lblcr 基于地址带重复最小连接数调度(Locality-Based Least-Connection with Replication)对于某一目的地址，对应有一个RS子集。对此地址请求，为它分配子集中连接数最小RS;如果子集中所有服务器均已满负荷，则从集群中选择一个连接数较小服务器，将它加入到此子集并分配连接;若一定时间内，未被做任何修改，则将子集中负载最大的节点从子集删除。 SED 最短的期望的延迟(Shortest Expected Delay Scheduling SED) (SED)\n基于wlc算法。这个必须举例来说了，\nABC三台机器分别权重123，连接数也分别是123。那么如果使用WLC算法的话一个新请求进入时它可能会分给ABC中的任意一个。使用sed算法后会进行这样一个运算。\nA(1+1)/1,\nB(1+2)/2,\nC(1+3)/3,\n根据运算结果，把连接交给C NQ 最少队列调度(Never Queue Scheduling NQ) (NQ)\n无需队列。如果有台realserver的连接数=0就直接分配过去，不需要在进行sed运算 LVS的调度算法的生产环境选型 (1) 一般的网络服务，如HTTP、Mail、MySQL等，常用的LVS调度算法为：\n基本轮叫调度rr算法 加权最小连接调度wlc 加权轮训调度wrr算法 (2) 基于局部性的最少链接LBLC和带复制的基于局部性最少链接LBLCR主要适用于Web Cache和Db Cache集群，但是我们很少这样用。\n(3) 源地址散列调度SH和目标地址散列调度DH可以结合使用在防火墙集群中，它们可以保证整个系统的唯一出入口。\n(4) 最短预期延时调度SED和不排队调度NQ主要是对处理时间相对比较长的网络服务。 实际使用中，这些算法的适用范围不限于这些。我们最好参考内核中的连接调度算法的实现原理，根据具体的业务需求合理的选型。\n安装LVS 下载地址：http://www.linuxvirtualserver.org/software/kernel-2.6/ipvsadm-1.26.tar.gz\n安装前准备\nsh 1 2 3 4 5 # ipvs为lvs调度器，工作在内核层，先查看是否安装 lsmod|grep ip_vs # 以uname -r结果为准工作中如果做安装虚拟化可能有多个内核，lvs是基于内核的 ln -s /usr/src/kernels/`uname -r`/ /usr/src/linux 安装依赖包\nsh 1 2 3 4 5 6 7 8 yum install libnl-devel popt-devel popt-static #\u003c==centos7未发现问题 make \u0026\u0026 make install /sbin/ipvsadm || modprobe ip_vs $ lsmod|grep ip_vs ip_vs 136798 0 nf_conntrack 105702 1 ip_vs libcrc32c 12644 2 xfs,ip_vs VS小结\n1、Centos5.X安装lvs，使用1.2.4版本。不要用1.2.6。\n2、Centos6.4安装lvs，使用1.2.6版本。并且需要先安装yum install libnl* popt*-y。\n3、安装lvs后，要执行ipvsadm把ip_vs模块加载到内核。\n手动配置LVS负载均衡服务 手工添加LVS转发 用户访问www.lb.com然后被DNS解析到vip 10.0.0.10，这个步骤是在DNS里配置的。 如果是自建DNS lb域的DNS记录设置如下\nsh 1 www IN A 10.0.0.10 如果未自建dns，需要在购买DNS域名商提供的DNS管理界面增加类似上面的DNS记录一条。这里的IP地址一定外网地址，才能正式使用，我们假设192.168.1.0/24段为外网段。修改结果类似下图(必须做真正环境才能做下面修改)\n配置LVS虚拟IP (VIP) sh 1 2 ifconfig eth0:0 10.0.0.10/24 up route add -host 10.0.0.10 dev eth0 #←添加主机路由，也可不加此行 因虚拟网卡网段和VIP不在一个网段，需要设置路由，windows设置路由方法如下：\nsh 1 2 route -p add 10.0.0.0/24 192.168.2.23 route print 到这里说明VIP\nsh 1 2 3 4 5 6 C:\\Users\\CM\u003eping 10.0.0.10 正在 Ping 10.0.0.10 具有 32 字节的数据: 来自 10.0.0.10 的回复: 字节=32 时间\u003c1ms TTL=64 来自 10.0.0.10 的回复: 字节=32 时间\u003c1ms TTL=64 来自 10.0.0.10 的回复: 字节=32 时间\u003c1ms TTL=64 ⚠ 提示:到这里说明VIP地址己经配好，并可以使用了。\n手工执行配置添加LVS服务并增加两台RS sh 1 2 3 4 5 6 7 8 ipvsadm -C ipvsadm --set 30 5 60 ipvsadm -A -t 10.0.0.10:80 -s wrr ipvsadm -A -t 10.0.0.10:80 -s wrr -p 20 ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.82:80 -g -w 1 ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.21 -g -w 1 ipvsadm -D -t 10.0.0.10:80 -s wrr ipvsadm -d -t 10.0.0.10:80 -r 192.168.2.21 相关参数说明\nsh 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 #\u003c==清除内核虚拟服务器表中的所有记录 Either long or short options are allowed. --add-service -A add virtual service with options --edit-service -E edit virtual service with options --delete-service -D delete virtual service --clear -C clear the whole table --restore -R restore rules from stdin --save -S save rules to stdout --add-server -a add real server with options --edit-server -e edit real server with options --delete-server -d delete real server --list -L|-l list the table --set tcp tcpfin udp set connection timeout values --tcp-service -t service-address service-address is host[:port] --udp-service -u service-address service-address is host[:port] --scheduler -s scheduler one of rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq, the default scheduler is wlc. --persistent -p [timeout] persistent service --netmask -M netmask persistent granularity mask --real-server -r server-address server-address is host (and port) --gatewaying -g gatewaying (direct routing) (default) --ipip -i ipip encapsulation (tunneling) --masquerading -m masquerading (NAT) --weight -w weight capacity of real server --mcast-interface interface multicast interface for connection sync --connection -c output of current IPVS connections --timeout output of timeout (tcp tcpfin udp) --stats output of statistics information 此时，在浏览器访问10.0.0.10结果是无法访问的：因为根据LVS原理，RS在接收到包后发现不是自己IP后就丢弃了。 IPVS(也叫LVS)的源码分析之persistent参数 - 沧海一粟 - CSDN博客\n手工在RS端绑定 sh 1 ifconfig lo:0 10.0.0.10/32 up #\u003c==注意，子网掩码特殊 每个集群节点上的环回接口 (lo) 设备上被绑定VIP地址(其广播地址是其本身，子网掩码是255.255.255.255，采取可变长掩码方式把网段划分成只含一个主机地址的目的避免ip地址冲突)允许LVS-DR集群中的集群节点接受发向该VIP地址的数据包，这会有一个非常严重的问题发生，集群内部的真实服务器将尝试回复来自正在请求VIP客户端ARP广播，这样所有的真实服务器都将声称自己拥有该VIP地址，这时客户端将有可能接发送请求数据包到某台真实服务器上，从而破坏了DR集群的负载均衡策略。因此，必须要抑制所有真实服务器响应目标地址为VIP的ARP广播，而把客户端ARP广播的响应交给负载均衡调度器。\n抑制ARP响应方法如下\nsh 1 2 3 4 echo \"1\" \u003e/proc/sys/net/ipv4/conf/lo/arp_ignore echo \"2\" \u003e/proc/sys/net/ipv4/conf/lo/arp_announce echo \"1\" \u003e/proc/sys/net/ipv4/conf/all/arp_ignore echo \"2\" \u003e/proc/sys/net/ipv4/conf/all/arp_announce arp抑制技术参数说明 中文说明:，\narp_ignore- INTEGER\n定义对目标地址为本地IP的ARP询问不同的应答模式。\n0 (默认值)：回应任何网络接口上对任何本地IP地址的arp查询请求。\n1：只回答目标IP地址是来访问网络接口本地地址的ARP查询请求\n2：只回答目标IP地址是来访网络接口本地地址的ARP查询请求，且来访IP必须在该网络接口的子网段内。\n3：不回应该网络界面的arp请求，而只对设置的唯一和连接地址做出回应。，\n4-7：保留未使用。‘\n8：不回应所有(本地地址)的arp查询。\narp_announce一INTEGER\n对网络接口上，本地IP地址的发出的，ARP回应，作出相应级别的限制：确定不同程度的限制，宣布对来自本地源lP地址发出Ail，请求的接口\n0 (默认)在任意网络接口(eth0,eth1, lo)上的任何本地地址\n1：尽量避免不在该网络接口子网段的本地地址做出arp回应.当发起ARP请求的源IP地址是被设置应该经由路由达到此网络接口的时候很有用。此时会检查来访IP是否为所有接口上的子网段内ip之一。如果该来访IP不属于各个网络接口上的子网段内，那么将采用级别2的方式来进行处理。\n2：一对查询目标使用最适当的本地地址，在此模式下将忽略这个IP数据包的源地址并尝试能与该地址通信的本地地址，首要是选择所有的网络接口的子网中外出访问子网中包含该目标IP地址的本地地址。如果没有合适的地址被发现，将选择当前的发送网络接口或其他的有可能接受到该ARP回应的网络接来进发送。限制了使用本地VIP地址作为优先的网络接口。\n检查手工添加LVS转发成果 测试LVS服务的转发：\n首先在客户端浏览器访问RS http://192.168.1.6 及 RS http://192.168.1.7 确认是否RS端正常然后访问DR的VIP http://10.0.0.10， 如果经过多次测试能分别出现RS1, RS2的 不同结果内容就是表示配置成功。\n⚠ 提示:负载均衡的算法倾向于一个客户端IP定向到一个后端服务器，以保持会话连贯性，如果用两三台机器去测试也许就不一样。\n在访问的同时可以用命令查看状态信息 sh 1 2 3 4 5 6 7 $ ipvsadm -L -n --stats IP Virtual Server version 1.2.1 (size=4096) Prot LocalAddress:Port Conns InPkts OutPkts InBytes OutBytes -\u003e RemoteAddress:Port TCP 10.0.0.10:80 88 674 0 88293 0 -\u003e 192.168.2.21:80 44 355 0 47851 0 -\u003e 192.168.2.82:80 44 319 0 40442 0 使用脚本配置lvs负载均衡服务 sh 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 #!/bin/sh VIP='10.0.0.10' . /etc/init.d/functions Port=80 RIP=( 192.168.2.21 192.168.2.82 ) clean_all(){ ipvsadm -C return $? } set_virtual_server(){ ipvsadm --set 30 5 60 ipvsadm -A -t $VIP:$Port -s wrr return $? } start(){ clean_all [ $? -eq 0 ] \u0026\u0026 set_virtual_server || return 1 for n in ${RIP[@]} do ipvsadm -a -t $VIP:$Port -r $n:$Port -g -w 1 done } stop(){ clean_all } usage(){ echo 'USAGE:'$0 '{start|stop|restart}' } case \"$1\" in start|START) start ;; stop|STOP) stop ;; restart|RESTART) stop start ;; *) usage esac sh 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 #!/bin/sh . /etc/init.d/functions master_ip=192.168.2.23 VIP='10.0.0.10' Port=80 RIP=( 192.168.2.21 192.168.2.82 ) set_virtual_server(){ ipvsadm --set 30 5 60 ipvsadm -A -t $VIP:$Port -s wrr return $? } check_master(){ /usr/bin/ping -c 2 $master_ip \u0026\u003e/dev/null return $? } clean_all(){ ipvsadm -C } start(){ clean_all \u0026\u0026 /sbin/ifconfig eth0:0 $VIP/24 up [ $? -eq 0 ] \u0026\u0026 set_virtual_server || return 10 for n in ${RIP[@]} do /sbin/ipvsadm -a -t $VIP:$Port -r $n:$Port -g -w 1 done } stop(){ clean_all /sbin/ifconfig eth0:0 $VIP/24 down } check_isnode(){ num=`ipvsadm -L -n|grep 192|wc -l` if [ $num -lt ${#RIP[@]} ];then return 0 fi return 11 } check_isup(){ num=`ifconfig eth0:0|grep $VIP|wc -l` if [ $num -eq 1 ];then return 0 fi return 12 } while true do check_master if [ $? -ne 0 ];then check_isnode if [ $? -eq 0 ];then start fi else check_isup if [ $? -eq 0 ];then stop fi fi sleep 3 done 常见的LVS负载均衡高可用解决方案 (1) 通过开发上面的脚本来解决，如果负载均衡器硬件坏了。几分钟或秒级别内在其它备机上完成新的部署，如果做的细的，还可以写脚本来做调度器之间的切换和接管功能。早起的方法，还是比较笨重的，目前已经不推荐使用。\n(2) heartbeart+lvs+ldirectord脚本配置方案，这个方案同学们自己可以去搜索，这个方案中heartbeat负责VIP的切换以及资源的启动停止，ldirectord负责RS节点的健康检查，用于比较复杂，不易控制，属于早期的解决方案，现在已经很少使用了。\nheartbeat and ldirectord方案资料:\nhttp://www.linuxvirtualserver.org/docs/ha/heartbeat_ldirectord.html\nhttp://www.linuxvirtualserver.org/docs/ha/ultramonkey.html\n(3) 通过Redhat提供的工具piranha来配置LVS Piranha是REDHAT提供的一个基于Web的LVS配置软件，可以省去手工配置LVS的繁琐工作，同时，也可单独提供。cluster功能，例如，可以通过Piranh。激活Director Server的后备主机，也就是配置Director Server的双机热备功能。\n(4) keepalived+LVS方案，当前最优方案，因为这个方案符合简单、易用、高效的运维原则。 The Keepalived Solution http://www.linuxvirtualserver.org/docs/ha/keepalived\n(5) 其他\nhttp://bbs.linuxtone.org/thread-1402-1-1.html\nLVS Documentation\nhttp://www.linuxvirtualserver.org/zh/index.html\nhttp://www.linuxvirtualserver.org/Documents.html#performance\nhttp://zh.linuxvirtualserver.org/node/2230\nLVS集群分发请求RS不均衡生产环境实战解决 生产环境中 ipvsadm -L -n 发现两台RS的负载不均衡，一台有很多请求，一台没有请求，并且没有请求的那台RS经测试服务正常，lo:VIP也有。但是就是没有请求。\nsh 1 2 3 TCP 172.168.1.50:3307 wrr persistent 10 一\u003e172.168.1.51:3307 Route 1 0 0 一\u003e172.168.1.52:3307 Route 1 8 12758 问题原因：\npersistent 10的原因，persistent会话保持，当clientA访问网站的时候，LVS把请求分发给了52,那么以后clientA再点击的其他操作其他请求，也会发送给52这台机器。\n解决办法:\n到keepalived中注释掉persistent 10然后/etc/init.d/keepalived reload，然后可以看到以后负载均衡两边都请求都均衡了。\n其它导致负载不均的原因可能有：\nLVS自身的会话保持参数设置((-p 300, persistent 300)。优化:大公司尽量用cookie替代session LVS调度算法设置，例如：rr, wrr, wld,lc算法。 后端RS节点的会话保持参数，例如:apache的keealive参数。 访问量较少的情况不均衡的现象更加明显。 用户发送的请求时间长短，和请求资源多少大小。 实现会话保持的方案：\nhttp://oldboy.blog.5lcto.com/2561410/1331316\nhttp://oldboy.blog.51cto.com/2561410/1323468\nLVS故障排错理论及实战讲讲解 排查的大的思路就是，要熟悉LVS的工作原理过程，然后根据原理过程来排查。\n调度器上LVS调度规则及IP的正确性。 RS节点上VIP绑定和arp抑制的检查。 生产处理思路：\n对绑定的vip做实时监控，出问题报警或者自动处理后报警。 把绑定的vip做成配置文件，例如:vi /etc/sysconfig/network-scripts/lo:0 ARP抑制的配置思路：\n如果是单个VIP，那么可以用stop传参设置0。 如果RS端有多个、VIP绑定，此时，即使是停止VIP绑定也一定不要置0。 sh 1 2 3 4 5 6 if [ ${#VIP[@]} ];then echo \"0\" \u003e/proc/sys/net/ipv4/conf/lo/arp_ignore echo \"0\" \u003e/proc/sys/net/ipv4/conf/lo/arp_announce echo \"0\" \u003e/proc/sys/net/ipv4/conf/all/arp_ignore echo \"0\" \u003e/proc/sys/net/ipv4/conf/all/arp_announce if RS节点上自身提供月够的检查(DR不能端口转换)\n辅助排除工具有tcpdump, ping等。\n负载均衡和反向代理集群的三角形排查理论。\nkeepalived+lvs负载均衡配置 conf virtual_server 10.0.0.10 80 { delay_loop 3 #\u003c== 健康检查时间，单位是秒 lb_algo wrr #\u003c== 负载调度的算法为wlc\rlb_kind DR #\u003c==LVS实现负载的机制，NAT/DR/TUN/FULLNAT nat_mask 255.255.255.0 persistence_timeout 20 #\u003c==会话保持 -p的功能\rprotocol TCP #\u003c==lvs4层负载均衡 tcp udp\r# ipvsadm -A -t 10.0.0.10:80 -s wrr -p 20\rreal_server 192.168.1.5 80 {\rweight 1 #\u003c==配置节点权值，数字越大权重越高 TCP_CHECK { #\u003c==健康检查\rconnect_timeout 10 #\u003c==超时时间\rnb_get_retry 3 #\u003c==延迟重试次数\rdelay_before_retry 3 #\u003c==重试次数\rconnect_port 80 #\u003c==检查端口\r}\r}\r}\r# ipvsadm -a -t 10.0.0.10:80 -r 192.168.1.5 -g -w 1 查看负载结果\n当master宕机后，可看到近1分钟时间进行切换\nLVS负载均衡代码平滑上线发布思路\n发布代码：\n开发人员本地测试-一\u003e办公室内部测试（开发个人，测试人员）一（配置管理员）–\u003eIDC机房测试环境（测试人员）–\u003e正是服务器–\u003e运维上线–\u003e100台\n一台一台下，测试完ok挂上去，此时，机器上代码不一致，用户体验就不同，此时需要下线一半，测试，测试完再下线另一半。\n下线方法：\n准备两套配置文件，一套配置文件含有前两台配置文件的配置，一套配置文件含有后两台配置文件的配置。最后用完整的配置文件替换。\n方法二：用ipvsadm来控制节点的增加和删除。keepalived不重启节点就不会改变\n生产场景测试步骤\n","wordCount":"1460","inLanguage":"zh","datePublished":"2017-01-07T00:00:00Z","dateModified":"2023-03-22T23:00:36+08:00","author":{"@type":"Person","name":"cylon"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://www.oomkill.com/2017/01/lvs-and-keepalived/"},"publisher":{"@type":"Organization","name":"Cylon's Collection","logo":{"@type":"ImageObject","url":"https://www.oomkill.com/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://www.oomkill.com/><img src=https://www.oomkill.com/favicon.ico alt aria-label=logo height=20>Cylon's Collection</a><div class=logo-switches><button id=theme-toggle><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://www.oomkill.com/archives><span>归档</span></a></li><li><a href=https://www.oomkill.com/tags><span>标签</span></a></li><li><a href=https://www.oomkill.com/search><span>搜索</span></a></li><li><a href=https://www.oomkill.com/about accesskey=/><span>关于</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><h1 class="post-title entry-hint-parent">LVS & keepalived 集群架构</h1><div class=post-meta><span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar" style="user-select:text"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" style="user-select:text"/><line x1="16" y1="2" x2="16" y2="6" style="user-select:text"/><line x1="8" y1="2" x2="8" y2="6" style="user-select:text"/><line x1="3" y1="10" x2="21" y2="10" style="user-select:text"/></svg><span>2017-01-07</span></span>&nbsp;·&nbsp;<span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text" style="user-select:text"><path d="M14 2H6A2 2 0 004 4v16a2 2 0 002 2h12a2 2 0 002-2V8z" style="user-select:text"/><polyline points="14 2 14 8 20 8" style="user-select:text"/><line x1="16" y1="13" x2="8" y2="13" style="user-select:text"/><line x1="16" y1="17" x2="8" y2="17" style="user-select:text"/><polyline points="10 9 9 9 8 9" style="user-select:text"/></svg><span>1460 字</span></span>&nbsp;·&nbsp;<span class=pe-post-meta-item><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentcolor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg><span>7 分钟</span></span>
+<span class=pe-post-meta-item>&nbsp;·&nbsp;<svg t="1714036239378" fill="currentcolor" class="icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" p-id="6659" width="256" height="256"><path d="M690 78.2c-18.6-18.8-49-19-67.8-.4s-19 49-.4 67.8l255.4 258.6c67.8 68.6 67.8 178.8.0 247.4L653.4 878.2c-18.6 18.8-18.4 49.2.4 67.8s49.2 18.4 67.8-.4l224-226.4c104.8-106 104.8-276.4.0-382.4L690 78.2zM485.4 101.4c-24-24-56.6-37.4-90.6-37.4H96C43 64 0 107 0 160v299c0 34 13.4 66.6 37.4 90.6l336 336c50 50 131 50 181 0l267-267c50-50 50-131 0-181l-336-336zM96 160h299c8.4.0 16.6 3.4 22.6 9.4l336 336c12.4 12.4 12.4 32.8.0 45.2l-267 267c-12.4 12.4-32.8 12.4-45.2.0l-336-336c-6-6-9.4-14.2-9.4-22.6V160zm192 128a64 64 0 10-128 0 64 64 0 10128 0z" p-id="6660"/></svg></span><ul class=pe-post-meta-item><a href=https://www.oomkill.com/tags/ha/>#HA</a></ul></div></header><aside id=toc-container class="toc-container wide"><div class=toc><details><summary><span class=details>目录</span></summary><div class=inner><ul><li><a href=#lvs%e6%a6%82%e8%bf%b0 aria-label=LVS概述>LVS概述</a><ul><li><a href=#lvs-linux-virtual-server%e4%bb%8b%e7%bb%8d aria-label="LVS (Linux Virtual Server)介绍">LVS (Linux Virtual Server)介绍</a><li><a href=#ipvslvs%e5%8f%91%e5%b1%95%e5%8f%b2 aria-label=IPVS（LVS）发展史>IPVS（LVS）发展史</a><li><a href=#ipvs%e8%bd%af%e4%bb%b6%e5%b7%a5%e4%bd%9c%e5%b1%82%e6%ac%a1%e5%9b%be aria-label=IPVS软件工作层次图>IPVS软件工作层次图</a><li><a href=#lvs%e4%bd%93%e7%b3%bb%e7%bb%93%e6%9e%84%e4%b8%8e%e5%b7%a5%e4%bd%9c%e5%8e%9f%e7%90%86%e7%ae%80%e5%8d%95%e6%8f%8f%e8%bf%b0 aria-label=LVS体系结构与工作原理简单描述>LVS体系结构与工作原理简单描述</a><li><a href=#lvs%e5%9f%ba%e6%9c%ac%e5%b7%a5%e4%bd%9c%e8%bf%87%e7%a8%8b%e5%9b%be aria-label=LVS基本工作过程图>LVS基本工作过程图</a><li><a href=#lvs%e7%9b%b8%e5%85%b3%e6%9c%af%e8%af%ad%e5%91%bd%e5%90%8d%e7%ba%a6%e5%ae%9a aria-label=LVS相关术语命名约定>LVS相关术语命名约定</a><li><a href=#lvs%e9%9b%86%e7%be%a4%e7%9a%844%e7%a7%8d%e5%b7%a5%e4%bd%9c%e6%a8%a1%e5%bc%8f%e4%bb%8b%e7%bb%8d%e4%b8%8e%e5%8e%9f%e7%90%86%e8%ae%b2%e8%a7%a3 aria-label=LVS集群的4种工作模式介绍与原理讲解>LVS集群的4种工作模式介绍与原理讲解</a><ul><li><a href=#nat%e6%a8%a1%e5%bc%8f%e7%bd%91%e7%bb%9c%e5%9c%b0%e5%9d%80%e8%bd%ac%e6%8d%a2%e6%94%b6%e8%b4%b9%e7%ab%99%e6%a8%a1%e5%bc%8f aria-label="NAT模式==&amp;gt;网络地址转换&amp;lt;==收费站模式">NAT模式==>网络地址转换&lt;==收费站模式</a><li><a href=#dr%e6%a8%a1%e5%bc%8f-%e7%9b%b4%e8%bf%9e%e8%b7%af%e7%94%b1%e6%a8%a1%e5%bc%8f aria-label=DR模式-直连路由模式>DR模式-直连路由模式</a></ul><li><a href=#virtual-server-via-ip-tunneling-vstun aria-label="Virtual Server via IP Tunneling (VS/TUN)">Virtual Server via IP Tunneling (VS/TUN)</a><ul><li><a href=#fullnat%e6%a8%a1%e5%bc%8f-%e6%b7%98%e5%ae%9d%e7%bd%91%e6%9c%80%e6%96%b0%e5%bc%80%e6%ba%90%e7%9a%84 aria-label="FULLNAT模式 淘宝网最新开源的">FULLNAT模式 淘宝网最新开源的</a></ul><li><a href=#arp%e5%8d%8f%e8%ae%ae aria-label=ARP协议>ARP协议</a><ul><li><a href=#%e4%bb%80%e4%b9%88%e6%98%afarp%e5%8d%8f%e8%ae%ae aria-label=什么是ARP协议>什么是ARP协议</a><li><a href=#arp%e7%bc%93%e5%ad%98%e8%a1%a8 aria-label=ARP缓存表>ARP缓存表</a><li><a href=#arp%e7%bc%93%e5%ad%98%e6%98%af%e6%8a%8a%e5%8f%8c%e5%88%83%e5%89%91 aria-label=ARP缓存是把双刃剑>ARP缓存是把双刃剑</a><li><a href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e4%bd%bf%e7%94%a8arp%e5%8d%8f%e8%ae%ae aria-label=为什么要使用ARP协议>为什么要使用ARP协议</a><li><a href=#arp%e5%9c%a8%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e4%ba%a7%e7%94%9f%e7%9a%84%e9%97%ae%e9%a2%98%e5%8f%8a%e8%a7%a3%e5%86%b3%e5%8a%9e%e6%b3%95 aria-label=ARP在生产环境产生的问题及解决办法>ARP在生产环境产生的问题及解决办法</a></ul></ul><li><a href=#lvs%e7%9a%84%e8%b0%83%e5%ba%a6%e7%ae%97%e6%b3%95 aria-label=LVS的调度算法>LVS的调度算法</a><ul><li><a href=#lvs%e7%9a%84%e8%b0%83%e5%ba%a6%e7%ae%97%e6%b3%95%e7%9a%84%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e9%80%89%e5%9e%8b aria-label=LVS的调度算法的生产环境选型>LVS的调度算法的生产环境选型</a></ul><li><a href=#%e5%ae%89%e8%a3%85lvs aria-label=安装LVS>安装LVS</a><li><a href=#%e6%89%8b%e5%8a%a8%e9%85%8d%e7%bd%aelvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e6%9c%8d%e5%8a%a1 aria-label=手动配置LVS负载均衡服务>手动配置LVS负载均衡服务</a><ul><li><a href=#%e6%89%8b%e5%b7%a5%e6%b7%bb%e5%8a%a0lvs%e8%bd%ac%e5%8f%91 aria-label=手工添加LVS转发>手工添加LVS转发</a><li><a href=#%e9%85%8d%e7%bd%aelvs%e8%99%9a%e6%8b%9fip-vip aria-label="配置LVS虚拟IP (VIP)">配置LVS虚拟IP (VIP)</a><li><a href=#%e6%89%8b%e5%b7%a5%e6%89%a7%e8%a1%8c%e9%85%8d%e7%bd%ae%e6%b7%bb%e5%8a%a0lvs%e6%9c%8d%e5%8a%a1%e5%b9%b6%e5%a2%9e%e5%8a%a0%e4%b8%a4%e5%8f%b0rs aria-label=手工执行配置添加LVS服务并增加两台RS>手工执行配置添加LVS服务并增加两台RS</a><li><a href=#%e6%89%8b%e5%b7%a5%e5%9c%a8rs%e7%ab%af%e7%bb%91%e5%ae%9a aria-label=手工在RS端绑定>手工在RS端绑定</a><ul><li><a href=#arp%e6%8a%91%e5%88%b6%e6%8a%80%e6%9c%af%e5%8f%82%e6%95%b0%e8%af%b4%e6%98%8e aria-label=arp抑制技术参数说明>arp抑制技术参数说明</a><li><a href=#%e6%a3%80%e6%9f%a5%e6%89%8b%e5%b7%a5%e6%b7%bb%e5%8a%a0lvs%e8%bd%ac%e5%8f%91%e6%88%90%e6%9e%9c aria-label=检查手工添加LVS转发成果>检查手工添加LVS转发成果</a><li><a href=#%e5%9c%a8%e8%ae%bf%e9%97%ae%e7%9a%84%e5%90%8c%e6%97%b6%e5%8f%af%e4%bb%a5%e7%94%a8%e5%91%bd%e4%bb%a4%e6%9f%a5%e7%9c%8b%e7%8a%b6%e6%80%81%e4%bf%a1%e6%81%af aria-label=在访问的同时可以用命令查看状态信息>在访问的同时可以用命令查看状态信息</a></ul><li><a href=#%e4%bd%bf%e7%94%a8%e8%84%9a%e6%9c%ac%e9%85%8d%e7%bd%aelvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e6%9c%8d%e5%8a%a1 aria-label=使用脚本配置lvs负载均衡服务>使用脚本配置lvs负载均衡服务</a></ul><li><a href=#%e5%b8%b8%e8%a7%81%e7%9a%84lvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e9%ab%98%e5%8f%af%e7%94%a8%e8%a7%a3%e5%86%b3%e6%96%b9%e6%a1%88 aria-label=常见的LVS负载均衡高可用解决方案>常见的LVS负载均衡高可用解决方案</a><li><a href=#lvs%e9%9b%86%e7%be%a4%e5%88%86%e5%8f%91%e8%af%b7%e6%b1%82rs%e4%b8%8d%e5%9d%87%e8%a1%a1%e7%94%9f%e4%ba%a7%e7%8e%af%e5%a2%83%e5%ae%9e%e6%88%98%e8%a7%a3%e5%86%b3 aria-label=LVS集群分发请求RS不均衡生产环境实战解决>LVS集群分发请求RS不均衡生产环境实战解决</a><li><a href=#lvs%e6%95%85%e9%9a%9c%e6%8e%92%e9%94%99%e7%90%86%e8%ae%ba%e5%8f%8a%e5%ae%9e%e6%88%98%e8%ae%b2%e8%ae%b2%e8%a7%a3 aria-label=LVS故障排错理论及实战讲讲解>LVS故障排错理论及实战讲讲解</a><li><a href=#keepalivedlvs%e8%b4%9f%e8%bd%bd%e5%9d%87%e8%a1%a1%e9%85%8d%e7%bd%ae aria-label=keepalived+lvs负载均衡配置>keepalived+lvs负载均衡配置</a></li></div></details></div></aside><script src=/js/pe-toc.min.445eb1bfc5e85dd13b9519fcc2a806522e9629b6224a2974052789ba00ab78af.js integrity="sha256-RF6xv8XoXdE7lRn8wqgGUi6WKbYiSil0BSeJugCreK8="></script><div class=post-content><h2 id=lvs概述>LVS概述<a hidden class=anchor aria-hidden=true href=#lvs概述>#</a></h2><p>负载均衡(Load Balance)集群提供了一种廉价、有效、透明的方法，来扩展网络设备和服务器的负载、带宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。</p><blockquote><p><strong>搭建负载均衡服务的需求</strong></p></blockquote><ol><li>把单台计算机无法承受的大规模的并发访问或数据流量分担到多台节点设备上分别处理，减少用户等待响应的时间，提升用户体验.</li><li>单个重负载的运算分担到多台节点设备上做并发处理，每个节点设备处理结束后，将结果汇总，返回给用户，系统处理能力得到大幅度提高。</li><li>7*24小时服务保证，任意一个或多个有限后面节点设备宕机，要求不能影响业务。</li></ol><p>在负载均衡集群中，所有计算机节点都应该提供相同的服务。集群负载均衡器所截获所有对该服务的入站请求。然后将这些请求尽可能的平均分配在所有集群节点上。</p><h3 id=lvs-linux-virtual-server介绍>LVS (Linux Virtual Server)介绍<a hidden class=anchor aria-hidden=true href=#lvs-linux-virtual-server介绍>#</a></h3><p>LVS是Linux Virtual Server的简写，意即Linux虚拟服务器，是一个虚拟的服务器集群系统，可在UNIX、Linux平台下实现负载均衡集群功能。该项目在1998年5月由章文嵩博士组织成立，是中国国内最早出现的自由软件项目之一</p><p>LVS项目介绍 <a href=http://www.linuxvirtualserver.org/zh/lvs1.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/zh/lvs1.html</a></p><p>LVS集群的体系结构 <a href=http://www.linuxvirtualserver.org/zh/lvs2.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/zh/lvs2.html</a></p><p>LVS集群中的IP负载均衡技术 <a href=http://www.linuxvirtualserver.org/zh/lvs3.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/zh/lvs3.html</a></p><p>LVS集群的负载调度 <a href=http://www.linuxvirtualserver.org/zh/lvs4.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/zh/lvs4.html</a></p><h3 id=ipvslvs发展史>IPVS（LVS）发展史<a hidden class=anchor aria-hidden=true href=#ipvslvs发展史>#</a></h3><p>早在2.2内核时，IPVS就已经以内核补丁的形式出现。</p><p>从2.4.23版本开始，IPVS软件就是合并到Linux内核的常用版本的内核补丁的集合。</p><p>从2.4.24以后IPVS已经成为Linux官方标准内核的一部分。</p><h3 id=ipvs软件工作层次图>IPVS软件工作层次图<a hidden class=anchor aria-hidden=true href=#ipvs软件工作层次图>#</a></h3><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/4af27131.png alt=4af27131 style=zoom:80%><p>从上图可以看出，LVS负载均衡调度技术是在Linux内核中实现的，因此，被称之为Linux虚拟服务器（Linux virtual Server）。我们使用该软件配置LVS时候，不能直接配置内核中的ipvs，而需要使用ipvs的管理工具ipsadm进行管理.</p><blockquote><p><strong>LVS技术点小结</strong>：</p></blockquote><ul><li>真正实现调度的工具是IPVS， 工作在Linux内核层面</li><li>LVS自导IPVS管理工具是ipvsadm</li><li>keepalived实现管理IPVS及负载均衡器的高可用。</li><li>RedHat工具Piranha WEB管理实现调度的工具IPVS。</li></ul><h3 id=lvs体系结构与工作原理简单描述>LVS体系结构与工作原理简单描述<a hidden class=anchor aria-hidden=true href=#lvs体系结构与工作原理简单描述>#</a></h3><p>LVS集群负载均衡器接受服务的所有入站客户端计算机请求，并根据调度算法决定那个集群几点应该处理回复请求。负载均衡器简称(LB)有时也被成为LVS Director简称Director</p><p>LVS虚拟服务器的体系结构如下图所示，一组服务器通过告诉的局域网或者地理分布的广域网互相连接，在他们的前端有一个负载调度器（Load Balancer）。负载调度器能无缝地将网络请求调度到真实服务器上，从而使得服务器集群的结构对客户是透明的，客户访问集群系统提供的网络服务就像访问一台高性能、高可用的服务器一样。客户程序不收服务器集群的影响不需作任何修改。胸的伸缩性通过在服务集群中透明的加入和删除一各节点来达到，通过检测节点或服务进程故障和正确地重置系统达到高可用性。由于我们的负载调度技术是在Linux内核中实现的，我们称之为Linux虚拟服务器（Linux Virtual Server）。</p><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/d8e6dbb7.png alt=d8e6dbb7 style=zoom:80%><h3 id=lvs基本工作过程图>LVS基本工作过程图<a hidden class=anchor aria-hidden=true href=#lvs基本工作过程图>#</a></h3><blockquote><p>**LVS基本工作过程图1：带颜色的小方块代表不同的客户端请求</p></blockquote><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9b7099eb.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/9b7099eb.png#center alt=9b7099eb onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><blockquote><p><strong>LVS基本工作过程图2</strong>：</p></blockquote><p>不同的客户端请求小方块经过负载均衡器，通过指定的分配策略被分发到后面的机器上</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/0d677548.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/0d677548.png#center alt=0d677548 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><blockquote><p><strong>LVS基本工作过程图3</strong>：</p></blockquote><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1a42b889.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1a42b889.png#center alt=1a42b889 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><blockquote><p><strong>LVS基本工作过程图4</strong>：</p></blockquote><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/001c6c47.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/001c6c47.png#center alt=001c6c47 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><h3 id=lvs相关术语命名约定>LVS相关术语命名约定<a hidden class=anchor aria-hidden=true href=#lvs相关术语命名约定>#</a></h3><table><thead><tr><th>名称</th><th>缩写</th><th>说明</th></tr></thead><tbody><tr><td>虚拟IP地址(Virtual IP Address)</td><td>VIP  </td><td>VIP为Direcort用于向客户端计算机提供IP地址.如www.baidu.com域名就要解析到VIP上提供服务</td></tr><tr><td>真实IP地址(Real Server IP Address)</td><td>RIP</td><td>在集群下面节点上使用的IP地址，物理IP地址</td></tr><tr><td>Director的IP地址(Director IP Address)</td><td>DIP</td><td>Director用于连接内外网络的IP地址，物理网卡上的IP地址，是负载均衡器上的IP</td></tr><tr><td>客户端主机IP地址(Client IP Address)</td><td>CIP</td><td>客户端用户计算机请求集群服务器的IP地址，该地址用作发送给集群的请求的源IP地址</td></tr></tbody></table><p>LVS集群内部的节点称为真实服务器(Real Server)，也叫做集群节点。请求集群服务的计算机称为客户端计算机。</p><p>与计算机通常在网上交换数据包的方式相同，客户端计算机、Director和真实服务器使用IP地址彼此进行通信。</p><h3 id=lvs集群的4种工作模式介绍与原理讲解>LVS集群的4种工作模式介绍与原理讲解<a hidden class=anchor aria-hidden=true href=#lvs集群的4种工作模式介绍与原理讲解>#</a></h3><p>IP虚拟服务器软件IPVS</p><p>在调度器的实现技术中，IP负载金恒技术是效率最高的。在已有的IP负载均衡技术中有通过网络地址转换(Network Address Translation)将一组服务器构成一个高性能的、高可用的虚拟服务器，我们称之为VS/NAT技术(Virtual Server via Network Address Translation)，大多数商业化的IP负载均衡调度器产品都是使用NAT方法，如Cisco的LocalDirector、F5、Netscaler的Big/IP和Alteon的ACEDirector。</p><p>在分析VS/NAT的缺点和网络服务的非对称性的基础上，我们提出通过IP隧道实现虚拟服务器方法VS/TUN(Virtual Server via IP Tunneling ) 和通过直接路由实现虚拟服务器的方法VS/DR(Virtual Server via Direct Routing )，它们可以极大地提高系统的伸缩性。所以，IPVS软件实现了这三种IP负载均衡技术，淘宝开源的模式FULLNAT。</p><h4 id=nat模式网络地址转换收费站模式>NAT模式==>网络地址转换&lt;==收费站模式<a hidden class=anchor aria-hidden=true href=#nat模式网络地址转换收费站模式>#</a></h4><blockquote><p><strong>Virtual Server via Network Address Translation (VS/NAT)</strong></p></blockquote><p>通过网络地址转换，调度器LB重写请求报文的目标地址，根据预设的调度算法，将请求分派给后端的真实服务器；真实服务器的响应报文处理之后，返回时必须要通过调度器，经过调度器时报文的源地址被重写，再返回给客户，完成整个负载调度过程。</p><hr><p><strong><font color=#0215cd size=2><font color=#f8070d size=2>⚠</font> 提示：VS/NAT模式，很类似公路上的收费站，来去都要经过LB负载均衡器，通过修改目的地址，端口或源端口。</font></strong></p><hr><p><strong>原理描述</strong></p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/556081af.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/556081af.png#center alt=556081af onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>客户端通过Virtual IP Address（虚拟服务的IP地址）访问网络服务时，请求的报文到达调度器LB时，调度器根据连接调度算法从一组真实服务器中选出一台服务器，将报文的目标地址VIP改写成选的服务器的地址RIP1，请求报文的目标端口改写成选定服务器的相应端口（RS）提供服务端口，最后将修改后的报文发送给选出服务器RS1。同时，调度器LB在连接的Hash表中记录这个连接，当这个连接的下一个报文到达时，从连接的Hash表中可以得到原选定服务器的地址和端口，进行同样的改写操作，并将报文传给原选定的服务器RS1。当来自真实服务器RS1的相应报文返回调度器时，调度器将返回报文的源地址和源端口改为VIP和相应端口，然后调度器再把报文发给请求用户。in DNAT out SNAT。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/46a03c4c.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/46a03c4c.png#center alt=46a03c4c onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><blockquote><p><strong>NAT模式小结</strong></p></blockquote><ol><li><p>NAT技术将请求的报文（通过DNAT方式改写）和响应的报文（通过SNAT方式改写），通过调度器地址重写然后在转发给内部的服务器，报文返回时在改写成原来的用户请求的地址。</p></li><li><p>只需要在调度器LB上配置WAN公网IP即可，调度器也要有私有LAN IP和内部RS节点通信。</p></li><li><p>每台内部RS节点的网关地址，必须要配成调度器LB的私有LAN内物理网卡地址 (LD1P)，这样才能确保数据报文返回时仍然经过调度器LB。</p></li><li><p>由于清求与响应的数据报文都经过调度器LB.因此，网站访问早大时调度器LB有较大瓶颈，一般要求最多10-20台节点。</p></li><li><p>NAT模式支持对IP及端口的转换，即用户请求10.0.0.1:80,可以通过调度器转换到RS节点的10.0.0.2:8080 (DR和TUN模式不具备的）。-</p></li><li><p>所有NAT内部RS节点只需配置私有LAN IP即可。</p></li><li><p>由于数据包来回都需要经过调度器，因此，要开启内核转发<font color=#f8070d size=3><code>net.ipv4.ip_forward=1</code></font>,当然也包括iptables防火枪的forward功能（DR和TUX模式不需要）。</p></li></ol><h4 id=dr模式-直连路由模式>DR模式-直连路由模式<a hidden class=anchor aria-hidden=true href=#dr模式-直连路由模式>#</a></h4><p><strong>Virtual Server via Direct Routing (VS/DR)</strong></p><p>VS/DR模式是通过改写请求报文的目标MAC地址，将请求发给真实服务器的，而真实服务器将相应后的处理结果直接返回给客户端用户。同VS/TUN技术一样，VS/DR技术可极大的提高集群系统的伸缩性。而且，这种DR模式没有IP隧道的开销，对集群中的真实服务器也没有必须支持IP隧道协议的要求，但是要求调度器LB与真实服务器RS都有一块物理网卡连在同一物理网段上，即必须在同一个局域网环境。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/4d7565ce.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/4d7565ce.png#center alt=4d7565ce onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>在LVS-DR配置中，Director将所有入站请求转发给集群内部节点，但集群内部的节点直接将他们的回复发给客户端计算机（没有通过Director回来）如图所示：</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/c895a20d.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/c895a20d.png#center alt=c895a20d onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p><strong><font color=#0215cd size=2><font color=#f8070d size=2>⚠</font> 特别提示：(VS/DR)模式是互联网使用的最多的一种模式。</font></strong></p><hr><p>VS/DR模式的工作流程如下图所示：它的连接调度和管理与VS/NAT和VS/TUN中的一样，它的报文转发方法和前两种又有不同，DR模式将报文直接路由给目标服务器，在VS/DR模式中，调度器根据各个真实服务器的负载情况，连接数多少等，动态地选择一台服务器，不修改目的IP地址和目的端口，也不封装IP报文，而是将请求的数据帧的MAC地址改为选出服务器的MAC地址，然后再将修改后的数据帧在与服务器组的局域网上发送。因为请求的数据帧的MAC地址是选出的真实服务器，所以真实服务器肯定可以收到这个改写了目标MAC地址的数据帧，从中可以获得该请求的IP报文。当真实服务器发现 报文的目标地址VIP是在本地的网络设备上，真实服务器处理这个报文，然后根据路由表 将响应报文直接返回给客户。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/31be91fa.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/31be91fa.png#center alt=31be91fa onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>在VS/DR中，根据缺省的TCP/IP协议栈处理，请求报文的目标地址为VIP，响应报文的源地址肯定也为VIP，所以响应报文不需要作任何修改，可以直接返回给客户，客户认为得到正常的服务，而不会知道是哪一台服务器处理的。</p><p>VS/DR负载调度器跟VS/TUN—样只处于从客户到服务器的半连接中，按照半连接的TCP有限状态机进行状态迁移。</p><blockquote><p><strong>原理图：IN更改目的MAC/OUT null</strong></p></blockquote><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cf02c772.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/cf02c772.png#center alt=cf02c772 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><blockquote><p><strong>DR模式小结</strong>：</p></blockquote><ol><li>通过在调度器LB上修改数据包的目的MAC地址实现转发。注意，源IP地址仍然是 CIP，目的IP地址仍然是VIP。</li><li>请求的报文经过调度器，而RS响应处理后的报文无需经过调度器LB，因此，并发访问量大时使用效率很高（和NAT模式比）。</li><li>因DR模式是通过MAC地址的改写机制实现的转发，因此，所有RS节点和调度器LB 只能在一个局域网LAN中（小缺点）。</li><li>需要注意RS节点的VIP的绑定（lo:vip/32，lo1:vip/32)和ARP抑制问题。</li><li>强调下：RS节点的默认网关不需要是调度器LB的DIP而直接是IDC机房分配的上级路由器的IP (这是RS带有外网IP地址的情况），理论讲：只要RS可以出网即可，不是必须要配置外网IP。</li><li>由于DR模式的调度器仅进行了目的MAC地址的改写，因此，调度器LB无法改变请求的报文的目的端口（和NAT要区别）。</li><li>当前，调度器LB支持几乎所有的UNIX, LINUX系统，但目前不支持WINDOWS系统。真实服务器RS节点可以是WINDOWS系统。</li><li>总的来说DR模式效率很高，但是配置也较麻烦，因此，访问量不是特别大的公司可以用haproxy/nginx取代。这符合运维的原则：简单、易用、高效。日1000-2000W PV或并发请求小于1W以下都可以考虑用haproxy/nginx（LVS NAT）模式</li><li>直接对外的业务访问，例如web服务做RS节点，RS最好用公网IP地址。如果不直接对外的业务，例如：MySQL，存储系统RS节点，最好只用内部IP地址。</li></ol><h3 id=virtual-server-via-ip-tunneling-vstun>Virtual Server via IP Tunneling (VS/TUN)<a hidden class=anchor aria-hidden=true href=#virtual-server-via-ip-tunneling-vstun>#</a></h3><p>采用NAT技术时，由于请求和响应的报文都必须经过调度器地址重写，当客户请求越来越多时，调度器的处理能力将成为瓶颈。为了解决这个问题，调度器把请求的报文通过IP隧道（相当于ipip或ipsec ）转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户，这样调度器就只处理请求的入站报文。由于一般网络服务应答数据比请求报文大很多，采用VS/TUN技术后，集群系统的最大吞吐量可以提高10倍。</p><p>它的连接调度和管理与VS/NAT中的一样，只是它的报文转发方法不同。调度器根据各个服务器的负载情况，连接数多少，动态地选择一台服务器，将原请求的报文封装在另一个IP报文中，再将封装后的IP报文转发给选出的真实服务器；真实服务器收到报文后，先将收到的报文解封获得原来目标地址为VIP地址的报文，服务器发现VIP地址被配置在本地的IP隧道设备上(此处要人为配置)，所以就处理这个请求，然后根据路由表将响应报文直接返回给客户。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1b499670.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/1b499670.png#center alt=1b499670 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>TUN模式</p><ol><li>负载均衡器通过把请求的报文通过IP隧道(ipip隧道)的方式(请求的报文不经过原目的地址的改写(包括MAC)，而是直接封装成另外的IP报文)，转发至真实服务器，而真实服务器将响应处理后直接返回给客户端用户。</li><li>由于真实服务器将响应处理后的报文直接返回给客户端用户，因此。最好RS有一个外网IP地址，这样效率才会更高。理论上：只要能出网即可，无需外网IP地址。</li><li>由于调度器LB只处理入站请求的报文。因此，此集群系统的吞吐量可以提高10倍以上，但隧道模式也会带来一定的系统开销。TUN模式适合LAN/WAN.</li><li>TUN模式的LAN环境转发不如DR模式效率高，而且还要考虑系统对IP隧道的支持问题。</li><li>所有的RS服务器都要绑定VIP，抑制ARP，配置复杂.</li><li>LAN环境一般多采用DR模式，WAN环境可以用TUN模式，但是当前在，WAN环境下，请求转发更多的被haproxy/nginx/DNS调度等代理取代。因此，TUN模式在国内公司实际应用的已经很少。跨机房应用要么拉光纤成局域网，要么DNS调度，底层数据还得同步.</li><li>直接对外的访问业务，例如:web服务做RS节点，最好用公网IP地址。不直接对外的业务，例如:MySQL,存储系统RS节点，最好用内部IP地址。</li></ol><h4 id=fullnat模式-淘宝网最新开源的>FULLNAT模式 淘宝网最新开源的<a hidden class=anchor aria-hidden=true href=#fullnat模式-淘宝网最新开源的>#</a></h4><blockquote><p><strong>背景</strong></p></blockquote><p>LVS当前应用主要采用DR和NAT模式，但这2种模式要求RealServer和LVS在同 一个vlan中，导致部署成本过髙：TUNNEL模式虽然可以跨vlan，但RealServer上需要部署ipip隧道模块等，网络拓扑上需要连通外网，较复杂，不易运维。
+为了解决上述问题，我们在LVS上添加了一种新的转发模式：FULLNAT，该模式和NAT模式的区别是：Packet IN时，除了做DNAT,还做SNAT(用户ip->内网ip),从而实现LVS-RealServer之间可以跨vlan通讯，RealServer只需要连接到内网;</p><blockquote><p><strong>目标</strong></p></blockquote><p>FULLNAT将作为一种新工作镆式（同DR/NAT/TUNNEL),实现如下功能：</p><ol><li>Packet IN时，目标IP更换为realserver ip，源IP更换为内网local IP；</li><li>Packet OUT时，目标IP更换为client IP 注：Local IP为一组内网ip地址;性能要求，和NAT比，正常转发性能下降&lt;10%。</li></ol><h3 id=arp协议>ARP协议<a hidden class=anchor aria-hidden=true href=#arp协议>#</a></h3><h4 id=什么是arp协议>什么是ARP协议<a hidden class=anchor aria-hidden=true href=#什么是arp协议>#</a></h4><p>ARP协议，全称“Address Resolution Protocol”，中文名称是地址解析协议，使用ARP协议可实现通过IP地址获得对应主机的的物理地址（MAC）。</p><p>在TCP/IP的网络环境下，每个互联网的主机都会被分配一个32位的IP地址，这种互联网地址是在网际范围标识主机的一种逻辑地址。为了让报文在物理网路上传输，还补习要知道对方目的主机的物理地址才行。这样就存在把IP地址变换成物理地址的地址转换问题。</p><p>在以太网环境，为了正确地向目的主机传送报文，必须把目的主机的32为IP地址转换成为目的主机48位以太网地址(MAC),这个就需要在互联层有一个服务或功能将IP地址转换为相应的物理地址(MAC)，这个服务就是ARP协议。</p><p>所谓的地址解析"地址解析"，就是主机在发送帧之前将目标IP地址转换成目标MAC地址的过程。ARP协议的基本功能就是通过目标设备的IP地址，查询目标设备的MAC地址，以保证主机间互相通信的顺利进行.</p><p>ARP协议和DNS有相像之处。不同点是：DNS实在域名和IP之间解析，另外ARP协议不需要配置服务，而DNS要配置服务才行。</p><h4 id=arp缓存表>ARP缓存表<a hidden class=anchor aria-hidden=true href=#arp缓存表>#</a></h4><p>在每台安装有TCP/IP协议的电脑里都会有一个ARP缓存表（windows命令提示符里输入<font color=#f8070d size=3><code>arp -a</code></font>即可）， 表里的IP地址与MAC地址是一一对应的。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/a4e30825.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/a4e30825.png#center alt=a4e30825 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>text</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>C:\Users\CM&gt;arp -a
+</span></span><span class=line><span class=cl>接口: 192.168.1.103 --- 0x3
+</span></span><span class=line><span class=cl>  Internet 地址           物理地址                类型
+</span></span><span class=line><span class=cl>  192.168.1.1             3c-46-d8-5d-53-87       动态
+</span></span><span class=line><span class=cl>  192.168.1.255           ff-ff-ff-ff-ff-ff       静态
+</span></span><span class=line><span class=cl>  224.0.0.22              01-00-5e-00-00-16       静态
+</span></span><span class=line><span class=cl>  224.0.0.251             01-00-5e-00-00-fb       静态
+</span></span><span class=line><span class=cl>  224.0.0.252             01-00-5e-00-00-fc       静态
+</span></span><span class=line><span class=cl>  239.11.20.1             01-00-5e-0b-14-01       静态
+</span></span><span class=line><span class=cl>  239.255.255.250         01-00-5e-7f-ff-fa       静态</span></span></code></pre></td></tr></table></div></div></div></div><p>arp常用命令</p><p>arp -a 查看所有记录</p><p>arp -d 清除</p><p>arp -s ip mac 绑定IP和MAC</p><h4 id=arp缓存是把双刃剑>ARP缓存是把双刃剑<a hidden class=anchor aria-hidden=true href=#arp缓存是把双刃剑>#</a></h4><p>主机有了arp缓存表，可以加快arp的解析速度，减少局域网内广播风暴。
 正是有了arp缓存表，给恶意黑客带来了攻击服务器主机的风险，这个就是arp欺骗攻击
-切换路由器，负载均衡器等设备时，可能会导致短时网络中断.</p>
-<h4 id="为什么要使用arp协议">为什么要使用ARP协议<a hidden class="anchor" aria-hidden="true" href="#为什么要使用arp协议">¶</a></h4>
-<p>OSI模型把网络工作分为7层，彼此不直接打交道，只通过接口(layer interface)。IP地址工作在第三层，MAC地址工作在第二层。当协议在发送数据包时，需要先封装第三层IP地址，第二层MAC地址的报头，但协议只知道目的的节点的IP地址，不知道目的节点的MAC地址，又不能跨第二、三层，所以得用ARP协议服务，来帮助获取到目的节点的MAC地址.</p>
-<p>osi7层模型协议 包封装解封装详解 <a href="http://www.tudou.com/programs/view/sP9JY_KranA" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.tudou.com/programs/view/sP9JY_KranA</a></p>
-<p>tcp三次握手四次断开原理过程详解 <a href="http://www.tudou.com/programs/view/XjHCDedZQa8" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.tudou.com/programs/view/XjHCDedZQa8</a></p>
-<h4 id="arp在生产环境产生的问题及解决办法">ARP在生产环境产生的问题及解决办法<a hidden class="anchor" aria-hidden="true" href="#arp在生产环境产生的问题及解决办法">¶</a></h4>
-<p>ARP病毒，ARP欺骗
+切换路由器，负载均衡器等设备时，可能会导致短时网络中断.</p><h4 id=为什么要使用arp协议>为什么要使用ARP协议<a hidden class=anchor aria-hidden=true href=#为什么要使用arp协议>#</a></h4><p>OSI模型把网络工作分为7层，彼此不直接打交道，只通过接口(layer interface)。IP地址工作在第三层，MAC地址工作在第二层。当协议在发送数据包时，需要先封装第三层IP地址，第二层MAC地址的报头，但协议只知道目的的节点的IP地址，不知道目的节点的MAC地址，又不能跨第二、三层，所以得用ARP协议服务，来帮助获取到目的节点的MAC地址.</p><p>osi7层模型协议 包封装解封装详解 <a href=http://www.tudou.com/programs/view/sP9JY_KranA target=_blank rel="noopener nofollow noreferrer">http://www.tudou.com/programs/view/sP9JY_KranA</a></p><p>tcp三次握手四次断开原理过程详解 <a href=http://www.tudou.com/programs/view/XjHCDedZQa8 target=_blank rel="noopener nofollow noreferrer">http://www.tudou.com/programs/view/XjHCDedZQa8</a></p><h4 id=arp在生产环境产生的问题及解决办法>ARP在生产环境产生的问题及解决办法<a hidden class=anchor aria-hidden=true href=#arp在生产环境产生的问题及解决办法>#</a></h4><p>ARP病毒，ARP欺骗
 高可用服务器对之间切换时要考虑ARP缓存问题
-路由器等设备无缝迁移时要考虑ARP缓存的问题，例如：更换办公室的路由器.</p>
-<blockquote>
-<p><strong>ARP欺骗原理</strong></p>
-</blockquote>
-<p>ARP攻击就是通过伪造IP地址和MAC地址对实现ARP欺骗的，如果一台主机中了ARP病毒，那么它就能够在网络中产生大量的ARP通信量（它会以很快的频率进行广播），以至于使网络阻塞，攻击者只要持续不断的发出伪造ARP响应包就能更改局域网中目标主机ARP缓存中的IP-MAC条目，造成网络中断或中间人攻击。</p>
-<p>ARP攻击主要是存在于局域网网络中，局域网中若有一个人感染ARP木马，则感染该ARP木马的系统将会试图通过“ARP欺骗”手段截获所在网络内其他计算机的通信故障。</p>
-<blockquote>
-<p><strong>服务器切换ARP问题</strong></p>
-</blockquote>
-<p>当网络中一台提供服务的机器宕机后，当在其他运行正常的机器添加宕机的机器的IP时，会因为客户端的ARP table cache的地址解析还是宕机的机器的MAC地址。从而导致，即使在其他运行正常的机器添加宕机的机器的IP，也会发生客户依然无法访问的情况。</p>
-<p>解决方法是：当宕机时，IP地址迁移到其他机器上时，需要通过arping命令来通知所有网络内机器清除其本地的ARP table cache，从而使得客户机访问时重新广播获取MAC地址。几乎所有的高可用软件都会考虑这个问题。</p>
-<p>ARP广播而进行新的地址解析。</p>
-<p>linux下具体命令：</p>
-<pre><code class="language-sh">arping -I eth0 -c 3 -s 10.0.0.162 10.0.0.253
-arping -U -I eth0 10.0.0.162
-</code></pre>
-<h2 id="lvs的调度算法">LVS的调度算法<a hidden class="anchor" aria-hidden="true" href="#lvs的调度算法">¶</a></h2>
-<p>LVS的调度算法决定了如何在集群节点之间分布工作负荷。</p>
-<p>当Director调度器收到来自客户端计算机访问它的VIP上的集群服务的入站请求时，Director调度器必须决定哪个集群节点应该处理请求。Director调度器可用于做出该决定的调度方法分成两个基本类别:</p>
-<p>固定调度方法：rr wrr dh sh</p>
-<p>动态调度算法：wlc lc lblc lblcr SED NQ(后两种官方站点没提到，编译LVS, make过程可以看到召10种调度算法见如下表格：</p>
-<table>
-<thead>
-<tr>
-<th>算法</th>
-<th>说明</th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>rr</td>
-<td>轮循调度(Round-Robin)，它将请求依次分配不同的RS节点，也就是在RS节点中均摊请求。这种算法简单，但是只适合于RS节点处理性能相差不大的情况。</td>
-<td></td>
-</tr>
-<tr>
-<td>wrr</td>
-<td>加权轮循调度(Weighted Round-Robin)，它将依据不同RS节点的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值较低的RS节点更多。相同权值的RS得到相同数目的连接数。</td>
-<td></td>
-</tr>
-<tr>
-<td>dh</td>
-<td>目的地址哈希调度(Destination Hashing)以目的地址为关键字查找一个静态hash表来获得需要的RS。</td>
-<td></td>
-</tr>
-<tr>
-<td>sh</td>
-<td>源地址哈希调度(Source Hashing)以源地址为关键字查找一个静态hash表来获得需要的RS。</td>
-<td></td>
-</tr>
-<tr>
-<td>wlc</td>
-<td>加权最小连接数调度(Weighted Least-Connection) 假设各台RS的权值依次为Wi(I=1..n)，当前的TCP连接数依次为Ti ( I= 1..n )，依次选取Ti/Wi为最小的RS作为     下一个分配的RS。</td>
-<td></td>
-</tr>
-<tr>
-<td>lc</td>
-<td>最小连接数调度压(Least-Connection)，IPVS表存储了所有的活动的连接。把新的连接请求发送到当前连接数最小的RS。</td>
-<td></td>
-</tr>
-<tr>
-<td>lblc</td>
-<td>基于地址的最小连接数调度(Locality-Based Least-Connection)，将来自同一目的地址的请求分配给同一台RS节点，如果这台服务器尚未满负荷，分配给连接数最小的RS，并以它为下一次分配的首先考虑。</td>
-<td></td>
-</tr>
-<tr>
-<td>lblcr</td>
-<td>基于地址带重复最小连接数调度(Locality-Based Least-Connection with Replication)对于某一目的地址，对应有一个RS子集。对此地址请求，为它分配子集中连接数最小RS;如果子集中所有服务器均已满负荷，则从集群中选择一个连接数较小服务器，将它加入到此子集并分配连接;若一定时间内，未被做任何修改，则将子集中负载最大的节点从子集删除。</td>
-<td></td>
-</tr>
-<tr>
-<td>SED</td>
-<td>最短的期望的延迟(Shortest Expected Delay Scheduling SED) (SED)<br>基于wlc算法。这个必须举例来说了，<br>ABC三台机器分别权重123，连接数也分别是123。那么如果使用WLC算法的话一个新请求进入时它可能会分给ABC中的任意一个。使用sed算法后会进行这样一个运算。<br>A(1+1)/1,<br>B(1+2)/2,<br>C(1+3)/3,<br>根据运算结果，把连接交给C</td>
-<td></td>
-</tr>
-<tr>
-<td>NQ</td>
-<td>最少队列调度(Never Queue Scheduling NQ) (NQ)<br>无需队列。如果有台realserver的连接数=0就直接分配过去，不需要在进行sed运算</td>
-<td></td>
-</tr>
-</tbody>
-</table>
-<h3 id="lvs的调度算法的生产环境选型">LVS的调度算法的生产环境选型<a hidden class="anchor" aria-hidden="true" href="#lvs的调度算法的生产环境选型">¶</a></h3>
-<p>(1) 一般的网络服务，如HTTP、Mail、MySQL等，常用的LVS调度算法为：</p>
-<ul>
-<li>基本轮叫调度rr算法</li>
-<li>加权最小连接调度wlc</li>
-<li>加权轮训调度wrr算法</li>
-</ul>
-<p>(2) 基于局部性的最少链接LBLC和带复制的基于局部性最少链接LBLCR主要适用于Web Cache和Db Cache集群，但是我们很少这样用。</p>
-<p>(3) 源地址散列调度SH和目标地址散列调度DH可以结合使用在防火墙集群中，它们可以保证整个系统的唯一出入口。</p>
-<p>(4) 最短预期延时调度SED和不排队调度NQ主要是对处理时间相对比较长的网络服务。
-实际使用中，这些算法的适用范围不限于这些。我们最好参考内核中的连接调度算法的实现原理，根据具体的业务需求合理的选型。</p>
-<h2 id="安装lvs">安装LVS<a hidden class="anchor" aria-hidden="true" href="#安装lvs">¶</a></h2>
-<p>下载地址：http://www.linuxvirtualserver.org/software/kernel-2.6/ipvsadm-1.26.tar.gz</p>
-<p>安装前准备</p>
-<pre><code class="language-sh"># ipvs为lvs调度器，工作在内核层，先查看是否安装
-lsmod|grep ip_vs 
-
-# 以uname -r结果为准工作中如果做安装虚拟化可能有多个内核，lvs是基于内核的
-ln -s /usr/src/kernels/`uname -r`/ /usr/src/linux 
-</code></pre>
-<p>安装依赖包</p>
-<pre><code class="language-sh">yum install libnl-devel popt-devel popt-static  #&lt;==centos7未发现问题
-make &amp;&amp; make install
-/sbin/ipvsadm ||  modprobe ip_vs
-
-$ lsmod|grep ip_vs
-ip_vs                   136798  0
-nf_conntrack            105702  1 ip_vs
-libcrc32c              12644  2 xfs,ip_vs
-</code></pre>
-<blockquote>
-<p><strong>VS小结</strong></p>
-</blockquote>
-<p>1、Centos5.X安装lvs，使用1.2.4版本。不要用1.2.6。</p>
-<p>2、Centos6.4安装lvs，使用1.2.6版本。并且需要先安装yum install libnl* popt*-y。</p>
-<p>3、安装lvs后，要执行ipvsadm把ip_vs模块加载到内核。</p>
-<h2 id="手动配置lvs负载均衡服务">手动配置LVS负载均衡服务<a hidden class="anchor" aria-hidden="true" href="#手动配置lvs负载均衡服务">¶</a></h2>
-<h3 id="手工添加lvs转发">手工添加LVS转发<a hidden class="anchor" aria-hidden="true" href="#手工添加lvs转发">¶</a></h3>
-<p>用户访问www.lb.com然后被DNS解析到vip 10.0.0.10，这个步骤是在DNS里配置的。
-如果是自建DNS lb域的DNS记录设置如下</p>
-<pre><code class="language-sh">www IN A 10.0.0.10
-</code></pre>
-<p>如果未自建dns，需要在购买DNS域名商提供的DNS管理界面增加类似上面的DNS记录一条。这里的IP地址一定外网地址，才能正式使用，我们假设192.168.1.0/24段为外网段。修改结果类似下图(必须做真正环境才能做下面修改)</p>
-<h3 id="配置lvs虚拟ip-vip">配置LVS虚拟IP (VIP)<a hidden class="anchor" aria-hidden="true" href="#配置lvs虚拟ip-vip">¶</a></h3>
-<pre><code class="language-sh">ifconfig eth0:0 10.0.0.10/24 up     
-route  add  -host  10.0.0.10  dev  eth0   #←添加主机路由，也可不加此行
-</code></pre>
-<p>因虚拟网卡网段和VIP不在一个网段，需要设置路由，windows设置路由方法如下：</p>
-<pre><code class="language-sh">route -p add 10.0.0.0/24 192.168.2.23
-route print
-</code></pre>
-<p>到这里说明VIP</p>
-<pre><code class="language-sh">C:\Users\CM&gt;ping 10.0.0.10
-
-正在 Ping 10.0.0.10 具有 32 字节的数据:
-来自 10.0.0.10 的回复: 字节=32 时间&lt;1ms TTL=64
-来自 10.0.0.10 的回复: 字节=32 时间&lt;1ms TTL=64
-来自 10.0.0.10 的回复: 字节=32 时间&lt;1ms TTL=64
-</code></pre>
-<hr>
-<p><strong><font color="#0215cd" size=2> <font color="#f8070d" size=2>⚠</font> 提示:到这里说明VIP地址己经配好，并可以使用了。</font></strong></p>
-<hr>
-<h3 id="手工执行配置添加lvs服务并增加两台rs">手工执行配置添加LVS服务并增加两台RS<a hidden class="anchor" aria-hidden="true" href="#手工执行配置添加lvs服务并增加两台rs">¶</a></h3>
-<pre><code class="language-sh">ipvsadm -C
-ipvsadm --set 30 5 60
-ipvsadm -A -t 10.0.0.10:80 -s wrr
-ipvsadm -A -t 10.0.0.10:80 -s wrr -p 20
-ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.82:80 -g -w 1
-ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.21 -g -w 1
-ipvsadm -D -t 10.0.0.10:80 -s wrr
-ipvsadm -d -t 10.0.0.10:80 -r 192.168.2.21
-</code></pre>
-<blockquote>
-<p><strong>相关参数说明</strong></p>
-</blockquote>
-<pre><code class="language-sh">#&lt;==清除内核虚拟服务器表中的所有记录
-Either long or short options are allowed.
-  --add-service       -A        add virtual service with options
-  --edit-service      -E        edit virtual service with options
-  --delete-service    -D        delete virtual service
-  --clear             -C        clear the whole table
-  --restore           -R        restore rules from stdin
-  --save              -S        save rules to stdout
-  --add-server        -a        add real server with options
-  --edit-server       -e        edit real server with options
-  --delete-server     -d        delete real server
-  --list              -L|-l     list the table
-  --set tcp tcpfin udp            set connection timeout values
-  --tcp-service  -t service-address   service-address is host[:port]
-  --udp-service  -u service-address   service-address is host[:port]
-  --scheduler    -s scheduler         one of rr|wrr|lc|wlc|lblc|lblcr|dh|sh|sed|nq,
-                                      the default scheduler is wlc.
-  --persistent    -p [timeout]          persistent service
-  --netmask       -M netmask            persistent granularity mask
-  --real-server   -r server-address     server-address is host (and port)
-  --gatewaying    -g                    gatewaying (direct routing) (default)
-  --ipip          -i                    ipip encapsulation (tunneling)
-  --masquerading  -m                    masquerading (NAT)
-  --weight        -w weight             capacity of real server
-  --mcast-interface interface           multicast interface for connection sync
-  --connection    -c                    output of current IPVS connections
-  --timeout                               output of timeout (tcp tcpfin udp)
-  --stats                                 output of statistics information
-</code></pre>
-<p>此时，在浏览器访问10.0.0.10结果是无法访问的：因为根据LVS原理，RS在接收到包后发现不是自己IP后就丢弃了。  <a href="http://blog.csdn.net/raintungli/article/details/39051435" target="_blank"
-   rel="noopener nofollow noreferrer" >IPVS(也叫LVS)的源码分析之persistent参数 - 沧海一粟 - CSDN博客</a></p>
-<h3 id="手工在rs端绑定">手工在RS端绑定<a hidden class="anchor" aria-hidden="true" href="#手工在rs端绑定">¶</a></h3>
-<pre><code class="language-sh">ifconfig lo:0 10.0.0.10/32 up    #&lt;==注意，子网掩码特殊
-
-</code></pre>
-<p>每个集群节点上的环回接口 (lo) 设备上被绑定VIP地址(其广播地址是其本身，子网掩码是255.255.255.255，采取可变长掩码方式把网段划分成只含一个主机地址的目的避免ip地址冲突)允许LVS-DR集群中的集群节点接受发向该VIP地址的数据包，这会有一个非常严重的问题发生，集群内部的真实服务器将尝试回复来自正在请求VIP客户端ARP广播，这样所有的真实服务器都将声称自己拥有该VIP地址，这时客户端将有可能接发送请求数据包到某台真实服务器上，从而破坏了DR集群的负载均衡策略。因此，必须要抑制所有真实服务器响应目标地址为VIP的ARP广播，而把客户端ARP广播的响应交给负载均衡调度器。</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/06e08a6d.png" alt="06e08a6d" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>抑制ARP响应方法如下</p>
-<pre><code class="language-sh">echo &quot;1&quot; &gt;/proc/sys/net/ipv4/conf/lo/arp_ignore
-echo &quot;2&quot; &gt;/proc/sys/net/ipv4/conf/lo/arp_announce    
-echo &quot;1&quot; &gt;/proc/sys/net/ipv4/conf/all/arp_ignore
-echo &quot;2&quot; &gt;/proc/sys/net/ipv4/conf/all/arp_announce
-</code></pre>
-<h4 id="arp抑制技术参数说明">arp抑制技术参数说明<a hidden class="anchor" aria-hidden="true" href="#arp抑制技术参数说明">¶</a></h4>
-<p>中文说明:，</p>
-<blockquote>
-<p><strong>arp_ignore- INTEGER</strong></p>
-</blockquote>
-<p>定义对目标地址为本地IP的ARP询问不同的应答模式。</p>
-<p>0 (默认值)：回应任何网络接口上对任何本地IP地址的arp查询请求。</p>
-<p>1：只回答目标IP地址是来访问网络接口本地地址的ARP查询请求</p>
-<p>2：只回答目标IP地址是来访网络接口本地地址的ARP查询请求，且来访IP必须在该网络接口的子网段内。</p>
-<p>3：不回应该网络界面的arp请求，而只对设置的唯一和连接地址做出回应。，</p>
-<p>4-7：保留未使用。‘</p>
-<p>8：不回应所有(本地地址)的arp查询。</p>
-<blockquote>
-<p><strong>arp_announce一INTEGER</strong></p>
-</blockquote>
-<p>对网络接口上，本地IP地址的发出的，ARP回应，作出相应级别的限制：确定不同程度的限制，宣布对来自本地源lP地址发出Ail，请求的接口</p>
-<p>0 (默认)在任意网络接口(eth0,eth1, lo)上的任何本地地址</p>
-<p>1：尽量避免不在该网络接口子网段的本地地址做出arp回应.当发起ARP请求的源IP地址是被设置应该经由路由达到此网络接口的时候很有用。此时会检查来访IP是否为所有接口上的子网段内ip之一。如果该来访IP不属于各个网络接口上的子网段内，那么将采用级别2的方式来进行处理。</p>
-<p>2：一对查询目标使用最适当的本地地址，在此模式下将忽略这个IP数据包的源地址并尝试能与该地址通信的本地地址，首要是选择所有的网络接口的子网中外出访问子网中包含该目标IP地址的本地地址。如果没有合适的地址被发现，将选择当前的发送网络接口或其他的有可能接受到该ARP回应的网络接来进发送。限制了使用本地VIP地址作为优先的网络接口。</p>
-<h4 id="检查手工添加lvs转发成果">检查手工添加LVS转发成果<a hidden class="anchor" aria-hidden="true" href="#检查手工添加lvs转发成果">¶</a></h4>
-<p>测试LVS服务的转发：</p>
-<p>首先在客户端浏览器访问RS  http://192.168.1.6 及 RS http://192.168.1.7 确认是否RS端正常然后访问DR的VIP http://10.0.0.10， 如果经过多次测试能分别出现RS1, RS2的 不同结果内容就是表示配置成功。</p>
-<hr>
-<p><strong><font color="#0215cd" size=2> <font color="#f8070d" size=2>⚠</font> 提示:负载均衡的算法倾向于一个客户端IP定向到一个后端服务器，以保持会话连贯性，如果用两三台机器去测试也许就不一样。</font></strong></p>
-<hr>
-<h4 id="在访问的同时可以用命令查看状态信息">在访问的同时可以用命令查看状态信息<a hidden class="anchor" aria-hidden="true" href="#在访问的同时可以用命令查看状态信息">¶</a></h4>
-<pre><code class="language-sh">$ ipvsadm -L -n --stats
-IP Virtual Server version 1.2.1 (size=4096)
-Prot LocalAddress:Port               Conns   InPkts  OutPkts  InBytes OutBytes
-  -&gt; RemoteAddress:Port
-TCP  10.0.0.10:80                       88      674        0    88293        0
-  -&gt; 192.168.2.21:80                  44      355        0    47851        0
-  -&gt; 192.168.2.82:80                  44      319        0    40442        0
-</code></pre>
-<h3 id="使用脚本配置lvs负载均衡服务">使用脚本配置lvs负载均衡服务<a hidden class="anchor" aria-hidden="true" href="#使用脚本配置lvs负载均衡服务">¶</a></h3>
-<pre><code class="language-sh">#!/bin/sh
-VIP='10.0.0.10'
-. /etc/init.d/functions
-Port=80
-
-RIP=(
-  192.168.2.21
-  192.168.2.82
-)
-
-clean_all(){
-    ipvsadm -C
-    return $?
-}
-
-set_virtual_server(){
-    ipvsadm --set 30 5 60
-    ipvsadm -A -t $VIP:$Port -s wrr
-    return $?
-}
-
-start(){
-    clean_all
-    [ $? -eq 0 ] &amp;&amp; set_virtual_server || return 1
-    for n in ${RIP[@]}
-    do
-        ipvsadm -a -t $VIP:$Port -r $n:$Port -g -w 1
-    done
-}
-stop(){
-    clean_all
-}
-
-usage(){
-  echo 'USAGE:'$0 '{start|stop|restart}'
-}
-
-case &quot;$1&quot; in
-    start|START)
-    start
-    ;;
-    stop|STOP)
-    stop
-    ;;
-    restart|RESTART)
-    stop
-    start
-    ;;
-    *)
-    usage
-esac
-</code></pre>
-<pre><code class="language-sh">#!/bin/sh
-. /etc/init.d/functions
-
-master_ip=192.168.2.23
-VIP='10.0.0.10'
-Port=80
-RIP=(
-  192.168.2.21
-  192.168.2.82
-)
-
-set_virtual_server(){
-  ipvsadm --set 30 5 60
-  ipvsadm -A -t $VIP:$Port -s wrr
-  return $?
-}
-
-check_master(){ 
-  /usr/bin/ping -c 2 $master_ip &amp;&gt;/dev/null
-  return $?
-}
-
-clean_all(){
-  ipvsadm -C
-}
-
-start(){
-  clean_all &amp;&amp; /sbin/ifconfig eth0:0 $VIP/24 up
-  [ $? -eq 0 ] &amp;&amp; set_virtual_server || return 10
-  for n in ${RIP[@]}
-  do
-    /sbin/ipvsadm -a -t $VIP:$Port -r $n:$Port -g -w 1
-  done
-}
-
-stop(){
-  clean_all
-  /sbin/ifconfig eth0:0 $VIP/24 down
-}
-
-check_isnode(){
-  num=`ipvsadm -L -n|grep 192|wc -l`
-  if [ $num -lt ${#RIP[@]} ];then
-    return 0
-  fi
-  return 11
-}
-
-check_isup(){
-  num=`ifconfig eth0:0|grep $VIP|wc -l`
-  if [ $num -eq 1 ];then
-    return 0
-  fi
-  return 12
-}
-
-while true
-do
-  check_master
-  if [ $? -ne 0 ];then
-    check_isnode
-    if [ $? -eq 0 ];then
-      start
-    fi
-  else
-    check_isup
-    if [ $? -eq 0 ];then 
-      stop
-    fi
-  fi
-  sleep 3
-done
-</code></pre>
-<h2 id="常见的lvs负载均衡高可用解决方案">常见的LVS负载均衡高可用解决方案<a hidden class="anchor" aria-hidden="true" href="#常见的lvs负载均衡高可用解决方案">¶</a></h2>
-<p>(1) 通过开发上面的脚本来解决，如果负载均衡器硬件坏了。几分钟或秒级别内在其它备机上完成新的部署，如果做的细的，还可以写脚本来做调度器之间的切换和接管功能。早起的方法，还是比较笨重的，目前已经不推荐使用。</p>
-<p>(2) heartbeart+lvs+ldirectord脚本配置方案，这个方案同学们自己可以去搜索，这个方案中heartbeat负责VIP的切换以及资源的启动停止，ldirectord负责RS节点的健康检查，用于比较复杂，不易控制，属于早期的解决方案，现在已经很少使用了。</p>
-<blockquote>
-<p><strong>heartbeat and ldirectord方案资料</strong>:</p>
-</blockquote>
-<p><a href="http://www.linuxvirtualserver.org/docs/ha/heartbeat_ldirectord.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/docs/ha/heartbeat_ldirectord.html</a></p>
-<p><a href="http://www.linuxvirtualserver.org/docs/ha/ultramonkey.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/docs/ha/ultramonkey.html</a></p>
-<p>(3) 通过Redhat提供的工具piranha来配置LVS
-Piranha是REDHAT提供的一个基于Web的LVS配置软件，可以省去手工配置LVS的繁琐工作，同时，也可单独提供。cluster功能，例如，可以通过Piranh。激活Director Server的后备主机，也就是配置Director Server的双机热备功能。</p>
-<p>(4) keepalived+LVS方案，当前最优方案，因为这个方案符合简单、易用、高效的运维原则。
-The Keepalived Solution <a href="http://www.linuxvirtualserver.org/docs/ha/keepalived" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/docs/ha/keepalived</a></p>
-<p>(5) 其他</p>
-<p><a href="http://bbs.linuxtone.org/thread-1402-1-1.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://bbs.linuxtone.org/thread-1402-1-1.html</a></p>
-<p>LVS Documentation</p>
-<p><a href="http://www.linuxvirtualserver.org/zh/index.html" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/zh/index.html</a></p>
-<p><a href="http://www.linuxvirtualserver.org/Documents.html#performance" target="_blank"
-   rel="noopener nofollow noreferrer" >http://www.linuxvirtualserver.org/Documents.html#performance</a></p>
-<p><a href="http://zh.linuxvirtualserver.org/node/2230" target="_blank"
-   rel="noopener nofollow noreferrer" >http://zh.linuxvirtualserver.org/node/2230</a></p>
-<h2 id="lvs集群分发请求rs不均衡生产环境实战解决">LVS集群分发请求RS不均衡生产环境实战解决<a hidden class="anchor" aria-hidden="true" href="#lvs集群分发请求rs不均衡生产环境实战解决">¶</a></h2>
-<p>生产环境中 <code>ipvsadm -L -n</code> 发现两台RS的负载不均衡，一台有很多请求，一台没有请求，并且没有请求的那台RS经测试服务正常，lo:VIP也有。但是就是没有请求。</p>
-<pre><code class="language-sh">TCP 172.168.1.50:3307 wrr persistent 10
-  一&gt;172.168.1.51:3307          Route   1      0         0
-  一&gt;172.168.1.52:3307          Route   1      8         12758
-</code></pre>
-<blockquote>
-<p><strong>问题原因</strong>：</p>
-</blockquote>
-<p>persistent 10的原因，persistent会话保持，当clientA访问网站的时候，LVS把请求分发给了52,那么以后clientA再点击的其他操作其他请求，也会发送给52这台机器。</p>
-<blockquote>
-<p><strong>解决办法</strong>:</p>
-</blockquote>
-<p>到keepalived中注释掉persistent 10然后/etc/init.d/keepalived reload，然后可以看到以后负载均衡两边都请求都均衡了。</p>
-<p><font style="background:#ffc104;" size=2>其它导致负载不均的原因可能有：</font></p>
-<ol>
-<li>LVS自身的会话保持参数设置((-p 300, persistent 300)。优化:大公司尽量用cookie替代session</li>
-<li>LVS调度算法设置，例如：rr, wrr, wld,lc算法。</li>
-<li>后端RS节点的会话保持参数，例如:apache的keealive参数。</li>
-<li>访问量较少的情况不均衡的现象更加明显。</li>
-<li>用户发送的请求时间长短，和请求资源多少大小。</li>
-</ol>
-<p>实现会话保持的方案：</p>
-<p><a href="http://oldboy.blog.5lcto.com/2561410/1331316" target="_blank"
-   rel="noopener nofollow noreferrer" >http://oldboy.blog.5lcto.com/2561410/1331316</a></p>
-<p><a href="http://oldboy.blog.51cto.com/2561410/1323468" target="_blank"
-   rel="noopener nofollow noreferrer" >http://oldboy.blog.51cto.com/2561410/1323468</a></p>
-<h2 id="lvs故障排错理论及实战讲讲解">LVS故障排错理论及实战讲讲解<a hidden class="anchor" aria-hidden="true" href="#lvs故障排错理论及实战讲讲解">¶</a></h2>
-<p>排查的大的思路就是，要熟悉LVS的工作原理过程，然后根据原理过程来排查。</p>
-<ol>
-<li>调度器上LVS调度规则及IP的正确性。</li>
-<li>RS节点上VIP绑定和arp抑制的检查。</li>
-</ol>
-<p>生产处理思路：</p>
-<ol>
-<li>对绑定的vip做实时监控，出问题报警或者自动处理后报警。</li>
-<li>把绑定的vip做成配置文件，例如:vi /etc/sysconfig/network-scripts/lo:0</li>
-</ol>
-<p>ARP抑制的配置思路：</p>
-<ol>
-<li>如果是单个VIP，那么可以用stop传参设置0。</li>
-<li>如果RS端有多个、VIP绑定，此时，即使是停止VIP绑定也一定不要置0。</li>
-</ol>
-<pre><code class="language-sh">if [ ${#VIP[@]} ];then
-echo &quot;0&quot; &gt;/proc/sys/net/ipv4/conf/lo/arp_ignore
-echo &quot;0&quot; &gt;/proc/sys/net/ipv4/conf/lo/arp_announce
-echo &quot;0&quot; &gt;/proc/sys/net/ipv4/conf/all/arp_ignore
-echo &quot;0&quot; &gt;/proc/sys/net/ipv4/conf/all/arp_announce
-if
-</code></pre>
-<ol start="3">
-<li>
-<p>RS节点上自身提供月够的检查(DR不能端口转换)</p>
-</li>
-<li>
-<p>辅助排除工具有tcpdump, ping等。</p>
-</li>
-<li>
-<p>负载均衡和反向代理集群的三角形排查理论。</p>
-</li>
-</ol>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/960fc67a.png" alt="960fc67a" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<h2 id="keepalivedlvs负载均衡配置">keepalived+lvs负载均衡配置<a hidden class="anchor" aria-hidden="true" href="#keepalivedlvs负载均衡配置">¶</a></h2>
-<pre><code class="language-conf">virtual_server 10.0.0.10 80 { 
+路由器等设备无缝迁移时要考虑ARP缓存的问题，例如：更换办公室的路由器.</p><blockquote><p><strong>ARP欺骗原理</strong></p></blockquote><p>ARP攻击就是通过伪造IP地址和MAC地址对实现ARP欺骗的，如果一台主机中了ARP病毒，那么它就能够在网络中产生大量的ARP通信量（它会以很快的频率进行广播），以至于使网络阻塞，攻击者只要持续不断的发出伪造ARP响应包就能更改局域网中目标主机ARP缓存中的IP-MAC条目，造成网络中断或中间人攻击。</p><p>ARP攻击主要是存在于局域网网络中，局域网中若有一个人感染ARP木马，则感染该ARP木马的系统将会试图通过“ARP欺骗”手段截获所在网络内其他计算机的通信故障。</p><blockquote><p><strong>服务器切换ARP问题</strong></p></blockquote><p>当网络中一台提供服务的机器宕机后，当在其他运行正常的机器添加宕机的机器的IP时，会因为客户端的ARP table cache的地址解析还是宕机的机器的MAC地址。从而导致，即使在其他运行正常的机器添加宕机的机器的IP，也会发生客户依然无法访问的情况。</p><p>解决方法是：当宕机时，IP地址迁移到其他机器上时，需要通过arping命令来通知所有网络内机器清除其本地的ARP table cache，从而使得客户机访问时重新广播获取MAC地址。几乎所有的高可用软件都会考虑这个问题。</p><p>ARP广播而进行新的地址解析。</p><p>linux下具体命令：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>arping -I eth0 -c <span class=m>3</span> -s 10.0.0.162 10.0.0.253
+</span></span><span class=line><span class=cl>arping -U -I eth0 10.0.0.162</span></span></code></pre></td></tr></table></div></div></div></div><h2 id=lvs的调度算法>LVS的调度算法<a hidden class=anchor aria-hidden=true href=#lvs的调度算法>#</a></h2><p>LVS的调度算法决定了如何在集群节点之间分布工作负荷。</p><p>当Director调度器收到来自客户端计算机访问它的VIP上的集群服务的入站请求时，Director调度器必须决定哪个集群节点应该处理请求。Director调度器可用于做出该决定的调度方法分成两个基本类别:</p><p>固定调度方法：rr wrr dh sh</p><p>动态调度算法：wlc lc lblc lblcr SED NQ(后两种官方站点没提到，编译LVS, make过程可以看到召10种调度算法见如下表格：</p><table><thead><tr><th>算法</th><th>说明</th><th></th></tr></thead><tbody><tr><td>rr</td><td>轮循调度(Round-Robin)，它将请求依次分配不同的RS节点，也就是在RS节点中均摊请求。这种算法简单，但是只适合于RS节点处理性能相差不大的情况。</td><td></td></tr><tr><td>wrr</td><td>加权轮循调度(Weighted Round-Robin)，它将依据不同RS节点的权值分配任务。权值较高的RS将优先获得任务，并且分配到的连接数将比权值较低的RS节点更多。相同权值的RS得到相同数目的连接数。</td><td></td></tr><tr><td>dh</td><td>目的地址哈希调度(Destination Hashing)以目的地址为关键字查找一个静态hash表来获得需要的RS。</td><td></td></tr><tr><td>sh</td><td>源地址哈希调度(Source Hashing)以源地址为关键字查找一个静态hash表来获得需要的RS。</td><td></td></tr><tr><td>wlc</td><td>加权最小连接数调度(Weighted Least-Connection) 假设各台RS的权值依次为Wi(I=1..n)，当前的TCP连接数依次为Ti ( I= 1..n )，依次选取Ti/Wi为最小的RS作为 下一个分配的RS。</td><td></td></tr><tr><td>lc</td><td>最小连接数调度压(Least-Connection)，IPVS表存储了所有的活动的连接。把新的连接请求发送到当前连接数最小的RS。</td><td></td></tr><tr><td>lblc</td><td>基于地址的最小连接数调度(Locality-Based Least-Connection)，将来自同一目的地址的请求分配给同一台RS节点，如果这台服务器尚未满负荷，分配给连接数最小的RS，并以它为下一次分配的首先考虑。</td><td></td></tr><tr><td>lblcr</td><td>基于地址带重复最小连接数调度(Locality-Based Least-Connection with Replication)对于某一目的地址，对应有一个RS子集。对此地址请求，为它分配子集中连接数最小RS;如果子集中所有服务器均已满负荷，则从集群中选择一个连接数较小服务器，将它加入到此子集并分配连接;若一定时间内，未被做任何修改，则将子集中负载最大的节点从子集删除。</td><td></td></tr><tr><td>SED</td><td>最短的期望的延迟(Shortest Expected Delay Scheduling SED) (SED)<br>基于wlc算法。这个必须举例来说了，<br>ABC三台机器分别权重123，连接数也分别是123。那么如果使用WLC算法的话一个新请求进入时它可能会分给ABC中的任意一个。使用sed算法后会进行这样一个运算。<br>A(1+1)/1,<br>B(1+2)/2,<br>C(1+3)/3,<br>根据运算结果，把连接交给C</td><td></td></tr><tr><td>NQ</td><td>最少队列调度(Never Queue Scheduling NQ) (NQ)<br>无需队列。如果有台realserver的连接数=0就直接分配过去，不需要在进行sed运算</td><td></td></tr></tbody></table><h3 id=lvs的调度算法的生产环境选型>LVS的调度算法的生产环境选型<a hidden class=anchor aria-hidden=true href=#lvs的调度算法的生产环境选型>#</a></h3><p>(1) 一般的网络服务，如HTTP、Mail、MySQL等，常用的LVS调度算法为：</p><ul><li>基本轮叫调度rr算法</li><li>加权最小连接调度wlc</li><li>加权轮训调度wrr算法</li></ul><p>(2) 基于局部性的最少链接LBLC和带复制的基于局部性最少链接LBLCR主要适用于Web Cache和Db Cache集群，但是我们很少这样用。</p><p>(3) 源地址散列调度SH和目标地址散列调度DH可以结合使用在防火墙集群中，它们可以保证整个系统的唯一出入口。</p><p>(4) 最短预期延时调度SED和不排队调度NQ主要是对处理时间相对比较长的网络服务。
+实际使用中，这些算法的适用范围不限于这些。我们最好参考内核中的连接调度算法的实现原理，根据具体的业务需求合理的选型。</p><h2 id=安装lvs>安装LVS<a hidden class=anchor aria-hidden=true href=#安装lvs>#</a></h2><p>下载地址：http://www.linuxvirtualserver.org/software/kernel-2.6/ipvsadm-1.26.tar.gz</p><p>安装前准备</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=c1># ipvs为lvs调度器，工作在内核层，先查看是否安装</span>
+</span></span><span class=line><span class=cl>lsmod<span class=p>|</span>grep ip_vs 
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 以uname -r结果为准工作中如果做安装虚拟化可能有多个内核，lvs是基于内核的</span>
+</span></span><span class=line><span class=cl>ln -s /usr/src/kernels/<span class=sb>`</span>uname -r<span class=sb>`</span>/ /usr/src/linux </span></span></code></pre></td></tr></table></div></div></div></div><p>安装依赖包</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>yum install libnl-devel popt-devel popt-static  <span class=c1>#&lt;==centos7未发现问题</span>
+</span></span><span class=line><span class=cl>make <span class=o>&amp;&amp;</span> make install
+</span></span><span class=line><span class=cl>/sbin/ipvsadm <span class=o>||</span>  modprobe ip_vs
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>$ lsmod<span class=p>|</span>grep ip_vs
+</span></span><span class=line><span class=cl>ip_vs                   <span class=m>136798</span>  <span class=m>0</span>
+</span></span><span class=line><span class=cl>nf_conntrack            <span class=m>105702</span>  <span class=m>1</span> ip_vs
+</span></span><span class=line><span class=cl>libcrc32c              <span class=m>12644</span>  <span class=m>2</span> xfs,ip_vs</span></span></code></pre></td></tr></table></div></div></div></div><blockquote><p><strong>VS小结</strong></p></blockquote><p>1、Centos5.X安装lvs，使用1.2.4版本。不要用1.2.6。</p><p>2、Centos6.4安装lvs，使用1.2.6版本。并且需要先安装yum install libnl* popt*-y。</p><p>3、安装lvs后，要执行ipvsadm把ip_vs模块加载到内核。</p><h2 id=手动配置lvs负载均衡服务>手动配置LVS负载均衡服务<a hidden class=anchor aria-hidden=true href=#手动配置lvs负载均衡服务>#</a></h2><h3 id=手工添加lvs转发>手工添加LVS转发<a hidden class=anchor aria-hidden=true href=#手工添加lvs转发>#</a></h3><p>用户访问www.lb.com然后被DNS解析到vip 10.0.0.10，这个步骤是在DNS里配置的。
+如果是自建DNS lb域的DNS记录设置如下</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>www IN A 10.0.0.10</span></span></code></pre></td></tr></table></div></div></div></div><p>如果未自建dns，需要在购买DNS域名商提供的DNS管理界面增加类似上面的DNS记录一条。这里的IP地址一定外网地址，才能正式使用，我们假设192.168.1.0/24段为外网段。修改结果类似下图(必须做真正环境才能做下面修改)</p><h3 id=配置lvs虚拟ip-vip>配置LVS虚拟IP (VIP)<a hidden class=anchor aria-hidden=true href=#配置lvs虚拟ip-vip>#</a></h3><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>ifconfig eth0:0 10.0.0.10/24 up     
+</span></span><span class=line><span class=cl>route  add  -host  10.0.0.10  dev  eth0   <span class=c1>#←添加主机路由，也可不加此行</span></span></span></code></pre></td></tr></table></div></div></div></div><p>因虚拟网卡网段和VIP不在一个网段，需要设置路由，windows设置路由方法如下：</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>route -p add 10.0.0.0/24 192.168.2.23
+</span></span><span class=line><span class=cl>route print</span></span></code></pre></td></tr></table></div></div></div></div><p>到这里说明VIP</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>C:<span class=se>\U</span>sers<span class=se>\C</span>M&gt;ping 10.0.0.10
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>正在 Ping 10.0.0.10 具有 <span class=m>32</span> 字节的数据:
+</span></span><span class=line><span class=cl>来自 10.0.0.10 的回复: <span class=nv>字节</span><span class=o>=</span><span class=m>32</span> 时间&lt;1ms <span class=nv>TTL</span><span class=o>=</span><span class=m>64</span>
+</span></span><span class=line><span class=cl>来自 10.0.0.10 的回复: <span class=nv>字节</span><span class=o>=</span><span class=m>32</span> 时间&lt;1ms <span class=nv>TTL</span><span class=o>=</span><span class=m>64</span>
+</span></span><span class=line><span class=cl>来自 10.0.0.10 的回复: <span class=nv>字节</span><span class=o>=</span><span class=m>32</span> 时间&lt;1ms <span class=nv>TTL</span><span class=o>=</span><span class=m>64</span></span></span></code></pre></td></tr></table></div></div></div></div><hr><p><strong><font color=#0215cd size=2><font color=#f8070d size=2>⚠</font> 提示:到这里说明VIP地址己经配好，并可以使用了。</font></strong></p><hr><h3 id=手工执行配置添加lvs服务并增加两台rs>手工执行配置添加LVS服务并增加两台RS<a hidden class=anchor aria-hidden=true href=#手工执行配置添加lvs服务并增加两台rs>#</a></h3><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>ipvsadm -C
+</span></span><span class=line><span class=cl>ipvsadm --set <span class=m>30</span> <span class=m>5</span> <span class=m>60</span>
+</span></span><span class=line><span class=cl>ipvsadm -A -t 10.0.0.10:80 -s wrr
+</span></span><span class=line><span class=cl>ipvsadm -A -t 10.0.0.10:80 -s wrr -p <span class=m>20</span>
+</span></span><span class=line><span class=cl>ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.82:80 -g -w <span class=m>1</span>
+</span></span><span class=line><span class=cl>ipvsadm -a -t 10.0.0.10:80 -r 192.168.2.21 -g -w <span class=m>1</span>
+</span></span><span class=line><span class=cl>ipvsadm -D -t 10.0.0.10:80 -s wrr
+</span></span><span class=line><span class=cl>ipvsadm -d -t 10.0.0.10:80 -r 192.168.2.21</span></span></code></pre></td></tr></table></div></div></div></div><blockquote><p><strong>相关参数说明</strong></p></blockquote><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=c1>#&lt;==清除内核虚拟服务器表中的所有记录</span>
+</span></span><span class=line><span class=cl>Either long or short options are allowed.
+</span></span><span class=line><span class=cl>  --add-service       -A        add virtual service with options
+</span></span><span class=line><span class=cl>  --edit-service      -E        edit virtual service with options
+</span></span><span class=line><span class=cl>  --delete-service    -D        delete virtual service
+</span></span><span class=line><span class=cl>  --clear             -C        clear the whole table
+</span></span><span class=line><span class=cl>  --restore           -R        restore rules from stdin
+</span></span><span class=line><span class=cl>  --save              -S        save rules to stdout
+</span></span><span class=line><span class=cl>  --add-server        -a        add real server with options
+</span></span><span class=line><span class=cl>  --edit-server       -e        edit real server with options
+</span></span><span class=line><span class=cl>  --delete-server     -d        delete real server
+</span></span><span class=line><span class=cl>  --list              -L<span class=p>|</span>-l     list the table
+</span></span><span class=line><span class=cl>  --set tcp tcpfin udp            <span class=nb>set</span> connection timeout values
+</span></span><span class=line><span class=cl>  --tcp-service  -t service-address   service-address is host<span class=o>[</span>:port<span class=o>]</span>
+</span></span><span class=line><span class=cl>  --udp-service  -u service-address   service-address is host<span class=o>[</span>:port<span class=o>]</span>
+</span></span><span class=line><span class=cl>  --scheduler    -s scheduler         one of rr<span class=p>|</span>wrr<span class=p>|</span>lc<span class=p>|</span>wlc<span class=p>|</span>lblc<span class=p>|</span>lblcr<span class=p>|</span>dh<span class=p>|</span>sh<span class=p>|</span>sed<span class=p>|</span>nq,
+</span></span><span class=line><span class=cl>                                      the default scheduler is wlc.
+</span></span><span class=line><span class=cl>  --persistent    -p <span class=o>[</span>timeout<span class=o>]</span>          persistent service
+</span></span><span class=line><span class=cl>  --netmask       -M netmask            persistent granularity mask
+</span></span><span class=line><span class=cl>  --real-server   -r server-address     server-address is host <span class=o>(</span>and port<span class=o>)</span>
+</span></span><span class=line><span class=cl>  --gatewaying    -g                    gatewaying <span class=o>(</span>direct routing<span class=o>)</span> <span class=o>(</span>default<span class=o>)</span>
+</span></span><span class=line><span class=cl>  --ipip          -i                    ipip encapsulation <span class=o>(</span>tunneling<span class=o>)</span>
+</span></span><span class=line><span class=cl>  --masquerading  -m                    masquerading <span class=o>(</span>NAT<span class=o>)</span>
+</span></span><span class=line><span class=cl>  --weight        -w weight             capacity of real server
+</span></span><span class=line><span class=cl>  --mcast-interface interface           multicast interface <span class=k>for</span> connection sync
+</span></span><span class=line><span class=cl>  --connection    -c                    output of current IPVS connections
+</span></span><span class=line><span class=cl>  --timeout                               output of timeout <span class=o>(</span>tcp tcpfin udp<span class=o>)</span>
+</span></span><span class=line><span class=cl>  --stats                                 output of statistics information</span></span></code></pre></td></tr></table></div></div></div></div><p>此时，在浏览器访问10.0.0.10结果是无法访问的：因为根据LVS原理，RS在接收到包后发现不是自己IP后就丢弃了。 <a href=http://blog.csdn.net/raintungli/article/details/39051435 target=_blank rel="noopener nofollow noreferrer">IPVS(也叫LVS)的源码分析之persistent参数 - 沧海一粟 - CSDN博客</a></p><h3 id=手工在rs端绑定>手工在RS端绑定<a hidden class=anchor aria-hidden=true href=#手工在rs端绑定>#</a></h3><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>ifconfig lo:0 10.0.0.10/32 up    <span class=c1>#&lt;==注意，子网掩码特殊</span></span></span></code></pre></td></tr></table></div></div></div></div><p>每个集群节点上的环回接口 (lo) 设备上被绑定VIP地址(其广播地址是其本身，子网掩码是255.255.255.255，采取可变长掩码方式把网段划分成只含一个主机地址的目的避免ip地址冲突)允许LVS-DR集群中的集群节点接受发向该VIP地址的数据包，这会有一个非常严重的问题发生，集群内部的真实服务器将尝试回复来自正在请求VIP客户端ARP广播，这样所有的真实服务器都将声称自己拥有该VIP地址，这时客户端将有可能接发送请求数据包到某台真实服务器上，从而破坏了DR集群的负载均衡策略。因此，必须要抑制所有真实服务器响应目标地址为VIP的ARP广播，而把客户端ARP广播的响应交给负载均衡调度器。</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/06e08a6d.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/06e08a6d.png#center alt=06e08a6d onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>抑制ARP响应方法如下</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;1&#34;</span> &gt;/proc/sys/net/ipv4/conf/lo/arp_ignore
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;2&#34;</span> &gt;/proc/sys/net/ipv4/conf/lo/arp_announce    
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;1&#34;</span> &gt;/proc/sys/net/ipv4/conf/all/arp_ignore
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;2&#34;</span> &gt;/proc/sys/net/ipv4/conf/all/arp_announce</span></span></code></pre></td></tr></table></div></div></div></div><h4 id=arp抑制技术参数说明>arp抑制技术参数说明<a hidden class=anchor aria-hidden=true href=#arp抑制技术参数说明>#</a></h4><p>中文说明:，</p><blockquote><p><strong>arp_ignore- INTEGER</strong></p></blockquote><p>定义对目标地址为本地IP的ARP询问不同的应答模式。</p><p>0 (默认值)：回应任何网络接口上对任何本地IP地址的arp查询请求。</p><p>1：只回答目标IP地址是来访问网络接口本地地址的ARP查询请求</p><p>2：只回答目标IP地址是来访网络接口本地地址的ARP查询请求，且来访IP必须在该网络接口的子网段内。</p><p>3：不回应该网络界面的arp请求，而只对设置的唯一和连接地址做出回应。，</p><p>4-7：保留未使用。‘</p><p>8：不回应所有(本地地址)的arp查询。</p><blockquote><p><strong>arp_announce一INTEGER</strong></p></blockquote><p>对网络接口上，本地IP地址的发出的，ARP回应，作出相应级别的限制：确定不同程度的限制，宣布对来自本地源lP地址发出Ail，请求的接口</p><p>0 (默认)在任意网络接口(eth0,eth1, lo)上的任何本地地址</p><p>1：尽量避免不在该网络接口子网段的本地地址做出arp回应.当发起ARP请求的源IP地址是被设置应该经由路由达到此网络接口的时候很有用。此时会检查来访IP是否为所有接口上的子网段内ip之一。如果该来访IP不属于各个网络接口上的子网段内，那么将采用级别2的方式来进行处理。</p><p>2：一对查询目标使用最适当的本地地址，在此模式下将忽略这个IP数据包的源地址并尝试能与该地址通信的本地地址，首要是选择所有的网络接口的子网中外出访问子网中包含该目标IP地址的本地地址。如果没有合适的地址被发现，将选择当前的发送网络接口或其他的有可能接受到该ARP回应的网络接来进发送。限制了使用本地VIP地址作为优先的网络接口。</p><h4 id=检查手工添加lvs转发成果>检查手工添加LVS转发成果<a hidden class=anchor aria-hidden=true href=#检查手工添加lvs转发成果>#</a></h4><p>测试LVS服务的转发：</p><p>首先在客户端浏览器访问RS http://192.168.1.6 及 RS http://192.168.1.7 确认是否RS端正常然后访问DR的VIP http://10.0.0.10， 如果经过多次测试能分别出现RS1, RS2的 不同结果内容就是表示配置成功。</p><hr><p><strong><font color=#0215cd size=2><font color=#f8070d size=2>⚠</font> 提示:负载均衡的算法倾向于一个客户端IP定向到一个后端服务器，以保持会话连贯性，如果用两三台机器去测试也许就不一样。</font></strong></p><hr><h4 id=在访问的同时可以用命令查看状态信息>在访问的同时可以用命令查看状态信息<a hidden class=anchor aria-hidden=true href=#在访问的同时可以用命令查看状态信息>#</a></h4><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>$ ipvsadm -L -n --stats
+</span></span><span class=line><span class=cl>IP Virtual Server version 1.2.1 <span class=o>(</span><span class=nv>size</span><span class=o>=</span>4096<span class=o>)</span>
+</span></span><span class=line><span class=cl>Prot LocalAddress:Port               Conns   InPkts  OutPkts  InBytes OutBytes
+</span></span><span class=line><span class=cl>  -&gt; RemoteAddress:Port
+</span></span><span class=line><span class=cl>TCP  10.0.0.10:80                       <span class=m>88</span>      <span class=m>674</span>        <span class=m>0</span>    <span class=m>88293</span>        <span class=m>0</span>
+</span></span><span class=line><span class=cl>  -&gt; 192.168.2.21:80                  <span class=m>44</span>      <span class=m>355</span>        <span class=m>0</span>    <span class=m>47851</span>        <span class=m>0</span>
+</span></span><span class=line><span class=cl>  -&gt; 192.168.2.82:80                  <span class=m>44</span>      <span class=m>319</span>        <span class=m>0</span>    <span class=m>40442</span>        <span class=m>0</span></span></span></code></pre></td></tr></table></div></div></div></div><h3 id=使用脚本配置lvs负载均衡服务>使用脚本配置lvs负载均衡服务<a hidden class=anchor aria-hidden=true href=#使用脚本配置lvs负载均衡服务>#</a></h3><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=cp>#!/bin/sh
+</span></span></span><span class=line><span class=cl><span class=cp></span><span class=nv>VIP</span><span class=o>=</span><span class=s1>&#39;10.0.0.10&#39;</span>
+</span></span><span class=line><span class=cl>. /etc/init.d/functions
+</span></span><span class=line><span class=cl><span class=nv>Port</span><span class=o>=</span><span class=m>80</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nv>RIP</span><span class=o>=(</span>
+</span></span><span class=line><span class=cl>  192.168.2.21
+</span></span><span class=line><span class=cl>  192.168.2.82
+</span></span><span class=line><span class=cl><span class=o>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>clean_all<span class=o>(){</span>
+</span></span><span class=line><span class=cl>    ipvsadm -C
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nv>$?</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>set_virtual_server<span class=o>(){</span>
+</span></span><span class=line><span class=cl>    ipvsadm --set <span class=m>30</span> <span class=m>5</span> <span class=m>60</span>
+</span></span><span class=line><span class=cl>    ipvsadm -A -t <span class=nv>$VIP</span>:<span class=nv>$Port</span> -s wrr
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nv>$?</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>start<span class=o>(){</span>
+</span></span><span class=line><span class=cl>    clean_all
+</span></span><span class=line><span class=cl>    <span class=o>[</span> <span class=nv>$?</span> -eq <span class=m>0</span> <span class=o>]</span> <span class=o>&amp;&amp;</span> set_virtual_server <span class=o>||</span> <span class=k>return</span> <span class=m>1</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> n in <span class=si>${</span><span class=nv>RIP</span><span class=p>[@]</span><span class=si>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>do</span>
+</span></span><span class=line><span class=cl>        ipvsadm -a -t <span class=nv>$VIP</span>:<span class=nv>$Port</span> -r <span class=nv>$n</span>:<span class=nv>$Port</span> -g -w <span class=m>1</span>
+</span></span><span class=line><span class=cl>    <span class=k>done</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>stop<span class=o>(){</span>
+</span></span><span class=line><span class=cl>    clean_all
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>usage<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  <span class=nb>echo</span> <span class=s1>&#39;USAGE:&#39;</span><span class=nv>$0</span> <span class=s1>&#39;{start|stop|restart}&#39;</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>case</span> <span class=s2>&#34;</span><span class=nv>$1</span><span class=s2>&#34;</span> in
+</span></span><span class=line><span class=cl>    start<span class=p>|</span>START<span class=o>)</span>
+</span></span><span class=line><span class=cl>    start
+</span></span><span class=line><span class=cl>    <span class=p>;;</span>
+</span></span><span class=line><span class=cl>    stop<span class=p>|</span>STOP<span class=o>)</span>
+</span></span><span class=line><span class=cl>    stop
+</span></span><span class=line><span class=cl>    <span class=p>;;</span>
+</span></span><span class=line><span class=cl>    restart<span class=p>|</span>RESTART<span class=o>)</span>
+</span></span><span class=line><span class=cl>    stop
+</span></span><span class=line><span class=cl>    start
+</span></span><span class=line><span class=cl>    <span class=p>;;</span>
+</span></span><span class=line><span class=cl>    *<span class=o>)</span>
+</span></span><span class=line><span class=cl>    usage
+</span></span><span class=line><span class=cl><span class=k>esac</span></span></span></code></pre></td></tr></table></div></div></div></div><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span><span class=lnt>49
+</span><span class=lnt>50
+</span><span class=lnt>51
+</span><span class=lnt>52
+</span><span class=lnt>53
+</span><span class=lnt>54
+</span><span class=lnt>55
+</span><span class=lnt>56
+</span><span class=lnt>57
+</span><span class=lnt>58
+</span><span class=lnt>59
+</span><span class=lnt>60
+</span><span class=lnt>61
+</span><span class=lnt>62
+</span><span class=lnt>63
+</span><span class=lnt>64
+</span><span class=lnt>65
+</span><span class=lnt>66
+</span><span class=lnt>67
+</span><span class=lnt>68
+</span><span class=lnt>69
+</span><span class=lnt>70
+</span><span class=lnt>71
+</span><span class=lnt>72
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=cp>#!/bin/sh
+</span></span></span><span class=line><span class=cl><span class=cp></span>. /etc/init.d/functions
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nv>master_ip</span><span class=o>=</span>192.168.2.23
+</span></span><span class=line><span class=cl><span class=nv>VIP</span><span class=o>=</span><span class=s1>&#39;10.0.0.10&#39;</span>
+</span></span><span class=line><span class=cl><span class=nv>Port</span><span class=o>=</span><span class=m>80</span>
+</span></span><span class=line><span class=cl><span class=nv>RIP</span><span class=o>=(</span>
+</span></span><span class=line><span class=cl>  192.168.2.21
+</span></span><span class=line><span class=cl>  192.168.2.82
+</span></span><span class=line><span class=cl><span class=o>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>set_virtual_server<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  ipvsadm --set <span class=m>30</span> <span class=m>5</span> <span class=m>60</span>
+</span></span><span class=line><span class=cl>  ipvsadm -A -t <span class=nv>$VIP</span>:<span class=nv>$Port</span> -s wrr
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=nv>$?</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>check_master<span class=o>(){</span> 
+</span></span><span class=line><span class=cl>  /usr/bin/ping -c <span class=m>2</span> <span class=nv>$master_ip</span> <span class=p>&amp;</span>&gt;/dev/null
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=nv>$?</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>clean_all<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  ipvsadm -C
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>start<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  clean_all <span class=o>&amp;&amp;</span> /sbin/ifconfig eth0:0 <span class=nv>$VIP</span>/24 up
+</span></span><span class=line><span class=cl>  <span class=o>[</span> <span class=nv>$?</span> -eq <span class=m>0</span> <span class=o>]</span> <span class=o>&amp;&amp;</span> set_virtual_server <span class=o>||</span> <span class=k>return</span> <span class=m>10</span>
+</span></span><span class=line><span class=cl>  <span class=k>for</span> n in <span class=si>${</span><span class=nv>RIP</span><span class=p>[@]</span><span class=si>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>do</span>
+</span></span><span class=line><span class=cl>    /sbin/ipvsadm -a -t <span class=nv>$VIP</span>:<span class=nv>$Port</span> -r <span class=nv>$n</span>:<span class=nv>$Port</span> -g -w <span class=m>1</span>
+</span></span><span class=line><span class=cl>  <span class=k>done</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>stop<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  clean_all
+</span></span><span class=line><span class=cl>  /sbin/ifconfig eth0:0 <span class=nv>$VIP</span>/24 down
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>check_isnode<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  <span class=nv>num</span><span class=o>=</span><span class=sb>`</span>ipvsadm -L -n<span class=p>|</span>grep 192<span class=p>|</span>wc -l<span class=sb>`</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=o>[</span> <span class=nv>$num</span> -lt <span class=si>${#</span><span class=nv>RIP</span><span class=p>[@]</span><span class=si>}</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=m>0</span>
+</span></span><span class=line><span class=cl>  <span class=k>fi</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=m>11</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>check_isup<span class=o>(){</span>
+</span></span><span class=line><span class=cl>  <span class=nv>num</span><span class=o>=</span><span class=sb>`</span>ifconfig eth0:0<span class=p>|</span>grep <span class=nv>$VIP</span><span class=p>|</span>wc -l<span class=sb>`</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=o>[</span> <span class=nv>$num</span> -eq <span class=m>1</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=m>0</span>
+</span></span><span class=line><span class=cl>  <span class=k>fi</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=m>12</span>
+</span></span><span class=line><span class=cl><span class=o>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>while</span> <span class=nb>true</span>
+</span></span><span class=line><span class=cl><span class=k>do</span>
+</span></span><span class=line><span class=cl>  check_master
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=o>[</span> <span class=nv>$?</span> -ne <span class=m>0</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span>
+</span></span><span class=line><span class=cl>    check_isnode
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=o>[</span> <span class=nv>$?</span> -eq <span class=m>0</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span>
+</span></span><span class=line><span class=cl>      start
+</span></span><span class=line><span class=cl>    <span class=k>fi</span>
+</span></span><span class=line><span class=cl>  <span class=k>else</span>
+</span></span><span class=line><span class=cl>    check_isup
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=o>[</span> <span class=nv>$?</span> -eq <span class=m>0</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span> 
+</span></span><span class=line><span class=cl>      stop
+</span></span><span class=line><span class=cl>    <span class=k>fi</span>
+</span></span><span class=line><span class=cl>  <span class=k>fi</span>
+</span></span><span class=line><span class=cl>  sleep <span class=m>3</span>
+</span></span><span class=line><span class=cl><span class=k>done</span></span></span></code></pre></td></tr></table></div></div></div></div><h2 id=常见的lvs负载均衡高可用解决方案>常见的LVS负载均衡高可用解决方案<a hidden class=anchor aria-hidden=true href=#常见的lvs负载均衡高可用解决方案>#</a></h2><p>(1) 通过开发上面的脚本来解决，如果负载均衡器硬件坏了。几分钟或秒级别内在其它备机上完成新的部署，如果做的细的，还可以写脚本来做调度器之间的切换和接管功能。早起的方法，还是比较笨重的，目前已经不推荐使用。</p><p>(2) heartbeart+lvs+ldirectord脚本配置方案，这个方案同学们自己可以去搜索，这个方案中heartbeat负责VIP的切换以及资源的启动停止，ldirectord负责RS节点的健康检查，用于比较复杂，不易控制，属于早期的解决方案，现在已经很少使用了。</p><blockquote><p><strong>heartbeat and ldirectord方案资料</strong>:</p></blockquote><p><a href=http://www.linuxvirtualserver.org/docs/ha/heartbeat_ldirectord.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/docs/ha/heartbeat_ldirectord.html</a></p><p><a href=http://www.linuxvirtualserver.org/docs/ha/ultramonkey.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/docs/ha/ultramonkey.html</a></p><p>(3) 通过Redhat提供的工具piranha来配置LVS
+Piranha是REDHAT提供的一个基于Web的LVS配置软件，可以省去手工配置LVS的繁琐工作，同时，也可单独提供。cluster功能，例如，可以通过Piranh。激活Director Server的后备主机，也就是配置Director Server的双机热备功能。</p><p>(4) keepalived+LVS方案，当前最优方案，因为这个方案符合简单、易用、高效的运维原则。
+The Keepalived Solution <a href=http://www.linuxvirtualserver.org/docs/ha/keepalived target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/docs/ha/keepalived</a></p><p>(5) 其他</p><p><a href=http://bbs.linuxtone.org/thread-1402-1-1.html target=_blank rel="noopener nofollow noreferrer">http://bbs.linuxtone.org/thread-1402-1-1.html</a></p><p>LVS Documentation</p><p><a href=http://www.linuxvirtualserver.org/zh/index.html target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/zh/index.html</a></p><p><a href=http://www.linuxvirtualserver.org/Documents.html#performance target=_blank rel="noopener nofollow noreferrer">http://www.linuxvirtualserver.org/Documents.html#performance</a></p><p><a href=http://zh.linuxvirtualserver.org/node/2230 target=_blank rel="noopener nofollow noreferrer">http://zh.linuxvirtualserver.org/node/2230</a></p><h2 id=lvs集群分发请求rs不均衡生产环境实战解决>LVS集群分发请求RS不均衡生产环境实战解决<a hidden class=anchor aria-hidden=true href=#lvs集群分发请求rs不均衡生产环境实战解决>#</a></h2><p>生产环境中 <code>ipvsadm -L -n</code> 发现两台RS的负载不均衡，一台有很多请求，一台没有请求，并且没有请求的那台RS经测试服务正常，lo:VIP也有。但是就是没有请求。</p><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>TCP 172.168.1.50:3307 wrr persistent <span class=m>10</span>
+</span></span><span class=line><span class=cl>  一&gt;172.168.1.51:3307          Route   <span class=m>1</span>      <span class=m>0</span>         <span class=m>0</span>
+</span></span><span class=line><span class=cl>  一&gt;172.168.1.52:3307          Route   <span class=m>1</span>      <span class=m>8</span>         <span class=m>12758</span></span></span></code></pre></td></tr></table></div></div></div></div><blockquote><p><strong>问题原因</strong>：</p></blockquote><p>persistent 10的原因，persistent会话保持，当clientA访问网站的时候，LVS把请求分发给了52,那么以后clientA再点击的其他操作其他请求，也会发送给52这台机器。</p><blockquote><p><strong>解决办法</strong>:</p></blockquote><p>到keepalived中注释掉persistent 10然后/etc/init.d/keepalived reload，然后可以看到以后负载均衡两边都请求都均衡了。</p><p><font style=background:#ffc104 size=2>其它导致负载不均的原因可能有：</font></p><ol><li>LVS自身的会话保持参数设置((-p 300, persistent 300)。优化:大公司尽量用cookie替代session</li><li>LVS调度算法设置，例如：rr, wrr, wld,lc算法。</li><li>后端RS节点的会话保持参数，例如:apache的keealive参数。</li><li>访问量较少的情况不均衡的现象更加明显。</li><li>用户发送的请求时间长短，和请求资源多少大小。</li></ol><p>实现会话保持的方案：</p><p><a href=http://oldboy.blog.5lcto.com/2561410/1331316 target=_blank rel="noopener nofollow noreferrer">http://oldboy.blog.5lcto.com/2561410/1331316</a></p><p><a href=http://oldboy.blog.51cto.com/2561410/1323468 target=_blank rel="noopener nofollow noreferrer">http://oldboy.blog.51cto.com/2561410/1323468</a></p><h2 id=lvs故障排错理论及实战讲讲解>LVS故障排错理论及实战讲讲解<a hidden class=anchor aria-hidden=true href=#lvs故障排错理论及实战讲讲解>#</a></h2><p>排查的大的思路就是，要熟悉LVS的工作原理过程，然后根据原理过程来排查。</p><ol><li>调度器上LVS调度规则及IP的正确性。</li><li>RS节点上VIP绑定和arp抑制的检查。</li></ol><p>生产处理思路：</p><ol><li>对绑定的vip做实时监控，出问题报警或者自动处理后报警。</li><li>把绑定的vip做成配置文件，例如:vi /etc/sysconfig/network-scripts/lo:0</li></ol><p>ARP抑制的配置思路：</p><ol><li>如果是单个VIP，那么可以用stop传参设置0。</li><li>如果RS端有多个、VIP绑定，此时，即使是停止VIP绑定也一定不要置0。</li></ol><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>sh</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl><span class=k>if</span> <span class=o>[</span> <span class=si>${#</span><span class=nv>VIP</span><span class=p>[@]</span><span class=si>}</span> <span class=o>]</span><span class=p>;</span><span class=k>then</span>
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;0&#34;</span> &gt;/proc/sys/net/ipv4/conf/lo/arp_ignore
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;0&#34;</span> &gt;/proc/sys/net/ipv4/conf/lo/arp_announce
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;0&#34;</span> &gt;/proc/sys/net/ipv4/conf/all/arp_ignore
+</span></span><span class=line><span class=cl><span class=nb>echo</span> <span class=s2>&#34;0&#34;</span> &gt;/proc/sys/net/ipv4/conf/all/arp_announce
+</span></span><span class=line><span class=cl><span class=k>if</span></span></span></code></pre></td></tr></table></div></div></div></div><ol start=3><li><p>RS节点上自身提供月够的检查(DR不能端口转换)</p></li><li><p>辅助排除工具有tcpdump, ping等。</p></li><li><p>负载均衡和反向代理集群的三角形排查理论。</p></li></ol><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/960fc67a.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/960fc67a.png#center alt=960fc67a onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><h2 id=keepalivedlvs负载均衡配置>keepalived+lvs负载均衡配置<a hidden class=anchor aria-hidden=true href=#keepalivedlvs负载均衡配置>#</a></h2><div class="pe-code-block-wrap pe-code-details open scrollable"><div class="pe-code-block-header pe-code-details-summary"><div class=pe-code-block-header-left><i class="arrow fas fa-chevron-right fa-fw pe-code-details-icon" aria-hidden=true></i>
+<span>conf</span></div><div class=pe-code-block-header-center><span></span></div><div class=pe-code-block-header-right><i class="fas fa-ellipsis-h fa-fw" aria-hidden=true></i>
+<button class=pe-code-copy-button><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" class="pe-icon"><path fill="currentcolor" fill-rule="evenodd" d="M7 5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-2v2a3 3 0 01-3 3H5a3 3 0 01-3-3v-9a3 3 0 013-3h2zm2 2h5a3 3 0 013 3v5h2a1 1 0 001-1V5a1 1 0 00-1-1h-9A1 1 0 009 5zM5 9a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-9a1 1 0 00-1-1z" clip-rule="evenodd"/></svg></button></div></div><div class="pe-code-details-content scrollable"><pre tabindex=0><code class=language-conf data-lang=conf>virtual_server 10.0.0.10 80 { 
   delay_loop 3 #&lt;== 健康检查时间，单位是秒  
   lb_algo wrr #&lt;== 负载调度的算法为wlc
   lb_kind DR  #&lt;==LVS实现负载的机制，NAT/DR/TUN/FULLNAT  
@@ -1092,381 +539,13 @@ if
     }
   }
 }
-# ipvsadm -a -t 10.0.0.10:80 -r 192.168.1.5 -g -w 1
-</code></pre>
-<p>查看负载结果</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/b403805d.png" alt="b403805d" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/188bf29c.png" alt="188bf29c" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>当master宕机后，可看到近1分钟时间进行切换</p>
-<p><img loading="lazy" src="https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/36ac7562.png" alt="36ac7562" onerror="this.onerror=null;this.src='/placeholder.svg';this.className='pe-image-placeholder'" /></p>
-<p>LVS负载均衡代码平滑上线发布思路</p>
-<p>发布代码：</p>
-<p>开发人员本地测试-一&gt;办公室内部测试（开发个人，测试人员）一（配置管理员）&ndash;&gt;IDC机房测试环境（测试人员）&ndash;&gt;正是服务器&ndash;&gt;运维上线&ndash;&gt;100台</p>
-<p>一台一台下，测试完ok挂上去，此时，机器上代码不一致，用户体验就不同，此时需要下线一半，测试，测试完再下线另一半。</p>
-<p>下线方法：</p>
-<p>准备两套配置文件，一套配置文件含有前两台配置文件的配置，一套配置文件含有后两台配置文件的配置。最后用完整的配置文件替换。</p>
-<p>方法二：用ipvsadm来控制节点的增加和删除。keepalived不重启节点就不会改变</p>
-<p>生产场景测试步骤</p>
-
-
-    
-    
-
-
-<div class="copyrightBlock" >
-    <div class="articleSuffix-bg"> <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 147.78 155.96"> <path d="M10.5,99.81a1.9,1.9,0,0,0-.53-.09,1.66,1.66,0,0,0-1.64,1.65A1.64,1.64,0,0,0,10,103a1.57,1.57,0,0,0,.87-.25l26.76,26.82.45-1.08L11.52,101.91A1.65,1.65,0,0,0,10.5,99.81Zm-.13,2a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.58.58,0,0,1,.57-.57h0a.57.57,0,0,1,.56.58A.55.55,0,0,1,10.37,101.77Z" style="fill:#c5c9e0"></path><path d="M56.15,117.58H39.06l0-.09a1.65,1.65,0,0,0-1.36-1H37.5a1.65,1.65,0,1,0,1.56,2.19H55.7L92.92,156h41.44v-1.08h-41Zm-18.25.94a.56.56,0,0,1-.79,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h0a.58.58,0,0,1,.57.58A.54.54,0,0,1,37.9,118.52Z" style="fill:#c5c9e0"></path><path d="M23.52,50.32a1.65,1.65,0,0,0,1.55-1.11H55.28l48-48.13h31.06V0H102.85l-48,48.13H25.07a1.64,1.64,0,0,0-2.09-1,1.64,1.64,0,0,0,.54,3.2Zm0-2.21a.57.57,0,0,1,0,1.13.57.57,0,1,1,0-1.13Z" style="fill:#c5c9e0"></path><polygon points="102.86 0 102.86 0 102.86 0 102.86 0" style="fill:#c5c9e0"></polygon><path d="M107.72,12.14h26.64V11.07H107.27L57.4,61H3.09a1.66,1.66,0,0,0-1.45-.86H1.52A1.65,1.65,0,1,0,2.81,63a1.59,1.59,0,0,0,.45-.87H57.85ZM2.05,62.23a.57.57,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.56-.57h.09a.57.57,0,0,1,.32,1Z" style="fill:#c5c9e0"></path><path d="M134.36,43.22V42.14h-22.3l-9.62,9.63a1.64,1.64,0,0,0-2.19.77,1.61,1.61,0,0,0-.17.71,1.65,1.65,0,1,0,3.29,0,1.61,1.61,0,0,0-.16-.72l9.3-9.32Zm-32.64,10.6a.57.57,0,0,1,0-1.13.57.57,0,0,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M147,52.3l-9,9H111.48a1.64,1.64,0,0,0-1.61-1.33h-.14a1.65,1.65,0,1,0,1.6,2.41h27.19l9.26-9.29L147,52.3Zm-37.15,9.85a.56.56,0,0,1-.56-.57h0a.56.56,0,0,1,.56-.56h0a.57.57,0,1,1,0,1.13Z" style="fill:#c5c9e0"></path><path d="M66.79,75.35l11,11.06h56.53V85.33H78.27l-11-11.06H49.49L37.12,86.67a1.64,1.64,0,0,0-2.09,1,1.61,1.61,0,0,0-.09.54,1.65,1.65,0,0,0,3.29,0,1.68,1.68,0,0,0-.26-.89l12-12ZM36.58,88.79a.57.57,0,1,1,.57-.56A.57.57,0,0,1,36.58,88.79Z" style="fill:#c5c9e0"></path><path d="M110.61,95.55,92.8,113.4a1.62,1.62,0,1,0,.77.76l17.49-17.53h23.31V95.55ZM92.49,115.28a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,.57-.57h0a.58.58,0,0,1,.56.58A.55.55,0,0,1,92.49,115.28Z" style="fill:#c5c9e0"></path><path d="M97.89,122.3H76.62L64.2,109.85a1.65,1.65,0,0,0-.77-2.2,1.77,1.77,0,0,0-.72-.17h-.14a1.65,1.65,0,0,0,.15,3.29,1.58,1.58,0,0,0,.71-.17l12.74,12.77H98.34l17.48-17.52h18.54v-1.08h-19ZM63.12,109.53a.56.56,0,0,1-.8,0,.58.58,0,0,1-.17-.41.57.57,0,0,1,1.14,0A.54.54,0,0,1,63.12,109.53Z" style="fill:#c5c9e0"></path> </svg> </div>
-    <p>本文发布于<a href="https://www.oomkill.com/about" target="_blank">Cylon的收藏册</a>，转载请著名原文链接~</p>
-    <p>链接：<a href="https://www.oomkill.com/2017/01/lvs-and-keepalived/" target="_blank">https://www.oomkill.com/2017/01/lvs-and-keepalived/</a></p>
-    <p style="margin-bottom: 0px;">版权：本作品采用<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">「署名-非商业性使用-相同方式共享 4.0 国际」</a> 许可协议进行许可。</p>
-    </div>
-</div>
-  </div>
-
-  <footer class="post-footer">
-    
-<nav class="paginav">
-  <a class="prev" href="https://www.oomkill.com/2017/02/keepalived/">
-    <span class="title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select: text;"><line x1="19" y1="12" x2="5" y2="12" style="user-select: text;"></line><polyline points="12 19 5 12 12 5" style="user-select: text;"></polyline>
-      </polyline></svg>&nbsp; </span>
-    
-    <span>Keepalived 高可用集群应用实践</span>
-  </a>
-  <a class="next" href="https://www.oomkill.com/2016/12/fpm/" >
-    <span class="title"> </span>
-    
-    <span>使用fpm制作rpm包与搭建本地yum源&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select: text;"><line x1="5" y1="12" x2="19" y2="12" style="user-select: text;"></line><polyline points="12 5 19 12 12 19" style="user-select: text;"></polyline></svg></span>
-  </a>
-</nav>
-
-  </footer>
-
-  
-  <div class="pagination__title">
-    <span class="pagination__title-h"></span>
-  </div>
-  
-  
-  
-  
-    <div class="comments-separator"></div>
-    
-
-<h3 class="relatedContentTitle" >相关阅读</h3>
-<ul class="relatedContent">
-	
-	<li><a href="/2016/12/fpm/"><span>使用fpm制作rpm包与搭建本地yum源</span></a></li>
-	
-	<li><a href="/2016/10/ch1-iptables-introduction/"><span>ch1 iptables介绍</span></a></li>
-	
-	<li><a href="/2016/10/ch2-iptables-command/"><span>ch2 iptables命令帮助信息</span></a></li>
-	
-	<li><a href="/2016/10/ch3-iptables-configuration/"><span>ch3 iptables配置防火墙</span></a></li>
-	
-	<li><a href="/2016/10/ch4-iptables-p/"><span>ch4 生产环境如何维护iptables</span></a></li>
-	
-</ul>
-
-  
-
-  
-    
-      <div class="comments-separator"></div>
-<div class="comments">
-    <script>
-    function loadComment() {
-        let theme = localStorage.getItem('pref-theme') === 'dark' ? 'dark' : 'light';
-        let s = document.createElement('script');
-        s.src = 'https://giscus.app/client.js';
-        s.setAttribute('data-repo', 'cylonchau\/cylonchau.github.io');
-        s.setAttribute('data-repo-id', 'R_kgDOIRlNSQ');
-        s.setAttribute('data-category', 'Announcements');
-        s.setAttribute('data-category-id', 'DIC_kwDOIRlNSc4CXy1U');
-        s.setAttribute('data-mapping', 'title');
-        s.setAttribute('data-reactions-enabled', '1');
-        s.setAttribute('data-emit-metadata', '1');
-        s.setAttribute('data-input-position', 'top');
-        s.setAttribute('data-lang', 'zh-TW');
-        s.setAttribute('data-theme', theme);
-        s.setAttribute('crossorigin', 'anonymous');
-        s.setAttribute('async', '');
-        document.querySelector('div.comments').innerHTML = '';
-        document.querySelector('div.comments').appendChild(s);
-    }
-    loadComment();
-    </script>
-</div>
-</article>
-    </main>
-    
-<footer class="footer">
-  <p>
-  Copyright
-  <span>&copy; 2024 <a href="https://www.oomkill.com">Cylon&#39;s Collection</a></span></p>
-  <span style="display: inline-block; margin-left: 1em;">
-    Powered by
-    <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> on github-page & Theme
-    <a href="https://github.com/reorx/hugo-PaperModX/" rel="noopener" target="_blank">PaperModX</a>
-  </span>
-</footer>
-<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
-    <span class="topInner">
-        <svg class="topSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
-            <path d="M12 6H0l6-6z"/>
-        </svg>
-        <span id="read_progress"></span>
-    </span>
-</a>
-
-<script>
-  (function() {
-     
-    const disableThemeToggle = '' == '1';
-    if (disableThemeToggle) {
-      return;
-    }
-
-    let button = document.getElementById("theme-toggle")
-    
-    button.removeEventListener('click', toggleThemeListener)
-    
-    button.addEventListener('click', toggleThemeListener)
-  })();
-</script>
-
-<script>
-  (function () {
-    let menu = document.getElementById('menu')
-    if (menu) {
-      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
-      menu.onscroll = function () {
-        localStorage.setItem("menu-scroll-position", menu.scrollLeft);
-      }
-    }
-
-    const disableSmoothScroll = '' == '1';
-    const enableInstantClick = '1' == '1';
-    
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || disableSmoothScroll || enableInstantClick) {
-      return;
-    }
-    
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener("click", function (e) {
-        e.preventDefault();
-        var id = this.getAttribute("href").substr(1);
-        document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
-          behavior: "smooth"
-        });
-        if (id === "top") {
-          history.replaceState(null, null, " ");
-        } else {
-          history.pushState(null, null, `#${id}`);
-        }
-      });
-    });
-  })();
-</script>
-
-<script>
-  document.addEventListener('scroll', function (e) {
-      const readProgress = document.getElementById("read_progress");
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight;
-      const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-      readProgress.innerText = ((scrollTop / (scrollHeight - clientHeight)).toFixed(2) * 100).toFixed(0);
-  })
-</script>
-
-<script>
-  var menu = document.getElementById('menu')
-  if (menu) {
-      menu.scrollLeft = localStorage.getItem("menu-scroll-position");
-      menu.onscroll = function () {
-          localStorage.setItem("menu-scroll-position", menu.scrollLeft);
-      }
-  }
-
-  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener("click", function (e) {
-          e.preventDefault();
-          var id = this.getAttribute("href").substr(1);
-          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
-                  behavior: "smooth"
-              });
-          } else {
-              document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
-          }
-          if (id === "top") {
-              history.replaceState(null, null, " ");
-          } else {
-              history.pushState(null, null, `#${id}`);
-          }
-      });
-  });
-</script>
-<script>
-  var mybutton = document.getElementById("top-link");
-  window.onscroll = function () {
-      if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-          mybutton.style.visibility = "visible";
-          mybutton.style.opacity = "1";
-      } else {
-          mybutton.style.visibility = "hidden";
-          mybutton.style.opacity = "0";
-      }
-  };
-</script>
-<script>
-  if (window.scrollListeners) {
-    
-    for (const listener of scrollListeners) {
-      window.removeEventListener('scroll', listener)
-    }
-  }
-  window.scrollListeners = []
-</script>
-
-
-
-<script src="/js/medium-zoom.min.js" data-no-instant
-></script>
-<script>
-  document.querySelectorAll('pre > code').forEach((codeblock) => {
-    const container = codeblock.parentNode.parentNode;
-
-    const copybutton = document.createElement('button');
-    copybutton.classList.add('copy-code');
-    copybutton.innerText = 'copy';
-
-    function copyingDone() {
-      copybutton.innerText = 'copied';
-      setTimeout(() => {
-        copybutton.innerText = 'copy';
-      }, 2000);
-    }
-
-    copybutton.addEventListener('click', (cb) => {
-      if ('clipboard' in navigator) {
-        navigator.clipboard.writeText(codeblock.textContent);
-        copyingDone();
-        return;
-      }
-
-      const range = document.createRange();
-      range.selectNodeContents(codeblock);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      try {
-        document.execCommand('copy');
-        copyingDone();
-      } catch (e) { };
-      selection.removeRange(range);
-    });
-
-    if (container.classList.contains("highlight")) {
-      container.appendChild(copybutton);
-    } else if (container.parentNode.firstChild == container) {
-      
-    } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
-      
-      codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
-    } else {
-      
-      codeblock.parentNode.appendChild(copybutton);
-    }
-  });
-</script>
-
-
-
-
-<script>
-  
-  
-  (function() {
-    const enableTocScroll = '1' == '1'
-    if (!enableTocScroll) {
-      return
-    }
-    if (!document.querySelector('.toc')) {
-      console.log('no toc found, ignore toc scroll')
-      return
-    }
-    
-
-    
-    const scrollListeners = window.scrollListeners
-    const headings = document.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id]');
-    const activeClass = 'active';
-
-    
-    let activeHeading = headings[0];
-    getLinkByHeading(activeHeading).classList.add(activeClass);
-
-    const onScroll = () => {
-      const passedHeadings = [];
-      for (const h of headings) {
-        
-        if (getOffsetTop(h) < 5) {
-          passedHeadings.push(h)
-        } else {
-          break;
-        }
-      }
-      if (passedHeadings.length > 0) {
-        newActiveHeading = passedHeadings[passedHeadings.length - 1];
-      } else {
-        newActiveHeading = headings[0];
-      }
-      if (activeHeading != newActiveHeading) {
-        getLinkByHeading(activeHeading).classList.remove(activeClass);
-        activeHeading = newActiveHeading;
-        getLinkByHeading(activeHeading).classList.add(activeClass);
-      }
-    }
-
-    let timer = null;
-    const scrollListener = () => {
-      if (timer !== null) {
-        clearTimeout(timer)
-      }
-      timer = setTimeout(onScroll, 50)
-    }
-    window.addEventListener('scroll', scrollListener, false);
-    scrollListeners.push(scrollListener)
-
-    function getLinkByHeading(heading) {
-      const id = encodeURI(heading.getAttribute('id')).toLowerCase();
-      return document.querySelector(`.toc ul li a[href="#${id}"]`);
-    }
-
-    function getOffsetTop(heading) {
-      if (!heading.getClientRects().length) {
-        return 0;
-      }
-      let rect = heading.getBoundingClientRect();
-      return rect.top
-    }
-  })();
-  </script>
-
-<script src="/js/instantclick.min.js" data-no-instant
-></script>
-<script data-no-instant>
-  
-  
-  
-  
-  
-  
-  InstantClick.init();
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/8.6.0/mermaid.min.js" crossorigin="anonymous"></script>
-<script>
-    mermaid.init(undefined, '.language-mermaid');
-</script>
-</body>
-
-</html>
+# ipvsadm -a -t 10.0.0.10:80 -r 192.168.1.5 -g -w 1</code></pre></div></div><p>查看负载结果</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/b403805d.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/b403805d.png#center alt=b403805d onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/188bf29c.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/188bf29c.png#center alt=188bf29c onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>当master宕机后，可看到近1分钟时间进行切换</p><p><div class=pe-fancybox><a data-fancybox=gallery href=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/36ac7562.png><img src=https://cdn.jsdelivr.net/gh/CylonChau/imgbed/img/36ac7562.png#center alt=36ac7562 onerror='this.onerror=null,this.src="/placeholder.svg",this.className="pe-image-placeholder"'></a></div></p><p>LVS负载均衡代码平滑上线发布思路</p><p>发布代码：</p><p>开发人员本地测试-一>办公室内部测试（开发个人，测试人员）一（配置管理员）&ndash;>IDC机房测试环境（测试人员）&ndash;>正是服务器&ndash;>运维上线&ndash;>100台</p><p>一台一台下，测试完ok挂上去，此时，机器上代码不一致，用户体验就不同，此时需要下线一半，测试，测试完再下线另一半。</p><p>下线方法：</p><p>准备两套配置文件，一套配置文件含有前两台配置文件的配置，一套配置文件含有后两台配置文件的配置。最后用完整的配置文件替换。</p><p>方法二：用ipvsadm来控制节点的增加和删除。keepalived不重启节点就不会改变</p><p>生产场景测试步骤</p></div><div class=pe-copyright><hr><blockquote><p>本文为原创内容，版权归作者所有。如需转载，请在文章中声明本文标题及链接。</p><p>文章标题：LVS & keepalived 集群架构</p><p>文章链接：<a href=https://www.oomkill.com/2017/01/lvs-and-keepalived/ target=_blank>https://www.oomkill.com/2017/01/lvs-and-keepalived/</a></p><p>许可协议：<a href=https://creativecommons.org/licenses/by-nc/4.0/ target=_blank>CC BY-NC 4.0</a></p></blockquote></div><div class=comments-separator></div><h3 class=relatedContentTitle>相关阅读</h3><ul class=relatedContent><li><a href=/2016/12/fpm/><span>使用fpm制作rpm包与搭建本地yum源</span></a></li><li><a href=/2016/10/ch1-iptables-introduction/><span>ch1 iptables介绍</span></a></li><li><a href=/2016/10/ch2-iptables-command/><span>ch2 iptables命令帮助信息</span></a></li><li><a href=/2016/10/ch3-iptables-configuration/><span>ch3 iptables配置防火墙</span></a></li><li><a href=/2016/10/ch4-iptables-p/><span>ch4 生产环境如何维护iptables</span></a></li></ul><div class=comments-separator></div><footer class=post-footer><ul class=post-tags><li><a href=https://www.oomkill.com/tags/ha/>HA</a></li></ul><nav class=paginav><a class=prev href=https://www.oomkill.com/2017/02/keepalived/><span class=title><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left" style="user-select:text"><line x1="19" y1="12" x2="5" y2="12" style="user-select:text"/><polyline points="12 19 5 12 12 5" style="user-select:text"/></polyline></svg>&nbsp;</span>
+<span>Keepalived 高可用集群应用实践</span>
+</a><a class=next href=https://www.oomkill.com/2016/12/fpm/><span class=title></span>
+<span>使用fpm制作rpm包与搭建本地yum源&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right" style="user-select:text"><line x1="5" y1="12" x2="19" y2="12" style="user-select:text"/><polyline points="12 5 19 12 12 19" style="user-select:text"/></svg></span></a></nav></footer><div class=pe-comments-decoration><p class=pe-comments-title></p><p class=pe-comments-subtitle></p></div><div id=pe-comments></div><script src=/js/pe-go-comment.min.86a214102576ba5f9b7bdc29eed8d58dd56e34aef80b3c65c73ea9cc88443696.js integrity="sha256-hqIUECV2ul+be9wp7tjVjdVuNK74Czxlxz6pzIhENpY="></script><script>const getStoredTheme=()=>localStorage.getItem("pref-theme")==="dark"?"dark":"light",setGiscusTheme=()=>{const e=e=>{const t=document.querySelector("iframe.giscus-frame");t&&t.contentWindow.postMessage({giscus:e},"https://giscus.app")};e({setConfig:{theme:getStoredTheme()}})};document.addEventListener("DOMContentLoaded",()=>{const s={src:"https://giscus.app/client.js","data-repo":"cylonchau/cylonchau.github.io","data-repo-id":"R_kgDOIRlNSQ","data-category":"Announcements","data-category-id":"DIC_kwDOIRlNSc4CXy1U","data-mapping":"pathname","data-term":"posts/lvs and keepalived","data-strict":"0","data-reactions-enabled":"1","data-emit-metadata":"0","data-input-position":"top","data-theme":getStoredTheme(),"data-lang":"zh-TW","data-loading":"lazy",crossorigin:"anonymous",async:""},e=document.createElement("script");Object.entries(s).forEach(([t,n])=>e.setAttribute(t,n)),document.querySelector("#pe-comments").appendChild(e);const t=document.querySelector("#theme-toggle");t&&t.addEventListener("click",setGiscusTheme);const n=document.querySelector("#theme-toggle-float");n&&n.addEventListener("click",setGiscusTheme)})</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://www.oomkill.com/>Cylon's Collection</a></span> ·
+<span>Powered by
+<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> on
+<a href=https://pages.github.com/ rel=noopener target=_blank>GitHub Pages</a> & Theme
+        <a href=https://github.com/tofuwine/PaperMod-PE rel=noopener target=_blank>PaperMod-PE</a></span></footer><div class=pe-right-sidebar><a href=javascript:void(0); id=theme-toggle-float class=pe-float-btn><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+<svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</a><a href=#top class=pe-float-btn id=top-link><span id=pe-read-progress></span></a></div><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script></body></html>

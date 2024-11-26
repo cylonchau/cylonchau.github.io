@@ -1,169 +1,23 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>middleware on Cylon&#39;s Collection</title>
+    <title>Middleware on Cylon&#39;s Collection</title>
     <link>https://www.oomkill.com/tags/middleware/</link>
-    <description>Recent content in middleware on Cylon&#39;s Collection</description>
-    <generator>Hugo -- gohugo.io</generator>
-    <language>zh-cn</language>
-    <lastBuildDate>Thu, 21 Nov 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://www.oomkill.com/tags/middleware/index.xml" rel="self" type="application/rss+xml" />
+    <description>Recent content in Middleware on Cylon&#39;s Collection</description>
+    <generator>Hugo -- 0.125.7</generator>
+    <language>zh</language>
+    <lastBuildDate>Thu, 21 Nov 2024 23:00:36 +0800</lastBuildDate>
+    <atom:link href="https://www.oomkill.com/tags/middleware/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>zookeeper版本升级 - from 3.4 to 3.8</title>
       <link>https://www.oomkill.com/2024/11/zk-upgrade-3.4-to-3.6/</link>
       <pubDate>Thu, 21 Nov 2024 00:00:00 +0000</pubDate>
-      
       <guid>https://www.oomkill.com/2024/11/zk-upgrade-3.4-to-3.6/</guid>
-      <description></description>
-      <content:encoded><![CDATA[<p>最近，我不得不将 Zookeeper 3.4.18 集群升级到 3.6+。要求是：无感升级，不丢失数据，并且尽量不向任何用户发出通知。在调研zookeeper 版本后，发现 3.6+ 支持了 metrics 模块，比较符合需求，所以需要从 3.4.18 升级至 3.6.4</p>
-<ul>
-<li>3.5 + 支持动态配置</li>
-<li>3.6.0+ 支持内置 metrics 模块</li>
-</ul>
-<h2 id="现有集群配置">现有集群配置</h2>
-<table>
-<thead>
-<tr>
-<th>集群IP</th>
-<th>当前目录</th>
-<th>新版本目录</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>192.240.16.18</td>
-<td>/usr/local/zookeeper-3.4.14/</td>
-<td>/usr/local/apache-zookeeper-3.6.4-bin/</td>
-</tr>
-<tr>
-<td>192.240.16.21</td>
-<td>/usr/local/zookeeper-3.4.14/</td>
-<td>/usr/local/apache-zookeeper-3.6.4-bin/</td>
-</tr>
-<tr>
-<td>192.240.16.28</td>
-<td>/usr/local/zookeeper-3.4.14/</td>
-<td>/usr/local/apache-zookeeper-3.6.4-bin/</td>
-</tr>
-<tr>
-<td>192.240.16.147</td>
-<td>/usr/local/zookeeper-3.4.14/</td>
-<td>/usr/local/apache-zookeeper-3.6.4-bin/</td>
-</tr>
-<tr>
-<td>192.240.16.202</td>
-<td>/usr/local/zookeeper-3.4.14/</td>
-<td>/usr/local/apache-zookeeper-3.6.4-bin/</td>
-</tr>
-</tbody>
-</table>
-<h2 id="下载安装包">下载安装包</h2>
-<p>在官方 <a href="https://archive.apache.org/dist/zookeeper/" target="_blank"
-   rel="noopener nofollow noreferrer" >archive</a> 找到对应安装包</p>
-<blockquote>
-<p>从 zk 3.5 起安装包分为带 “bin” 和不带 “bin” 的</p>
-<ul>
-<li>带 “bin” 的包含所需jar包</li>
-<li>不带 “bin” 的需要自行编译</li>
-</ul>
-</blockquote>
-<pre><code class="language-bash">wget https://archive.apache.org/dist/zookeeper/zookeeper-3.6.4/
-</code></pre>
-<p>解压</p>
-<pre><code class="language-bash">tar Czxf /usr/local/ apache-zookeeper-3.6.4-bin.tar.gz &amp;&amp; cd /usr/local
-</code></pre>
-<h2 id="升级版本">升级版本</h2>
-<p>注意以下步骤需要对每个 zk 服务器都执行一边</p>
-<h3 id="检查状态">检查状态</h3>
-<p>检查每个 zk 实例的角色，注意，Leader 要留着最后升级</p>
-<pre><code class="language-bash">$ echo status | nc localhost 2181
-
-Zookeeper version: 3.4.14-4c25d480e66aadd371de8bd2fd8da255ac140bcf, built on 03/06/2019 16:18 GMT
-Clients:
- /10.222.16.147:58936[1](queued=0,recved=24290,sent=24434)
- /10.222.16.18:56736[1](queued=0,recved=24213,sent=24363)
- /127.0.0.1:60822[0](queued=0,recved=1,sent=0)
-
-Latency min/avg/max: 0/0/77
-Received: 48505
-Sent: 48798
-Connections: 3
-Outstanding: 0
-Zxid: 0x5c000027ee
-Mode: leader
-Node count: 440526
-Proposal sizes last/min/max: 139/32/1039
-</code></pre>
-<h3 id="准备配置文件">准备配置文件</h3>
-<p>产生默认配置文件</p>
-<pre><code class="language-bash">cp apache-zookeeper-3.6.4-bin/conf/zoo_sample.cfg apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-</code></pre>
-<p>启用 prometheus metrics 相关配置</p>
-<pre><code class="language-bash">sed -i &quot;s@#metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider@metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider@g&quot; apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-sed -i &quot;s@#metricsProvider.httpPort=7000@metricsProvider.httpPort=7000@g&quot; apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-sed -i &quot;s@#metricsProvider.exportJvmInfo=true@metricsProvider.exportJvmInfo=true@g&quot; apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-</code></pre>
-<p>检查配置</p>
-<pre><code class="language-bash">tail -5 apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-</code></pre>
-<p>增加旧的配置</p>
-<pre><code class="language-bash"># 增加旧的配置
-cat &lt;&lt;EOF &gt;&gt; apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-dataDir=/usr/local/zookeeper/data
-dataLogDir=/usr/local/zookeeper/logs
-# the port at which the clients will connect
-clientPort=2181
-server.1=10.240.16.18:2888:3888
-server.2=10.240.16.21:2888:3888
-server.3=10.240.16.28:2888:3888
-server.4=10.240.16.147:2888:3888
-server.5=10.240.16.202:2888:3888
-autopurge.snapRetainCount=3
-autopurge.purgeInterval=24
-EOF
-</code></pre>
-<p>检查配置</p>
-<pre><code class="language-bash">tail -13 apache-zookeeper-3.6.4-bin/conf/zoo.cfg
-</code></pre>
-<p>直接转移数据文件</p>
-<pre><code class="language-bash">ln -svnf /usr/local/zookeeper-3.4.14/data /usr/local/apache-zookeeper-3.6.4-bin/data
-ln -svnf /usr/local/zookeeper-3.4.14/logs /usr/local/apache-zookeeper-3.6.4-bin/logs
-ls -l /usr/local/apache-zookeeper-3.6.4-bin/
-</code></pre>
-<p>修改新版启动脚本</p>
-<p>此步骤是为了可以使用 stat 命令</p>
-<pre><code class="language-bash">sed -i '77a\ZOOMAIN=&quot;-Dzookeeper.4lw.commands.whitelist=* ${ZOOMAIN}&quot;' apache-zookeeper-3.6.4-bin/bin/zkServer.sh
-tail -n +70 apache-zookeeper-3.6.4-bin/bin/zkServer.sh | head -n 9
-</code></pre>
-<p>停止旧版本</p>
-<pre><code class="language-bash">zookeeper/bin/zkServer.sh stop
-</code></pre>
-<p>连接到新版本</p>
-<pre><code class="language-bash">ln -svnf apache-zookeeper-3.6.4-bin zookeeper
-</code></pre>
-<p>启动服务</p>
-<pre><code class="language-bash">zookeeper/bin/zkServer.sh start
-</code></pre>
-<p>验证服务</p>
-<pre><code class="language-bash">echo status | nc localhost 2181
-</code></pre>
-<p>检查内容</p>
-<pre><code class="language-bash">zookeeper/bin/zkCli.sh
-ls /clickhouse/tables/01-01
-</code></pre>
-<h2 id="恢复旧版本">恢复旧版本</h2>
-<pre><code class="language-bash">ln -svnf zookeeper-3.4.14 zookeeper
-</code></pre>
-<h2 id="reference">Reference</h2>
-<p><sup id="1">[1]</sup> <a href="https://www.cnblogs.com/wqbin/p/13891156.html" target="_blank"
-   rel="noopener nofollow noreferrer" >zookeeper启动报错：Error: Could not find or load main class org.apache.zookeeper.server.quorum.QuorumPeerMain </a></p>
-<p><sup id="2">[2]</sup> <a href="https://www.cnblogs.com/jonrain0625/p/11377508.html" target="_blank"
-   rel="noopener nofollow noreferrer" >zookeeper 异常 ：stat is not executed because it is not in the whitelist. Connection closed b</a></p>
-<p><sup id="3">[3]</sup> <a href="https://zookeeper.apache.org/doc/r3.8.4/zookeeperMonitor.html" target="_blank"
-   rel="noopener nofollow noreferrer" >ZooKeeper Monitor Guide</a></p>
-<p><sup id="4">[4]</sup> <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-902%3A&#43;Upgrade&#43;Zookeeper&#43;to&#43;3.8.2" target="_blank"
-   rel="noopener nofollow noreferrer" >KIP-902: Upgrade Zookeeper to 3.8.2</a></p>
-]]></content:encoded>
+      <description>最近，我不得不将 Zookeeper 3.4.18 集群升级到 3.6+。要求是：无感升级，不丢失数据，并且尽量不向任何用户发出通知。在调研zookeeper 版本后，发现 3.6+ 支持了 metrics 模块，比较符合需求，所以需要从 3.4.18 升级至 3.6.4
+3.5 + 支持动态配置 3.6.0+ 支持内置 metrics 模块 现有集群配置 集群IP 当前目录 新版本目录 192.240.16.18 /usr/local/zookeeper-3.4.14/ /usr/local/apache-zookeeper-3.6.4-bin/ 192.240.16.21 /usr/local/zookeeper-3.4.14/ /usr/local/apache-zookeeper-3.6.4-bin/ 192.240.16.28 /usr/local/zookeeper-3.4.14/ /usr/local/apache-zookeeper-3.6.4-bin/ 192.240.16.147 /usr/local/zookeeper-3.4.14/ /usr/local/apache-zookeeper-3.6.4-bin/ 192.240.16.202 /usr/local/zookeeper-3.4.14/ /usr/local/apache-zookeeper-3.6.4-bin/ 下载安装包 在官方 archive 找到对应安装包
+从 zk 3.5 起安装包分为带 “bin” 和不带 “bin” 的
+带 “bin” 的包含所需jar包 不带 “bin” 的需要自行编译 bash 1 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.6.4/ 解压
+bash 1 tar Czxf /usr/local/ apache-zookeeper-3.6.4-bin.tar.gz &amp;amp;&amp;amp; cd /usr/local 升级版本 注意以下步骤需要对每个 zk 服务器都执行一边</description>
     </item>
-    
   </channel>
 </rss>
