@@ -1,0 +1,192 @@
+---
+title: 源码分析 - Kubernetes中的事件通知机制
+author: cylon           
+date: 2023-06-23
+lastmod: 2023-06-23T23:00:36+08:00
+slug: kubernetes event
+tags:
+  - kubernetes
+  - kubernetes develop
+categories:   
+  - kubernetes
+  - kubernetes develop
+keywords: 
+  - kubernetes
+  - event
+description: 文章分析了Kuberentes事件记录及事件是如何调度的
+---
+
+在 Kubernetes 中 事件 ( *Event* ） 通常被大家认知为是展示集群中发生的情况，通常用作 Pod 的查看，例如为什么 CrashBackOff, 为什么 Pendding，而很少有人知道事件在 Kubernetes 整个系统中的设计是非常巧妙的，可以通过各组件间的传递，使得用户可以知道集群中的情况，文章中将一地揭开Kubernetes to神秘面纱。
+
+## 为什么需要事件
+
+Kubernetes 在设计时就是 “声明式”，而声明式的最大特点就是 “多组件的协同工作”，而在多组件协同工作时，势必需要传递一些事件，以告知用户任务的状态如何；而事件本身上是一种资源，在很早版本就以及被移入 api/v1 中。下面是 “事件” 资源的定义。
+
+位于 [vendor/k8s.io/api/core/v1/types.go](vendor/k8s.io/api/core/v1/types.go) ，因为 `vendor/k8s.io` 实际上是做了一个软连接，那么真实的实际上位于 `{kubernetes_repo}/staging/src/k8s.io/api/core/v1`
+
+```go
+type Event struct {
+	metav1.TypeMeta `json:",inline"`
+	// 标准的元数据
+	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
+
+	// 事件涉及的对象
+	InvolvedObject ObjectReference `json:"involvedObject" protobuf:"bytes,2,opt,name=involvedObject"`
+
+	// 这里表示的是事件原因，通常为简短的的一种状态名称
+	// TODO: provide exact specification for format.
+	// +optional
+	Reason string `json:"reason,omitempty" protobuf:"bytes,3,opt,name=reason"`
+
+	// 以人类可读取的方式描述，类似于 tcmpdump -A
+	// TODO: decide on maximum length.
+	// +optional
+	Message string `json:"message,omitempty" protobuf:"bytes,4,opt,name=message"`
+
+	// 报告事件的组件，通常包含这个结构体包含 “组件+主机名” 的结构
+	// +optional
+	Source EventSource `json:"source,omitempty" protobuf:"bytes,5,opt,name=source"`
+
+	// 首次上报事件的事件
+	// +optional
+	FirstTimestamp metav1.Time `json:"firstTimestamp,omitempty" protobuf:"bytes,6,opt,name=firstTimestamp"`
+
+	// 最近一次记录事件的事件
+	// +optional
+	LastTimestamp metav1.Time `json:"lastTimestamp,omitempty" protobuf:"bytes,7,opt,name=lastTimestamp"`
+
+	// 事件发生的次数
+	// +optional
+	Count int32 `json:"count,omitempty" protobuf:"varint,8,opt,name=count"`
+
+    // 事件的类型(Normal, Warning)
+	// +optional
+	Type string `json:"type,omitempty" protobuf:"bytes,9,opt,name=type"`
+
+	// 首次观察到事件的.
+	// +optional
+	EventTime metav1.MicroTime `json:"eventTime,omitempty" protobuf:"bytes,10,opt,name=eventTime"`
+
+    // 事件相关的序列，如果事件为单例事件，那么则为nil
+	// +optional
+	Series *EventSeries `json:"series,omitempty" protobuf:"bytes,11,opt,name=series"`
+
+	// 对事件对象采取的行动
+	// +optional
+	Action string `json:"action,omitempty" protobuf:"bytes,12,opt,name=action"`
+
+	// Optional secondary object for more complex actions.
+	// +optional
+	Related *ObjectReference `json:"related,omitempty" protobuf:"bytes,13,opt,name=related"`
+
+	// 发出事件的对应的控制器，也可以理解为组件，因为通常controller-manager 包含多个控制器
+    // e.g. `kubernetes.io/kubelet`.
+	// +optional
+	ReportingController string `json:"reportingComponent" protobuf:"bytes,14,opt,name=reportingComponent"`
+
+	// 控制器实例的ID, e.g. `kubelet-xyzf`.
+	// +optional
+	ReportingInstance string `json:"reportingInstance" protobuf:"bytes,15,opt,name=reportingInstance"`
+}
+```
+
+## 事件管理器
+
+通过上面知道了事件这个资源的设计，里面存在一个 ”发出事件的对应的控制器“ 那么必然是作为每一个组件的内置功能，也就是说这可以作为 client-go 中的一个组件。
+
+代码 [vendor/k8s.io/client-go/tools/events/interfaces.go](vendor/k8s.io/client-go/tools/events/interfaces.go) 中定义了一个事件管理器，这将定义了如何接收或发送事件到任何地方，例如事件接收器 (*EventSink*) 或 log
+
+```go
+type EventBroadcaster interface {
+    // 发送从指定的eventBroadcaster接收到的事件
+	StartRecordingToSink(stopCh <-chan struct{})
+
+    // 返回一个 EventRecorder 并可以使用发送事件到 EventBroadcaster，并将事件源设置为给定的事件源。
+	NewRecorder(scheme *runtime.Scheme, reportingController string) EventRecorder
+
+    // StartEventWatcher 可以使在不使用 StartRecordingToSink 的情况下发送事件
+    // 这使得可以通过自定义方式记录事件
+    // NOTE: 在使用 eventHandler 接收到的事件时应先进行复制一份。
+	// TODO: figure out if this can be removed.
+	StartEventWatcher(eventHandler func(event runtime.Object)) func()
+
+    // StartStructuredLogging 可以接收 EventBroadcaster 发送的结构化日志功能
+    // 如果需要可以忽略返回值或使用于停止记录
+	StartStructuredLogging(verbosity klog.Level) func()
+
+    // 关闭广播
+	Shutdown()
+}
+```
+
+EventBroadcaster 的实现只有一个 eventBroadcasterImpl 
+
+```
+type eventBroadcasterImpl struct {
+   *watch.Broadcaster
+   mu            sync.Mutex
+   eventCache    map[eventKey]*eventsv1.Event
+   sleepDuration time.Duration
+   sink          EventSink
+}
+```
+
+这里面最重要的就是 sink，sink就是决定如何去存储事件的一个组件，他返回的是一组 client-go 的 REST 客户端。
+
+### 事件管理器的设计
+
+
+
+### 事件生产者
+
+事件生产者在事件管理器中是作为
+
+## 控制器
+
+service的资源创建很奇妙，继不属于 `controller-manager` 组件，也不属于 `kube-proxy` 组件，而是存在于 `apiserver` 中的一个被成为控制器的组件；而这个控制器又区别于准入控制器。更准确来说，准入控制器是位于kubeapiserver中的组件，而 **控制器** 则是存在于单独的一个包，这里包含了很多kubernetes集群的公共组件的功能，其中就有service。这也就是在操作kubernetes时 当 `controller-manager` 于  `kube-proxy` 未工作时，也可以准确的为service分配IP。
+
+首先在构建出apiserver时，也就是代码 [cmd/kube-apiserver/app/server.go](cmd/kube-apiserver/app/server.go)
+
+```go
+serviceIPRange, apiServerServiceIP, err := master.ServiceIPRange(s.PrimaryServiceClusterIPRange)
+if err != nil {
+    return nil, nil, nil, nil, err
+}
+```
+
+[master.ServiceIPRange](https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/pkg/master/services.go#L34-L54) 承接了为service分配IP的功能，这部分逻辑就很简单了
+
+```go
+func ServiceIPRange(passedServiceClusterIPRange net.IPNet) (net.IPNet, net.IP, error) {
+	serviceClusterIPRange := passedServiceClusterIPRange
+	if passedServiceClusterIPRange.IP == nil {
+		klog.Warningf("No CIDR for service cluster IPs specified. Default value which was %s is deprecated and will be removed in future releases. Please specify it using --service-cluster-ip-range on kube-apiserver.", kubeoptions.DefaultServiceIPCIDR.String())
+		serviceClusterIPRange = kubeoptions.DefaultServiceIPCIDR
+	}
+
+	size := integer.Int64Min(utilnet.RangeSize(&serviceClusterIPRange), 1<<16)
+	if size < 8 {
+		return net.IPNet{}, net.IP{}, fmt.Errorf("the service cluster IP range must be at least %d IP addresses", 8)
+	}
+
+	// Select the first valid IP from ServiceClusterIPRange to use as the GenericAPIServer service IP.
+	apiServerServiceIP, err := utilnet.GetIndexedIP(&serviceClusterIPRange, 1)
+	if err != nil {
+		return net.IPNet{}, net.IP{}, err
+	}
+	klog.V(4).Infof("Setting service IP to %q (read-write).", apiServerServiceIP)
+
+	return serviceClusterIPRange, apiServerServiceIP, nil
+}
+```
+
+而后kube-apiserver为service分为两类
+
+- apiserver 地址在集群内的service，在代码中表示为 [APIServerServiceIP](https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L351)
+- [Service](https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/cmd/kube-apiserver/app/server.go#L352)，`--service-cluster-ip-range` 配置指定的ip，通过『逗号』分割可以为两个
+
+有了对 service 更好的理解后，接下来开始本系列第二节[深入理解Kubernetes service - kube-proxy软件架构分析](https://cylonchau.github.io/kubernetes-without-service.html)
+
+>**Reference**
+>
+><sup id="1">[1]</sup> [*dual-stack service*](https://kubernetes.io/docs/concepts/services-networking/dual-stack/)
